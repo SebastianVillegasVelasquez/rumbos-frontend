@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { MapCanvas } from "./features/course-map/components/MapCanvas.tsx";
 import { ActivitySidebar } from "./features/course-map/components/ActivitySidebar.tsx";
 import { ActivityModal } from "./features/course-map/components/ActivityModal.tsx";
-import { getActivities, getCourseMap } from "./features/course-map/api.ts";
+import { getActivities, getCourseMap, resetCourseMap, saveCourseMap } from "./features/course-map/api.ts";
 import type { Activity, BubbleData, CourseMap } from "./features/course-map/types/course-props.types.ts";
 
 type Mode = "editor" | "student";
@@ -13,11 +13,23 @@ function App() {
     const [activities, setActivities] = useState<Activity[]>([]);
     const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+    const hasHydratedRef = useRef(false);
 
     useEffect(() => {
         getCourseMap(1).then(setCourseMap);
         getActivities().then(setActivities);
     }, []);
+
+    // Persist every change (dev-only, see the comment in api.ts) - but skip
+    // the very first population from getCourseMap, which isn't a user edit.
+    useEffect(() => {
+        if (!courseMap) return;
+        if (!hasHydratedRef.current) {
+            hasHydratedRef.current = true;
+            return;
+        }
+        saveCourseMap(courseMap);
+    }, [courseMap]);
 
     const bubbles = useMemo(() => courseMap?.bubbles ?? [], [courseMap]);
 
@@ -35,6 +47,11 @@ function App() {
         setSelectedActivity(activity);
     };
 
+    const handleResetToDefault = () => {
+        resetCourseMap();
+        window.location.reload();
+    };
+
     return (
         <div className="flex h-screen flex-col bg-gray-100">
             <header className="flex items-center justify-between border-b border-gray-200 bg-white px-6 py-3 shadow-sm">
@@ -44,13 +61,23 @@ function App() {
                         {mode === "editor" ? "Editor view" : "Student view"}
                     </span>
                 </div>
-                <button
-                    type="button"
-                    onClick={() => setMode((m) => (m === "editor" ? "student" : "editor"))}
-                    className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
-                >
-                    Switch to {mode === "editor" ? "Student" : "Editor"} view
-                </button>
+                <div className="flex items-center gap-3">
+                    <button
+                        type="button"
+                        onClick={handleResetToDefault}
+                        title="Dev-only: clears local bubble edits and reloads the mock map"
+                        className="text-xs text-gray-400 underline-offset-2 hover:text-gray-600 hover:underline"
+                    >
+                        Reset to default map
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => setMode((m) => (m === "editor" ? "student" : "editor"))}
+                        className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
+                    >
+                        Switch to {mode === "editor" ? "Student" : "Editor"} view
+                    </button>
+                </div>
             </header>
             <div className="flex flex-1 overflow-hidden">
                 {mode === "editor" && (

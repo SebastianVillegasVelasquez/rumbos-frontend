@@ -27,9 +27,51 @@ const mockCourseMap: CourseMap = {
 };
 
 export function getCourseMap(courseId: number): Promise<CourseMap> {
+    const stored = readStoredCourseMap();
+    if (stored) return Promise.resolve(stored);
     return Promise.resolve({ ...mockCourseMap, courseId });
 }
 
 export function getActivities(): Promise<Activity[]> {
     return Promise.resolve(mockActivities);
+}
+
+// -----------------------------------------------------------------------
+// TEMPORARY, DEV-ONLY PERSISTENCE - DO NOT TREAT THIS AS REAL STORAGE.
+//
+// This persists the course map to the current browser's localStorage so
+// bubble placement survives a page refresh while developing/demoing
+// locally. It is per-browser, not shared between users viewing the "same"
+// course, has no versioning or conflict handling, and will be replaced by
+// real backend persistence once one exists. Components only ever call
+// getCourseMap/saveCourseMap/resetCourseMap - they don't know or care that
+// this is localStorage today.
+// -----------------------------------------------------------------------
+const STORAGE_KEY = "rumbos:course-map";
+
+function readStoredCourseMap(): CourseMap | null {
+    try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        return raw ? (JSON.parse(raw) as CourseMap) : null;
+    } catch {
+        return null;
+    }
+}
+
+export function saveCourseMap(courseMap: CourseMap): Promise<void> {
+    try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(courseMap));
+    } catch {
+        // Storage unavailable (private browsing, quota, ...) - this is a dev
+        // convenience, not a guarantee, so fail silently.
+    }
+    return Promise.resolve();
+}
+
+export function resetCourseMap(): void {
+    try {
+        localStorage.removeItem(STORAGE_KEY);
+    } catch {
+        // ignore
+    }
 }
