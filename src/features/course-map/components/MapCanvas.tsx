@@ -1,12 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { Stage, Layer, Image as KonvaImage } from "react-konva";
 import useImage from "use-image";
-import type {Activity, BubbleData, MapCanvasProps} from "../types/course-props.types.ts";
+import {DESIGN_HEIGHT, DESIGN_WIDTH, type Activity, type BubbleData, type MapCanvasProps} from "../types/course-props.types.ts";
+import {clampRelative, toRelativeSpace} from "../coordinates.ts";
 import Bubble from "./Bubble.tsx";
-
-// Image size, the editor give the background image to this canvas.
-const DESIGN_WIDTH = 1600;
-const DESIGN_HEIGHT = 900;
 
 export const MapCanvas = ({ backgroundUrl, bubbles, editable, onBubblesChange, onBubbleClick }: MapCanvasProps) => {
     const containerRef = useRef<HTMLDivElement>(null);
@@ -47,14 +44,14 @@ export const MapCanvas = ({ backgroundUrl, bubbles, editable, onBubblesChange, o
         if (!container) return;
 
         const rect = container.getBoundingClientRect();
-        const x = Math.min(Math.max((e.clientX - rect.left) / rect.width, 0), 1);
-        const y = Math.min(Math.max((e.clientY - rect.top) / rect.height, 0), 1);
+        const design = { x: (e.clientX - rect.left) / scale, y: (e.clientY - rect.top) / scale };
+        const relative = clampRelative(toRelativeSpace(design));
 
         const newBubble: BubbleData = {
             bubbleId: Date.now(),
             activityId: activity.id,
-            x,
-            y,
+            x: relative.x,
+            y: relative.y,
             status: "no_complete",
         };
 

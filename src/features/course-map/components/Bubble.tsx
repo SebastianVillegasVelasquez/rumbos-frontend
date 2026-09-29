@@ -1,17 +1,15 @@
-import {type BubbleProps, DESIGN_HEIGHT, DESIGN_WIDTH, STATUS_COLORS} from "../types/course-props.types.ts";
+import {type BubbleProps, STATUS_COLORS} from "../types/course-props.types.ts";
 import {Circle, Group, Text} from "react-konva";
 import type Konva from "konva";
+import {clampRelative, toDesignSpace, toRelativeSpace} from "../coordinates.ts";
 
 const Bubble = ({x, y, status, draggable, onClick, onDragEnd}: BubbleProps) => {
 
-    const posX = x * DESIGN_WIDTH;
-    const posY = y * DESIGN_HEIGHT;
+    const {x: posX, y: posY} = toDesignSpace({x, y});
 
     const handleDragEnd = (e: Konva.KonvaEventObject<DragEvent>) => {
-        onDragEnd?.({
-            x: e.target.x() / DESIGN_WIDTH,
-            y: e.target.y() / DESIGN_HEIGHT,
-        });
+        const relative = toRelativeSpace({x: e.target.x(), y: e.target.y()});
+        onDragEnd?.(clampRelative(relative));
     };
 
     return (
