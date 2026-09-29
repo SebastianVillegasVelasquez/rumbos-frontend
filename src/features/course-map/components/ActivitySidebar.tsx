@@ -2,6 +2,7 @@ import type { Activity, ActivityType } from "../types/course-props.types.ts";
 
 interface ActivitySidebarProps {
     activities: Activity[];
+    className?: string;
 }
 
 const TYPE_ICONS: Record<ActivityType, string> = {
@@ -16,9 +17,11 @@ const handleDragStart = (e: React.DragEvent<HTMLLIElement>, activity: Activity) 
     e.dataTransfer.effectAllowed = "copy";
 };
 
-export const ActivitySidebar = ({ activities }: ActivitySidebarProps) => {
+const DEFAULT_CLASS_NAME = "flex w-64 shrink-0 flex-col border-r border-gray-200 bg-white p-4";
+
+export const ActivitySidebar = ({ activities, className }: ActivitySidebarProps) => {
     return (
-        <aside className="flex w-64 shrink-0 flex-col border-r border-gray-200 bg-white p-4">
+        <aside className={className ?? DEFAULT_CLASS_NAME}>
             <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
                 Available Activities
             </h2>

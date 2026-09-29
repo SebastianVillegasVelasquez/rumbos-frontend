@@ -12,6 +12,7 @@ function App() {
     const [courseMap, setCourseMap] = useState<CourseMap | null>(null);
     const [activities, setActivities] = useState<Activity[]>([]);
     const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
+    const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
 
     useEffect(() => {
         getCourseMap(1).then(setCourseMap);
@@ -52,7 +53,12 @@ function App() {
                 </button>
             </header>
             <div className="flex flex-1 overflow-hidden">
-                {mode === "editor" && <ActivitySidebar activities={unplacedActivities} />}
+                {mode === "editor" && (
+                    <ActivitySidebar
+                        activities={unplacedActivities}
+                        className="hidden w-64 shrink-0 flex-col border-r border-gray-200 bg-white p-4 md:flex"
+                    />
+                )}
                 <main className="min-h-0 flex-1 overflow-hidden p-6">
                     {courseMap ? (
                         <MapCanvas
@@ -67,6 +73,48 @@ function App() {
                     )}
                 </main>
             </div>
+
+            {mode === "editor" && (
+                <button
+                    type="button"
+                    onClick={() => setIsMobileSidebarOpen(true)}
+                    className="fixed bottom-6 right-6 z-30 flex items-center gap-2 rounded-full bg-blue-600 px-5 py-3 text-sm font-medium text-white shadow-lg md:hidden"
+                >
+                    Activities
+                    {unplacedActivities.length > 0 && (
+                        <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white text-xs font-bold text-blue-600">
+                            {unplacedActivities.length}
+                        </span>
+                    )}
+                </button>
+            )}
+
+            {mode === "editor" && isMobileSidebarOpen && (
+                <div
+                    role="presentation"
+                    className="fixed inset-0 z-40 flex items-end bg-black/40 md:hidden"
+                    onClick={() => setIsMobileSidebarOpen(false)}
+                >
+                    <div
+                        className="max-h-[75vh] w-full overflow-y-auto rounded-t-2xl bg-white shadow-2xl"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="mx-auto mt-2 h-1 w-10 rounded-full bg-gray-300" />
+                        <div className="flex justify-end px-4 pt-2">
+                            <button
+                                type="button"
+                                onClick={() => setIsMobileSidebarOpen(false)}
+                                aria-label="Close"
+                                className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                            >
+                                &#10005;
+                            </button>
+                        </div>
+                        <ActivitySidebar activities={unplacedActivities} className="flex flex-col p-4 pt-0" />
+                    </div>
+                </div>
+            )}
+
             <ActivityModal activity={selectedActivity} onClose={() => setSelectedActivity(null)} />
         </div>
     );
