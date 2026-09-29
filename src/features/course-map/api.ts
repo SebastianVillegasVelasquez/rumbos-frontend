@@ -1,4 +1,5 @@
 import type { Activity, CourseMap } from "./types/course-props.types.ts";
+import backgroundImage from "../../assets/fondo.webp";
 
 // Mocked data layer. Shaped exactly like a future FastAPI response so
 // swapping these for real fetch calls later only touches this file.
@@ -15,7 +16,7 @@ const mockActivities: Activity[] = [
 
 const mockCourseMap: CourseMap = {
     courseId: 1,
-    imageUrl: "src/assets/fondo.webp",
+    imageUrl: backgroundImage,
     bubbles: [
         { bubbleId: 1, activityId: 1, x: 0.18, y: 0.72, status: "complete" },
         { bubbleId: 2, activityId: 2, x: 0.36, y: 0.45, status: "complete" },
