@@ -53,7 +53,7 @@ function App() {
             </header>
             <div className="flex flex-1 overflow-hidden">
                 {mode === "editor" && <ActivitySidebar activities={unplacedActivities} />}
-                <main className="flex-1 overflow-auto p-6">
+                <main className="min-h-0 flex-1 overflow-hidden p-6">
                     {courseMap ? (
                         <MapCanvas
                             backgroundUrl={courseMap.imageUrl}
