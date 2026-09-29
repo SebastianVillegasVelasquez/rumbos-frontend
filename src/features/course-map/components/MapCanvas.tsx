@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { Stage, Layer, Image as KonvaImage } from "react-konva";
+import { Stage, Layer, Image as KonvaImage, Line } from "react-konva";
 import useImage from "use-image";
 import {DESIGN_HEIGHT, DESIGN_WIDTH, type Activity, type BubbleData, type MapCanvasProps} from "../types/course-props.types.ts";
-import {clampRelative, toRelativeSpace} from "../coordinates.ts";
+import {clampRelative, toDesignSpace, toRelativeSpace} from "../coordinates.ts";
 import Bubble from "./Bubble.tsx";
 
 const MIN_ZOOM = 1;
@@ -226,6 +226,22 @@ export const MapCanvas = ({ backgroundUrl, bubbles, editable, onBubblesChange, o
                 >
                     <Layer>
                         <KonvaImage image={background} width={DESIGN_WIDTH} height={DESIGN_HEIGHT} />
+                    </Layer>
+                    <Layer listening={false}>
+                        {bubbles.length > 1 && (
+                            <Line
+                                points={bubbles.flatMap((bubble) => {
+                                    const point = toDesignSpace({x: bubble.x, y: bubble.y});
+                                    return [point.x, point.y];
+                                })}
+                                stroke="#94a3b8"
+                                strokeWidth={4}
+                                dash={[14, 10]}
+                                lineCap="round"
+                                lineJoin="round"
+                                opacity={0.7}
+                            />
+                        )}
                     </Layer>
                     <Layer>
                         {bubbles.map((bubble) => (
