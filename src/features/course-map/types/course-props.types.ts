@@ -1,3 +1,5 @@
+import type { IconKey } from "../icons.ts";
+
 export type BubbleStatus = "no_complete" | "in_progress" | "complete" | "locked";
 export type ActivityType = "quiz" | "url" | "assign" | "resource";
 export const DESIGN_WIDTH = 1600;
@@ -11,7 +13,7 @@ export interface BubbleData {
     // instead use 0 to 1 scale.
     x: number;
     y: number;
-    icon?: string; // This may have a default have
+    icon?: IconKey; // Defaults to "question" when unset
     status: BubbleStatus;
 }
 
@@ -32,9 +34,16 @@ export interface BubbleProps {
     x: number; // 0 a 1
     y: number; // 0 a 1
     status: BubbleStatus
+    icon?: IconKey;
     draggable?: boolean;
     onClick?: () => void;
     onDragEnd?: (pos: { x: number; y: number }) => void;
+    onDragStart?: () => void;
+    // Bumping this value (e.g. to Date.now()) triggers the same
+    // bounce+ring feedback used for a status->complete transition, without
+    // requiring a status change. Used to highlight a bubble picked from the
+    // activities overview panel.
+    pulseKey?: number;
 }
 
 export interface CourseMap {
@@ -49,4 +58,9 @@ export interface MapCanvasProps {
     editable: boolean;
     onBubblesChange?: (bubbles: BubbleData[]) => void;
     onBubbleClick?: (bubble: BubbleData) => void;
+    // One-shot request to center the viewport on a bubble and briefly
+    // highlight it (from the activities overview panel). MapCanvas calls
+    // onFocusHandled once it's done so the same bubble can be re-focused.
+    focusBubbleId?: number | null;
+    onFocusHandled?: () => void;
 }
