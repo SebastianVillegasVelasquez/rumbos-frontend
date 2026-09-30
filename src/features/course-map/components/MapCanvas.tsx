@@ -1,9 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import { Stage, Layer, Image as KonvaImage, Line } from "react-konva";
+import type Konva from "konva";
 import useImage from "use-image";
 import {DESIGN_HEIGHT, DESIGN_WIDTH, type Activity, type BubbleData, type MapCanvasProps} from "../types/course-props.types.ts";
 import {clampRelative, toDesignSpace, toRelativeSpace} from "../coordinates.ts";
 import Bubble from "./Bubble.tsx";
+
+const BACKGROUND_NODE_NAME = "map-background";
 
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 3;
@@ -170,6 +173,72 @@ export const MapCanvas = ({ backgroundUrl, bubbles, editable, onBubblesChange, o
         });
     };
 
+    // Click-and-drag panning of empty canvas space. Only starts when the
+    // gesture originates on the background image or the Stage itself - a
+    // bubble's own Group intercepts the event first when the gesture starts
+    // on a bubble, so this never fights bubble dragging or the sidebar drop.
+    // Panning moves the container's native scroll offset (same mechanism
+    // family as wheel/pinch zoom above), which also gives us free clamping:
+    // the browser won't scroll past the content's bounds.
+    const panRef = useRef<{ startX: number; startY: number; startScrollLeft: number; startScrollTop: number } | null>(
+        null
+    );
+
+    const isBackgroundTarget = (target: Konva.Node) => {
+        const stage = target.getStage();
+        return target === stage || target.name() === BACKGROUND_NODE_NAME;
+    };
+
+    const beginPan = (clientX: number, clientY: number) => {
+        const container = containerRef.current;
+        if (!container) return;
+        panRef.current = {
+            startX: clientX,
+            startY: clientY,
+            startScrollLeft: container.scrollLeft,
+            startScrollTop: container.scrollTop,
+        };
+        container.style.cursor = "grabbing";
+    };
+
+    const updatePan = (clientX: number, clientY: number) => {
+        const pan = panRef.current;
+        const container = containerRef.current;
+        if (!pan || !container) return;
+        container.scrollLeft = pan.startScrollLeft - (clientX - pan.startX);
+        container.scrollTop = pan.startScrollTop - (clientY - pan.startY);
+    };
+
+    const endPan = () => {
+        if (!panRef.current) return;
+        panRef.current = null;
+        const container = containerRef.current;
+        if (container) container.style.cursor = "default";
+    };
+
+    const handleStageMouseDown = (e: Konva.KonvaEventObject<MouseEvent>) => {
+        if (!isBackgroundTarget(e.target)) return;
+        beginPan(e.evt.clientX, e.evt.clientY);
+    };
+
+    const handleStageMouseMove = (e: Konva.KonvaEventObject<MouseEvent>) => {
+        if (!panRef.current) return;
+        updatePan(e.evt.clientX, e.evt.clientY);
+    };
+
+    const handleStageTouchStart = (e: Konva.KonvaEventObject<TouchEvent>) => {
+        // Two-finger touches are pinch-zoom, handled by the native listeners
+        // above - only a single touch on the background starts a pan.
+        if (e.evt.touches.length !== 1 || !isBackgroundTarget(e.target)) return;
+        beginPan(e.evt.touches[0].clientX, e.evt.touches[0].clientY);
+    };
+
+    const handleStageTouchMove = (e: Konva.KonvaEventObject<TouchEvent>) => {
+        if (!panRef.current || e.evt.touches.length !== 1) return;
+        e.evt.preventDefault();
+        updatePan(e.evt.touches[0].clientX, e.evt.touches[0].clientY);
+    };
+
     const handleBubbleDragEnd = (bubbleId: number, pos: { x: number; y: number }) => {
         onBubblesChange?.(
             bubbles.map((bubble) => (bubble.bubbleId === bubbleId ? { ...bubble, x: pos.x, y: pos.y } : bubble))
@@ -223,9 +292,21 @@ export const MapCanvas = ({ backgroundUrl, bubbles, editable, onBubblesChange, o
                     height={DESIGN_HEIGHT * scale}
                     scaleX={scale}
                     scaleY={scale}
+                    onMouseDown={handleStageMouseDown}
+                    onMouseMove={handleStageMouseMove}
+                    onMouseUp={endPan}
+                    onMouseLeave={endPan}
+                    onTouchStart={handleStageTouchStart}
+                    onTouchMove={handleStageTouchMove}
+                    onTouchEnd={endPan}
                 >
                     <Layer>
-                        <KonvaImage image={background} width={DESIGN_WIDTH} height={DESIGN_HEIGHT} />
+                        <KonvaImage
+                            name={BACKGROUND_NODE_NAME}
+                            image={background}
+                            width={DESIGN_WIDTH}
+                            height={DESIGN_HEIGHT}
+                        />
                     </Layer>
                     <Layer listening={false}>
                         {bubbles.length > 1 && (
