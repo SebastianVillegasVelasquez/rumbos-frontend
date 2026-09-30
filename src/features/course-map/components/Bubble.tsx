@@ -10,7 +10,7 @@ const HOVER_SCALE = 1.12;
 const PULSE_SCALE = 1.3;
 const ICON_SIZE = 30;
 
-const Bubble = ({x, y, status, icon, draggable, onClick, onDragEnd, onDragStart}: BubbleProps) => {
+const Bubble = ({x, y, status, icon, draggable, onClick, onDragEnd, onDragStart, pulseKey}: BubbleProps) => {
     const {x: posX, y: posY} = toDesignSpace({x, y});
     const [iconImage] = useImage(icon ? (ICON_DATA_URIS[icon] ?? "") : "");
 
@@ -19,6 +19,7 @@ const Bubble = ({x, y, status, icon, draggable, onClick, onDragEnd, onDragStart}
     const [isHovered, setIsHovered] = useState(false);
     const [isPulsing, setIsPulsing] = useState(false);
     const prevStatusRef = useRef(status);
+    const prevPulseKeyRef = useRef(pulseKey);
 
     // Cosmetic-only feedback: briefly pulse when a bubble transitions to
     // "complete". Driven purely by the existing status field - no new data.
@@ -28,6 +29,15 @@ const Bubble = ({x, y, status, icon, draggable, onClick, onDragEnd, onDragStart}
         }
         prevStatusRef.current = status;
     }, [status]);
+
+    // Same pulse, externally triggered (e.g. picked from the activities
+    // overview panel) instead of by a status change.
+    useEffect(() => {
+        if (pulseKey !== undefined && pulseKey !== prevPulseKeyRef.current) {
+            setIsPulsing(true);
+        }
+        prevPulseKeyRef.current = pulseKey;
+    }, [pulseKey]);
 
     useEffect(() => {
         if (!isHovered) return;

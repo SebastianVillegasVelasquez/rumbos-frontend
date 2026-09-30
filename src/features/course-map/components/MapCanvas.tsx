@@ -43,12 +43,21 @@ const scrollToContentPoint = (
     container.scrollTop = content.y * scale - (clientY - rect.top);
 };
 
-export const MapCanvas = ({ backgroundUrl, bubbles, editable, onBubblesChange, onBubbleClick }: MapCanvasProps) => {
+export const MapCanvas = ({
+    backgroundUrl,
+    bubbles,
+    editable,
+    onBubblesChange,
+    onBubbleClick,
+    focusBubbleId,
+    onFocusHandled,
+}: MapCanvasProps) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const [fitScale, setFitScale] = useState(1);
     const [zoom, setZoom] = useState(1);
     const [background] = useImage(backgroundUrl);
     const [iconPickerBubbleId, setIconPickerBubbleId] = useState<number | null>(null);
+    const [focusPulse, setFocusPulse] = useState<{ bubbleId: number; key: number } | null>(null);
 
     // Kept in sync with state so the native wheel/touch listeners below
     // (attached once) always read the latest values without re-attaching.
@@ -74,6 +83,29 @@ export const MapCanvas = ({ backgroundUrl, bubbles, editable, onBubblesChange, o
         observer.observe(container);
         return () => observer.disconnect();
     }, []);
+
+    // One-shot: center the viewport on a bubble requested from the
+    // activities overview panel and give it a brief highlight pulse.
+    useEffect(() => {
+        if (focusBubbleId == null) return;
+        const container = containerRef.current;
+        const bubble = bubbles.find((b) => b.bubbleId === focusBubbleId);
+        if (container && bubble) {
+            const design = toDesignSpace({ x: bubble.x, y: bubble.y });
+            const currentScale = fitScaleRef.current * zoomRef.current;
+            const rect = container.getBoundingClientRect();
+            container.scrollTo({
+                left: design.x * currentScale - rect.width / 2,
+                top: design.y * currentScale - rect.height / 2,
+                behavior: "smooth",
+            });
+            setFocusPulse({ bubbleId: focusBubbleId, key: Date.now() });
+        }
+        onFocusHandled?.();
+        // Intentionally reacting only to focusBubbleId changing - bubbles/
+        // scale are read at trigger time, not tracked as deps.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [focusBubbleId]);
 
     // Cursor-anchored wheel zoom (desktop) and two-finger pinch zoom (touch),
     // scoped to the Stage's view only - bubble positions stay in the 0-1
@@ -352,6 +384,7 @@ export const MapCanvas = ({ backgroundUrl, bubbles, editable, onBubblesChange, o
                                 status={bubble.status}
                                 icon={bubble.icon}
                                 draggable={editable}
+                                pulseKey={focusPulse?.bubbleId === bubble.bubbleId ? focusPulse.key : undefined}
                                 onClick={() => handleBubbleClick(bubble)}
                                 onDragStart={() => setIconPickerBubbleId(null)}
                                 onDragEnd={(pos) => handleBubbleDragEnd(bubble.bubbleId, pos)}

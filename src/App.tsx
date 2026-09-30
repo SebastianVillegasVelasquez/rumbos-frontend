@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { MapCanvas } from "./features/course-map/components/MapCanvas.tsx";
 import { ActivitySidebar } from "./features/course-map/components/ActivitySidebar.tsx";
 import { ActivityModal } from "./features/course-map/components/ActivityModal.tsx";
+import { ActivitiesOverviewModal } from "./features/course-map/components/ActivitiesOverviewModal.tsx";
 import { getActivities, getCourseMap, resetCourseMap, saveCourseMap } from "./features/course-map/api.ts";
 import type { Activity, BubbleData, CourseMap } from "./features/course-map/types/course-props.types.ts";
 
@@ -13,6 +14,8 @@ function App() {
     const [activities, setActivities] = useState<Activity[]>([]);
     const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+    const [isActivitiesOverviewOpen, setIsActivitiesOverviewOpen] = useState(false);
+    const [focusBubbleId, setFocusBubbleId] = useState<number | null>(null);
     const hasHydratedRef = useRef(false);
 
     useEffect(() => {
@@ -52,6 +55,11 @@ function App() {
         window.location.reload();
     };
 
+    const handleSelectBubbleFromOverview = (bubble: BubbleData) => {
+        setIsActivitiesOverviewOpen(false);
+        setFocusBubbleId(bubble.bubbleId);
+    };
+
     return (
         <div className="flex h-screen flex-col bg-gray-100">
             <header className="flex items-center justify-between border-b border-gray-200 bg-white px-6 py-3 shadow-sm">
@@ -62,6 +70,13 @@ function App() {
                     </span>
                 </div>
                 <div className="flex items-center gap-3">
+                    <button
+                        type="button"
+                        onClick={() => setIsActivitiesOverviewOpen(true)}
+                        className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50"
+                    >
+                        Activities overview
+                    </button>
                     <button
                         type="button"
                         onClick={handleResetToDefault}
@@ -94,6 +109,8 @@ function App() {
                             editable={mode === "editor"}
                             onBubblesChange={handleBubblesChange}
                             onBubbleClick={handleBubbleClick}
+                            focusBubbleId={focusBubbleId}
+                            onFocusHandled={() => setFocusBubbleId(null)}
                         />
                     ) : (
                         <p className="text-sm text-gray-400">Loading course map...</p>
@@ -143,6 +160,14 @@ function App() {
             )}
 
             <ActivityModal activity={selectedActivity} onClose={() => setSelectedActivity(null)} />
+
+            <ActivitiesOverviewModal
+                open={isActivitiesOverviewOpen}
+                bubbles={bubbles}
+                activities={activities}
+                onClose={() => setIsActivitiesOverviewOpen(false)}
+                onSelectBubble={handleSelectBubbleFromOverview}
+            />
         </div>
     );
 }

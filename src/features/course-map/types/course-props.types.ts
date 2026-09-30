@@ -39,6 +39,11 @@ export interface BubbleProps {
     onClick?: () => void;
     onDragEnd?: (pos: { x: number; y: number }) => void;
     onDragStart?: () => void;
+    // Bumping this value (e.g. to Date.now()) triggers the same
+    // bounce+ring feedback used for a status->complete transition, without
+    // requiring a status change. Used to highlight a bubble picked from the
+    // activities overview panel.
+    pulseKey?: number;
 }
 
 export interface CourseMap {
@@ -53,4 +58,9 @@ export interface MapCanvasProps {
     editable: boolean;
     onBubblesChange?: (bubbles: BubbleData[]) => void;
     onBubbleClick?: (bubble: BubbleData) => void;
+    // One-shot request to center the viewport on a bubble and briefly
+    // highlight it (from the activities overview panel). MapCanvas calls
+    // onFocusHandled once it's done so the same bubble can be re-focused.
+    focusBubbleId?: number | null;
+    onFocusHandled?: () => void;
 }
