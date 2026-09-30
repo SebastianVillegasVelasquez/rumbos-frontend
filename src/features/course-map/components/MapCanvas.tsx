@@ -5,6 +5,8 @@ import useImage from "use-image";
 import {DESIGN_HEIGHT, DESIGN_WIDTH, type Activity, type BubbleData, type MapCanvasProps} from "../types/course-props.types.ts";
 import {clampRelative, toDesignSpace, toRelativeSpace} from "../coordinates.ts";
 import Bubble from "./Bubble.tsx";
+import { IconPickerPopover } from "./IconPickerPopover.tsx";
+import type { IconKey } from "../icons.ts";
 
 const BACKGROUND_NODE_NAME = "map-background";
 
@@ -46,6 +48,7 @@ export const MapCanvas = ({ backgroundUrl, bubbles, editable, onBubblesChange, o
     const [fitScale, setFitScale] = useState(1);
     const [zoom, setZoom] = useState(1);
     const [background] = useImage(backgroundUrl);
+    const [iconPickerBubbleId, setIconPickerBubbleId] = useState<number | null>(null);
 
     // Kept in sync with state so the native wheel/touch listeners below
     // (attached once) always read the latest values without re-attaching.
@@ -192,6 +195,7 @@ export const MapCanvas = ({ backgroundUrl, bubbles, editable, onBubblesChange, o
     const beginPan = (clientX: number, clientY: number) => {
         const container = containerRef.current;
         if (!container) return;
+        setIconPickerBubbleId(null);
         panRef.current = {
             startX: clientX,
             startY: clientY,
@@ -245,6 +249,21 @@ export const MapCanvas = ({ backgroundUrl, bubbles, editable, onBubblesChange, o
         );
     };
 
+    const handleBubbleClick = (bubble: BubbleData) => {
+        if (editable) {
+            setIconPickerBubbleId((current) => (current === bubble.bubbleId ? null : bubble.bubbleId));
+        } else {
+            onBubbleClick?.(bubble);
+        }
+    };
+
+    const handleIconSelect = (bubbleId: number, icon: IconKey) => {
+        onBubblesChange?.(bubbles.map((bubble) => (bubble.bubbleId === bubbleId ? { ...bubble, icon } : bubble)));
+        setIconPickerBubbleId(null);
+    };
+
+    const iconPickerBubble = bubbles.find((bubble) => bubble.bubbleId === iconPickerBubbleId) ?? null;
+
     const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
         if (!editable) return;
         e.preventDefault();
@@ -282,7 +301,7 @@ export const MapCanvas = ({ backgroundUrl, bubbles, editable, onBubblesChange, o
         <div className="relative h-full w-full">
             <div
                 ref={containerRef}
-                className="h-full w-full overflow-auto rounded-lg border border-gray-200 bg-gray-50"
+                className="relative h-full w-full overflow-auto rounded-lg border border-gray-200 bg-gray-50"
                 style={{ touchAction: "pan-x pan-y" }}
                 onDragOver={handleDragOver}
                 onDrop={handleDrop}
@@ -331,13 +350,24 @@ export const MapCanvas = ({ backgroundUrl, bubbles, editable, onBubblesChange, o
                                 x={bubble.x}
                                 y={bubble.y}
                                 status={bubble.status}
+                                icon={bubble.icon}
                                 draggable={editable}
-                                onClick={() => !editable && onBubbleClick?.(bubble)}
+                                onClick={() => handleBubbleClick(bubble)}
+                                onDragStart={() => setIconPickerBubbleId(null)}
                                 onDragEnd={(pos) => handleBubbleDragEnd(bubble.bubbleId, pos)}
                             />
                         ))}
                     </Layer>
                 </Stage>
+                {iconPickerBubble && (
+                    <IconPickerPopover
+                        x={toDesignSpace({ x: iconPickerBubble.x, y: iconPickerBubble.y }).x * scale}
+                        y={toDesignSpace({ x: iconPickerBubble.x, y: iconPickerBubble.y }).y * scale}
+                        currentIcon={iconPickerBubble.icon}
+                        onSelect={(icon) => handleIconSelect(iconPickerBubble.bubbleId, icon)}
+                        onClose={() => setIconPickerBubbleId(null)}
+                    />
+                )}
             </div>
             <div className="pointer-events-none absolute bottom-3 right-3 flex items-center gap-1 rounded-lg bg-white/90 p-1 shadow-md backdrop-blur">
                 <button

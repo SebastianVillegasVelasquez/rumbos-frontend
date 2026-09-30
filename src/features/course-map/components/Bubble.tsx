@@ -1,14 +1,18 @@
 import {type BubbleProps, STATUS_COLORS} from "../types/course-props.types.ts";
-import {Circle, Group, Text} from "react-konva";
+import {Circle, Group, Image as KonvaImage, Text} from "react-konva";
 import Konva from "konva";
 import {useEffect, useRef, useState} from "react";
+import useImage from "use-image";
 import {clampRelative, toDesignSpace, toRelativeSpace} from "../coordinates.ts";
+import {ICON_DATA_URIS} from "../icons.ts";
 
 const HOVER_SCALE = 1.12;
 const PULSE_SCALE = 1.3;
+const ICON_SIZE = 30;
 
-const Bubble = ({x, y, status, draggable, onClick, onDragEnd}: BubbleProps) => {
+const Bubble = ({x, y, status, icon, draggable, onClick, onDragEnd, onDragStart}: BubbleProps) => {
     const {x: posX, y: posY} = toDesignSpace({x, y});
+    const [iconImage] = useImage(icon ? (ICON_DATA_URIS[icon] ?? "") : "");
 
     const groupRef = useRef<Konva.Group>(null);
     const ringRef = useRef<Konva.Circle>(null);
@@ -119,6 +123,7 @@ const Bubble = ({x, y, status, draggable, onClick, onDragEnd}: BubbleProps) => {
             draggable={draggable}
             onClick={onClick}
             onTap={onClick}
+            onDragStart={onDragStart}
             onDragEnd={handleDragEnd}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
@@ -135,18 +140,29 @@ const Bubble = ({x, y, status, draggable, onClick, onDragEnd}: BubbleProps) => {
                 shadowBlur={isHovered ? 18 : 0}
                 shadowOpacity={0.6}
             />
-            <Text
-                text="?"
-                fontSize={24}
-                fill="white"
-                width={60}
-                height={60}
-                offsetX={30}
-                offsetY={30}
-                align="center"
-                verticalAlign="middle"
-                listening={false}
-            />
+            {iconImage ? (
+                <KonvaImage
+                    image={iconImage}
+                    width={ICON_SIZE}
+                    height={ICON_SIZE}
+                    offsetX={ICON_SIZE / 2}
+                    offsetY={ICON_SIZE / 2}
+                    listening={false}
+                />
+            ) : (
+                <Text
+                    text="?"
+                    fontSize={24}
+                    fill="white"
+                    width={60}
+                    height={60}
+                    offsetX={30}
+                    offsetY={30}
+                    align="center"
+                    verticalAlign="middle"
+                    listening={false}
+                />
+            )}
         </Group>
     );
 };

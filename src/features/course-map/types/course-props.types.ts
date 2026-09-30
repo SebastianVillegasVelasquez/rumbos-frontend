@@ -1,3 +1,5 @@
+import type { IconKey } from "../icons.ts";
+
 export type BubbleStatus = "no_complete" | "in_progress" | "complete" | "locked";
 export type ActivityType = "quiz" | "url" | "assign" | "resource";
 export const DESIGN_WIDTH = 1600;
@@ -11,7 +13,7 @@ export interface BubbleData {
     // instead use 0 to 1 scale.
     x: number;
     y: number;
-    icon?: string; // This may have a default have
+    icon?: IconKey; // Defaults to "question" when unset
     status: BubbleStatus;
 }
 
@@ -32,9 +34,11 @@ export interface BubbleProps {
     x: number; // 0 a 1
     y: number; // 0 a 1
     status: BubbleStatus
+    icon?: IconKey;
     draggable?: boolean;
     onClick?: () => void;
     onDragEnd?: (pos: { x: number; y: number }) => void;
+    onDragStart?: () => void;
 }
 
 export interface CourseMap {
