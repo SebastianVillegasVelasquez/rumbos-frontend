@@ -15,6 +15,8 @@ const MAX_ZOOM = 3;
 const ZOOM_STEP = 1.15;
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
+const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
+const ZOOM_ANIM_DURATION = 180;
 
 const getTouchDistance = (touches: TouchList) =>
     Math.hypot(touches[1].clientX - touches[0].clientX, touches[1].clientY - touches[0].clientY);
@@ -107,6 +109,39 @@ export const MapCanvas = ({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [focusBubbleId]);
 
+    // Smoothly tweens zoom (and the anchored scroll position that keeps a
+    // content point fixed under the pointer) instead of snapping in one
+    // frame - used by the wheel's per-notch step and the +/-/reset buttons.
+    // Pinch-zoom is already continuous (driven by the gesture itself) so it
+    // doesn't need this.
+    const zoomAnimRef = useRef<number | null>(null);
+
+    const animateZoomTo = (targetZoom: number, clientX: number, clientY: number) => {
+        const container = containerRef.current;
+        if (!container) return;
+        if (zoomAnimRef.current !== null) cancelAnimationFrame(zoomAnimRef.current);
+
+        const startZoom = zoomRef.current;
+        if (startZoom === targetZoom) return;
+        const startScale = fitScaleRef.current * startZoom;
+        const content = getContentPoint(container, startScale, clientX, clientY);
+        const startTime = performance.now();
+
+        const step = (now: number) => {
+            const t = clamp((now - startTime) / ZOOM_ANIM_DURATION, 0, 1);
+            const eased = easeOutCubic(t);
+            const nextZoom = startZoom + (targetZoom - startZoom) * eased;
+            setZoom(nextZoom);
+            scrollToContentPoint(container, fitScaleRef.current * nextZoom, content, clientX, clientY);
+            zoomAnimRef.current = t < 1 ? requestAnimationFrame(step) : null;
+        };
+        zoomAnimRef.current = requestAnimationFrame(step);
+    };
+
+    useEffect(() => () => {
+        if (zoomAnimRef.current !== null) cancelAnimationFrame(zoomAnimRef.current);
+    }, []);
+
     // Cursor-anchored wheel zoom (desktop) and two-finger pinch zoom (touch),
     // scoped to the Stage's view only - bubble positions stay in the 0-1
     // relative scale and never know zoom happened.
@@ -120,14 +155,7 @@ export const MapCanvas = ({
             const prevZoom = zoomRef.current;
             const nextZoom = clamp(prevZoom * factor, MIN_ZOOM, MAX_ZOOM);
             if (nextZoom === prevZoom) return;
-
-            const prevScale = fitScaleRef.current * prevZoom;
-            const content = getContentPoint(container, prevScale, e.clientX, e.clientY);
-            setZoom(nextZoom);
-            requestAnimationFrame(() => {
-                const nextScale = fitScaleRef.current * nextZoom;
-                scrollToContentPoint(container, nextScale, content, e.clientX, e.clientY);
-            });
+            animateZoomTo(nextZoom, e.clientX, e.clientY);
         };
 
         let pinch: { distance: number; zoom: number; content: { x: number; y: number }; midX: number; midY: number } | null = null;
@@ -185,27 +213,29 @@ export const MapCanvas = ({
         const rect = container.getBoundingClientRect();
         const clientX = rect.left + rect.width / 2;
         const clientY = rect.top + rect.height / 2;
-        const prevZoom = zoomRef.current;
-        const nextZoom = clamp(prevZoom * factor, MIN_ZOOM, MAX_ZOOM);
-        if (nextZoom === prevZoom) return;
-
-        const prevScale = fitScaleRef.current * prevZoom;
-        const content = getContentPoint(container, prevScale, clientX, clientY);
-        setZoom(nextZoom);
-        requestAnimationFrame(() => {
-            const nextScale = fitScaleRef.current * nextZoom;
-            scrollToContentPoint(container, nextScale, content, clientX, clientY);
-        });
+        const nextZoom = clamp(zoomRef.current * factor, MIN_ZOOM, MAX_ZOOM);
+        animateZoomTo(nextZoom, clientX, clientY);
     };
 
     const handleZoomReset = () => {
-        setZoom(1);
-        requestAnimationFrame(() => {
-            const container = containerRef.current;
-            if (!container) return;
-            container.scrollLeft = 0;
-            container.scrollTop = 0;
-        });
+        const container = containerRef.current;
+        if (!container) return;
+        if (zoomAnimRef.current !== null) cancelAnimationFrame(zoomAnimRef.current);
+
+        const startZoom = zoomRef.current;
+        const startScrollLeft = container.scrollLeft;
+        const startScrollTop = container.scrollTop;
+        const startTime = performance.now();
+
+        const step = (now: number) => {
+            const t = clamp((now - startTime) / ZOOM_ANIM_DURATION, 0, 1);
+            const eased = easeOutCubic(t);
+            setZoom(startZoom + (1 - startZoom) * eased);
+            container.scrollLeft = startScrollLeft * (1 - eased);
+            container.scrollTop = startScrollTop * (1 - eased);
+            zoomAnimRef.current = t < 1 ? requestAnimationFrame(step) : null;
+        };
+        zoomAnimRef.current = requestAnimationFrame(step);
     };
 
     // Click-and-drag panning of empty canvas space. Only starts when the
