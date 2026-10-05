@@ -12,7 +12,7 @@ export function toDesignSpace(relative: Point): Point {
 }
 
 // Converts a design-space pixel position back into the 0-1 relative scale
-// used by BubbleData.
+// used by Bubble.
 export function toRelativeSpace(design: Point): Point {
     return { x: design.x / DESIGN_WIDTH, y: design.y / DESIGN_HEIGHT };
 }

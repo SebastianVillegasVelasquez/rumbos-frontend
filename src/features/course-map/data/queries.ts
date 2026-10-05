@@ -4,7 +4,6 @@ import { ApiError } from "./client.ts";
 import type { BubbleCreate, BubbleUpdate, CourseMapDetail } from "./types.ts";
 
 export const courseMapKeys = {
-    all: ["course-maps"] as const,
     detail: (courseMapId: string) => ["course-maps", courseMapId, "detail"] as const,
     activities: (courseMapId: string) => ["course-maps", courseMapId, "activities"] as const,
     activitiesList: (courseMapId: string, includeHidden: boolean) =>

@@ -1,75 +1,64 @@
-# React + TypeScript + Vite
+# Rumbos frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + TypeScript + Vite + Tailwind + Konva. Renders a course map from the
+Rumbos backend: teachers place Moodle activities as bubbles on a background
+image, and students open them.
 
-Currently, two official plugins are available:
+## Running against the backend
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+1. Start the backend (FastAPI, normally on http://localhost:8000).
+2. Copy the env template and adjust if needed:
 
-## React Compiler
+   ```sh
+   cp .env.example .env
+   ```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+3. Install and start the dev server:
 
-## Expanding the ESLint configuration
+   ```sh
+   pnpm install
+   pnpm dev
+   ```
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+4. Open `http://localhost:5173/?map=<course-map-uuid>`. With no `map` parameter
+   the app shows a form to create a map for a Moodle course id.
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+In development the Vite dev server proxies `/api/*` to the backend
+(`VITE_API_PROXY_TARGET`, with the `/api` prefix stripped), so no CORS setup is
+needed.
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## Running without a backend
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+Set `VITE_USE_MOCK_API=true`. The app then uses an in-memory mock that follows
+the backend's rules. Its state resets on every page reload.
 
-```
+## Environment variables
 
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `VITE_API_BASE_URL` | `/api` | Base URL the browser calls for the API. |
+| `VITE_API_PROXY_TARGET` | `http://localhost:8000` | Dev-only target of the `/api` proxy. |
+| `VITE_ACTIVITY_OPEN_MODE` | `tab` | `tab` opens a Moodle activity in a new window. `modal` shows it in an iframe with a new-tab link. |
+| `VITE_USE_MOCK_API` | `false` | `true` swaps the backend for the in-memory mock. |
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Production
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+The dev proxy does not exist in production. Serve the built app and the API
+from the same origin through a reverse proxy, or enable CORS for the frontend
+origin on the backend. The backend is not changed by this repository.
 
-```
+## Scripts
+
+- `pnpm dev`: development server.
+- `pnpm build`: type-check and production build.
+- `pnpm lint`: ESLint.
+
+## Structure
+
+- `src/features/course-map/data/`: API types, the fetch client (`ApiError`),
+  the real and mock API implementations, and the TanStack Query hooks.
+  Components use only the hooks, never fetch.
+- `src/features/course-map/components/`: map canvas, bubbles, sidebar, popovers
+  and modals.
+- `src/features/course-map/activityOpener.ts`: how a student opens an activity,
+  and the URL check that guards it.
