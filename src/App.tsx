@@ -5,6 +5,11 @@ import { ActivityModal } from "./features/course-map/components/ActivityModal.ts
 import { ActivitiesOverviewModal } from "./features/course-map/components/ActivitiesOverviewModal.tsx";
 import { CreateMapPanel } from "./features/course-map/components/CreateMapPanel.tsx";
 import {
+    ACTIVITY_OPEN_MODE,
+    createActivityOpener,
+    isSafeActivityUrl,
+} from "./features/course-map/activityOpener.ts";
+import {
     useActivities,
     useCourseMap,
     useCreateBubble,
@@ -74,9 +79,23 @@ function App() {
         setCourseMapId(null);
     };
 
+    const openActivity = useMemo(
+        () => createActivityOpener(ACTIVITY_OPEN_MODE, setSelectedActivity),
+        []
+    );
+
     const handleBubbleClick = (bubble: Bubble) => {
-        const activity = activities.find((a) => a.activityId === bubble.activityId) ?? null;
-        setSelectedActivity(activity);
+        const activity = activities.find((a) => a.activityId === bubble.activityId);
+        if (activity) openActivity(activity);
+    };
+
+    const getUnavailableReason = (bubble: Bubble): string | null => {
+        if (activitiesQuery.isPending) return "Loading activity...";
+        if (activitiesQuery.isError) return "Activities are unavailable right now";
+        const activity = activities.find((a) => a.activityId === bubble.activityId);
+        if (!activity) return "This activity is no longer available";
+        if (!isSafeActivityUrl(activity.url)) return "This activity cannot be opened";
+        return null;
     };
 
     const handleSelectBubbleFromOverview = (bubble: Bubble) => {
@@ -130,6 +149,7 @@ function App() {
                     if (!pendingActivityIds.includes(activityId)) createBubble.mutate({ activityId, x, y });
                 }}
                 onBubbleClick={handleBubbleClick}
+                getUnavailableReason={getUnavailableReason}
                 focusBubbleId={focusBubbleId}
                 onFocusHandled={() => setFocusBubbleId(null)}
             />

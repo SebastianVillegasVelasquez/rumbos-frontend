@@ -10,7 +10,7 @@ const HOVER_SCALE = 1.12;
 const PULSE_SCALE = 1.3;
 const ICON_SIZE = 30;
 
-const Bubble = ({x, y, status, icon, draggable, onClick, onDragEnd, onDragStart, pulseKey}: BubbleProps) => {
+const Bubble = ({x, y, status, icon, draggable, onClick, onHoverChange, onDragEnd, onDragStart, pulseKey}: BubbleProps) => {
     const {x: posX, y: posY} = toDesignSpace({x, y});
     const [iconImage] = useImage(icon ? (ICON_DATA_URIS[icon] ?? "") : "");
 
@@ -144,12 +144,14 @@ const Bubble = ({x, y, status, icon, draggable, onClick, onDragEnd, onDragStart,
 
     const handleMouseEnter = (e: Konva.KonvaEventObject<MouseEvent>) => {
         setIsHovered(true);
+        onHoverChange?.(true);
         const stage = e.target.getStage();
         if (stage) stage.container().style.cursor = draggable || onClick ? "pointer" : "default";
     };
 
     const handleMouseLeave = (e: Konva.KonvaEventObject<MouseEvent>) => {
         setIsHovered(false);
+        onHoverChange?.(false);
         const group = groupRef.current;
         if (group && !isPulsing) {
             new Konva.Tween({

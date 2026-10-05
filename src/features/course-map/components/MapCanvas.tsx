@@ -55,6 +55,7 @@ export const MapCanvas = ({
     onBubbleDelete,
     onActivityDrop,
     onBubbleClick,
+    getUnavailableReason,
     focusBubbleId,
     onFocusHandled,
 }: MapCanvasProps) => {
@@ -63,6 +64,7 @@ export const MapCanvas = ({
     const [zoom, setZoom] = useState(1);
     const [background] = useImage(backgroundUrl);
     const [iconPickerBubbleId, setIconPickerBubbleId] = useState<string | null>(null);
+    const [hoveredBubbleId, setHoveredBubbleId] = useState<string | null>(null);
     const [focusPulse, setFocusPulse] = useState<{ bubbleId: string; key: number } | null>(null);
 
     // Kept in sync with state so the native wheel/touch listeners below
@@ -321,6 +323,10 @@ export const MapCanvas = ({
         }
     };
 
+    const unavailableReasonFor = (bubble: BubbleModel) => (editable ? null : getUnavailableReason?.(bubble) ?? null);
+    const hoveredUnavailableBubble = bubbles.find((bubble) => bubble.id === hoveredBubbleId) ?? null;
+    const hoveredUnavailableReason = hoveredUnavailableBubble ? unavailableReasonFor(hoveredUnavailableBubble) : null;
+
     const handleIconSelect = (bubbleId: string, icon: IconKey) => {
         onBubbleUpdate?.(bubbleId, { icon });
         setIconPickerBubbleId(null);
@@ -418,13 +424,26 @@ export const MapCanvas = ({
                                 icon={bubble.icon ?? undefined}
                                 draggable={editable}
                                 pulseKey={focusPulse?.bubbleId === bubble.id ? focusPulse.key : undefined}
-                                onClick={() => handleBubbleClick(bubble)}
+                                onClick={unavailableReasonFor(bubble) ? undefined : () => handleBubbleClick(bubble)}
+                                onHoverChange={(hovered) => setHoveredBubbleId(hovered ? bubble.id : null)}
                                 onDragStart={() => setIconPickerBubbleId(null)}
                                 onDragEnd={(pos) => handleBubbleDragEnd(bubble.id, pos)}
                             />
                         ))}
                     </Layer>
                 </Stage>
+                {hoveredUnavailableBubble && hoveredUnavailableReason && (
+                    <div
+                        role="tooltip"
+                        className="pointer-events-none absolute z-20 -translate-x-1/2 -translate-y-[calc(100%+40px)] whitespace-nowrap rounded-md bg-gray-800 px-2 py-1 text-xs text-white shadow-lg"
+                        style={{
+                            left: toDesignSpace({ x: hoveredUnavailableBubble.x, y: hoveredUnavailableBubble.y }).x * scale,
+                            top: toDesignSpace({ x: hoveredUnavailableBubble.x, y: hoveredUnavailableBubble.y }).y * scale,
+                        }}
+                    >
+                        {hoveredUnavailableReason}
+                    </div>
+                )}
                 {iconPickerBubble && (
                     <IconPickerPopover
                         key={iconPickerBubble.id}

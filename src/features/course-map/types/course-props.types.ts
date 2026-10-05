@@ -18,6 +18,7 @@ export interface BubbleProps {
     icon?: IconKey;
     draggable?: boolean;
     onClick?: () => void;
+    onHoverChange?: (hovered: boolean) => void;
     onDragEnd?: (pos: { x: number; y: number }) => void;
     onDragStart?: () => void;
     // Bumping this value (e.g. to Date.now()) triggers the same
@@ -36,6 +37,9 @@ export interface MapCanvasProps {
     onBubbleUpdate?: (bubbleId: string, input: BubbleUpdate) => void;
     onBubbleDelete?: (bubbleId: string) => void;
     onActivityDrop?: (activityId: number, x: number, y: number) => void;
+    // Student view: a non-null reason makes the bubble non-interactive and is
+    // shown as a tooltip on hover.
+    getUnavailableReason?: (bubble: Bubble) => string | null;
     // One-shot request to center the viewport on a bubble and briefly
     // highlight it (from the activities overview panel). MapCanvas calls
     // onFocusHandled once it's done so the same bubble can be re-focused.
