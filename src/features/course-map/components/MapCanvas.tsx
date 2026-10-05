@@ -52,6 +52,7 @@ export const MapCanvas = ({
     editable,
     onBubbleMove,
     onBubbleUpdate,
+    onBubbleDelete,
     onActivityDrop,
     onBubbleClick,
     focusBubbleId,
@@ -325,6 +326,15 @@ export const MapCanvas = ({
         setIconPickerBubbleId(null);
     };
 
+    const handleStatusSelect = (bubbleId: string, status: BubbleModel["status"]) => {
+        onBubbleUpdate?.(bubbleId, { status });
+    };
+
+    const handleDelete = (bubbleId: string) => {
+        setIconPickerBubbleId(null);
+        onBubbleDelete?.(bubbleId);
+    };
+
     const iconPickerBubble = bubbles.find((bubble) => bubble.id === iconPickerBubbleId) ?? null;
 
     const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
@@ -417,10 +427,14 @@ export const MapCanvas = ({
                 </Stage>
                 {iconPickerBubble && (
                     <IconPickerPopover
+                        key={iconPickerBubble.id}
                         x={toDesignSpace({ x: iconPickerBubble.x, y: iconPickerBubble.y }).x * scale}
                         y={toDesignSpace({ x: iconPickerBubble.x, y: iconPickerBubble.y }).y * scale}
                         currentIcon={iconPickerBubble.icon ?? undefined}
+                        currentStatus={iconPickerBubble.status}
                         onSelect={(icon) => handleIconSelect(iconPickerBubble.id, icon)}
+                        onStatusSelect={(status) => handleStatusSelect(iconPickerBubble.id, status)}
+                        onDelete={() => handleDelete(iconPickerBubble.id)}
                         onClose={() => setIconPickerBubbleId(null)}
                     />
                 )}

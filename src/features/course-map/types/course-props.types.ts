@@ -34,6 +34,7 @@ export interface MapCanvasProps {
     onBubbleClick?: (bubble: Bubble) => void;
     onBubbleMove?: (bubbleId: string, x: number, y: number) => void;
     onBubbleUpdate?: (bubbleId: string, input: BubbleUpdate) => void;
+    onBubbleDelete?: (bubbleId: string) => void;
     onActivityDrop?: (activityId: number, x: number, y: number) => void;
     // One-shot request to center the viewport on a bubble and briefly
     // highlight it (from the activities overview panel). MapCanvas calls

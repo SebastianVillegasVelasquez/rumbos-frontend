@@ -8,9 +8,11 @@ import {
     useActivities,
     useCourseMap,
     useCreateBubble,
+    useDeleteBubble,
+    usePendingActivityIds,
     useUpdateBubble,
 } from "./features/course-map/data/queries.ts";
-import { ApiError } from "./features/course-map/data/client.ts";
+import { ApiError, isUnreachable } from "./features/course-map/data/client.ts";
 import type { Activity, Bubble } from "./features/course-map/data/types.ts";
 
 type Mode = "editor" | "student";
@@ -36,10 +38,31 @@ function App() {
     const activitiesQuery = useActivities(courseMapId, mode === "editor");
     const createBubble = useCreateBubble(courseMapId ?? "");
     const updateBubble = useUpdateBubble(courseMapId ?? "");
+    const deleteBubble = useDeleteBubble(courseMapId ?? "");
+    const pendingActivityIds = usePendingActivityIds(courseMapId ?? "");
 
     const activities = useMemo(() => activitiesQuery.data ?? [], [activitiesQuery.data]);
     const bubbles = useMemo(() => courseMapQuery.data?.bubbles ?? [], [courseMapQuery.data]);
     const unplacedCount = activities.filter((activity) => !activity.placed).length;
+
+    const saveFailure = updateBubble.isError
+        ? { message: "Could not save the change. It was reverted.", error: updateBubble.error }
+        : createBubble.isError
+          ? { message: "Could not place the activity on the map.", error: createBubble.error }
+          : deleteBubble.isError
+            ? { message: "Could not delete the bubble.", error: deleteBubble.error }
+            : null;
+    const saveErrorMessage = saveFailure
+        ? isUnreachable(saveFailure.error)
+            ? `${saveFailure.message} Cannot reach the server.`
+            : saveFailure.message
+        : null;
+
+    const dismissSaveError = () => {
+        updateBubble.reset();
+        createBubble.reset();
+        deleteBubble.reset();
+    };
 
     const selectCourseMap = (id: string) => {
         writeMapIdToUrl(id);
@@ -102,7 +125,10 @@ function App() {
                 editable={mode === "editor"}
                 onBubbleMove={(bubbleId, x, y) => updateBubble.mutate({ bubbleId, input: { x, y } })}
                 onBubbleUpdate={(bubbleId, input) => updateBubble.mutate({ bubbleId, input })}
-                onActivityDrop={(activityId, x, y) => createBubble.mutate({ activityId, x, y })}
+                onBubbleDelete={(bubbleId) => deleteBubble.mutate(bubbleId)}
+                onActivityDrop={(activityId, x, y) => {
+                    if (!pendingActivityIds.includes(activityId)) createBubble.mutate({ activityId, x, y });
+                }}
                 onBubbleClick={handleBubbleClick}
                 focusBubbleId={focusBubbleId}
                 onFocusHandled={() => setFocusBubbleId(null)}
@@ -112,6 +138,7 @@ function App() {
 
     const sidebarProps = {
         activities,
+        pendingActivityIds,
         isLoading: activitiesQuery.isPending,
         error: activitiesQuery.isError,
         onRetry: () => void activitiesQuery.refetch(),
@@ -150,7 +177,20 @@ function App() {
                         className="hidden w-64 shrink-0 flex-col border-r border-gray-200 bg-white p-4 md:flex"
                     />
                 )}
-                <main className="min-h-0 flex-1 overflow-hidden p-6">{renderMapArea()}</main>
+                <main className="flex min-h-0 flex-1 flex-col overflow-hidden p-6">
+                    {saveErrorMessage && (
+                        <div
+                            role="alert"
+                            className="mb-3 flex items-center justify-between rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700"
+                        >
+                            <span>{saveErrorMessage}</span>
+                            <button type="button" onClick={dismissSaveError} className="ml-4 text-red-500 hover:underline">
+                                Dismiss
+                            </button>
+                        </div>
+                    )}
+                    <div className="min-h-0 flex-1">{renderMapArea()}</div>
+                </main>
             </div>
 
             {mode === "editor" && courseMapId && (

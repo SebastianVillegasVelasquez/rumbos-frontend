@@ -2,6 +2,7 @@ import type { Activity } from "../data/types.ts";
 
 interface ActivitySidebarProps {
     activities: Activity[];
+    pendingActivityIds: number[];
     isLoading: boolean;
     error: boolean;
     onRetry: () => void;
@@ -27,7 +28,14 @@ const handleDragStart = (e: React.DragEvent<HTMLLIElement>, activity: Activity) 
 
 const DEFAULT_CLASS_NAME = "flex w-64 shrink-0 flex-col border-r border-gray-200 bg-white p-4";
 
-export const ActivitySidebar = ({ activities, isLoading, error, onRetry, className }: ActivitySidebarProps) => {
+export const ActivitySidebar = ({
+    activities,
+    pendingActivityIds,
+    isLoading,
+    error,
+    onRetry,
+    className,
+}: ActivitySidebarProps) => {
     const unplaced = activities.filter((activity) => !activity.placed);
 
     const renderList = () => {
@@ -50,28 +58,36 @@ export const ActivitySidebar = ({ activities, isLoading, error, onRetry, classNa
 
         return (
             <ul className="space-y-2">
-                {unplaced.map((activity) => (
-                    <li
-                        key={activity.activityId}
-                        draggable
-                        onDragStart={(e) => handleDragStart(e, activity)}
-                        className="flex cursor-grab flex-col gap-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm shadow-sm transition-colors hover:border-blue-300 hover:bg-blue-50 active:cursor-grabbing"
-                    >
-                        <div className="flex items-center gap-2">
-                            <span className="text-lg leading-none">{MODNAME_ICONS[activity.modname] ?? FALLBACK_ICON}</span>
-                            <span className="flex-1 truncate text-gray-700">{activity.name}</span>
-                            <span className="text-[10px] font-medium uppercase text-gray-400">{activity.modname}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-[11px] text-gray-400">
-                            <span className="truncate">{activity.sectionName}</span>
-                            {activity.hidden && (
-                                <span className="shrink-0 rounded bg-amber-100 px-1.5 py-0.5 font-medium uppercase text-amber-700">
-                                    hidden
-                                </span>
-                            )}
-                        </div>
-                    </li>
-                ))}
+                {unplaced.map((activity) => {
+                    const isPending = pendingActivityIds.includes(activity.activityId);
+                    return (
+                        <li
+                            key={activity.activityId}
+                            draggable={!isPending}
+                            aria-disabled={isPending}
+                            onDragStart={(e) => handleDragStart(e, activity)}
+                            className={`flex flex-col gap-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm shadow-sm transition-colors ${
+                                isPending
+                                    ? "cursor-wait opacity-50"
+                                    : "cursor-grab hover:border-blue-300 hover:bg-blue-50 active:cursor-grabbing"
+                            }`}
+                        >
+                            <div className="flex items-center gap-2">
+                                <span className="text-lg leading-none">{MODNAME_ICONS[activity.modname] ?? FALLBACK_ICON}</span>
+                                <span className="flex-1 truncate text-gray-700">{activity.name}</span>
+                                <span className="text-[10px] font-medium uppercase text-gray-400">{activity.modname}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-[11px] text-gray-400">
+                                <span className="truncate">{activity.sectionName}</span>
+                                {activity.hidden && (
+                                    <span className="shrink-0 rounded bg-amber-100 px-1.5 py-0.5 font-medium uppercase text-amber-700">
+                                        hidden
+                                    </span>
+                                )}
+                            </div>
+                        </li>
+                    );
+                })}
             </ul>
         );
     };
