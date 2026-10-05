@@ -1,27 +1,8 @@
 import type { IconKey } from "../icons.ts";
+import type { Bubble, BubbleStatus, BubbleUpdate } from "../data/types.ts";
 
-export type BubbleStatus = "no_complete" | "in_progress" | "complete" | "locked";
-export type ActivityType = "quiz" | "url" | "assign" | "resource";
 export const DESIGN_WIDTH = 1600;
 export const DESIGN_HEIGHT = 900;
-
-
-export interface BubbleData {
-    bubbleId: number;
-    activityId: number; //This is the activity id coming from Moodle
-    // Do not use 'x' and 'y' to store pixels,
-    // instead use 0 to 1 scale.
-    x: number;
-    y: number;
-    icon?: IconKey; // Defaults to "question" when unset
-    status: BubbleStatus;
-}
-
-export interface Activity {
-    id: number; // Moodle activity id
-    name: string;
-    type: ActivityType;
-}
 
 export const STATUS_COLORS: Record<BubbleStatus, string> = {
     locked: "#6b7280",
@@ -46,21 +27,17 @@ export interface BubbleProps {
     pulseKey?: number;
 }
 
-export interface CourseMap {
-    courseId: number;
-    imageUrl: string;
-    bubbles: BubbleData[];
-}
-
 export interface MapCanvasProps {
     backgroundUrl: string;
-    bubbles: BubbleData[];
+    bubbles: Bubble[];
     editable: boolean;
-    onBubblesChange?: (bubbles: BubbleData[]) => void;
-    onBubbleClick?: (bubble: BubbleData) => void;
+    onBubbleClick?: (bubble: Bubble) => void;
+    onBubbleMove?: (bubbleId: string, x: number, y: number) => void;
+    onBubbleUpdate?: (bubbleId: string, input: BubbleUpdate) => void;
+    onActivityDrop?: (activityId: number, x: number, y: number) => void;
     // One-shot request to center the viewport on a bubble and briefly
     // highlight it (from the activities overview panel). MapCanvas calls
     // onFocusHandled once it's done so the same bubble can be re-focused.
-    focusBubbleId?: number | null;
+    focusBubbleId?: string | null;
     onFocusHandled?: () => void;
 }

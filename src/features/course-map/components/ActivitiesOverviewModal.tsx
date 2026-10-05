@@ -1,11 +1,11 @@
-import type { Activity, BubbleData, BubbleStatus } from "../types/course-props.types.ts";
+import type { Activity, Bubble, BubbleStatus } from "../data/types.ts";
 
 interface ActivitiesOverviewModalProps {
     open: boolean;
-    bubbles: BubbleData[];
+    bubbles: Bubble[];
     activities: Activity[];
     onClose: () => void;
-    onSelectBubble: (bubble: BubbleData) => void;
+    onSelectBubble: (bubble: Bubble) => void;
 }
 
 interface GroupDef {
@@ -32,7 +32,7 @@ export const ActivitiesOverviewModal = ({
 }: ActivitiesOverviewModalProps) => {
     if (!open) return null;
 
-    const activityById = new Map(activities.map((activity) => [activity.id, activity]));
+    const activityById = new Map(activities.map((activity) => [activity.activityId, activity]));
 
     return (
         <div
@@ -74,7 +74,7 @@ export const ActivitiesOverviewModal = ({
                                         {groupBubbles.map((bubble) => {
                                             const activity = activityById.get(bubble.activityId);
                                             return (
-                                                <li key={bubble.bubbleId}>
+                                                <li key={bubble.id}>
                                                     <button
                                                         type="button"
                                                         onClick={() => onSelectBubble(bubble)}
@@ -85,7 +85,7 @@ export const ActivitiesOverviewModal = ({
                                                         </span>
                                                         {activity && (
                                                             <span className="ml-3 shrink-0 text-[10px] font-medium uppercase text-gray-400">
-                                                                {activity.type}
+                                                                {activity.modname}
                                                             </span>
                                                         )}
                                                     </button>

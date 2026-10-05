@@ -2,11 +2,12 @@ import { useEffect, useRef, useState } from "react";
 import { Stage, Layer, Image as KonvaImage, Line } from "react-konva";
 import type Konva from "konva";
 import useImage from "use-image";
-import {DESIGN_HEIGHT, DESIGN_WIDTH, type Activity, type BubbleData, type MapCanvasProps} from "../types/course-props.types.ts";
+import {DESIGN_HEIGHT, DESIGN_WIDTH, type MapCanvasProps} from "../types/course-props.types.ts";
 import {clampRelative, toDesignSpace, toRelativeSpace} from "../coordinates.ts";
 import Bubble from "./Bubble.tsx";
 import { IconPickerPopover } from "./IconPickerPopover.tsx";
 import type { IconKey } from "../icons.ts";
+import type { Bubble as BubbleModel } from "../data/types.ts";
 
 const BACKGROUND_NODE_NAME = "map-background";
 
@@ -49,7 +50,9 @@ export const MapCanvas = ({
     backgroundUrl,
     bubbles,
     editable,
-    onBubblesChange,
+    onBubbleMove,
+    onBubbleUpdate,
+    onActivityDrop,
     onBubbleClick,
     focusBubbleId,
     onFocusHandled,
@@ -58,8 +61,8 @@ export const MapCanvas = ({
     const [fitScale, setFitScale] = useState(1);
     const [zoom, setZoom] = useState(1);
     const [background] = useImage(backgroundUrl);
-    const [iconPickerBubbleId, setIconPickerBubbleId] = useState<number | null>(null);
-    const [focusPulse, setFocusPulse] = useState<{ bubbleId: number; key: number } | null>(null);
+    const [iconPickerBubbleId, setIconPickerBubbleId] = useState<string | null>(null);
+    const [focusPulse, setFocusPulse] = useState<{ bubbleId: string; key: number } | null>(null);
 
     // Kept in sync with state so the native wheel/touch listeners below
     // (attached once) always read the latest values without re-attaching.
@@ -91,7 +94,7 @@ export const MapCanvas = ({
     useEffect(() => {
         if (focusBubbleId == null) return;
         const container = containerRef.current;
-        const bubble = bubbles.find((b) => b.bubbleId === focusBubbleId);
+        const bubble = bubbles.find((b) => b.id === focusBubbleId);
         if (container && bubble) {
             const design = toDesignSpace({ x: bubble.x, y: bubble.y });
             const currentScale = fitScaleRef.current * zoomRef.current;
@@ -305,26 +308,24 @@ export const MapCanvas = ({
         updatePan(e.evt.touches[0].clientX, e.evt.touches[0].clientY);
     };
 
-    const handleBubbleDragEnd = (bubbleId: number, pos: { x: number; y: number }) => {
-        onBubblesChange?.(
-            bubbles.map((bubble) => (bubble.bubbleId === bubbleId ? { ...bubble, x: pos.x, y: pos.y } : bubble))
-        );
+    const handleBubbleDragEnd = (bubbleId: string, pos: { x: number; y: number }) => {
+        onBubbleMove?.(bubbleId, pos.x, pos.y);
     };
 
-    const handleBubbleClick = (bubble: BubbleData) => {
+    const handleBubbleClick = (bubble: BubbleModel) => {
         if (editable) {
-            setIconPickerBubbleId((current) => (current === bubble.bubbleId ? null : bubble.bubbleId));
+            setIconPickerBubbleId((current) => (current === bubble.id ? null : bubble.id));
         } else {
             onBubbleClick?.(bubble);
         }
     };
 
-    const handleIconSelect = (bubbleId: number, icon: IconKey) => {
-        onBubblesChange?.(bubbles.map((bubble) => (bubble.bubbleId === bubbleId ? { ...bubble, icon } : bubble)));
+    const handleIconSelect = (bubbleId: string, icon: IconKey) => {
+        onBubbleUpdate?.(bubbleId, { icon });
         setIconPickerBubbleId(null);
     };
 
-    const iconPickerBubble = bubbles.find((bubble) => bubble.bubbleId === iconPickerBubbleId) ?? null;
+    const iconPickerBubble = bubbles.find((bubble) => bubble.id === iconPickerBubbleId) ?? null;
 
     const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
         if (!editable) return;
@@ -337,7 +338,7 @@ export const MapCanvas = ({
         const raw = e.dataTransfer.getData("application/json");
         if (!raw) return;
 
-        const activity = JSON.parse(raw) as Activity;
+        const { activityId } = JSON.parse(raw) as { activityId: number };
         const container = containerRef.current;
         if (!container) return;
 
@@ -348,15 +349,7 @@ export const MapCanvas = ({
         };
         const relative = clampRelative(toRelativeSpace(design));
 
-        const newBubble: BubbleData = {
-            bubbleId: Date.now(),
-            activityId: activity.id,
-            x: relative.x,
-            y: relative.y,
-            status: "no_complete",
-        };
-
-        onBubblesChange?.([...bubbles, newBubble]);
+        onActivityDrop?.(activityId, relative.x, relative.y);
     };
 
     return (
@@ -408,16 +401,16 @@ export const MapCanvas = ({
                     <Layer>
                         {bubbles.map((bubble) => (
                             <Bubble
-                                key={bubble.bubbleId}
+                                key={bubble.id}
                                 x={bubble.x}
                                 y={bubble.y}
                                 status={bubble.status}
-                                icon={bubble.icon}
+                                icon={bubble.icon ?? undefined}
                                 draggable={editable}
-                                pulseKey={focusPulse?.bubbleId === bubble.bubbleId ? focusPulse.key : undefined}
+                                pulseKey={focusPulse?.bubbleId === bubble.id ? focusPulse.key : undefined}
                                 onClick={() => handleBubbleClick(bubble)}
                                 onDragStart={() => setIconPickerBubbleId(null)}
-                                onDragEnd={(pos) => handleBubbleDragEnd(bubble.bubbleId, pos)}
+                                onDragEnd={(pos) => handleBubbleDragEnd(bubble.id, pos)}
                             />
                         ))}
                     </Layer>
@@ -426,8 +419,8 @@ export const MapCanvas = ({
                     <IconPickerPopover
                         x={toDesignSpace({ x: iconPickerBubble.x, y: iconPickerBubble.y }).x * scale}
                         y={toDesignSpace({ x: iconPickerBubble.x, y: iconPickerBubble.y }).y * scale}
-                        currentIcon={iconPickerBubble.icon}
-                        onSelect={(icon) => handleIconSelect(iconPickerBubble.bubbleId, icon)}
+                        currentIcon={iconPickerBubble.icon ?? undefined}
+                        onSelect={(icon) => handleIconSelect(iconPickerBubble.id, icon)}
                         onClose={() => setIconPickerBubbleId(null)}
                     />
                 )}

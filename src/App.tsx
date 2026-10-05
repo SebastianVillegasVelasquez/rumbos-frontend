@@ -1,63 +1,120 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { MapCanvas } from "./features/course-map/components/MapCanvas.tsx";
 import { ActivitySidebar } from "./features/course-map/components/ActivitySidebar.tsx";
 import { ActivityModal } from "./features/course-map/components/ActivityModal.tsx";
 import { ActivitiesOverviewModal } from "./features/course-map/components/ActivitiesOverviewModal.tsx";
-import { getActivities, getCourseMap, resetCourseMap, saveCourseMap } from "./features/course-map/api.ts";
-import type { Activity, BubbleData, CourseMap } from "./features/course-map/types/course-props.types.ts";
+import { CreateMapPanel } from "./features/course-map/components/CreateMapPanel.tsx";
+import {
+    useActivities,
+    useCourseMap,
+    useCreateBubble,
+    useUpdateBubble,
+} from "./features/course-map/data/queries.ts";
+import { ApiError } from "./features/course-map/data/client.ts";
+import type { Activity, Bubble } from "./features/course-map/data/types.ts";
 
 type Mode = "editor" | "student";
 
+const readMapIdFromUrl = () => new URLSearchParams(window.location.search).get("map");
+
+const writeMapIdToUrl = (courseMapId: string | null) => {
+    const url = new URL(window.location.href);
+    if (courseMapId) url.searchParams.set("map", courseMapId);
+    else url.searchParams.delete("map");
+    window.history.replaceState(null, "", url);
+};
+
 function App() {
     const [mode, setMode] = useState<Mode>("editor");
-    const [courseMap, setCourseMap] = useState<CourseMap | null>(null);
-    const [activities, setActivities] = useState<Activity[]>([]);
+    const [courseMapId, setCourseMapId] = useState<string | null>(readMapIdFromUrl);
     const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
     const [isActivitiesOverviewOpen, setIsActivitiesOverviewOpen] = useState(false);
-    const [focusBubbleId, setFocusBubbleId] = useState<number | null>(null);
-    const hasHydratedRef = useRef(false);
+    const [focusBubbleId, setFocusBubbleId] = useState<string | null>(null);
 
-    useEffect(() => {
-        getCourseMap(1).then(setCourseMap);
-        getActivities().then(setActivities);
-    }, []);
+    const courseMapQuery = useCourseMap(courseMapId);
+    const activitiesQuery = useActivities(courseMapId, mode === "editor");
+    const createBubble = useCreateBubble(courseMapId ?? "");
+    const updateBubble = useUpdateBubble(courseMapId ?? "");
 
-    // Persist every change (dev-only, see the comment in api.ts) - but skip
-    // the very first population from getCourseMap, which isn't a user edit.
-    useEffect(() => {
-        if (!courseMap) return;
-        if (!hasHydratedRef.current) {
-            hasHydratedRef.current = true;
-            return;
-        }
-        saveCourseMap(courseMap);
-    }, [courseMap]);
+    const activities = useMemo(() => activitiesQuery.data ?? [], [activitiesQuery.data]);
+    const bubbles = useMemo(() => courseMapQuery.data?.bubbles ?? [], [courseMapQuery.data]);
+    const unplacedCount = activities.filter((activity) => !activity.placed).length;
 
-    const bubbles = useMemo(() => courseMap?.bubbles ?? [], [courseMap]);
-
-    const unplacedActivities = useMemo(() => {
-        const placedActivityIds = new Set(bubbles.map((bubble) => bubble.activityId));
-        return activities.filter((activity) => !placedActivityIds.has(activity.id));
-    }, [activities, bubbles]);
-
-    const handleBubblesChange = (nextBubbles: BubbleData[]) => {
-        setCourseMap((prev) => (prev ? { ...prev, bubbles: nextBubbles } : prev));
+    const selectCourseMap = (id: string) => {
+        writeMapIdToUrl(id);
+        setCourseMapId(id);
     };
 
-    const handleBubbleClick = (bubble: BubbleData) => {
-        const activity = activities.find((a) => a.id === bubble.activityId) ?? null;
+    const clearCourseMap = () => {
+        writeMapIdToUrl(null);
+        setCourseMapId(null);
+    };
+
+    const handleBubbleClick = (bubble: Bubble) => {
+        const activity = activities.find((a) => a.activityId === bubble.activityId) ?? null;
         setSelectedActivity(activity);
     };
 
-    const handleResetToDefault = () => {
-        resetCourseMap();
-        window.location.reload();
+    const handleSelectBubbleFromOverview = (bubble: Bubble) => {
+        setIsActivitiesOverviewOpen(false);
+        setFocusBubbleId(bubble.id);
     };
 
-    const handleSelectBubbleFromOverview = (bubble: BubbleData) => {
-        setIsActivitiesOverviewOpen(false);
-        setFocusBubbleId(bubble.bubbleId);
+    const renderMapArea = () => {
+        if (!courseMapId) return <CreateMapPanel onCreated={selectCourseMap} />;
+
+        if (courseMapQuery.isPending) return <p className="text-sm text-gray-400">Loading course map...</p>;
+
+        if (courseMapQuery.isError) {
+            if (courseMapQuery.error instanceof ApiError && courseMapQuery.error.status === 404) {
+                return (
+                    <div className="space-y-3">
+                        <p className="text-sm text-gray-600">This course map does not exist.</p>
+                        <button
+                            type="button"
+                            onClick={clearCourseMap}
+                            className="text-sm font-medium text-blue-600 hover:underline"
+                        >
+                            Create a new map
+                        </button>
+                    </div>
+                );
+            }
+            return (
+                <div className="space-y-3">
+                    <p className="text-sm text-red-600">Could not load the course map.</p>
+                    <button
+                        type="button"
+                        onClick={() => void courseMapQuery.refetch()}
+                        className="text-sm font-medium text-blue-600 hover:underline"
+                    >
+                        Retry
+                    </button>
+                </div>
+            );
+        }
+
+        return (
+            <MapCanvas
+                backgroundUrl={courseMapQuery.data.imageUrl}
+                bubbles={bubbles}
+                editable={mode === "editor"}
+                onBubbleMove={(bubbleId, x, y) => updateBubble.mutate({ bubbleId, input: { x, y } })}
+                onBubbleUpdate={(bubbleId, input) => updateBubble.mutate({ bubbleId, input })}
+                onActivityDrop={(activityId, x, y) => createBubble.mutate({ activityId, x, y })}
+                onBubbleClick={handleBubbleClick}
+                focusBubbleId={focusBubbleId}
+                onFocusHandled={() => setFocusBubbleId(null)}
+            />
+        );
+    };
+
+    const sidebarProps = {
+        activities,
+        isLoading: activitiesQuery.isPending,
+        error: activitiesQuery.isError,
+        onRetry: () => void activitiesQuery.refetch(),
     };
 
     return (
@@ -79,14 +136,6 @@ function App() {
                     </button>
                     <button
                         type="button"
-                        onClick={handleResetToDefault}
-                        title="Dev-only: clears local bubble edits and reloads the mock map"
-                        className="text-xs text-gray-400 underline-offset-2 hover:text-gray-600 hover:underline"
-                    >
-                        Reset to default map
-                    </button>
-                    <button
-                        type="button"
                         onClick={() => setMode((m) => (m === "editor" ? "student" : "editor"))}
                         className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700"
                     >
@@ -95,45 +144,31 @@ function App() {
                 </div>
             </header>
             <div className="flex flex-1 overflow-hidden">
-                {mode === "editor" && (
+                {mode === "editor" && courseMapId && (
                     <ActivitySidebar
-                        activities={unplacedActivities}
+                        {...sidebarProps}
                         className="hidden w-64 shrink-0 flex-col border-r border-gray-200 bg-white p-4 md:flex"
                     />
                 )}
-                <main className="min-h-0 flex-1 overflow-hidden p-6">
-                    {courseMap ? (
-                        <MapCanvas
-                            backgroundUrl={courseMap.imageUrl}
-                            bubbles={bubbles}
-                            editable={mode === "editor"}
-                            onBubblesChange={handleBubblesChange}
-                            onBubbleClick={handleBubbleClick}
-                            focusBubbleId={focusBubbleId}
-                            onFocusHandled={() => setFocusBubbleId(null)}
-                        />
-                    ) : (
-                        <p className="text-sm text-gray-400">Loading course map...</p>
-                    )}
-                </main>
+                <main className="min-h-0 flex-1 overflow-hidden p-6">{renderMapArea()}</main>
             </div>
 
-            {mode === "editor" && (
+            {mode === "editor" && courseMapId && (
                 <button
                     type="button"
                     onClick={() => setIsMobileSidebarOpen(true)}
                     className="fixed bottom-6 right-6 z-30 flex items-center gap-2 rounded-full bg-blue-600 px-5 py-3 text-sm font-medium text-white shadow-lg md:hidden"
                 >
                     Activities
-                    {unplacedActivities.length > 0 && (
+                    {unplacedCount > 0 && (
                         <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white text-xs font-bold text-blue-600">
-                            {unplacedActivities.length}
+                            {unplacedCount}
                         </span>
                     )}
                 </button>
             )}
 
-            {mode === "editor" && isMobileSidebarOpen && (
+            {mode === "editor" && courseMapId && isMobileSidebarOpen && (
                 <div
                     role="presentation"
                     className="fixed inset-0 z-40 flex items-end bg-black/40 md:hidden"
@@ -154,7 +189,7 @@ function App() {
                                 &#10005;
                             </button>
                         </div>
-                        <ActivitySidebar activities={unplacedActivities} className="flex flex-col p-4 pt-0" />
+                        <ActivitySidebar {...sidebarProps} className="flex flex-col p-4 pt-0" />
                     </div>
                 </div>
             )}

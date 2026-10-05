@@ -1,4 +1,4 @@
-import type { Activity } from "../types/course-props.types.ts";
+import type { Activity } from "../data/types.ts";
 
 interface ActivityModalProps {
     activity: Activity | null;
