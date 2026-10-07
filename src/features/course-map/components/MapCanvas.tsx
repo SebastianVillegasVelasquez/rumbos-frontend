@@ -4,8 +4,10 @@ import { Stage, Layer, Image as KonvaImage, Line } from "react-konva";
 import type Konva from "konva";
 import useImage from "use-image";
 import { Minus, Plus, Scan } from "lucide-react";
-import {DESIGN_HEIGHT, DESIGN_WIDTH, type MapCanvasProps} from "../types/course-props.types.ts";
-import {clampRelative, toDesignSpace, toRelativeSpace} from "../coordinates.ts";
+import { DESIGN_HEIGHT, DESIGN_WIDTH, type MapCanvasProps } from "../types/course-props.types.ts";
+import { clampRelative, toDesignSpace, toRelativeSpace } from "../coordinates.ts";
+import { dominantAxis, normalizeWheelDelta } from "../viewport/math.ts";
+import { useViewportController } from "../viewport/useViewportController.ts";
 import Bubble from "./Bubble.tsx";
 import { IconPickerPopover } from "./IconPickerPopover.tsx";
 import { defaultIconForModname, type IconKey } from "../icons.ts";
@@ -21,37 +23,14 @@ const BACKGROUND_NODE_NAME = "map-background";
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 3;
 const ZOOM_STEP = 1.15;
-
-const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
-const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
-const ZOOM_ANIM_DURATION = 180;
+// Pinch-to-zoom (and some trackpad "zoom" gestures) arrive as ctrl/cmd+wheel
+// with the pinch amount encoded in deltaY; this converts that into a
+// per-event scale factor.
+const WHEEL_ZOOM_SENSITIVITY = 0.0035;
+const ARROW_PAN_STEP = 80;
 
 const getTouchDistance = (touches: TouchList) =>
     Math.hypot(touches[1].clientX - touches[0].clientX, touches[1].clientY - touches[0].clientY);
-
-// Converts a screen point into content-space pixels (design-space * effective
-// scale), independent of the container's current scroll position.
-const getContentPoint = (container: HTMLDivElement, scale: number, clientX: number, clientY: number) => {
-    const rect = container.getBoundingClientRect();
-    return {
-        x: (clientX - rect.left + container.scrollLeft) / scale,
-        y: (clientY - rect.top + container.scrollTop) / scale,
-    };
-};
-
-// Scrolls the container so that the given content-space point lands back
-// under the given screen point, at the container's current scale.
-const scrollToContentPoint = (
-    container: HTMLDivElement,
-    scale: number,
-    content: { x: number; y: number },
-    clientX: number,
-    clientY: number
-) => {
-    const rect = container.getBoundingClientRect();
-    container.scrollLeft = content.x * scale - (clientX - rect.left);
-    container.scrollTop = content.y * scale - (clientY - rect.top);
-};
 
 export const MapCanvas = ({
     backgroundUrl,
@@ -70,97 +49,69 @@ export const MapCanvas = ({
     onFocusHandled,
 }: MapCanvasProps) => {
     const containerRef = useRef<HTMLDivElement>(null);
-    const [fitScale, setFitScale] = useState(1);
-    const [zoom, setZoom] = useState(1);
+    const stageRef = useRef<Konva.Stage | null>(null);
+    const [viewport, setViewport] = useState({ x: 0, y: 0, scale: 1, zoomFactor: 1 });
+    const [size, setSize] = useState({ width: 0, height: 0 });
     const [background] = useImage(backgroundUrl);
     const [iconPickerBubbleId, setIconPickerBubbleId] = useState<string | null>(null);
     const [hoveredBubbleId, setHoveredBubbleId] = useState<string | null>(null);
     const [focusPulse, setFocusPulse] = useState<{ bubbleId: string; key: number } | null>(null);
     const pathRef = useRef<Konva.Line>(null);
 
-    // Kept in sync with state so the native wheel/touch listeners below
-    // (attached once) always read the latest values without re-attaching.
-    const fitScaleRef = useRef(fitScale);
-    const zoomRef = useRef(zoom);
-    useEffect(() => {
-        fitScaleRef.current = fitScale;
-    }, [fitScale]);
-    useEffect(() => {
-        zoomRef.current = zoom;
-    }, [zoom]);
+    // Stable for the component's lifetime (see useViewportController), so it
+    // can be used directly in effects/handlers without a ref indirection.
+    const controller = useViewportController({
+        minZoom: MIN_ZOOM,
+        maxZoom: MAX_ZOOM,
+        onChange: setViewport,
+    });
 
-    const scale = fitScale * zoom;
+    const { x: stageX, y: stageY, scale, zoomFactor } = viewport;
+
+    // One-time wiring: content size never changes (design space is fixed),
+    // the Stage node is attached once it mounts, and viewport/base-scale
+    // react to the container's actual size.
+    useEffect(() => {
+        controller.setContentSize(DESIGN_WIDTH, DESIGN_HEIGHT);
+        controller.attachStage(stageRef.current);
+        return () => controller.attachStage(null);
+    }, [controller]);
 
     useEffect(() => {
         const container = containerRef.current;
         if (!container) return;
         const observer = new ResizeObserver((entries) => {
-            const { width } = entries[0].contentRect;
-            setFitScale(width / DESIGN_WIDTH);
+            const { width, height } = entries[0].contentRect;
+            setSize({ width, height });
+            controller.setViewportSize(width, height);
+            controller.setBaseScale(width / DESIGN_WIDTH);
         });
-
         observer.observe(container);
         return () => observer.disconnect();
-    }, []);
+    }, [controller]);
 
     // One-shot: center the viewport on a bubble requested from the
     // activities overview panel and give it a brief highlight pulse.
     useEffect(() => {
         if (focusBubbleId == null) return;
-        const container = containerRef.current;
         const bubble = bubbles.find((b) => b.id === focusBubbleId);
-        if (container && bubble) {
+        if (bubble) {
             const design = toDesignSpace({ x: bubble.x, y: bubble.y });
-            const currentScale = fitScaleRef.current * zoomRef.current;
-            const rect = container.getBoundingClientRect();
-            container.scrollTo({
-                left: design.x * currentScale - rect.width / 2,
-                top: design.y * currentScale - rect.height / 2,
-                behavior: "smooth",
-            });
+            controller.flyTo(design.x, design.y, controller.getState().zoomFactor);
+            // One-shot imperative reaction to an external request (not
+            // derived render state), so a direct setState here is correct.
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setFocusPulse({ bubbleId: focusBubbleId, key: Date.now() });
         }
         onFocusHandled?.();
-        // Intentionally reacting only to focusBubbleId changing - bubbles/
-        // scale are read at trigger time, not tracked as deps.
+        // Intentionally reacting only to focusBubbleId changing - bubbles are
+        // read at trigger time, not tracked as a dep.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [focusBubbleId]);
 
-    // Smoothly tweens zoom (and the anchored scroll position that keeps a
-    // content point fixed under the pointer) instead of snapping in one
-    // frame - used by the wheel's per-notch step and the +/-/reset buttons.
-    // Pinch-zoom is already continuous (driven by the gesture itself) so it
-    // doesn't need this.
-    const zoomAnimRef = useRef<number | null>(null);
-
-    const animateZoomTo = (targetZoom: number, clientX: number, clientY: number) => {
-        const container = containerRef.current;
-        if (!container) return;
-        if (zoomAnimRef.current !== null) cancelAnimationFrame(zoomAnimRef.current);
-
-        const startZoom = zoomRef.current;
-        if (startZoom === targetZoom) return;
-        const startScale = fitScaleRef.current * startZoom;
-        const content = getContentPoint(container, startScale, clientX, clientY);
-        const startTime = performance.now();
-
-        const step = (now: number) => {
-            const t = clamp((now - startTime) / ZOOM_ANIM_DURATION, 0, 1);
-            const eased = easeOutCubic(t);
-            const nextZoom = startZoom + (targetZoom - startZoom) * eased;
-            setZoom(nextZoom);
-            scrollToContentPoint(container, fitScaleRef.current * nextZoom, content, clientX, clientY);
-            zoomAnimRef.current = t < 1 ? requestAnimationFrame(step) : null;
-        };
-        zoomAnimRef.current = requestAnimationFrame(step);
-    };
-
-    useEffect(() => () => {
-        if (zoomAnimRef.current !== null) cancelAnimationFrame(zoomAnimRef.current);
-    }, []);
-
     // Slow marching-ants animation on the connector path ("camino"); skipped
-    // entirely under prefers-reduced-motion.
+    // entirely under prefers-reduced-motion. (Migrates onto the shared
+    // ticker in Part 2 alongside the rest of the fx engine.)
     useEffect(() => {
         const line = pathRef.current;
         if (!line || prefersReducedMotion()) return;
@@ -174,112 +125,102 @@ export const MapCanvas = ({
         };
     }, [bubbles.length]);
 
-    // Cursor-anchored wheel zoom (desktop) and two-finger pinch zoom (touch),
-    // scoped to the Stage's view only - bubble positions stay in the 0-1
-    // relative scale and never know zoom happened.
+    // Single owner of wheel/pointer/touch/keyboard input, all funneled
+    // through the viewport controller - see viewport/useViewportController.ts.
     useEffect(() => {
         const container = containerRef.current;
         if (!container) return;
 
         const onWheel = (e: WheelEvent) => {
             e.preventDefault();
-            const factor = e.deltaY < 0 ? ZOOM_STEP : 1 / ZOOM_STEP;
-            const prevZoom = zoomRef.current;
-            const nextZoom = clamp(prevZoom * factor, MIN_ZOOM, MAX_ZOOM);
-            if (nextZoom === prevZoom) return;
-            animateZoomTo(nextZoom, e.clientX, e.clientY);
-        };
+            const rect = container.getBoundingClientRect();
+            const screenX = e.clientX - rect.left;
+            const screenY = e.clientY - rect.top;
 
-        let pinch: { distance: number; zoom: number; content: { x: number; y: number }; midX: number; midY: number } | null = null;
+            if (e.ctrlKey || e.metaKey) {
+                const factor = Math.exp(-e.deltaY * WHEEL_ZOOM_SENSITIVITY);
+                controller.zoomAt(screenX, screenY, factor);
+                return;
+            }
 
-        const onTouchStart = (e: TouchEvent) => {
-            if (e.touches.length !== 2) return;
-            const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
-            const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-            const scaleAtStart = fitScaleRef.current * zoomRef.current;
-            pinch = {
-                distance: getTouchDistance(e.touches),
-                zoom: zoomRef.current,
-                content: getContentPoint(container, scaleAtStart, midX, midY),
-                midX,
-                midY,
-            };
-        };
+            const { dx, dy } = normalizeWheelDelta(e, { width: rect.width, height: rect.height });
+            const delta = dominantAxis(dx, dy) === "x" ? dx : dy;
 
-        const onTouchMove = (e: TouchEvent) => {
-            if (e.touches.length !== 2 || !pinch) return;
-            e.preventDefault();
-            const distance = getTouchDistance(e.touches);
-            const nextZoom = clamp(pinch.zoom * (distance / pinch.distance), MIN_ZOOM, MAX_ZOOM);
-            setZoom(nextZoom);
-            const { content, midX, midY } = pinch;
-            requestAnimationFrame(() => {
-                const nextScale = fitScaleRef.current * nextZoom;
-                scrollToContentPoint(container, nextScale, content, midX, midY);
-            });
-        };
-
-        const onTouchEnd = (e: TouchEvent) => {
-            if (e.touches.length < 2) pinch = null;
+            // Primary axis is vertical for now (the current layout is always
+            // fit-width); Part 1's fit modes make this fit-mode-dependent.
+            const targetAxis: "x" | "y" = e.shiftKey ? "x" : "y";
+            const canPan = controller.canPan();
+            if (!canPan[targetAxis]) return;
+            // Scroll semantics: a positive delta (scrolling "forward") moves
+            // the stage the opposite way, revealing content further along.
+            if (targetAxis === "x") controller.panBy(-delta, 0);
+            else controller.panBy(0, -delta);
         };
 
         container.addEventListener("wheel", onWheel, { passive: false });
-        container.addEventListener("touchstart", onTouchStart, { passive: true });
-        container.addEventListener("touchmove", onTouchMove, { passive: false });
-        container.addEventListener("touchend", onTouchEnd);
-        container.addEventListener("touchcancel", onTouchEnd);
+        return () => container.removeEventListener("wheel", onWheel);
+    }, [controller]);
 
-        return () => {
-            container.removeEventListener("wheel", onWheel);
-            container.removeEventListener("touchstart", onTouchStart);
-            container.removeEventListener("touchmove", onTouchMove);
-            container.removeEventListener("touchend", onTouchEnd);
-            container.removeEventListener("touchcancel", onTouchEnd);
-        };
-    }, []);
-
-    const handleZoomButton = (factor: number) => {
+    useEffect(() => {
         const container = containerRef.current;
         if (!container) return;
 
-        const rect = container.getBoundingClientRect();
-        const clientX = rect.left + rect.width / 2;
-        const clientY = rect.top + rect.height / 2;
-        const nextZoom = clamp(zoomRef.current * factor, MIN_ZOOM, MAX_ZOOM);
-        animateZoomTo(nextZoom, clientX, clientY);
-    };
-
-    const handleZoomReset = () => {
-        const container = containerRef.current;
-        if (!container) return;
-        if (zoomAnimRef.current !== null) cancelAnimationFrame(zoomAnimRef.current);
-
-        const startZoom = zoomRef.current;
-        const startScrollLeft = container.scrollLeft;
-        const startScrollTop = container.scrollTop;
-        const startTime = performance.now();
-
-        const step = (now: number) => {
-            const t = clamp((now - startTime) / ZOOM_ANIM_DURATION, 0, 1);
-            const eased = easeOutCubic(t);
-            setZoom(startZoom + (1 - startZoom) * eased);
-            container.scrollLeft = startScrollLeft * (1 - eased);
-            container.scrollTop = startScrollTop * (1 - eased);
-            zoomAnimRef.current = t < 1 ? requestAnimationFrame(step) : null;
+        const onKeyDown = (e: KeyboardEvent) => {
+            const c = controller;
+            // Scroll semantics (matching the wheel handler): "down"/"right"
+            // reveal further content, so the stage moves the opposite way.
+            switch (e.key) {
+                case "ArrowUp":
+                    c.panBy(0, ARROW_PAN_STEP);
+                    break;
+                case "ArrowDown":
+                    c.panBy(0, -ARROW_PAN_STEP);
+                    break;
+                case "ArrowLeft":
+                    c.panBy(ARROW_PAN_STEP, 0);
+                    break;
+                case "ArrowRight":
+                    c.panBy(-ARROW_PAN_STEP, 0);
+                    break;
+                case "PageUp":
+                    c.panBy(0, container.clientHeight * 0.9);
+                    break;
+                case "PageDown":
+                    c.panBy(0, -container.clientHeight * 0.9);
+                    break;
+                case "Home":
+                    c.panBy(0, 1e6);
+                    break;
+                case "End":
+                    c.panBy(0, -1e6);
+                    break;
+                case "+":
+                case "=":
+                    c.setZoomFactor(c.getState().zoomFactor * ZOOM_STEP, container.clientWidth / 2, container.clientHeight / 2);
+                    break;
+                case "-":
+                    c.setZoomFactor(c.getState().zoomFactor / ZOOM_STEP, container.clientWidth / 2, container.clientHeight / 2);
+                    break;
+                case "0":
+                    c.resetView();
+                    break;
+                default:
+                    return;
+            }
+            e.preventDefault();
         };
-        zoomAnimRef.current = requestAnimationFrame(step);
-    };
 
-    // Click-and-drag panning of empty canvas space. Only starts when the
-    // gesture originates on the background image or the Stage itself - a
-    // bubble's own Group intercepts the event first when the gesture starts
-    // on a bubble, so this never fights bubble dragging or the sidebar drop.
-    // Panning moves the container's native scroll offset (same mechanism
-    // family as wheel/pinch zoom above), which also gives us free clamping:
-    // the browser won't scroll past the content's bounds.
-    const panRef = useRef<{ startX: number; startY: number; startScrollLeft: number; startScrollTop: number } | null>(
-        null
-    );
+        container.addEventListener("keydown", onKeyDown);
+        return () => container.removeEventListener("keydown", onKeyDown);
+    }, [controller]);
+
+    // Click-and-drag panning of empty canvas space, and two-finger pinch
+    // zoom. Only starts when the gesture originates on the background image
+    // or the Stage itself - a bubble's own Group intercepts the event first
+    // when the gesture starts on a bubble, so this never fights bubble
+    // dragging or the sidebar drop.
+    const panRef = useRef<{ startX: number; startY: number } | null>(null);
+    const pinchRef = useRef<{ distance: number; zoomFactor: number } | null>(null);
 
     const isBackgroundTarget = (target: Konva.Node) => {
         const stage = target.getStage();
@@ -287,31 +228,22 @@ export const MapCanvas = ({
     };
 
     const beginPan = (clientX: number, clientY: number) => {
-        const container = containerRef.current;
-        if (!container) return;
         setIconPickerBubbleId(null);
-        panRef.current = {
-            startX: clientX,
-            startY: clientY,
-            startScrollLeft: container.scrollLeft,
-            startScrollTop: container.scrollTop,
-        };
-        container.style.cursor = "grabbing";
+        panRef.current = { startX: clientX, startY: clientY };
+        if (containerRef.current) containerRef.current.style.cursor = "grabbing";
     };
 
     const updatePan = (clientX: number, clientY: number) => {
         const pan = panRef.current;
-        const container = containerRef.current;
-        if (!pan || !container) return;
-        container.scrollLeft = pan.startScrollLeft - (clientX - pan.startX);
-        container.scrollTop = pan.startScrollTop - (clientY - pan.startY);
+        if (!pan) return;
+        controller.panBy(clientX - pan.startX, clientY - pan.startY, { instant: true });
+        panRef.current = { startX: clientX, startY: clientY };
     };
 
     const endPan = () => {
         if (!panRef.current) return;
         panRef.current = null;
-        const container = containerRef.current;
-        if (container) container.style.cursor = "default";
+        if (containerRef.current) containerRef.current.style.cursor = "default";
     };
 
     const handleStageMouseDown = (e: Konva.KonvaEventObject<MouseEvent>) => {
@@ -325,16 +257,40 @@ export const MapCanvas = ({
     };
 
     const handleStageTouchStart = (e: Konva.KonvaEventObject<TouchEvent>) => {
-        // Two-finger touches are pinch-zoom, handled by the native listeners
-        // above - only a single touch on the background starts a pan.
+        if (e.evt.touches.length === 2) {
+            pinchRef.current = {
+                distance: getTouchDistance(e.evt.touches),
+                zoomFactor: controller.getState().zoomFactor,
+            };
+            panRef.current = null;
+            return;
+        }
         if (e.evt.touches.length !== 1 || !isBackgroundTarget(e.target)) return;
         beginPan(e.evt.touches[0].clientX, e.evt.touches[0].clientY);
     };
 
     const handleStageTouchMove = (e: Konva.KonvaEventObject<TouchEvent>) => {
+        const container = containerRef.current;
+        if (e.evt.touches.length === 2 && pinchRef.current && container) {
+            e.evt.preventDefault();
+            const rect = container.getBoundingClientRect();
+            const [t0, t1] = [e.evt.touches[0], e.evt.touches[1]];
+            const midX = (t0.clientX + t1.clientX) / 2 - rect.left;
+            const midY = (t0.clientY + t1.clientY) / 2 - rect.top;
+            const distance = getTouchDistance(e.evt.touches);
+            const factor = distance / pinchRef.current.distance;
+            controller.zoomAt(midX, midY, factor, { instant: true });
+            pinchRef.current = { distance, zoomFactor: controller.getState().zoomFactor };
+            return;
+        }
         if (!panRef.current || e.evt.touches.length !== 1) return;
         e.evt.preventDefault();
         updatePan(e.evt.touches[0].clientX, e.evt.touches[0].clientY);
+    };
+
+    const handleStageTouchEnd = (e: Konva.KonvaEventObject<TouchEvent>) => {
+        if (e.evt.touches.length < 2) pinchRef.current = null;
+        endPan();
     };
 
     const handleBubbleDragEnd = (bubbleId: string, pos: { x: number; y: number }) => {
@@ -390,14 +346,23 @@ export const MapCanvas = ({
         if (!container) return;
 
         const rect = container.getBoundingClientRect();
-        const design = {
-            x: (e.clientX - rect.left + container.scrollLeft) / scale,
-            y: (e.clientY - rect.top + container.scrollTop) / scale,
-        };
+        const design = controller.screenToContent(e.clientX - rect.left, e.clientY - rect.top);
         const relative = clampRelative(toRelativeSpace(design));
 
         onActivityDrop?.(activityId, relative.x, relative.y);
     };
+
+    const handleZoomButton = (factor: number) => {
+        const container = containerRef.current;
+        if (!container) return;
+        controller.setZoomFactor(
+            controller.getState().zoomFactor * factor,
+            container.clientWidth / 2,
+            container.clientHeight / 2
+        );
+    };
+
+    const handleZoomReset = () => controller.resetView();
 
     return (
         <div className="relative h-full w-full">
@@ -405,14 +370,18 @@ export const MapCanvas = ({
                 ref={containerRef}
                 role="img"
                 aria-label={es.canvas.ariaLabel}
-                className="relative h-full w-full overflow-auto rounded-lg border border-ink/10 bg-surface-muted"
-                style={{ touchAction: "pan-x pan-y" }}
+                tabIndex={0}
+                className="relative h-full w-full overflow-hidden rounded-lg border border-ink/10 bg-surface-muted outline-none focus-visible:ring-2 focus-visible:ring-teal-dark [&::-webkit-scrollbar]:hidden"
+                style={{ touchAction: "none", overscrollBehavior: "contain", scrollbarWidth: "none" }}
                 onDragOver={handleDragOver}
                 onDrop={handleDrop}
             >
                 <Stage
-                    width={DESIGN_WIDTH * scale}
-                    height={DESIGN_HEIGHT * scale}
+                    ref={stageRef}
+                    width={size.width}
+                    height={size.height}
+                    x={stageX}
+                    y={stageY}
                     scaleX={scale}
                     scaleY={scale}
                     onMouseDown={handleStageMouseDown}
@@ -421,7 +390,7 @@ export const MapCanvas = ({
                     onMouseLeave={endPan}
                     onTouchStart={handleStageTouchStart}
                     onTouchMove={handleStageTouchMove}
-                    onTouchEnd={endPan}
+                    onTouchEnd={handleStageTouchEnd}
                 >
                     <Layer>
                         <KonvaImage
@@ -436,7 +405,7 @@ export const MapCanvas = ({
                             <Line
                                 ref={pathRef}
                                 points={bubbles.flatMap((bubble) => {
-                                    const point = toDesignSpace({x: bubble.x, y: bubble.y});
+                                    const point = toDesignSpace({ x: bubble.x, y: bubble.y });
                                     return [point.x, point.y];
                                 })}
                                 stroke="#0e9aa7"
@@ -476,8 +445,8 @@ export const MapCanvas = ({
                         role="tooltip"
                         className="pointer-events-none absolute z-20 -translate-x-1/2 -translate-y-[calc(100%+40px)] whitespace-nowrap rounded-md bg-ink px-2.5 py-1.5 text-xs font-medium text-white shadow-soft"
                         style={{
-                            left: toDesignSpace({ x: hoveredUnavailableBubble.x, y: hoveredUnavailableBubble.y }).x * scale,
-                            top: toDesignSpace({ x: hoveredUnavailableBubble.x, y: hoveredUnavailableBubble.y }).y * scale,
+                            left: stageX + toDesignSpace({ x: hoveredUnavailableBubble.x, y: hoveredUnavailableBubble.y }).x * scale,
+                            top: stageY + toDesignSpace({ x: hoveredUnavailableBubble.x, y: hoveredUnavailableBubble.y }).y * scale,
                         }}
                     >
                         {hoveredUnavailableReason}
@@ -486,8 +455,8 @@ export const MapCanvas = ({
                 {iconPickerBubble && (
                     <IconPickerPopover
                         key={iconPickerBubble.id}
-                        x={toDesignSpace({ x: iconPickerBubble.x, y: iconPickerBubble.y }).x * scale}
-                        y={toDesignSpace({ x: iconPickerBubble.x, y: iconPickerBubble.y }).y * scale}
+                        x={stageX + toDesignSpace({ x: iconPickerBubble.x, y: iconPickerBubble.y }).x * scale}
+                        y={stageY + toDesignSpace({ x: iconPickerBubble.x, y: iconPickerBubble.y }).y * scale}
                         currentIcon={iconPickerBubble.icon ?? undefined}
                         currentStatus={iconPickerBubble.status}
                         availability={getAvailability?.(iconPickerBubble)}
@@ -509,7 +478,7 @@ export const MapCanvas = ({
                     <Minus size={15} />
                 </IconButton>
                 <span className="pointer-events-auto min-w-[3rem] text-center text-xs font-medium text-ink-soft">
-                    {Math.round(zoom * 100)}%
+                    {Math.round(zoomFactor * 100)}%
                 </span>
                 <IconButton
                     onClick={() => handleZoomButton(ZOOM_STEP)}
