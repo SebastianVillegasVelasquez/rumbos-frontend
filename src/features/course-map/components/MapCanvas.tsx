@@ -1,19 +1,36 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import KonvaLib from "konva";
 import { Stage, Layer, Image as KonvaImage, Line } from "react-konva";
 import type Konva from "konva";
 import useImage from "use-image";
 import { Minus, Plus, Scan } from "lucide-react";
-import { DESIGN_HEIGHT, DESIGN_WIDTH, type MapCanvasProps } from "../types/course-props.types.ts";
-import { clampRelative, toDesignSpace, toRelativeSpace } from "../coordinates.ts";
+import { DEFAULT_DESIGN_HEIGHT, DESIGN_WIDTH, type MapCanvasProps } from "../types/course-props.types.ts";
+import { clampRelative, toDesignSpace, toRelativeSpace, type DesignSize } from "../coordinates.ts";
 import { dominantAxis, normalizeWheelDelta } from "../viewport/math.ts";
 import { useViewportController } from "../viewport/useViewportController.ts";
-import Bubble from "./Bubble.tsx";
+import BubbleVisual from "./BubbleVisual.tsx";
 import { IconPickerPopover } from "./IconPickerPopover.tsx";
 import { defaultIconForModname, type IconKey } from "../icons.ts";
-import type { Bubble as BubbleModel } from "../data/types.ts";
+import { deriveVisualState, nextIncompleteSequence } from "../visualState.ts";
+import { resolveSkin } from "../resolveSkin.ts";
+import type { Bubble as BubbleModel, MapFit } from "../data/types.ts";
 import { es } from "../../../i18n/es.ts";
 import { IconButton } from "../../../components/ui/Button.tsx";
+
+const computeBaseScale = (fit: MapFit, viewport: { width: number; height: number }, design: DesignSize) => {
+    if (design.width <= 0 || design.height <= 0 || viewport.width <= 0 || viewport.height <= 0) return 1;
+    switch (fit) {
+        case "original":
+            return 1;
+        case "fit-height":
+            return viewport.height / design.height;
+        case "contain":
+            return Math.min(viewport.width / design.width, viewport.height / design.height);
+        case "fit-width":
+        default:
+            return viewport.width / design.width;
+    }
+};
 
 const prefersReducedMotion = () =>
     typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -36,6 +53,11 @@ export const MapCanvas = ({
     backgroundUrl,
     bubbles,
     editable,
+    fit = "fit-width",
+    mapMode = "explorative",
+    skins = [],
+    defaultSkinId = null,
+    skinRules = [],
     onBubbleMove,
     onBubbleUpdate,
     onBubbleDelete,
@@ -58,6 +80,21 @@ export const MapCanvas = ({
     const [focusPulse, setFocusPulse] = useState<{ bubbleId: string; key: number } | null>(null);
     const pathRef = useRef<Konva.Line>(null);
 
+    // The design-space canvas follows the background image's own aspect
+    // ratio (width is always fixed; height adapts), falling back to the
+    // default 16:9-ish aspect before the image has loaded.
+    const designSize: DesignSize = useMemo(
+        () => ({
+            width: DESIGN_WIDTH,
+            height: background && background.width > 0 ? DESIGN_WIDTH * (background.height / background.width) : DEFAULT_DESIGN_HEIGHT,
+        }),
+        [background]
+    );
+    // Vertical is the primary scroll axis unless the fit mode can only move
+    // horizontally (fit-height leaves no vertical room to pan).
+    const primaryAxis: "x" | "y" = fit === "fit-height" ? "x" : "y";
+    const nextSequence = useMemo(() => nextIncompleteSequence(bubbles), [bubbles]);
+
     // Stable for the component's lifetime (see useViewportController), so it
     // can be used directly in effects/handlers without a ref indirection.
     const controller = useViewportController({
@@ -68,14 +105,17 @@ export const MapCanvas = ({
 
     const { x: stageX, y: stageY, scale, zoomFactor } = viewport;
 
-    // One-time wiring: content size never changes (design space is fixed),
-    // the Stage node is attached once it mounts, and viewport/base-scale
-    // react to the container's actual size.
+    // The Stage node is attached once it mounts; content size and base scale
+    // react to the design size (background aspect ratio) and fit mode.
     useEffect(() => {
-        controller.setContentSize(DESIGN_WIDTH, DESIGN_HEIGHT);
         controller.attachStage(stageRef.current);
         return () => controller.attachStage(null);
     }, [controller]);
+
+    useEffect(() => {
+        controller.setContentSize(designSize.width, designSize.height);
+        controller.setBaseScale(computeBaseScale(fit, size, designSize));
+    }, [controller, designSize, fit, size]);
 
     useEffect(() => {
         const container = containerRef.current;
@@ -84,7 +124,6 @@ export const MapCanvas = ({
             const { width, height } = entries[0].contentRect;
             setSize({ width, height });
             controller.setViewportSize(width, height);
-            controller.setBaseScale(width / DESIGN_WIDTH);
         });
         observer.observe(container);
         return () => observer.disconnect();
@@ -96,7 +135,7 @@ export const MapCanvas = ({
         if (focusBubbleId == null) return;
         const bubble = bubbles.find((b) => b.id === focusBubbleId);
         if (bubble) {
-            const design = toDesignSpace({ x: bubble.x, y: bubble.y });
+            const design = toDesignSpace({ x: bubble.x, y: bubble.y }, designSize);
             controller.flyTo(design.x, design.y, controller.getState().zoomFactor);
             // One-shot imperative reaction to an external request (not
             // derived render state), so a direct setState here is correct.
@@ -146,9 +185,8 @@ export const MapCanvas = ({
             const { dx, dy } = normalizeWheelDelta(e, { width: rect.width, height: rect.height });
             const delta = dominantAxis(dx, dy) === "x" ? dx : dy;
 
-            // Primary axis is vertical for now (the current layout is always
-            // fit-width); Part 1's fit modes make this fit-mode-dependent.
-            const targetAxis: "x" | "y" = e.shiftKey ? "x" : "y";
+            const secondaryAxis: "x" | "y" = primaryAxis === "y" ? "x" : "y";
+            const targetAxis = e.shiftKey ? secondaryAxis : primaryAxis;
             const canPan = controller.canPan();
             if (!canPan[targetAxis]) return;
             // Scroll semantics: a positive delta (scrolling "forward") moves
@@ -159,7 +197,7 @@ export const MapCanvas = ({
 
         container.addEventListener("wheel", onWheel, { passive: false });
         return () => container.removeEventListener("wheel", onWheel);
-    }, [controller]);
+    }, [controller, primaryAxis]);
 
     useEffect(() => {
         const container = containerRef.current;
@@ -347,7 +385,7 @@ export const MapCanvas = ({
 
         const rect = container.getBoundingClientRect();
         const design = controller.screenToContent(e.clientX - rect.left, e.clientY - rect.top);
-        const relative = clampRelative(toRelativeSpace(design));
+        const relative = clampRelative(toRelativeSpace(design, designSize));
 
         onActivityDrop?.(activityId, relative.x, relative.y);
     };
@@ -396,8 +434,8 @@ export const MapCanvas = ({
                         <KonvaImage
                             name={BACKGROUND_NODE_NAME}
                             image={background}
-                            width={DESIGN_WIDTH}
-                            height={DESIGN_HEIGHT}
+                            width={designSize.width}
+                            height={designSize.height}
                         />
                     </Layer>
                     <Layer listening={false}>
@@ -405,7 +443,7 @@ export const MapCanvas = ({
                             <Line
                                 ref={pathRef}
                                 points={bubbles.flatMap((bubble) => {
-                                    const point = toDesignSpace({ x: bubble.x, y: bubble.y });
+                                    const point = toDesignSpace({ x: bubble.x, y: bubble.y }, designSize);
                                     return [point.x, point.y];
                                 })}
                                 stroke="#0e9aa7"
@@ -420,16 +458,33 @@ export const MapCanvas = ({
                     <Layer>
                         {bubbles.map((bubble) => {
                             const availability = getAvailability?.(bubble);
+                            const modname = getModnameForBubble?.(bubble);
+                            const visualState = deriveVisualState({
+                                status: bubble.status,
+                                sequence: bubble.sequence,
+                                mode: mapMode,
+                                availability,
+                                view: editable ? "editor" : "student",
+                                nextIncompleteSequence: nextSequence,
+                            });
+                            const skin = resolveSkin({
+                                bubbleSkinId: bubble.skinId,
+                                modname,
+                                skinRules,
+                                defaultSkinId,
+                                skins,
+                            });
                             return (
-                                <Bubble
+                                <BubbleVisual
                                     key={bubble.id}
                                     x={bubble.x}
                                     y={bubble.y}
-                                    status={bubble.status}
+                                    designSize={designSize}
+                                    visualState={visualState}
+                                    skin={skin}
                                     icon={iconFor(bubble)}
+                                    label={getResolvedActivity?.(bubble)?.name}
                                     draggable={editable}
-                                    muted={!editable && (availability === "hidden" || availability === "missing")}
-                                    warningRing={editable && availability === "missing"}
                                     pulseKey={focusPulse?.bubbleId === bubble.id ? focusPulse.key : undefined}
                                     onClick={unavailableReasonFor(bubble) ? undefined : () => handleBubbleClick(bubble)}
                                     onHoverChange={(hovered) => setHoveredBubbleId(hovered ? bubble.id : null)}
@@ -445,8 +500,8 @@ export const MapCanvas = ({
                         role="tooltip"
                         className="pointer-events-none absolute z-20 -translate-x-1/2 -translate-y-[calc(100%+40px)] whitespace-nowrap rounded-md bg-ink px-2.5 py-1.5 text-xs font-medium text-white shadow-soft"
                         style={{
-                            left: stageX + toDesignSpace({ x: hoveredUnavailableBubble.x, y: hoveredUnavailableBubble.y }).x * scale,
-                            top: stageY + toDesignSpace({ x: hoveredUnavailableBubble.x, y: hoveredUnavailableBubble.y }).y * scale,
+                            left: stageX + toDesignSpace({ x: hoveredUnavailableBubble.x, y: hoveredUnavailableBubble.y }, designSize).x * scale,
+                            top: stageY + toDesignSpace({ x: hoveredUnavailableBubble.x, y: hoveredUnavailableBubble.y }, designSize).y * scale,
                         }}
                     >
                         {hoveredUnavailableReason}
@@ -455,8 +510,8 @@ export const MapCanvas = ({
                 {iconPickerBubble && (
                     <IconPickerPopover
                         key={iconPickerBubble.id}
-                        x={stageX + toDesignSpace({ x: iconPickerBubble.x, y: iconPickerBubble.y }).x * scale}
-                        y={stageY + toDesignSpace({ x: iconPickerBubble.x, y: iconPickerBubble.y }).y * scale}
+                        x={stageX + toDesignSpace({ x: iconPickerBubble.x, y: iconPickerBubble.y }, designSize).x * scale}
+                        y={stageY + toDesignSpace({ x: iconPickerBubble.x, y: iconPickerBubble.y }, designSize).y * scale}
                         currentIcon={iconPickerBubble.icon ?? undefined}
                         currentStatus={iconPickerBubble.status}
                         availability={getAvailability?.(iconPickerBubble)}

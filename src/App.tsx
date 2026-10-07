@@ -18,9 +18,11 @@ import {
     useDeleteBubble,
     usePendingActivityIds,
     useResolvedCourseMap,
+    useSkins,
     useUpdateBubble,
 } from "./features/course-map/data/queries.ts";
 import { ApiError, isUnreachable } from "./features/course-map/data/client.ts";
+import { resolveImageUrl } from "./features/course-map/data/assets.ts";
 import type { Activity, Bubble, ResolvedBubble } from "./features/course-map/data/types.ts";
 import { useRoute } from "./hooks/useRoute.ts";
 import { Wordmark } from "./components/Logo.tsx";
@@ -67,6 +69,7 @@ function AppShell() {
     const updateBubble = useUpdateBubble(courseMapId ?? "");
     const deleteBubble = useDeleteBubble(courseMapId ?? "");
     const pendingActivityIds = usePendingActivityIds(courseMapId ?? "");
+    const skinsQuery = useSkins();
 
     useEffect(() => {
         if (courseMapQuery.data) rememberCourseMap(courseMapQuery.data);
@@ -185,9 +188,14 @@ function AppShell() {
                 }
             >
             <MapCanvas
-                backgroundUrl={courseMapQuery.data.imageUrl}
+                backgroundUrl={resolveImageUrl(courseMapQuery.data.imageUrl)}
                 bubbles={bubbles}
                 editable={mode === "editor"}
+                fit={courseMapQuery.data.settings.fit}
+                mapMode={courseMapQuery.data.settings.mode}
+                skins={skinsQuery.data?.items ?? []}
+                defaultSkinId={courseMapQuery.data.defaultSkinId}
+                skinRules={courseMapQuery.data.skinRules}
                 onBubbleMove={(bubbleId, x, y) => updateBubble.mutate({ bubbleId, input: { x, y } })}
                 onBubbleUpdate={(bubbleId, input) => updateBubble.mutate({ bubbleId, input })}
                 onBubbleDelete={(bubbleId) => deleteBubble.mutate(bubbleId)}

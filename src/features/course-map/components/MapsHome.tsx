@@ -10,6 +10,7 @@ import { useToast } from "../../../components/ui/toastContext.ts";
 import { backgroundOptions, DEFAULT_BACKGROUND_URL } from "../../../assets/backgrounds/index.ts";
 import { es } from "../../../i18n/es.ts";
 import { ApiError, isUnreachable } from "../data/client.ts";
+import { resolveThumbUrl } from "../data/assets.ts";
 import { courseMapApi } from "../data/index.ts";
 import {
     useCourseMaps,
@@ -61,7 +62,7 @@ const MapCard = ({
         <button type="button" onClick={() => onOpen(map.id)} className="block w-full text-left">
             <div className="relative h-32 w-full overflow-hidden bg-surface-muted">
                 <img
-                    src={map.imageUrl}
+                    src={resolveThumbUrl(map.imageUrl)}
                     alt=""
                     loading="lazy"
                     className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
@@ -126,7 +127,7 @@ export const MapsHome = ({ onOpen, initialCreateCourseId }: MapsHomeProps) => {
 
                 {recent && (
                     <Card className="flex items-center gap-4 overflow-hidden p-4">
-                        <img src={recent.imageUrl} alt="" className="h-14 w-14 rounded-md object-cover" />
+                        <img src={resolveThumbUrl(recent.imageUrl)} alt="" className="h-14 w-14 rounded-md object-cover" />
                         <div className="flex-1">
                             <p className="text-xs font-semibold uppercase tracking-wide text-teal-dark">
                                 {es.home.continueWhereLeft}

@@ -78,6 +78,13 @@ const buildVariant = (color: string) => {
 };
 
 // "question" has no entry - it renders via the existing Konva Text "?"
-// fallback in Bubble.tsx instead of an image.
+// fallback in BubbleVisual.tsx instead of an image.
 export const ICON_DATA_URIS_LIGHT: Partial<Record<IconKey, string>> = buildVariant("white");
 export const ICON_DATA_URIS_DARK: Partial<Record<IconKey, string>> = buildVariant("#1E2A4A");
+
+// Arbitrary-color variant, for a procedural skin's icon.color (which can be
+// any hex, not just the two precomputed light/dark variants above).
+export const iconDataUri = (icon: IconKey, color: string): string | null => {
+    const path = paths[icon];
+    return path ? svgDataUri(path, color) : null;
+};

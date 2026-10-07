@@ -1,20 +1,25 @@
-import { DESIGN_HEIGHT, DESIGN_WIDTH } from "./types/course-props.types.ts";
-
 export interface Point {
     x: number;
     y: number;
 }
 
-// Converts a bubble's stored 0-1 relative position into design-space pixels
-// (the Stage's internal, zoom-independent 1600x900 coordinate system).
-export function toDesignSpace(relative: Point): Point {
-    return { x: relative.x * DESIGN_WIDTH, y: relative.y * DESIGN_HEIGHT };
+// The Stage's internal, zoom-independent coordinate system. Width is fixed;
+// height follows the background image's own aspect ratio (see
+// types/course-props.types.ts's DESIGN_WIDTH / DEFAULT_DESIGN_HEIGHT).
+export interface DesignSize {
+    width: number;
+    height: number;
+}
+
+// Converts a bubble's stored 0-1 relative position into design-space pixels.
+export function toDesignSpace(relative: Point, size: DesignSize): Point {
+    return { x: relative.x * size.width, y: relative.y * size.height };
 }
 
 // Converts a design-space pixel position back into the 0-1 relative scale
 // used by Bubble.
-export function toRelativeSpace(design: Point): Point {
-    return { x: design.x / DESIGN_WIDTH, y: design.y / DESIGN_HEIGHT };
+export function toRelativeSpace(design: Point, size: DesignSize): Point {
+    return { x: design.x / size.width, y: design.y / size.height };
 }
 
 export function clampRelative(point: Point): Point {
