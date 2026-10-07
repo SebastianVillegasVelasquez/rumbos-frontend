@@ -1,9 +1,10 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { MapCanvas } from "./features/course-map/components/MapCanvas.tsx";
 import { ActivitySidebar } from "./features/course-map/components/ActivitySidebar.tsx";
 import { ActivityModal } from "./features/course-map/components/ActivityModal.tsx";
 import { ActivitiesOverviewModal } from "./features/course-map/components/ActivitiesOverviewModal.tsx";
-import { CreateMapPanel } from "./features/course-map/components/CreateMapPanel.tsx";
+import { MapStartScreen } from "./features/course-map/components/MapStartScreen.tsx";
+import { rememberCourseMap } from "./features/course-map/data/recentMaps.ts";
 import {
     ACTIVITY_OPEN_MODE,
     createActivityOpener,
@@ -45,6 +46,10 @@ function App() {
     const updateBubble = useUpdateBubble(courseMapId ?? "");
     const deleteBubble = useDeleteBubble(courseMapId ?? "");
     const pendingActivityIds = usePendingActivityIds(courseMapId ?? "");
+
+    useEffect(() => {
+        if (courseMapQuery.data) rememberCourseMap(courseMapQuery.data);
+    }, [courseMapQuery.data]);
 
     const activities = useMemo(() => activitiesQuery.data ?? [], [activitiesQuery.data]);
     const bubbles = useMemo(() => courseMapQuery.data?.bubbles ?? [], [courseMapQuery.data]);
@@ -104,7 +109,7 @@ function App() {
     };
 
     const renderMapArea = () => {
-        if (!courseMapId) return <CreateMapPanel onCreated={selectCourseMap} />;
+        if (!courseMapId) return <MapStartScreen onOpen={selectCourseMap} />;
 
         if (courseMapQuery.isPending) return <p className="text-sm text-gray-400">Loading course map...</p>;
 

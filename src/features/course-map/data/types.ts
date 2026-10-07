@@ -18,14 +18,60 @@ export interface Bubble {
 
 export interface CourseMapSummary {
     id: string;
+    title: string;
     moodleCourseId: number;
     imageUrl: string;
+    bubbleCount: number;
     createdAt: string;
     updatedAt: string;
 }
 
-export interface CourseMapDetail extends CourseMapSummary {
+export interface CourseMapRead {
+    id: string;
+    title: string;
+    moodleCourseId: number;
+    imageUrl: string;
     bubbles: Bubble[];
+    createdAt: string;
+    updatedAt: string;
+}
+
+// Kept as an alias: most of the existing code refers to the single-map detail
+// shape by this name.
+export type CourseMapDetail = CourseMapRead;
+
+export interface CourseMapListParams {
+    moodleCourseId?: number;
+    q?: string;
+    limit?: number;
+    offset?: number;
+}
+
+export interface CourseMapListResult {
+    items: CourseMapSummary[];
+    total: number;
+    limit: number;
+    offset: number;
+}
+
+export interface CourseMapPatch {
+    title?: string;
+    imageUrl?: string;
+}
+
+export type MoodleStatus = "live" | "cached" | "unavailable";
+
+export type Availability = "available" | "hidden" | "missing" | "unknown";
+
+export interface ResolvedBubble {
+    bubbleId: string;
+    availability: Availability;
+    activity: Activity | null;
+}
+
+export interface ResolvedCourseMap {
+    moodleStatus: MoodleStatus;
+    bubbles: ResolvedBubble[];
 }
 
 export interface Activity {
@@ -41,6 +87,7 @@ export interface Activity {
 }
 
 export interface CourseMapCreate {
+    title: string;
     moodleCourseId: number;
     imageUrl: string;
 }

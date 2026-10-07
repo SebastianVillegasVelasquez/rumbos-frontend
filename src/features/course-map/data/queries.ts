@@ -1,10 +1,15 @@
-import { useMutation, useMutationState, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useMutationState, useQuery, useQueryClient } from "@tanstack/react-query";
 import { courseMapApi } from "./index.ts";
 import { ApiError } from "./client.ts";
-import type { BubbleCreate, BubbleUpdate, CourseMapDetail } from "./types.ts";
+import type { BubbleCreate, BubbleUpdate, CourseMapDetail, CourseMapPatch } from "./types.ts";
+
+const LIST_PAGE_SIZE = 24;
 
 export const courseMapKeys = {
+    list: (params: { q: string; moodleCourseId?: number }) => ["course-maps", "list", params] as const,
     detail: (courseMapId: string) => ["course-maps", courseMapId, "detail"] as const,
+    resolved: (courseMapId: string, includeHidden: boolean) =>
+        ["course-maps", courseMapId, "resolved", { includeHidden }] as const,
     activities: (courseMapId: string) => ["course-maps", courseMapId, "activities"] as const,
     activitiesList: (courseMapId: string, includeHidden: boolean) =>
         [...courseMapKeys.activities(courseMapId), { includeHidden }] as const,
@@ -23,6 +28,52 @@ export const useCourseMap = (courseMapId: string | null) =>
         enabled: courseMapId !== null,
         retry: retryTransient,
     });
+
+export const useCourseMaps = (params: { q: string; moodleCourseId?: number }) =>
+    useInfiniteQuery({
+        queryKey: courseMapKeys.list(params),
+        queryFn: ({ pageParam }) =>
+            courseMapApi.listCourseMaps({ ...params, limit: LIST_PAGE_SIZE, offset: pageParam }),
+        initialPageParam: 0,
+        getNextPageParam: (lastPage) =>
+            lastPage.offset + lastPage.items.length < lastPage.total
+                ? lastPage.offset + lastPage.items.length
+                : undefined,
+        retry: retryTransient,
+    });
+
+// includeHidden=false for the student view, true for the editor.
+export const useResolvedCourseMap = (courseMapId: string | null, includeHidden: boolean) =>
+    useQuery({
+        queryKey: courseMapKeys.resolved(courseMapId ?? "", includeHidden),
+        queryFn: () => courseMapApi.getResolvedCourseMap(courseMapId!, includeHidden),
+        enabled: courseMapId !== null,
+        staleTime: 30_000,
+        refetchOnWindowFocus: true,
+        retry: retryTransient,
+    });
+
+export const useUpdateCourseMap = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ courseMapId, input }: { courseMapId: string; input: CourseMapPatch }) =>
+            courseMapApi.patchCourseMap(courseMapId, input),
+        onSuccess: (map) => {
+            queryClient.setQueryData(courseMapKeys.detail(map.id), map);
+            void queryClient.invalidateQueries({ queryKey: ["course-maps", "list"] });
+        },
+    });
+};
+
+export const useDeleteCourseMap = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (courseMapId: string) => courseMapApi.deleteCourseMap(courseMapId),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: ["course-maps", "list"] });
+        },
+    });
+};
 
 export const useActivities = (courseMapId: string | null, includeHidden: boolean) =>
     useQuery({
