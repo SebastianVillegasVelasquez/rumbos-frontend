@@ -1,13 +1,20 @@
 import { useEffect, useRef, useState } from "react";
+import KonvaLib from "konva";
 import { Stage, Layer, Image as KonvaImage, Line } from "react-konva";
 import type Konva from "konva";
 import useImage from "use-image";
+import { Minus, Plus, Scan } from "lucide-react";
 import {DESIGN_HEIGHT, DESIGN_WIDTH, type MapCanvasProps} from "../types/course-props.types.ts";
 import {clampRelative, toDesignSpace, toRelativeSpace} from "../coordinates.ts";
 import Bubble from "./Bubble.tsx";
 import { IconPickerPopover } from "./IconPickerPopover.tsx";
-import type { IconKey } from "../icons.ts";
+import { defaultIconForModname, type IconKey } from "../icons.ts";
 import type { Bubble as BubbleModel } from "../data/types.ts";
+import { es } from "../../../i18n/es.ts";
+import { IconButton } from "../../../components/ui/Button.tsx";
+
+const prefersReducedMotion = () =>
+    typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 const BACKGROUND_NODE_NAME = "map-background";
 
@@ -56,6 +63,7 @@ export const MapCanvas = ({
     onActivityDrop,
     onBubbleClick,
     getUnavailableReason,
+    getModnameForBubble,
     focusBubbleId,
     onFocusHandled,
 }: MapCanvasProps) => {
@@ -66,6 +74,7 @@ export const MapCanvas = ({
     const [iconPickerBubbleId, setIconPickerBubbleId] = useState<string | null>(null);
     const [hoveredBubbleId, setHoveredBubbleId] = useState<string | null>(null);
     const [focusPulse, setFocusPulse] = useState<{ bubbleId: string; key: number } | null>(null);
+    const pathRef = useRef<Konva.Line>(null);
 
     // Kept in sync with state so the native wheel/touch listeners below
     // (attached once) always read the latest values without re-attaching.
@@ -147,6 +156,21 @@ export const MapCanvas = ({
     useEffect(() => () => {
         if (zoomAnimRef.current !== null) cancelAnimationFrame(zoomAnimRef.current);
     }, []);
+
+    // Slow marching-ants animation on the connector path ("camino"); skipped
+    // entirely under prefers-reduced-motion.
+    useEffect(() => {
+        const line = pathRef.current;
+        if (!line || prefersReducedMotion()) return;
+        const anim = new KonvaLib.Animation((frame) => {
+            if (!frame) return;
+            line.dashOffset(-(frame.time / 35) % 24);
+        }, line.getLayer());
+        anim.start();
+        return () => {
+            anim.stop();
+        };
+    }, [bubbles.length]);
 
     // Cursor-anchored wheel zoom (desktop) and two-finger pinch zoom (touch),
     // scoped to the Stage's view only - bubble positions stay in the 0-1
@@ -324,6 +348,11 @@ export const MapCanvas = ({
     };
 
     const unavailableReasonFor = (bubble: BubbleModel) => (editable ? null : getUnavailableReason?.(bubble) ?? null);
+    const iconFor = (bubble: BubbleModel): IconKey | undefined => {
+        if (bubble.icon) return bubble.icon;
+        const modname = getModnameForBubble?.(bubble);
+        return modname ? defaultIconForModname(modname) : undefined;
+    };
     const hoveredUnavailableBubble = bubbles.find((bubble) => bubble.id === hoveredBubbleId) ?? null;
     const hoveredUnavailableReason = hoveredUnavailableBubble ? unavailableReasonFor(hoveredUnavailableBubble) : null;
 
@@ -372,7 +401,9 @@ export const MapCanvas = ({
         <div className="relative h-full w-full">
             <div
                 ref={containerRef}
-                className="relative h-full w-full overflow-auto rounded-lg border border-gray-200 bg-gray-50"
+                role="img"
+                aria-label={es.canvas.ariaLabel}
+                className="relative h-full w-full overflow-auto rounded-lg border border-ink/10 bg-surface-muted"
                 style={{ touchAction: "pan-x pan-y" }}
                 onDragOver={handleDragOver}
                 onDrop={handleDrop}
@@ -401,16 +432,17 @@ export const MapCanvas = ({
                     <Layer listening={false}>
                         {bubbles.length > 1 && (
                             <Line
+                                ref={pathRef}
                                 points={bubbles.flatMap((bubble) => {
                                     const point = toDesignSpace({x: bubble.x, y: bubble.y});
                                     return [point.x, point.y];
                                 })}
-                                stroke="#94a3b8"
+                                stroke="#0e9aa7"
                                 strokeWidth={4}
-                                dash={[14, 10]}
+                                dash={[16, 10]}
                                 lineCap="round"
                                 lineJoin="round"
-                                opacity={0.7}
+                                opacity={0.55}
                             />
                         )}
                     </Layer>
@@ -421,7 +453,7 @@ export const MapCanvas = ({
                                 x={bubble.x}
                                 y={bubble.y}
                                 status={bubble.status}
-                                icon={bubble.icon ?? undefined}
+                                icon={iconFor(bubble)}
                                 draggable={editable}
                                 pulseKey={focusPulse?.bubbleId === bubble.id ? focusPulse.key : undefined}
                                 onClick={unavailableReasonFor(bubble) ? undefined : () => handleBubbleClick(bubble)}
@@ -435,7 +467,7 @@ export const MapCanvas = ({
                 {hoveredUnavailableBubble && hoveredUnavailableReason && (
                     <div
                         role="tooltip"
-                        className="pointer-events-none absolute z-20 -translate-x-1/2 -translate-y-[calc(100%+40px)] whitespace-nowrap rounded-md bg-gray-800 px-2 py-1 text-xs text-white shadow-lg"
+                        className="pointer-events-none absolute z-20 -translate-x-1/2 -translate-y-[calc(100%+40px)] whitespace-nowrap rounded-md bg-ink px-2.5 py-1.5 text-xs font-medium text-white shadow-soft"
                         style={{
                             left: toDesignSpace({ x: hoveredUnavailableBubble.x, y: hoveredUnavailableBubble.y }).x * scale,
                             top: toDesignSpace({ x: hoveredUnavailableBubble.x, y: hoveredUnavailableBubble.y }).y * scale,
@@ -458,34 +490,35 @@ export const MapCanvas = ({
                     />
                 )}
             </div>
-            <div className="pointer-events-none absolute bottom-3 right-3 flex items-center gap-1 rounded-lg bg-white/90 p-1 shadow-md backdrop-blur">
-                <button
-                    type="button"
+            <div className="pointer-events-none absolute bottom-3 right-3 flex items-center gap-1 rounded-pill bg-surface/95 p-1.5 shadow-soft backdrop-blur">
+                <IconButton
                     onClick={() => handleZoomButton(1 / ZOOM_STEP)}
-                    aria-label="Zoom out"
-                    className="pointer-events-auto flex h-7 w-7 items-center justify-center rounded text-gray-600 hover:bg-gray-100"
+                    aria-label={es.canvas.zoomOut}
+                    variant="ghost"
+                    className="pointer-events-auto h-8 w-8 min-h-0 min-w-0"
                 >
-                    &minus;
-                </button>
-                <span className="pointer-events-auto min-w-[3rem] text-center text-xs text-gray-500">
+                    <Minus size={15} />
+                </IconButton>
+                <span className="pointer-events-auto min-w-[3rem] text-center text-xs font-medium text-ink-soft">
                     {Math.round(zoom * 100)}%
                 </span>
-                <button
-                    type="button"
+                <IconButton
                     onClick={() => handleZoomButton(ZOOM_STEP)}
-                    aria-label="Zoom in"
-                    className="pointer-events-auto flex h-7 w-7 items-center justify-center rounded text-gray-600 hover:bg-gray-100"
+                    aria-label={es.canvas.zoomIn}
+                    variant="ghost"
+                    className="pointer-events-auto h-8 w-8 min-h-0 min-w-0"
                 >
-                    +
-                </button>
-                <button
-                    type="button"
+                    <Plus size={15} />
+                </IconButton>
+                <IconButton
                     onClick={handleZoomReset}
-                    aria-label="Reset zoom"
-                    className="pointer-events-auto ml-1 rounded px-2 py-1 text-[10px] font-medium uppercase text-gray-400 hover:bg-gray-100"
+                    aria-label={es.canvas.fitToScreen}
+                    title={es.canvas.fitToScreen}
+                    variant="ghost"
+                    className="pointer-events-auto ml-1 h-8 w-8 min-h-0 min-w-0"
                 >
-                    Reset
-                </button>
+                    <Scan size={15} />
+                </IconButton>
             </div>
         </div>
     );

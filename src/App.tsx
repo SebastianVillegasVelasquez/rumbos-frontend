@@ -5,6 +5,7 @@ import { ActivitySidebar } from "./features/course-map/components/ActivitySideba
 import { ActivityModal } from "./features/course-map/components/ActivityModal.tsx";
 import { ActivitiesOverviewModal } from "./features/course-map/components/ActivitiesOverviewModal.tsx";
 import { MapsHome } from "./features/course-map/components/MapsHome.tsx";
+import { StudentHud } from "./features/course-map/components/StudentHud.tsx";
 import { rememberCourseMap } from "./features/course-map/data/recentMaps.ts";
 import {
     ACTIVITY_OPEN_MODE,
@@ -26,6 +27,7 @@ import { Wordmark } from "./components/Logo.tsx";
 import { Button, IconButton } from "./components/ui/Button.tsx";
 import { SegmentedControl } from "./components/ui/SegmentedControl.tsx";
 import { ToastProvider } from "./components/ui/Toast.tsx";
+import { useToast } from "./components/ui/toastContext.ts";
 import { es } from "./i18n/es.ts";
 
 type Mode = "editor" | "student";
@@ -33,6 +35,15 @@ type Mode = "editor" | "student";
 document.title = `${es.app.wordmark} — ${es.home.title}`;
 
 function App() {
+    return (
+        <ToastProvider>
+            <AppShell />
+        </ToastProvider>
+    );
+}
+
+function AppShell() {
+    const toast = useToast();
     const [route, navigate] = useRoute();
     const [mode, setMode] = useState<Mode>("editor");
     const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null);
@@ -151,10 +162,21 @@ function App() {
                 onBubbleUpdate={(bubbleId, input) => updateBubble.mutate({ bubbleId, input })}
                 onBubbleDelete={(bubbleId) => deleteBubble.mutate(bubbleId)}
                 onActivityDrop={(activityId, x, y) => {
-                    if (!pendingActivityIds.includes(activityId)) createBubble.mutate({ activityId, x, y });
+                    if (pendingActivityIds.includes(activityId)) return;
+                    createBubble.mutate(
+                        { activityId, x, y },
+                        {
+                            onError: (error) => {
+                                if (error instanceof ApiError && error.status === 409) {
+                                    toast.show(es.sidebar.alreadyPlaced, "error");
+                                }
+                            },
+                        }
+                    );
                 }}
                 onBubbleClick={handleBubbleClick}
                 getUnavailableReason={getUnavailableReason}
+                getModnameForBubble={(bubble) => activities.find((a) => a.activityId === bubble.activityId)?.modname}
                 focusBubbleId={focusBubbleId}
                 onFocusHandled={() => setFocusBubbleId(null)}
             />
@@ -171,31 +193,26 @@ function App() {
 
     if (route.name === "home") {
         return (
-            <ToastProvider>
-                <div className="flex h-screen flex-col">
-                    <AppHeader onHome={() => navigate({ name: "home" })} />
-                    <MapsHome onOpen={(id) => navigate({ name: "map", mapId: id })} />
-                </div>
-            </ToastProvider>
+            <div className="flex h-screen flex-col">
+                <AppHeader onHome={() => navigate({ name: "home" })} />
+                <MapsHome onOpen={(id) => navigate({ name: "map", mapId: id })} />
+            </div>
         );
     }
 
     if (route.name === "course") {
         return (
-            <ToastProvider>
-                <div className="flex h-screen flex-col">
-                    <AppHeader onHome={() => navigate({ name: "home" })} />
-                    <MapsHome
-                        onOpen={(id) => navigate({ name: "map", mapId: id })}
-                        initialCreateCourseId={route.moodleCourseId}
-                    />
-                </div>
-            </ToastProvider>
+            <div className="flex h-screen flex-col">
+                <AppHeader onHome={() => navigate({ name: "home" })} />
+                <MapsHome
+                    onOpen={(id) => navigate({ name: "map", mapId: id })}
+                    initialCreateCourseId={route.moodleCourseId}
+                />
+            </div>
         );
     }
 
     return (
-        <ToastProvider>
             <div className="flex h-screen flex-col">
                 <AppHeader
                     onHome={() => navigate({ name: "home" })}
@@ -224,7 +241,16 @@ function App() {
                                 </button>
                             </div>
                         )}
-                        <div className="min-h-0 flex-1">{renderMapArea()}</div>
+                        <div className="relative min-h-0 flex-1">
+                            {mode === "student" && courseMapQuery.data && (
+                                <StudentHud
+                                    bubbles={bubbles}
+                                    activities={activities}
+                                    onContinue={(bubble) => setFocusBubbleId(bubble.id)}
+                                />
+                            )}
+                            {renderMapArea()}
+                        </div>
                     </main>
                 </div>
 
@@ -280,7 +306,6 @@ function App() {
                     onSelectBubble={handleSelectBubbleFromOverview}
                 />
             </div>
-        </ToastProvider>
     );
 }
 

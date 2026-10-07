@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { ICON_DATA_URIS, ICON_KEYS, ICON_LABELS, type IconKey } from "../icons.ts";
+import { Trash2 } from "lucide-react";
+import { ICON_DATA_URIS_LIGHT, ICON_KEYS, ICON_LABELS, type IconKey } from "../icons.ts";
 import type { BubbleStatus } from "../data/types.ts";
+import { es } from "../../../i18n/es.ts";
+import { Button } from "../../../components/ui/Button.tsx";
 
 interface IconPickerPopoverProps {
     x: number; // content-space pixels (design-space * current scale)
@@ -14,10 +17,10 @@ interface IconPickerPopoverProps {
 }
 
 const STATUS_OPTIONS: { value: BubbleStatus; label: string }[] = [
-    { value: "locked", label: "Locked" },
-    { value: "no_complete", label: "Not started" },
-    { value: "in_progress", label: "In progress" },
-    { value: "complete", label: "Complete" },
+    { value: "locked", label: es.bubble.statusLabels.locked },
+    { value: "no_complete", label: es.bubble.statusLabels.no_complete },
+    { value: "in_progress", label: es.bubble.statusLabels.in_progress },
+    { value: "complete", label: es.bubble.statusLabels.complete },
 ];
 
 // Positioned as a sibling of the Stage inside the same scrollable container,
@@ -57,11 +60,11 @@ export const IconPickerPopover = ({
         <div
             ref={popoverRef}
             role="menu"
-            aria-label="Bubble options"
-            className="absolute z-20 w-52 -translate-x-1/2 -translate-y-[calc(100%+16px)] space-y-3 rounded-lg border border-gray-200 bg-white p-2 shadow-xl"
+            aria-label={es.bubble.demoStatusLabel}
+            className="absolute z-20 w-56 -translate-x-1/2 -translate-y-[calc(100%+16px)] space-y-3 rounded-lg border border-ink/10 bg-surface p-3 shadow-soft"
             style={{ left: x, top: y }}
         >
-            <div className="grid grid-cols-4 gap-1">
+            <div className="grid grid-cols-4 gap-1.5">
                 {ICON_KEYS.map((key) => (
                     <button
                         key={key}
@@ -70,16 +73,16 @@ export const IconPickerPopover = ({
                         aria-checked={currentIcon ? currentIcon === key : key === "question"}
                         title={ICON_LABELS[key]}
                         onClick={() => onSelect(key)}
-                        className={`flex h-9 w-9 items-center justify-center rounded-md border text-sm hover:bg-blue-50 ${
-                            (currentIcon ?? "question") === key ? "border-blue-500 bg-blue-50" : "border-gray-200"
+                        className={`flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:bg-teal-tint ${
+                            (currentIcon ?? "question") === key ? "border-teal-dark bg-teal-tint" : "border-ink/10"
                         }`}
                     >
-                        {ICON_DATA_URIS[key] ? (
-                            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-gray-500">
-                                <img src={ICON_DATA_URIS[key]} alt="" className="h-4 w-4" />
+                        {ICON_DATA_URIS_LIGHT[key] ? (
+                            <span className="flex h-6 w-6 items-center justify-center rounded-pill bg-slate-dark">
+                                <img src={ICON_DATA_URIS_LIGHT[key]} alt="" className="h-4 w-4" />
                             </span>
                         ) : (
-                            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-gray-500 text-xs font-bold text-white">
+                            <span className="flex h-6 w-6 items-center justify-center rounded-pill bg-slate-dark text-xs font-bold text-white">
                                 ?
                             </span>
                         )}
@@ -89,13 +92,13 @@ export const IconPickerPopover = ({
 
             {/* Demo only: real status will come from Moodle completion in a later phase. */}
             <label className="block space-y-1">
-                <span className="text-[10px] font-medium uppercase tracking-wide text-gray-500">
-                    Demo status
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-ink-soft">
+                    {es.bubble.demoStatusLabel}
                 </span>
                 <select
                     value={currentStatus}
                     onChange={(e) => onStatusSelect(e.target.value as BubbleStatus)}
-                    className="w-full rounded-md border border-gray-300 px-2 py-1 text-xs"
+                    className="w-full rounded-md border border-ink/10 px-2 py-1.5 text-xs"
                 >
                     {STATUS_OPTIONS.map((option) => (
                         <option key={option.value} value={option.value}>
@@ -105,13 +108,16 @@ export const IconPickerPopover = ({
                 </select>
             </label>
 
-            <button
+            <Button
                 type="button"
+                variant="danger"
+                size="sm"
                 onClick={() => (isConfirmingDelete ? onDelete() : setIsConfirmingDelete(true))}
-                className="w-full rounded-md border border-red-200 px-2 py-1 text-xs font-medium text-red-600 hover:bg-red-50"
+                className="w-full"
             >
-                {isConfirmingDelete ? "Confirm delete" : "Delete bubble"}
-            </button>
+                <Trash2 size={14} />
+                {isConfirmingDelete ? es.bubble.confirmDelete : es.bubble.removeFromMap}
+            </Button>
         </div>
     );
 };

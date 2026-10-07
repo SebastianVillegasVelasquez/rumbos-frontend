@@ -1,10 +1,10 @@
-import {type BubbleProps, STATUS_COLORS} from "../types/course-props.types.ts";
-import {Circle, Group, Image as KonvaImage, Text} from "react-konva";
+import {type BubbleProps, STATUS_COLORS, STATUS_GLOW_COLORS, STATUS_ICON_IS_DARK} from "../types/course-props.types.ts";
+import {Circle, Group, Image as KonvaImage, Line, Text} from "react-konva";
 import Konva from "konva";
 import {useEffect, useRef, useState} from "react";
 import useImage from "use-image";
 import {clampRelative, toDesignSpace, toRelativeSpace} from "../coordinates.ts";
-import {ICON_DATA_URIS} from "../icons.ts";
+import {ICON_DATA_URIS_DARK, ICON_DATA_URIS_LIGHT} from "../icons.ts";
 
 const HOVER_SCALE = 1.12;
 const PULSE_SCALE = 1.3;
@@ -12,7 +12,9 @@ const ICON_SIZE = 30;
 
 const Bubble = ({x, y, status, icon, draggable, onClick, onHoverChange, onDragEnd, onDragStart, pulseKey}: BubbleProps) => {
     const {x: posX, y: posY} = toDesignSpace({x, y});
-    const [iconImage] = useImage(icon ? (ICON_DATA_URIS[icon] ?? "") : "");
+    const isDarkIcon = STATUS_ICON_IS_DARK[status];
+    const iconUris = isDarkIcon ? ICON_DATA_URIS_DARK : ICON_DATA_URIS_LIGHT;
+    const [iconImage] = useImage(icon ? (iconUris[icon] ?? "") : "");
 
     const groupRef = useRef<Konva.Group>(null);
     const ringRef = useRef<Konva.Circle>(null);
@@ -180,15 +182,24 @@ const Bubble = ({x, y, status, icon, draggable, onClick, onHoverChange, onDragEn
             onMouseLeave={handleMouseLeave}
         >
             {isPulsing && (
-                <Circle ref={ringRef} radius={30} stroke={STATUS_COLORS.complete} strokeWidth={4} listening={false}/>
+                <Circle ref={ringRef} radius={30} stroke={STATUS_GLOW_COLORS[status]} strokeWidth={4} listening={false}/>
             )}
+            <Circle
+                radius={33}
+                fillRadialGradientStartPoint={{ x: -8, y: -10 }}
+                fillRadialGradientStartRadius={0}
+                fillRadialGradientEndPoint={{ x: 0, y: 0 }}
+                fillRadialGradientEndRadius={38}
+                fillRadialGradientColorStops={[0, "rgba(255,255,255,0.35)", 1, "rgba(255,255,255,0)"]}
+                listening={false}
+            />
             <Circle
                 ref={circleRef}
                 radius={30}
                 fill={STATUS_COLORS[status]}
                 stroke="white"
                 strokeWidth={3}
-                shadowColor={STATUS_COLORS[status]}
+                shadowColor={STATUS_GLOW_COLORS[status]}
                 shadowBlur={isHovered ? 18 : 0}
                 shadowOpacity={0.6}
             />
@@ -205,7 +216,7 @@ const Bubble = ({x, y, status, icon, draggable, onClick, onHoverChange, onDragEn
                 <Text
                     text="?"
                     fontSize={24}
-                    fill="white"
+                    fill={isDarkIcon ? "#1E2A4A" : "white"}
                     width={60}
                     height={60}
                     offsetX={30}
@@ -214,6 +225,18 @@ const Bubble = ({x, y, status, icon, draggable, onClick, onHoverChange, onDragEn
                     verticalAlign="middle"
                     listening={false}
                 />
+            )}
+            {status === "complete" && (
+                <Group x={20} y={-20} listening={false}>
+                    <Circle radius={10} fill="white" stroke={STATUS_COLORS.complete} strokeWidth={2}/>
+                    <Line
+                        points={[-4, 0, -1, 3.5, 5, -4]}
+                        stroke={STATUS_COLORS.complete}
+                        strokeWidth={2.4}
+                        lineCap="round"
+                        lineJoin="round"
+                    />
+                </Group>
             )}
         </Group>
     );

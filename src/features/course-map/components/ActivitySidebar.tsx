@@ -1,4 +1,8 @@
+import { useMemo, useState } from "react";
+import { ChevronDown, PartyPopper, Search } from "lucide-react";
 import type { Activity } from "../data/types.ts";
+import { es } from "../../../i18n/es.ts";
+import { Badge } from "../../../components/ui/Card.tsx";
 
 interface ActivitySidebarProps {
     activities: Activity[];
@@ -9,24 +13,27 @@ interface ActivitySidebarProps {
     className?: string;
 }
 
-// Moodle module names are open-ended; anything not listed gets the fallback icon.
-const MODNAME_ICONS: Record<string, string> = {
-    quiz: "\u{1F4DD}",
-    url: "\u{1F517}",
-    assign: "\u{1F4C4}",
-    resource: "\u{1F4DA}",
-    scorm: "\u{1F393}",
-    customcert: "\u{1F3C5}",
-    forum: "\u{1F4AC}",
+type ActivityType = keyof typeof es.activityTypes;
+
+const typeLabel = (modname: string) => es.activityTypes[modname as ActivityType] ?? es.activityTypes.default;
+
+// Type-colored left border, using the design-system status/accent tones.
+const TYPE_ACCENTS: Record<string, string> = {
+    quiz: "border-l-teal-dark",
+    scorm: "border-l-leaf-dark",
+    customcert: "border-l-sun-dark",
+    assign: "border-l-coral-dark",
+    resource: "border-l-slate-dark",
+    url: "border-l-ink",
 };
-const FALLBACK_ICON = "\u{1F4CE}";
+const DEFAULT_ACCENT = "border-l-slate-dark";
 
 const handleDragStart = (e: React.DragEvent<HTMLLIElement>, activity: Activity) => {
     e.dataTransfer.setData("application/json", JSON.stringify({ activityId: activity.activityId }));
     e.dataTransfer.effectAllowed = "copy";
 };
 
-const DEFAULT_CLASS_NAME = "flex w-64 shrink-0 flex-col border-r border-gray-200 bg-white p-4";
+const DEFAULT_CLASS_NAME = "flex w-64 shrink-0 flex-col border-r border-ink/10 bg-surface p-4";
 
 export const ActivitySidebar = ({
     activities,
@@ -36,69 +43,120 @@ export const ActivitySidebar = ({
     onRetry,
     className,
 }: ActivitySidebarProps) => {
-    const unplaced = activities.filter((activity) => !activity.placed);
+    const [search, setSearch] = useState("");
+    const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
+
+    const unplaced = useMemo(() => activities.filter((activity) => !activity.placed), [activities]);
+    const filtered = useMemo(() => {
+        const q = search.trim().toLowerCase();
+        return q ? unplaced.filter((activity) => activity.name.toLowerCase().includes(q)) : unplaced;
+    }, [unplaced, search]);
+
+    const sections = useMemo(() => {
+        const bySection = new Map<string, Activity[]>();
+        for (const activity of filtered) {
+            const list = bySection.get(activity.sectionName) ?? [];
+            list.push(activity);
+            bySection.set(activity.sectionName, list);
+        }
+        return Array.from(bySection.entries());
+    }, [filtered]);
+
+    const toggleSection = (name: string) => {
+        setCollapsedSections((current) => {
+            const next = new Set(current);
+            if (next.has(name)) next.delete(name);
+            else next.add(name);
+            return next;
+        });
+    };
 
     const renderList = () => {
         if (error) {
             return (
                 <div className="space-y-2">
-                    <p className="text-sm text-red-600">Could not load activities from Moodle.</p>
-                    <button
-                        type="button"
-                        onClick={onRetry}
-                        className="text-sm font-medium text-blue-600 hover:underline"
-                    >
-                        Retry
+                    <p className="text-sm text-coral-dark">{es.sidebar.loadError}</p>
+                    <button type="button" onClick={onRetry} className="text-sm font-medium text-teal-dark hover:underline">
+                        {es.app.retry}
                     </button>
                 </div>
             );
         }
-        if (isLoading) return <p className="text-sm text-gray-400">Loading activities...</p>;
-        if (unplaced.length === 0) return <p className="text-sm text-gray-400">All activities have been placed.</p>;
+        if (isLoading) return <p className="text-sm text-ink-soft">{es.sidebar.loading}</p>;
+        if (unplaced.length === 0) {
+            return (
+                <div className="flex flex-col items-center gap-2 rounded-md border border-dashed border-leaf-dark/30 bg-leaf-tint p-6 text-center">
+                    <PartyPopper size={22} className="text-leaf-dark" />
+                    <p className="text-sm font-semibold text-leaf-dark">{es.sidebar.empty}</p>
+                </div>
+            );
+        }
 
         return (
-            <ul className="space-y-2">
-                {unplaced.map((activity) => {
-                    const isPending = pendingActivityIds.includes(activity.activityId);
+            <div className="space-y-3">
+                {sections.map(([sectionName, items]) => {
+                    const isCollapsed = collapsedSections.has(sectionName);
                     return (
-                        <li
-                            key={activity.activityId}
-                            draggable={!isPending}
-                            aria-disabled={isPending}
-                            onDragStart={(e) => handleDragStart(e, activity)}
-                            className={`flex flex-col gap-1 rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-sm shadow-sm transition-colors ${
-                                isPending
-                                    ? "cursor-wait opacity-50"
-                                    : "cursor-grab hover:border-blue-300 hover:bg-blue-50 active:cursor-grabbing"
-                            }`}
-                        >
-                            <div className="flex items-center gap-2">
-                                <span className="text-lg leading-none">{MODNAME_ICONS[activity.modname] ?? FALLBACK_ICON}</span>
-                                <span className="flex-1 truncate text-gray-700">{activity.name}</span>
-                                <span className="text-[10px] font-medium uppercase text-gray-400">{activity.modname}</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-[11px] text-gray-400">
-                                <span className="truncate">{activity.sectionName}</span>
-                                {activity.hidden && (
-                                    <span className="shrink-0 rounded bg-amber-100 px-1.5 py-0.5 font-medium uppercase text-amber-700">
-                                        hidden
-                                    </span>
-                                )}
-                            </div>
-                        </li>
+                        <div key={sectionName}>
+                            <button
+                                type="button"
+                                onClick={() => toggleSection(sectionName)}
+                                className="flex w-full min-h-[32px] items-center justify-between text-left text-xs font-semibold uppercase tracking-wide text-ink-soft"
+                            >
+                                <span className="truncate">{sectionName}</span>
+                                <ChevronDown size={14} className={`shrink-0 transition-transform ${isCollapsed ? "-rotate-90" : ""}`} />
+                            </button>
+                            {!isCollapsed && (
+                                <ul className="mt-1.5 space-y-2">
+                                    {items.map((activity) => {
+                                        const isPending = pendingActivityIds.includes(activity.activityId);
+                                        return (
+                                            <li
+                                                key={activity.activityId}
+                                                draggable={!isPending}
+                                                aria-disabled={isPending}
+                                                onDragStart={(e) => handleDragStart(e, activity)}
+                                                className={`flex flex-col gap-1 rounded-md border-l-4 bg-surface-muted px-3 py-2 text-sm shadow-soft transition-colors ${
+                                                    TYPE_ACCENTS[activity.modname] ?? DEFAULT_ACCENT
+                                                } ${isPending ? "cursor-wait opacity-50" : "cursor-grab hover:bg-teal-tint active:cursor-grabbing"}`}
+                                            >
+                                                <div className="flex items-start justify-between gap-2">
+                                                    <span className="line-clamp-2 flex-1 text-ink">{activity.name}</span>
+                                                </div>
+                                                <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-ink-soft">
+                                                    <span className="font-medium">{typeLabel(activity.modname)}</span>
+                                                    {activity.hidden && <Badge tone="sun">{es.sidebar.hiddenBadge}</Badge>}
+                                                </div>
+                                            </li>
+                                        );
+                                    })}
+                                </ul>
+                            )}
+                        </div>
                     );
                 })}
-            </ul>
+            </div>
         );
     };
 
     return (
         <aside className={className ?? DEFAULT_CLASS_NAME}>
-            <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-gray-500">
-                Available Activities
-            </h2>
-            <p className="mb-3 text-xs text-gray-400">Drag an activity onto the map to place it.</p>
-            {renderList()}
+            <div className="mb-1 flex items-center justify-between">
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-soft">{es.sidebar.title}</h2>
+                <span className="text-xs font-semibold text-teal-dark">{es.sidebar.remainingCount(unplaced.length)}</span>
+            </div>
+            <p className="mb-3 text-xs text-ink-soft">{es.sidebar.hint}</p>
+            <div className="relative mb-3">
+                <Search size={14} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-dark" />
+                <input
+                    type="search"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder={es.sidebar.searchPlaceholder}
+                    className="h-9 w-full rounded-md border border-ink/10 bg-surface pl-8 pr-2 text-xs placeholder:text-slate-dark focus:border-teal-dark focus:outline-none"
+                />
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto">{renderList()}</div>
         </aside>
     );
 };

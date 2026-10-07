@@ -1,4 +1,8 @@
+import * as RadixDialog from "@radix-ui/react-dialog";
+import { X } from "lucide-react";
 import type { Activity, Bubble, BubbleStatus } from "../data/types.ts";
+import { es } from "../../../i18n/es.ts";
+import { Badge } from "../../../components/ui/Card.tsx";
 
 interface ActivitiesOverviewModalProps {
     open: boolean;
@@ -9,18 +13,19 @@ interface ActivitiesOverviewModalProps {
 }
 
 interface GroupDef {
-    title: string;
-    description: string;
+    key: "complete" | "in_progress" | "pending";
     statuses: BubbleStatus[];
+    tone: "leaf" | "teal" | "slate";
 }
 
 // Display-only for this sprint: reads the same bubbles/activities already in
-// state, doesn't touch points/scoring. See sprint brief - that's a separate,
-// backend-dependent feature.
+// state, doesn't touch points/scoring - that's a separate, backend-dependent
+// feature. Doubles as the accessible, keyboard-navigable equivalent of the
+// Konva canvas (see role="img" on MapCanvas's container).
 const GROUPS: GroupDef[] = [
-    { title: "Completed", description: "Finished activities", statuses: ["complete"] },
-    { title: "In progress", description: "Started but not finished", statuses: ["in_progress"] },
-    { title: "Locked / Pending", description: "Not yet available or not started", statuses: ["locked", "no_complete"] },
+    { key: "complete", statuses: ["complete"], tone: "leaf" },
+    { key: "in_progress", statuses: ["in_progress"], tone: "teal" },
+    { key: "pending", statuses: ["locked", "no_complete"], tone: "slate" },
 ];
 
 export const ActivitiesOverviewModal = ({
@@ -30,75 +35,71 @@ export const ActivitiesOverviewModal = ({
     onClose,
     onSelectBubble,
 }: ActivitiesOverviewModalProps) => {
-    if (!open) return null;
-
     const activityById = new Map(activities.map((activity) => [activity.activityId, activity]));
 
     return (
-        <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="Activities overview"
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-            onClick={onClose}
-        >
-            <div
-                className="flex max-h-[80vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl bg-white shadow-2xl"
-                onClick={(e) => e.stopPropagation()}
-            >
-                <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
-                    <h2 className="font-semibold text-gray-800">Activities overview</h2>
-                    <button
-                        type="button"
-                        onClick={onClose}
-                        aria-label="Close"
-                        className="rounded p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
-                    >
-                        &#10005;
-                    </button>
-                </div>
-                <div className="flex-1 space-y-5 overflow-y-auto p-4">
-                    {GROUPS.map((group) => {
-                        const groupBubbles = bubbles.filter((bubble) => group.statuses.includes(bubble.status));
-                        return (
-                            <section key={group.title}>
-                                <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
-                                    {group.title}{" "}
-                                    <span className="font-normal normal-case text-gray-400">({groupBubbles.length})</span>
-                                </h3>
-                                <p className="mb-2 text-xs text-gray-400">{group.description}</p>
-                                {groupBubbles.length === 0 ? (
-                                    <p className="text-sm text-gray-300">Nothing here yet.</p>
-                                ) : (
-                                    <ul className="space-y-1.5">
-                                        {groupBubbles.map((bubble) => {
-                                            const activity = activityById.get(bubble.activityId);
-                                            return (
-                                                <li key={bubble.id}>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => onSelectBubble(bubble)}
-                                                        className="flex w-full items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-left text-sm shadow-sm transition-colors hover:border-blue-300 hover:bg-blue-50"
-                                                    >
-                                                        <span className="truncate text-gray-700">
-                                                            {activity?.name ?? `Activity #${bubble.activityId}`}
-                                                        </span>
-                                                        {activity && (
-                                                            <span className="ml-3 shrink-0 text-[10px] font-medium uppercase text-gray-400">
-                                                                {activity.modname}
+        <RadixDialog.Root open={open} onOpenChange={(next) => !next && onClose()}>
+            <RadixDialog.Portal>
+                <RadixDialog.Overlay className="fixed inset-0 z-50 bg-ink/50 backdrop-blur-sm" />
+                <RadixDialog.Content className="fixed left-1/2 top-1/2 z-50 flex max-h-[80vh] w-[min(95vw,40rem)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-lg bg-surface shadow-soft focus:outline-none">
+                    <div className="flex items-center justify-between border-b border-ink/10 px-4 py-3">
+                        <RadixDialog.Title className="font-heading font-semibold text-ink">
+                            {es.overview.title}
+                        </RadixDialog.Title>
+                        <RadixDialog.Close
+                            aria-label={es.overview.close}
+                            className="rounded-pill p-1.5 text-ink-soft hover:bg-surface-muted hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-dark"
+                        >
+                            <X size={18} />
+                        </RadixDialog.Close>
+                    </div>
+                    <div className="flex-1 space-y-5 overflow-y-auto p-4">
+                        {GROUPS.map((group) => {
+                            const groupMeta = es.overview.groups[group.key];
+                            const groupBubbles = bubbles.filter((bubble) => group.statuses.includes(bubble.status));
+                            return (
+                                <section key={group.key}>
+                                    <div className="mb-1 flex items-center gap-2">
+                                        <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-soft">
+                                            {groupMeta.title}
+                                        </h3>
+                                        <Badge tone={group.tone}>{groupBubbles.length}</Badge>
+                                    </div>
+                                    <p className="mb-2 text-xs text-ink-soft/70">{groupMeta.description}</p>
+                                    {groupBubbles.length === 0 ? (
+                                        <p className="text-sm text-slate-dark">{es.overview.empty}</p>
+                                    ) : (
+                                        <ul className="space-y-1.5">
+                                            {groupBubbles.map((bubble) => {
+                                                const activity = activityById.get(bubble.activityId);
+                                                return (
+                                                    <li key={bubble.id}>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => onSelectBubble(bubble)}
+                                                            className="flex min-h-[44px] w-full items-center justify-between rounded-md border border-ink/10 bg-surface-muted px-3 py-2 text-left text-sm shadow-soft transition-colors hover:bg-teal-tint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-dark"
+                                                        >
+                                                            <span className="truncate text-ink">
+                                                                {activity?.name ?? `#${bubble.activityId}`}
                                                             </span>
-                                                        )}
-                                                    </button>
-                                                </li>
-                                            );
-                                        })}
-                                    </ul>
-                                )}
-                            </section>
-                        );
-                    })}
-                </div>
-            </div>
-        </div>
+                                                            {activity && (
+                                                                <span className="ml-3 shrink-0 text-[11px] font-medium uppercase text-ink-soft">
+                                                                    {es.activityTypes[activity.modname as keyof typeof es.activityTypes] ??
+                                                                        es.activityTypes.default}
+                                                                </span>
+                                                            )}
+                                                        </button>
+                                                    </li>
+                                                );
+                                            })}
+                                        </ul>
+                                    )}
+                                </section>
+                            );
+                        })}
+                    </div>
+                </RadixDialog.Content>
+            </RadixDialog.Portal>
+        </RadixDialog.Root>
     );
 };
