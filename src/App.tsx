@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { List, Loader2 } from "lucide-react";
+import { List, Loader2, RefreshCw } from "lucide-react";
 import { MapCanvas } from "./features/course-map/components/MapCanvas.tsx";
 import { ActivitySidebar } from "./features/course-map/components/ActivitySidebar.tsx";
 import { ActivityModal } from "./features/course-map/components/ActivityModal.tsx";
@@ -18,10 +18,11 @@ import {
     useCreateBubble,
     useDeleteBubble,
     usePendingActivityIds,
+    useResolvedCourseMap,
     useUpdateBubble,
 } from "./features/course-map/data/queries.ts";
 import { ApiError, isUnreachable } from "./features/course-map/data/client.ts";
-import type { Activity, Bubble } from "./features/course-map/data/types.ts";
+import type { Activity, Bubble, ResolvedBubble } from "./features/course-map/data/types.ts";
 import { useRoute } from "./hooks/useRoute.ts";
 import { Wordmark } from "./components/Logo.tsx";
 import { Button, IconButton } from "./components/ui/Button.tsx";
@@ -50,11 +51,13 @@ function AppShell() {
     const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
     const [isActivitiesOverviewOpen, setIsActivitiesOverviewOpen] = useState(false);
     const [focusBubbleId, setFocusBubbleId] = useState<string | null>(null);
+    const [cachedNoticeDismissed, setCachedNoticeDismissed] = useState(false);
 
     const courseMapId = route.name === "map" ? route.mapId : null;
 
     const courseMapQuery = useCourseMap(courseMapId);
     const activitiesQuery = useActivities(courseMapId, mode === "editor");
+    const resolvedQuery = useResolvedCourseMap(courseMapId, mode === "editor");
     const createBubble = useCreateBubble(courseMapId ?? "");
     const updateBubble = useUpdateBubble(courseMapId ?? "");
     const deleteBubble = useDeleteBubble(courseMapId ?? "");
@@ -73,6 +76,12 @@ function AppShell() {
     const activities = useMemo(() => activitiesQuery.data ?? [], [activitiesQuery.data]);
     const bubbles = useMemo(() => courseMapQuery.data?.bubbles ?? [], [courseMapQuery.data]);
     const unplacedCount = activities.filter((activity) => !activity.placed).length;
+
+    const resolvedByBubbleId = useMemo(
+        () => new Map<string, ResolvedBubble>((resolvedQuery.data?.bubbles ?? []).map((rb) => [rb.bubbleId, rb])),
+        [resolvedQuery.data]
+    );
+    const moodleStatus = resolvedQuery.data?.moodleStatus ?? null;
 
     const isSaving = updateBubble.isPending || createBubble.isPending || deleteBubble.isPending;
 
@@ -101,21 +110,29 @@ function AppShell() {
     );
 
     const handleBubbleClick = (bubble: Bubble) => {
-        const activity = activities.find((a) => a.activityId === bubble.activityId);
+        const resolved = resolvedByBubbleId.get(bubble.id);
+        const activity = resolved?.activity ?? activities.find((a) => a.activityId === bubble.activityId);
         if (activity) openActivity(activity);
     };
 
-    // TODO(availability): replace with GET /course-maps/{id}/resolved once the
-    // precise-states work lands; this is still the "is it in the live list"
-    // heuristic.
+    // Student view only (MapCanvas forces this to null in editor mode): joins
+    // GET /course-maps/{id}/resolved against the map's own bubbles to decide
+    // whether a bubble can be opened, replacing the old "is it in the live
+    // activities list" heuristic with the precise available/hidden/missing/
+    // unknown states from the backend.
     const getUnavailableReason = (bubble: Bubble): string | null => {
-        if (activitiesQuery.isPending) return es.bubble.loadingActivity;
-        if (activitiesQuery.isError) return es.bubble.activitiesUnavailable;
-        const activity = activities.find((a) => a.activityId === bubble.activityId);
-        if (!activity) return es.bubble.unavailable;
-        if (!isSafeActivityUrl(activity.url)) return es.bubble.cannotOpen;
+        if (resolvedQuery.isPending) return es.bubble.loadingActivity;
+        if (resolvedQuery.isError) return es.bubble.activitiesUnavailable;
+        const resolved = resolvedByBubbleId.get(bubble.id);
+        if (!resolved) return null;
+        if (resolved.availability === "hidden") return es.bubble.hiddenTooltipStudent;
+        if (resolved.availability === "missing") return es.bubble.unavailable;
+        if (resolved.availability === "unknown") return null;
+        if (resolved.activity && !isSafeActivityUrl(resolved.activity.url)) return es.bubble.cannotOpen;
         return null;
     };
+
+    const getAvailabilityForBubble = (bubble: Bubble) => resolvedByBubbleId.get(bubble.id)?.availability;
 
     const handleSelectBubbleFromOverview = (bubble: Bubble) => {
         setIsActivitiesOverviewOpen(false);
@@ -176,7 +193,9 @@ function AppShell() {
                 }}
                 onBubbleClick={handleBubbleClick}
                 getUnavailableReason={getUnavailableReason}
+                getAvailability={getAvailabilityForBubble}
                 getModnameForBubble={(bubble) => activities.find((a) => a.activityId === bubble.activityId)?.modname}
+                getResolvedActivity={(bubble) => resolvedByBubbleId.get(bubble.id)?.activity ?? null}
                 focusBubbleId={focusBubbleId}
                 onFocusHandled={() => setFocusBubbleId(null)}
             />
@@ -230,6 +249,34 @@ function AppShell() {
                         />
                     )}
                     <main className="flex min-h-0 flex-1 flex-col overflow-hidden p-6">
+                        {moodleStatus === "unavailable" && (
+                            <div
+                                role="alert"
+                                className="mb-3 flex items-center justify-between gap-3 rounded-md border border-sun/40 bg-sun-tint px-4 py-2 text-sm text-sun-dark"
+                            >
+                                <span>{es.moodleBanner.unavailable}</span>
+                                <button
+                                    type="button"
+                                    onClick={() => void resolvedQuery.refetch()}
+                                    className="flex shrink-0 items-center gap-1 font-medium hover:underline"
+                                >
+                                    <RefreshCw size={13} />
+                                    {es.moodleBanner.retry}
+                                </button>
+                            </div>
+                        )}
+                        {moodleStatus === "cached" && !cachedNoticeDismissed && (
+                            <div className="mb-3 flex items-center justify-between gap-3 rounded-md border border-ink/10 bg-surface-muted px-4 py-2 text-xs text-ink-soft">
+                                <span>{es.moodleBanner.cached}</span>
+                                <button
+                                    type="button"
+                                    onClick={() => setCachedNoticeDismissed(true)}
+                                    className="font-medium hover:underline"
+                                >
+                                    {es.app.dismiss}
+                                </button>
+                            </div>
+                        )}
                         {saveErrorMessage && (
                             <div
                                 role="alert"

@@ -10,11 +10,14 @@ const HOVER_SCALE = 1.12;
 const PULSE_SCALE = 1.3;
 const ICON_SIZE = 30;
 
-const Bubble = ({x, y, status, icon, draggable, onClick, onHoverChange, onDragEnd, onDragStart, pulseKey}: BubbleProps) => {
+const MUTED_FILL = "#8a94a6";
+
+const Bubble = ({x, y, status, icon, draggable, muted, warningRing, onClick, onHoverChange, onDragEnd, onDragStart, pulseKey}: BubbleProps) => {
     const {x: posX, y: posY} = toDesignSpace({x, y});
-    const isDarkIcon = STATUS_ICON_IS_DARK[status];
+    const isDarkIcon = !muted && STATUS_ICON_IS_DARK[status];
     const iconUris = isDarkIcon ? ICON_DATA_URIS_DARK : ICON_DATA_URIS_LIGHT;
     const [iconImage] = useImage(icon ? (iconUris[icon] ?? "") : "");
+    const fill = muted ? MUTED_FILL : STATUS_COLORS[status];
 
     const groupRef = useRef<Konva.Group>(null);
     const ringRef = useRef<Konva.Circle>(null);
@@ -25,7 +28,7 @@ const Bubble = ({x, y, status, icon, draggable, onClick, onHoverChange, onDragEn
     const [isPulsing, setIsPulsing] = useState(false);
     const prevStatusRef = useRef(status);
     const prevPulseKeyRef = useRef(pulseKey);
-    const isActionable = status === "no_complete" || status === "in_progress";
+    const isActionable = !muted && (status === "no_complete" || status === "in_progress");
 
     // Cosmetic-only feedback: briefly pulse when a bubble transitions to
     // "complete". Driven purely by the existing status field - no new data.
@@ -180,7 +183,11 @@ const Bubble = ({x, y, status, icon, draggable, onClick, onHoverChange, onDragEn
             onDragEnd={handleDragEnd}
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
+            opacity={muted ? 0.55 : 1}
         >
+            {warningRing && (
+                <Circle radius={37} stroke="#c23b3b" strokeWidth={2.5} dash={[6, 5]} listening={false}/>
+            )}
             {isPulsing && (
                 <Circle ref={ringRef} radius={30} stroke={STATUS_GLOW_COLORS[status]} strokeWidth={4} listening={false}/>
             )}
@@ -196,10 +203,10 @@ const Bubble = ({x, y, status, icon, draggable, onClick, onHoverChange, onDragEn
             <Circle
                 ref={circleRef}
                 radius={30}
-                fill={STATUS_COLORS[status]}
+                fill={fill}
                 stroke="white"
                 strokeWidth={3}
-                shadowColor={STATUS_GLOW_COLORS[status]}
+                shadowColor={muted ? MUTED_FILL : STATUS_GLOW_COLORS[status]}
                 shadowBlur={isHovered ? 18 : 0}
                 shadowOpacity={0.6}
             />
@@ -226,7 +233,7 @@ const Bubble = ({x, y, status, icon, draggable, onClick, onHoverChange, onDragEn
                     listening={false}
                 />
             )}
-            {status === "complete" && (
+            {status === "complete" && !muted && (
                 <Group x={20} y={-20} listening={false}>
                     <Circle radius={10} fill="white" stroke={STATUS_COLORS.complete} strokeWidth={2}/>
                     <Line

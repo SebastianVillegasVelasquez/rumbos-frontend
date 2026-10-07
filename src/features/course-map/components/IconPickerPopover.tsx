@@ -1,15 +1,19 @@
 import { useEffect, useRef, useState } from "react";
-import { Trash2 } from "lucide-react";
+import { ExternalLink, Trash2 } from "lucide-react";
 import { ICON_DATA_URIS_LIGHT, ICON_KEYS, ICON_LABELS, type IconKey } from "../icons.ts";
-import type { BubbleStatus } from "../data/types.ts";
+import type { Activity, Availability, BubbleStatus } from "../data/types.ts";
+import { isSafeActivityUrl } from "../activityOpener.ts";
 import { es } from "../../../i18n/es.ts";
 import { Button } from "../../../components/ui/Button.tsx";
+import { Badge } from "../../../components/ui/Card.tsx";
 
 interface IconPickerPopoverProps {
     x: number; // content-space pixels (design-space * current scale)
     y: number; // content-space pixels (design-space * current scale)
     currentIcon?: IconKey;
     currentStatus: BubbleStatus;
+    availability?: Availability;
+    resolvedActivity?: Activity | null;
     onSelect: (icon: IconKey) => void;
     onStatusSelect: (status: BubbleStatus) => void;
     onDelete: () => void;
@@ -31,6 +35,8 @@ export const IconPickerPopover = ({
     y,
     currentIcon,
     currentStatus,
+    availability,
+    resolvedActivity,
     onSelect,
     onStatusSelect,
     onDelete,
@@ -64,6 +70,28 @@ export const IconPickerPopover = ({
             className="absolute z-20 w-56 -translate-x-1/2 -translate-y-[calc(100%+16px)] space-y-3 rounded-lg border border-ink/10 bg-surface p-3 shadow-soft"
             style={{ left: x, top: y }}
         >
+            {availability === "hidden" && (
+                <div className="space-y-1 rounded-md bg-sun-tint p-2">
+                    <Badge tone="sun">{es.sidebar.hiddenBadge}</Badge>
+                    <p className="text-[11px] text-sun-dark">{es.bubble.hiddenHintEditor}</p>
+                </div>
+            )}
+            {availability === "missing" && (
+                <div className="space-y-1 rounded-md bg-coral-tint p-2">
+                    <p className="text-[11px] font-medium text-coral-dark">{es.bubble.missingHintEditor}</p>
+                </div>
+            )}
+            {resolvedActivity && isSafeActivityUrl(resolvedActivity.url) && (
+                <a
+                    href={resolvedActivity.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 text-xs font-medium text-teal-dark hover:underline"
+                >
+                    <ExternalLink size={12} />
+                    {es.bubble.openInMoodle}
+                </a>
+            )}
             <div className="grid grid-cols-4 gap-1.5">
                 {ICON_KEYS.map((key) => (
                     <button

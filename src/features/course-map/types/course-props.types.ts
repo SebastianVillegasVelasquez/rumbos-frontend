@@ -1,5 +1,5 @@
 import type { IconKey } from "../icons.ts";
-import type { Bubble, BubbleStatus, BubbleUpdate } from "../data/types.ts";
+import type { Activity, Availability, Bubble, BubbleStatus, BubbleUpdate } from "../data/types.ts";
 
 export const DESIGN_WIDTH = 1600;
 export const DESIGN_HEIGHT = 900;
@@ -36,6 +36,12 @@ export interface BubbleProps {
     status: BubbleStatus
     icon?: IconKey;
     draggable?: boolean;
+    // Student view: dims the bubble to slate and disables its idle/hover
+    // animation when the resolved availability is "hidden" or "missing".
+    muted?: boolean;
+    // Editor view: a coral ring flags a bubble whose activity no longer
+    // exists in Moodle (resolved availability "missing").
+    warningRing?: boolean;
     onClick?: () => void;
     onHoverChange?: (hovered: boolean) => void;
     onDragEnd?: (pos: { x: number; y: number }) => void;
@@ -62,6 +68,9 @@ export interface MapCanvasProps {
     // Used to derive a default icon (by Moodle modname) for bubbles with no
     // icon of their own, instead of the generic "?".
     getModnameForBubble?: (bubble: Bubble) => string | undefined;
+    // From GET /course-maps/{id}/resolved, joined by bubbleId.
+    getAvailability?: (bubble: Bubble) => Availability | undefined;
+    getResolvedActivity?: (bubble: Bubble) => Activity | null;
     // One-shot request to center the viewport on a bubble and briefly
     // highlight it (from the activities overview panel). MapCanvas calls
     // onFocusHandled once it's done so the same bubble can be re-focused.

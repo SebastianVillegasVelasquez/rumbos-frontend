@@ -64,6 +64,8 @@ export const MapCanvas = ({
     onBubbleClick,
     getUnavailableReason,
     getModnameForBubble,
+    getAvailability,
+    getResolvedActivity,
     focusBubbleId,
     onFocusHandled,
 }: MapCanvasProps) => {
@@ -447,21 +449,26 @@ export const MapCanvas = ({
                         )}
                     </Layer>
                     <Layer>
-                        {bubbles.map((bubble) => (
-                            <Bubble
-                                key={bubble.id}
-                                x={bubble.x}
-                                y={bubble.y}
-                                status={bubble.status}
-                                icon={iconFor(bubble)}
-                                draggable={editable}
-                                pulseKey={focusPulse?.bubbleId === bubble.id ? focusPulse.key : undefined}
-                                onClick={unavailableReasonFor(bubble) ? undefined : () => handleBubbleClick(bubble)}
-                                onHoverChange={(hovered) => setHoveredBubbleId(hovered ? bubble.id : null)}
-                                onDragStart={() => setIconPickerBubbleId(null)}
-                                onDragEnd={(pos) => handleBubbleDragEnd(bubble.id, pos)}
-                            />
-                        ))}
+                        {bubbles.map((bubble) => {
+                            const availability = getAvailability?.(bubble);
+                            return (
+                                <Bubble
+                                    key={bubble.id}
+                                    x={bubble.x}
+                                    y={bubble.y}
+                                    status={bubble.status}
+                                    icon={iconFor(bubble)}
+                                    draggable={editable}
+                                    muted={!editable && (availability === "hidden" || availability === "missing")}
+                                    warningRing={editable && availability === "missing"}
+                                    pulseKey={focusPulse?.bubbleId === bubble.id ? focusPulse.key : undefined}
+                                    onClick={unavailableReasonFor(bubble) ? undefined : () => handleBubbleClick(bubble)}
+                                    onHoverChange={(hovered) => setHoveredBubbleId(hovered ? bubble.id : null)}
+                                    onDragStart={() => setIconPickerBubbleId(null)}
+                                    onDragEnd={(pos) => handleBubbleDragEnd(bubble.id, pos)}
+                                />
+                            );
+                        })}
                     </Layer>
                 </Stage>
                 {hoveredUnavailableBubble && hoveredUnavailableReason && (
@@ -483,6 +490,8 @@ export const MapCanvas = ({
                         y={toDesignSpace({ x: iconPickerBubble.x, y: iconPickerBubble.y }).y * scale}
                         currentIcon={iconPickerBubble.icon ?? undefined}
                         currentStatus={iconPickerBubble.status}
+                        availability={getAvailability?.(iconPickerBubble)}
+                        resolvedActivity={getResolvedActivity?.(iconPickerBubble) ?? null}
                         onSelect={(icon) => handleIconSelect(iconPickerBubble.id, icon)}
                         onStatusSelect={(status) => handleStatusSelect(iconPickerBubble.id, status)}
                         onDelete={() => handleDelete(iconPickerBubble.id)}
