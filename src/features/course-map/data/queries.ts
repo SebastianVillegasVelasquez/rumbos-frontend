@@ -1,7 +1,17 @@
 import { useInfiniteQuery, useMutation, useMutationState, useQuery, useQueryClient } from "@tanstack/react-query";
 import { courseMapApi } from "./index.ts";
 import { ApiError } from "./client.ts";
-import type { BubbleCreate, BubbleUpdate, CourseMapDetail, CourseMapPatch } from "./types.ts";
+import type {
+    AppearanceUpdate,
+    AssetKind,
+    BubbleCreate,
+    BubbleUpdate,
+    CourseMapDetail,
+    CourseMapPatch,
+    ReorderCourseMapsInput,
+    SkinConfig,
+    SkinPatch,
+} from "./types.ts";
 
 const LIST_PAGE_SIZE = 24;
 
@@ -11,9 +21,10 @@ export const courseMapKeys = {
     resolved: (courseMapId: string, includeHidden: boolean) =>
         ["course-maps", courseMapId, "resolved", { includeHidden }] as const,
     activities: (courseMapId: string) => ["course-maps", courseMapId, "activities"] as const,
-    activitiesList: (courseMapId: string, includeHidden: boolean) =>
-        [...courseMapKeys.activities(courseMapId), { includeHidden }] as const,
+    activitiesList: (courseMapId: string, includeHidden: boolean, onlySection: boolean) =>
+        [...courseMapKeys.activities(courseMapId), { includeHidden, onlySection }] as const,
     createBubble: (courseMapId: string) => ["course-maps", courseMapId, "create-bubble"] as const,
+    skins: () => ["skins"] as const,
 };
 
 // A 4xx answer is a definitive "no" (not found, conflict, bad input), so only
@@ -75,12 +86,144 @@ export const useDeleteCourseMap = () => {
     });
 };
 
-export const useActivities = (courseMapId: string | null, includeHidden: boolean) =>
+export const useActivities = (courseMapId: string | null, includeHidden: boolean, onlySection: boolean) =>
     useQuery({
-        queryKey: courseMapKeys.activitiesList(courseMapId ?? "", includeHidden),
-        queryFn: () => courseMapApi.getActivities(courseMapId!, includeHidden),
+        queryKey: courseMapKeys.activitiesList(courseMapId ?? "", includeHidden, onlySection),
+        queryFn: () => courseMapApi.getActivities(courseMapId!, includeHidden, onlySection),
         enabled: courseMapId !== null,
         retry: retryTransient,
+    });
+
+// Optimistic across the whole course: a drag-reorder should feel instant, and
+// on failure every map in the course reverts, not just one.
+export const useReorderCourseMaps = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (input: ReorderCourseMapsInput) => courseMapApi.reorderCourseMaps(input),
+        onMutate: async (input) => {
+            const listKey = ["course-maps", "list"] as const;
+            await queryClient.cancelQueries({ queryKey: listKey });
+            const snapshots = queryClient.getQueriesData<{ pages: { items: { id: string }[] }[] }>({ queryKey: listKey });
+            const positionById = new Map(input.mapIds.map((id, index) => [id, index]));
+            for (const [key, data] of snapshots) {
+                if (!data) continue;
+                queryClient.setQueryData(key, {
+                    ...data,
+                    pages: data.pages.map((page) => ({
+                        ...page,
+                        items: page.items
+                            .map((item) => (positionById.has(item.id) ? { ...item, position: positionById.get(item.id) } : item))
+                            .sort((a, b) => {
+                                const posA = (a as { position?: number }).position ?? 0;
+                                const posB = (b as { position?: number }).position ?? 0;
+                                return posA - posB;
+                            }),
+                    })),
+                });
+            }
+            return { snapshots };
+        },
+        onError: (_error, _input, context) => {
+            context?.snapshots.forEach(([key, data]) => queryClient.setQueryData(key, data));
+        },
+        onSettled: () => {
+            void queryClient.invalidateQueries({ queryKey: ["course-maps", "list"] });
+        },
+    });
+};
+
+export const useUpdateAppearance = (courseMapId: string) => {
+    const queryClient = useQueryClient();
+    const detailKey = courseMapKeys.detail(courseMapId);
+    return useMutation({
+        mutationFn: (input: AppearanceUpdate) => courseMapApi.updateAppearance(courseMapId, input),
+        onMutate: async (input) => {
+            await queryClient.cancelQueries({ queryKey: detailKey });
+            const previous = queryClient.getQueryData<CourseMapDetail>(detailKey);
+            queryClient.setQueryData<CourseMapDetail>(detailKey, (current) => current && { ...current, ...input });
+            return { previous };
+        },
+        onError: (_error, _input, context) => {
+            if (context?.previous) queryClient.setQueryData(detailKey, context.previous);
+        },
+        onSettled: () => {
+            void queryClient.invalidateQueries({ queryKey: detailKey });
+        },
+    });
+};
+
+// Optimistic across the whole bubble list (unlike useUpdateBubble, which
+// patches a single bubble): a reorder drag needs every sequence to update at
+// once, and a failure needs every sequence to roll back at once.
+export const useReorderBubbles = (courseMapId: string) => {
+    const queryClient = useQueryClient();
+    const detailKey = courseMapKeys.detail(courseMapId);
+    return useMutation({
+        mutationFn: (bubbleIds: string[]) => courseMapApi.reorderBubbles(courseMapId, { bubbleIds }),
+        onMutate: async (bubbleIds) => {
+            await queryClient.cancelQueries({ queryKey: detailKey });
+            const previous = queryClient.getQueryData<CourseMapDetail>(detailKey);
+            const sequenceById = new Map(bubbleIds.map((id, index) => [id, index]));
+            queryClient.setQueryData<CourseMapDetail>(detailKey, (current) =>
+                current && {
+                    ...current,
+                    bubbles: current.bubbles.map((bubble) =>
+                        sequenceById.has(bubble.id) ? { ...bubble, sequence: sequenceById.get(bubble.id)! } : bubble
+                    ),
+                }
+            );
+            return { previous };
+        },
+        onError: (_error, _bubbleIds, context) => {
+            if (context?.previous) queryClient.setQueryData(detailKey, context.previous);
+        },
+        onSettled: () => {
+            void queryClient.invalidateQueries({ queryKey: detailKey });
+        },
+    });
+};
+
+export const useSkins = () =>
+    useQuery({
+        queryKey: courseMapKeys.skins(),
+        queryFn: () => courseMapApi.listSkins(),
+        retry: retryTransient,
+    });
+
+export const useCreateSkin = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ name, config }: { name: string; config: SkinConfig }) =>
+            courseMapApi.createSkin({ name, config }),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: courseMapKeys.skins() });
+        },
+    });
+};
+
+export const useUpdateSkin = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ skinId, input }: { skinId: string; input: SkinPatch }) => courseMapApi.patchSkin(skinId, input),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: courseMapKeys.skins() });
+        },
+    });
+};
+
+export const useDeleteSkin = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (skinId: string) => courseMapApi.deleteSkin(skinId),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: courseMapKeys.skins() });
+        },
+    });
+};
+
+export const useCreateAsset = () =>
+    useMutation({
+        mutationFn: ({ file, kind }: { file: File; kind: AssetKind }) => courseMapApi.createAsset(file, kind),
     });
 
 export const useCreateCourseMap = () => {

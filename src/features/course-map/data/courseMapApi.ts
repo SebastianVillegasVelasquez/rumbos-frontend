@@ -1,6 +1,9 @@
-import { apiRequest } from "./client.ts";
+import { apiRequest, apiUpload } from "./client.ts";
 import type {
     Activity,
+    AppearanceUpdate,
+    Asset,
+    AssetKind,
     Bubble,
     BubbleCreate,
     BubbleUpdate,
@@ -10,7 +13,15 @@ import type {
     CourseMapListResult,
     CourseMapPatch,
     CourseMapSummary,
+    ReorderBubblesInput,
+    ReorderBubblesResult,
+    ReorderCourseMapsInput,
+    ReorderCourseMapsResult,
     ResolvedCourseMap,
+    Skin,
+    SkinCreate,
+    SkinListResult,
+    SkinPatch,
 } from "./types.ts";
 
 // The single seam between components and transport. Components use the query
@@ -21,11 +32,19 @@ export interface CourseMapApi {
     getCourseMap(courseMapId: string): Promise<CourseMapDetail>;
     patchCourseMap(courseMapId: string, input: CourseMapPatch): Promise<CourseMapDetail>;
     deleteCourseMap(courseMapId: string): Promise<void>;
+    reorderCourseMaps(input: ReorderCourseMapsInput): Promise<ReorderCourseMapsResult>;
+    updateAppearance(courseMapId: string, input: AppearanceUpdate): Promise<CourseMapDetail>;
     getResolvedCourseMap(courseMapId: string, includeHidden: boolean): Promise<ResolvedCourseMap>;
-    getActivities(courseMapId: string, includeHidden: boolean): Promise<Activity[]>;
+    getActivities(courseMapId: string, includeHidden: boolean, onlySection: boolean): Promise<Activity[]>;
     createBubble(courseMapId: string, input: BubbleCreate): Promise<Bubble>;
     updateBubble(courseMapId: string, bubbleId: string, input: BubbleUpdate): Promise<Bubble>;
     deleteBubble(courseMapId: string, bubbleId: string): Promise<void>;
+    reorderBubbles(courseMapId: string, input: ReorderBubblesInput): Promise<ReorderBubblesResult>;
+    listSkins(): Promise<SkinListResult>;
+    createSkin(input: SkinCreate): Promise<Skin>;
+    patchSkin(skinId: string, input: SkinPatch): Promise<Skin>;
+    deleteSkin(skinId: string): Promise<void>;
+    createAsset(file: File, kind: AssetKind): Promise<Asset>;
 }
 
 const base = (courseMapId: string) => `/course-maps/${encodeURIComponent(courseMapId)}`;
@@ -52,11 +71,16 @@ export const realCourseMapApi: CourseMapApi = {
 
     deleteCourseMap: (courseMapId) => apiRequest(base(courseMapId), { method: "DELETE" }),
 
+    reorderCourseMaps: (input) => apiRequest("/course-maps/order", { method: "PUT", body: input }),
+
+    updateAppearance: (courseMapId, input) =>
+        apiRequest(`${base(courseMapId)}/appearance`, { method: "PUT", body: input }),
+
     getResolvedCourseMap: (courseMapId, includeHidden) =>
         apiRequest(`${base(courseMapId)}/resolved${buildQuery({ includeHidden })}`),
 
-    getActivities: (courseMapId, includeHidden) =>
-        apiRequest(`${base(courseMapId)}/activities?includeHidden=${includeHidden}`),
+    getActivities: (courseMapId, includeHidden, onlySection) =>
+        apiRequest(`${base(courseMapId)}/activities${buildQuery({ includeHidden, onlySection })}`),
 
     createBubble: (courseMapId, input) =>
         apiRequest(`${base(courseMapId)}/bubbles`, { method: "POST", body: input }),
@@ -69,4 +93,23 @@ export const realCourseMapApi: CourseMapApi = {
 
     deleteBubble: (courseMapId, bubbleId) =>
         apiRequest(`${base(courseMapId)}/bubbles/${encodeURIComponent(bubbleId)}`, { method: "DELETE" }),
+
+    reorderBubbles: (courseMapId, input) =>
+        apiRequest(`${base(courseMapId)}/bubbles/order`, { method: "PUT", body: input }),
+
+    listSkins: () => apiRequest("/skins"),
+
+    createSkin: (input) => apiRequest("/skins", { method: "POST", body: input }),
+
+    patchSkin: (skinId, input) =>
+        apiRequest(`/skins/${encodeURIComponent(skinId)}`, { method: "PATCH", body: input }),
+
+    deleteSkin: (skinId) => apiRequest(`/skins/${encodeURIComponent(skinId)}`, { method: "DELETE" }),
+
+    createAsset: (file, kind) => {
+        const form = new FormData();
+        form.set("file", file);
+        form.set("kind", kind);
+        return apiUpload("/assets", form);
+    },
 };

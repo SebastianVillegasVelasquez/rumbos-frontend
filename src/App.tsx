@@ -61,7 +61,7 @@ function AppShell() {
     const courseMapId = route.name === "map" ? route.mapId : null;
 
     const courseMapQuery = useCourseMap(courseMapId);
-    const activitiesQuery = useActivities(courseMapId, mode === "editor");
+    const activitiesQuery = useActivities(courseMapId, mode === "editor", false);
     const resolvedQuery = useResolvedCourseMap(courseMapId, mode === "editor");
     const createBubble = useCreateBubble(courseMapId ?? "");
     const updateBubble = useUpdateBubble(courseMapId ?? "");

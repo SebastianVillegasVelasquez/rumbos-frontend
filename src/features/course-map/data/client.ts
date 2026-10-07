@@ -1,4 +1,6 @@
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
+import type { ApiErrorDetail } from "./types.ts";
+
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || "/api";
 
 export class ApiError extends Error {
     readonly status: number;
@@ -9,6 +11,17 @@ export class ApiError extends Error {
         this.name = "ApiError";
         this.status = status;
         this.body = body;
+    }
+
+    // Business errors use `detail = { code, message, ...extras }`. Falls back
+    // to a generic code when the body doesn't match that shape (network
+    // errors, plain-text 5xx responses, etc).
+    get detail(): ApiErrorDetail {
+        const body = this.body;
+        if (body && typeof body === "object" && "code" in body && "message" in body) {
+            return body as ApiErrorDetail;
+        }
+        return { code: "unknown_error", message: typeof body === "string" ? body : this.message };
     }
 }
 
@@ -38,6 +51,21 @@ export async function apiRequest<T>(path: string, options: { method?: string; bo
     }
 
     if (response.status === 204) return undefined as T;
+
+    const parsed = parseBody(await response.text());
+    if (!response.ok) throw new ApiError(response.status, parsed);
+    return parsed as T;
+}
+
+// Multipart upload for /assets. Separate from apiRequest because the body is
+// FormData, not JSON (no Content-Type header: the browser sets the boundary).
+export async function apiUpload<T>(path: string, form: FormData): Promise<T> {
+    let response: Response;
+    try {
+        response = await fetch(`${API_BASE_URL}${path}`, { method: "POST", body: form });
+    } catch {
+        throw new ApiError(0, undefined);
+    }
 
     const parsed = parseBody(await response.text());
     if (!response.ok) throw new ApiError(response.status, parsed);
