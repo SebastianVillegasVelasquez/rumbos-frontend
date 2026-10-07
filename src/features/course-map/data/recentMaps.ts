@@ -1,14 +1,15 @@
-// Local-only history of opened course maps, keyed by browser. There is no
-// backend endpoint to list or search maps by moodleCourseId, so this is how a
-// teacher gets back to a map they already created without memorizing its UUID.
+// Local-only history of opened course maps, keyed by browser. Now that
+// GET /course-maps exists, this is purely the per-viewer "Continuar donde lo
+// dejaste" convenience on the home screen, not the primary way to find a map.
 
-import type { CourseMapSummary } from "./types.ts";
+import type { CourseMapRead } from "./types.ts";
 
 const STORAGE_KEY = "rumbos:recent-course-maps";
 const MAX_ENTRIES = 8;
 
 export interface RecentCourseMap {
     id: string;
+    title: string;
     moodleCourseId: number;
     imageUrl: string;
     openedAt: string;
@@ -28,7 +29,7 @@ const readAll = (): RecentCourseMap[] => {
 export const getRecentCourseMaps = (): RecentCourseMap[] =>
     readAll().sort((a, b) => b.openedAt.localeCompare(a.openedAt));
 
-export const rememberCourseMap = (map: Pick<CourseMapSummary, "id" | "moodleCourseId" | "imageUrl">) => {
+export const rememberCourseMap = (map: Pick<CourseMapRead, "id" | "title" | "moodleCourseId" | "imageUrl">) => {
     const rest = readAll().filter((entry) => entry.id !== map.id);
     const next = [{ ...map, openedAt: new Date().toISOString() }, ...rest].slice(0, MAX_ENTRIES);
     try {
