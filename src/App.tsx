@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, lazy, useEffect, useMemo, useState } from "react";
 import { List, Loader2, RefreshCw } from "lucide-react";
-import { MapCanvas } from "./features/course-map/components/MapCanvas.tsx";
 import { ActivitySidebar } from "./features/course-map/components/ActivitySidebar.tsx";
 import { ActivityModal } from "./features/course-map/components/ActivityModal.tsx";
 import { ActivitiesOverviewModal } from "./features/course-map/components/ActivitiesOverviewModal.tsx";
@@ -32,6 +31,12 @@ import { useToast } from "./components/ui/toastContext.ts";
 import { es } from "./i18n/es.ts";
 
 type Mode = "editor" | "student";
+
+// Konva (and its React bindings) is only needed once a map is actually open,
+// so it's kept out of the "Mis mapas" home bundle.
+const MapCanvas = lazy(() =>
+    import("./features/course-map/components/MapCanvas.tsx").then((m) => ({ default: m.MapCanvas }))
+);
 
 document.title = `${es.app.wordmark} — ${es.home.title}`;
 
@@ -171,6 +176,14 @@ function AppShell() {
         }
 
         return (
+            <Suspense
+                fallback={
+                    <p className="flex items-center gap-2 text-sm text-ink-soft">
+                        <Loader2 size={16} className="animate-spin" />
+                        {es.app.loadingCourseMap}
+                    </p>
+                }
+            >
             <MapCanvas
                 backgroundUrl={courseMapQuery.data.imageUrl}
                 bubbles={bubbles}
@@ -199,6 +212,7 @@ function AppShell() {
                 focusBubbleId={focusBubbleId}
                 onFocusHandled={() => setFocusBubbleId(null)}
             />
+            </Suspense>
         );
     };
 
