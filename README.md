@@ -1,9 +1,9 @@
 # Rumbos frontend
 
-React + TypeScript + Vite + Tailwind + Konva. Renders a course map from the
-Rumbos backend: teachers place Moodle activities as bubbles on a background
-image, and students open them. The UI is entirely in Spanish (`<html lang="es">`);
-see `src/i18n/es.ts` for the string dictionary.
+React + TypeScript + Vite + Tailwind + Konva. Renders a course as one or more
+level maps: teachers place Moodle activities as bubbles on a background
+image, style them with skins, and students open them. The UI is entirely in
+Spanish (`<html lang="es">`); see `src/i18n/es.ts` for the string dictionary.
 
 ## Running against the backend
 
@@ -22,7 +22,8 @@ see `src/i18n/es.ts` for the string dictionary.
    ```
 
 4. Open `http://localhost:5173/`. With no query string the app shows "Mis
-   mapas", a searchable grid of existing course maps with create/rename/delete.
+   mapas": a searchable grid of courses (multi-level courses show one card
+   leading into their level carousel) with create/rename/delete.
 
 In development the Vite dev server proxies `/api/*` to the backend
 (`VITE_API_PROXY_TARGET`, with the `/api` prefix stripped), so no CORS setup is
@@ -34,17 +35,23 @@ Navigation is a tiny `history.pushState`/`popstate` wrapper (`src/hooks/useRoute
 no router dependency:
 
 - *(no query string)* — "Mis mapas" home.
-- `?map=<course-map-uuid>` — opens that map directly.
-- `?course=<moodleCourseId>` — looks up the map for that Moodle course (the
-  future entry point when launched from Moodle); if none exists yet, opens
-  the home screen with the create dialog pre-filled for that course id.
+- `?map=<course-map-uuid>` — opens that level directly.
+- `?course=<moodleCourseId>` — the course's levels: a single level opens
+  directly, several show the level carousel (`&entry=1` forces the carousel
+  even with a single level), and none shows an empty state (an editor gets a
+  "crear el primer nivel" CTA; a student sees there's nothing yet). This is
+  also the future entry point when launched from Moodle.
 
 ## Running without a backend
 
-Set `VITE_USE_MOCK_API=true`. The app then uses an in-memory mock that follows
-the backend's rules (multiple maps, list/search/pagination, patch, delete,
-`/resolved`). Its state resets on every page reload, seeded with a few sample
-maps.
+Set `VITE_USE_MOCK_API=true`. The app then uses an in-memory mock that
+follows the backend's contract v2: several levels per Moodle course (unique
+per Moodle section, not per course), map settings/appearance, skins (four
+built-in procedural skins plus whatever you create in the studio), an asset
+store for uploaded images, and the full `/resolved` availability contract.
+Its state resets on every full page reload, reseeded with a Fundamentos de
+programación course that has three levels (different bubble counts, modes
+and completion states) plus a few single-level courses.
 
 ### Forcing a Moodle-connectivity state in the mock
 
@@ -59,6 +66,35 @@ for demoing the precise-availability-states UI without a real Moodle:
 | `cached` | `moodleStatus: "cached"`; availability resolves normally. |
 
 Example: `http://localhost:5173/?map=<uuid>&mockMoodle=hidden`.
+
+### Forcing an asset-upload failure in the mock
+
+Append `?mockAssets=<state>` to the appearance studio's URL to demo the
+image-skin/background upload error states:
+
+| Value | Effect |
+| --- | --- |
+| `quota` | Every upload fails with `asset_quota_exceeded` (507). |
+| `down` | Every upload fails with `uploads_disabled` (503). |
+
+### Debug flags
+
+| Flag | Effect |
+| --- | --- |
+| `?debug=fps` | Shows a dev-only rolling FPS counter (top-left), independent of the shared ticker so it measures real frame time. |
+
+## Procedural animation and quality tiers
+
+Bubble idle/hover/pulse animation, the connector path's flow and traveler
+dot, the ambient weather layer, and the level-complete celebration all live
+under `src/fx/` and share one `Konva.Animation` ticker
+(`src/features/course-map/viewport/ticker.ts`) with the pan/zoom camera —
+never a second RAF loop. Quality is `auto | high | medium | low | off`:
+"auto" samples real frame time for a few seconds and degrades one tier if
+it's too slow (never upgrades mid-session, and never re-samples), and
+`prefers-reduced-motion` always forces `off`. The chosen setting persists
+per-viewer in `localStorage` (`rumbos:animation-quality`) and is controlled
+from the appearance studio's "Animación" tab.
 
 ## Environment variables
 
@@ -83,9 +119,16 @@ The dev proxy does not exist in production. Serve the built app and the API
 from the same origin through a reverse proxy, or enable CORS for the frontend
 origin on the backend. The backend is not changed by this repository.
 
-The map view (Konva + its React bindings) is code-split via `React.lazy` and
-only downloaded once a map is actually opened, keeping the "Mis mapas" home
-bundle lighter.
+The map view (`MapCanvas`) and the appearance studio (`AppearanceStudio`,
+whose skin previews pull in the same Konva machinery) are both code-split via
+`React.lazy`, so Konva is only downloaded once either is actually opened,
+keeping the "Mis mapas" home bundle lighter. `MapCanvas` and
+`AppearanceStudio` share a single Konva-dependent chunk (`BubbleVisual` and
+everything it imports), so opening one doesn't pay for Konva twice if you
+later open the other. As of this sprint: the shared Konva chunk is ~338 KB
+(~104 KB gzipped); the rest of the app (home, data layer, every non-Konva UI
+component) is ~435 KB (~136 KB gzipped) and never touches Konva. Run
+`pnpm build` to regenerate these numbers for any future change.
 
 ## Scripts
 
@@ -96,10 +139,29 @@ bundle lighter.
 ## Structure
 
 - `src/features/course-map/data/`: API types, the fetch client (`ApiError`),
-  the real and mock API implementations, and the TanStack Query hooks.
-  Components use only the hooks, never fetch.
-- `src/features/course-map/components/`: the home screen (`MapsHome`), map
-  canvas, bubbles, sidebar, popovers, modals and the student HUD.
+  the real and mock API implementations, the asset URL resolver
+  (`assets.ts`), and the TanStack Query hooks. Components use only the
+  hooks, never fetch.
+- `src/features/course-map/viewport/`: the single viewport controller
+  (`useViewportController`) that owns pan/zoom/fly-to for the canvas, its
+  pure math (`math.ts`), and the shared animation ticker (`ticker.ts`).
+- `src/fx/`: the procedural animation engine - quality tiers
+  (`quality.ts`), tunable constants (`constants.ts`), pure math
+  (`math/`: easing, seeded RNG, polyline point sampling, a particle-pool
+  stepper), the ambient weather layer (`AmbientLayer.tsx`), path-effect
+  helpers (`path.ts`), and the dev FPS meter (`FpsMeter.tsx`).
+- `src/features/course-map/visualState.ts`: `deriveVisualState`, the single
+  pure function from a bubble's status/sequence/map-mode/resolved
+  availability/viewer role to its on-screen state
+  (locked/available/next/inProgress/complete/teaser/missing/unknown).
+- `src/features/course-map/resolveSkin.ts`: the pure bubble→skin lookup
+  (override → per-type rule → map default → built-in default → hard-coded
+  fallback).
+- `src/features/course-map/components/`: the home screen (`MapsHome`), the
+  level carousel and course-entry screen (`LevelCarousel`, `CourseLevels`),
+  map canvas, bubble rendering (`BubbleVisual`, shared by the canvas and
+  every skin preview), sidebar, popovers, modals, the appearance studio
+  (`AppearanceStudio`, `SkinStudio`, `SkinPreview`) and the student HUD.
 - `src/features/course-map/activityOpener.ts`: how a student opens an activity,
   and the URL check that guards it.
 - `src/features/course-map/data/recentMaps.ts`: a per-browser localStorage
@@ -111,4 +173,5 @@ bundle lighter.
   from it instead of hard-coding text.
 - `src/hooks/useRoute.ts`: the pushState/popstate routing hook.
 - `src/assets/backgrounds/`: the bundled background registry for the
-  map-create dialog (image upload is out of scope).
+  map-create dialog (alongside uploading your own background in the
+  appearance studio).

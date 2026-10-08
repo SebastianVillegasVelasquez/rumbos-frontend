@@ -120,19 +120,3 @@ h1, h2, h3, h4 {
     font-family: var(--font-heading);
 }
 
-@keyframes rumbos-dash {
-    to {
-        stroke-dashoffset: -24;
-    }
-}
-
-@keyframes rumbos-pulse {
-    0%, 100% {
-        opacity: 1;
-        transform: scale(1);
-    }
-    50% {
-        opacity: 0.55;
-        transform: scale(1.08);
-    }
-}

@@ -1,7 +1,9 @@
 // Pure math for the map viewport: wheel normalization, axis locking, camera
-// clamping and cursor-anchored zoom. Kept dependency-free so it's easy to
-// reason about (and test, if a runner is ever added) in isolation from Konva
-// and React.
+// clamping and cursor-anchored zoom. Kept dependency-free (besides the
+// shared easing module) so it's easy to reason about - and test, if a
+// runner is ever added - in isolation from Konva and React.
+
+export { easeOutCubic } from "../../../fx/math/easing.ts";
 
 export interface Size {
     width: number;
@@ -24,8 +26,6 @@ export interface Bounds {
 export const clampNum = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max);
 
 export const lerp = (a: number, b: number, t: number) => a + (b - a) * t;
-
-export const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
 
 const LINE_HEIGHT_PX = 16;
 const MAX_WHEEL_DELTA = 120;
