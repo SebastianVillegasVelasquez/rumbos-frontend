@@ -212,7 +212,7 @@ export function useViewportController(options: ViewportOptions = {}) {
         const vw = viewportSizeRef.current.width;
         const vh = viewportSizeRef.current.height;
         const to = clampCamera({ x: vw / 2 - x * scale, y: vh / 2 - y * scale, scale }, bounds(), margin);
-        if (reducedMotionRef.current) {
+        if (reducedMotionRef.current || durationMs <= 0) {
             setPos(to);
             return;
         }

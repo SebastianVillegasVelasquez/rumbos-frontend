@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ExternalLink, Trash2 } from "lucide-react";
 import { ICON_DATA_URIS_LIGHT, ICON_KEYS, ICON_LABELS, type IconKey } from "../icons.ts";
-import type { Activity, Availability, BubbleStatus } from "../data/types.ts";
+import type { Activity, Availability, BubbleStatus, Skin } from "../data/types.ts";
 import { isSafeActivityUrl } from "../activityOpener.ts";
 import { es } from "../../../i18n/es.ts";
 import { Button } from "../../../components/ui/Button.tsx";
@@ -18,6 +18,13 @@ interface IconPickerPopoverProps {
     onStatusSelect: (status: BubbleStatus) => void;
     onDelete: () => void;
     onClose: () => void;
+    // Per-bubble skin override - "apply to this bubble" / "clear override"
+    // from the appearance studio's skin gallery happen here, in context,
+    // rather than requiring a separate canvas-selection concept in the
+    // studio itself.
+    skins?: Skin[];
+    currentSkinId?: string | null;
+    onSkinSelect?: (skinId: string | null) => void;
 }
 
 const STATUS_OPTIONS: { value: BubbleStatus; label: string }[] = [
@@ -41,6 +48,9 @@ export const IconPickerPopover = ({
     onStatusSelect,
     onDelete,
     onClose,
+    skins,
+    currentSkinId,
+    onSkinSelect,
 }: IconPickerPopoverProps) => {
     const popoverRef = useRef<HTMLDivElement>(null);
     const [isConfirmingDelete, setIsConfirmingDelete] = useState(false);
@@ -117,6 +127,26 @@ export const IconPickerPopover = ({
                     </button>
                 ))}
             </div>
+
+            {skins && skins.length > 0 && onSkinSelect && (
+                <label className="block space-y-1">
+                    <span className="text-[10px] font-semibold uppercase tracking-wide text-ink-soft">
+                        {es.studio.bubbles.applyToSelected}
+                    </span>
+                    <select
+                        value={currentSkinId ?? ""}
+                        onChange={(e) => onSkinSelect(e.target.value || null)}
+                        className="w-full rounded-md border border-ink/10 px-2 py-1.5 text-xs"
+                    >
+                        <option value="">{es.studio.bubbles.clearOverride}</option>
+                        {skins.map((skin) => (
+                            <option key={skin.id} value={skin.id}>
+                                {skin.name}
+                            </option>
+                        ))}
+                    </select>
+                </label>
+            )}
 
             {/* Demo only: real status will come from Moodle completion in a later phase. */}
             <label className="block space-y-1">

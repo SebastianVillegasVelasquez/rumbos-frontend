@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useMemo, useState } from "react";
+import { Suspense, lazy, useEffect, useMemo, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight, List, Loader2, RefreshCw } from "lucide-react";
 import { ActivitySidebar } from "./features/course-map/components/ActivitySidebar.tsx";
 import { ActivityModal } from "./features/course-map/components/ActivityModal.tsx";
@@ -22,11 +22,12 @@ import {
     useResolvedCourseMap,
     useSkins,
     useUpdateBubble,
+    useUpdateCourseMap,
 } from "./features/course-map/data/queries.ts";
 import { ApiError, isUnreachable } from "./features/course-map/data/client.ts";
 import { resolveImageUrl } from "./features/course-map/data/assets.ts";
 import { courseTitleFrom } from "./features/course-map/courseTitle.ts";
-import type { Activity, Bubble, ResolvedBubble } from "./features/course-map/data/types.ts";
+import type { Activity, Bubble, MapInitialView, ResolvedBubble } from "./features/course-map/data/types.ts";
 import { useRoute } from "./hooks/useRoute.ts";
 import { Wordmark } from "./components/Logo.tsx";
 import { Button, IconButton } from "./components/ui/Button.tsx";
@@ -36,7 +37,6 @@ import { useToast } from "./components/ui/toastContext.ts";
 import { es } from "./i18n/es.ts";
 import { FpsMeter } from "./fx/FpsMeter.tsx";
 import { isFpsDebugEnabled } from "./fx/debug.ts";
-import { useAnimationQuality, type QualitySetting } from "./fx/quality.ts";
 
 type Mode = "editor" | "student";
 
@@ -44,6 +44,11 @@ type Mode = "editor" | "student";
 // so it's kept out of the "Mis mapas" home bundle.
 const MapCanvas = lazy(() =>
     import("./features/course-map/components/MapCanvas.tsx").then((m) => ({ default: m.MapCanvas }))
+);
+// Also Konva-heavy (skin previews render through the same BubbleVisual/Stage
+// machinery as the canvas), so it's lazy for the same reason.
+const AppearanceStudio = lazy(() =>
+    import("./features/course-map/components/AppearanceStudio.tsx").then((m) => ({ default: m.AppearanceStudio }))
 );
 
 document.title = `${es.app.wordmark} — ${es.home.title}`;
@@ -66,6 +71,11 @@ function AppShell() {
     const [isActivitiesOverviewOpen, setIsActivitiesOverviewOpen] = useState(false);
     const [focusBubbleId, setFocusBubbleId] = useState<string | null>(null);
     const [cachedNoticeDismissed, setCachedNoticeDismissed] = useState(false);
+    const [isAppearanceOpen, setIsAppearanceOpen] = useState(false);
+    // Written on every MapCanvas viewport tick (see onViewportChange below),
+    // read once when the appearance studio's "usar vista actual" is clicked -
+    // a ref, not state, so panning/zooming never re-renders AppShell.
+    const latestViewportRef = useRef<MapInitialView | null>(null);
 
     const courseMapId = route.name === "map" ? route.mapId : null;
 
@@ -81,6 +91,7 @@ function AppShell() {
     const deleteBubble = useDeleteBubble(courseMapId ?? "");
     const pendingActivityIds = usePendingActivityIds(courseMapId ?? "");
     const skinsQuery = useSkins();
+    const updateCourseMap = useUpdateCourseMap();
     // Siblings of the currently-open level, for the breadcrumb and prev/next
     // navigation - only meaningful once we know which course this map
     // belongs to, so it's fetched off the map detail query, not the route.
@@ -213,8 +224,11 @@ function AppShell() {
                 editable={mode === "editor"}
                 fit={courseMapQuery.data.settings.fit}
                 mapMode={courseMapQuery.data.settings.mode}
+                initialView={courseMapQuery.data.settings.initialView}
+                intro={courseMapQuery.data.settings.intro}
                 pathSettings={courseMapQuery.data.settings.path}
                 ambient={courseMapQuery.data.settings.ambient}
+                onViewportChange={(view) => (latestViewportRef.current = view)}
                 skins={skinsQuery.data?.items ?? []}
                 defaultSkinId={courseMapQuery.data.defaultSkinId}
                 skinRules={courseMapQuery.data.skinRules}
@@ -306,6 +320,7 @@ function AppShell() {
                     onModeChange={setMode}
                     isSaving={isSaving}
                     onActivitiesOverview={() => setIsActivitiesOverviewOpen(true)}
+                    onAppearance={mode === "editor" ? () => setIsAppearanceOpen(true) : undefined}
                 />
                 <div className="flex flex-1 overflow-hidden">
                     {mode === "editor" && (
@@ -419,6 +434,18 @@ function AppShell() {
                     onClose={() => setIsActivitiesOverviewOpen(false)}
                     onSelectBubble={handleSelectBubbleFromOverview}
                 />
+
+                {isAppearanceOpen && courseMapQuery.data && (
+                    <Suspense fallback={null}>
+                        <AppearanceStudio
+                            courseMap={courseMapQuery.data}
+                            skins={skinsQuery.data?.items ?? []}
+                            getCurrentView={() => latestViewportRef.current}
+                            onClose={() => setIsAppearanceOpen(false)}
+                            onBackgroundChange={(url) => updateCourseMap.mutate({ courseMapId: courseMapQuery.data!.id, input: { imageUrl: url } })}
+                        />
+                    </Suspense>
+                )}
             </div>
     );
 }
@@ -434,6 +461,7 @@ const AppHeader = ({
     onModeChange,
     isSaving,
     onActivitiesOverview,
+    onAppearance,
 }: {
     onHome: () => void;
     mapTitle?: string;
@@ -445,9 +473,8 @@ const AppHeader = ({
     onModeChange?: (mode: Mode) => void;
     isSaving?: boolean;
     onActivitiesOverview?: () => void;
+    onAppearance?: () => void;
 }) => {
-    const { setting, setSetting } = useAnimationQuality();
-
     return (
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-ink/10 bg-surface px-6 py-3 shadow-soft">
             <div className="flex items-center gap-3">
@@ -489,25 +516,10 @@ const AppHeader = ({
                         {isSaving ? es.app.saving : es.app.saved}
                     </span>
                 )}
-                {mode && (
-                    // Appearance studio (Part 4) will host this alongside the
-                    // other map settings; exposed here in the meantime so
-                    // it's reachable and testable.
-                    <label className="flex items-center gap-1.5 text-xs font-medium text-ink-soft">
-                        <span className="hidden sm:inline">{es.animationQuality.label}</span>
-                        <select
-                            aria-label={es.animationQuality.label}
-                            value={setting}
-                            onChange={(e) => setSetting(e.target.value as QualitySetting)}
-                            className="rounded-md border border-ink/15 bg-surface px-2 py-1 text-xs font-medium text-ink"
-                        >
-                            {(["auto", "high", "medium", "low", "off"] as const).map((option) => (
-                                <option key={option} value={option}>
-                                    {es.animationQuality.options[option]}
-                                </option>
-                            ))}
-                        </select>
-                    </label>
+                {onAppearance && (
+                    <Button variant="secondary" size="sm" onClick={onAppearance}>
+                        {es.studio.open}
+                    </Button>
                 )}
                 {onActivitiesOverview && (
                     <Button variant="secondary" size="sm" onClick={onActivitiesOverview}>

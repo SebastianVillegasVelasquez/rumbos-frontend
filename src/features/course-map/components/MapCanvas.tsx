@@ -69,6 +69,8 @@ export const MapCanvas = ({
     editable,
     fit = "fit-width",
     mapMode = "explorative",
+    initialView = null,
+    intro = "none",
     pathSettings = DEFAULT_PATH_SETTINGS,
     ambient = DEFAULT_AMBIENT_SETTINGS,
     skins = [],
@@ -85,6 +87,7 @@ export const MapCanvas = ({
     getResolvedActivity,
     focusBubbleId,
     onFocusHandled,
+    onViewportChange,
 }: MapCanvasProps) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const stageRef = useRef<Konva.Stage | null>(null);
@@ -153,6 +156,15 @@ export const MapCanvas = ({
 
     const { x: stageX, y: stageY, scale, zoomFactor } = viewport;
 
+    useEffect(() => {
+        if (!onViewportChange || scale <= 0 || designSize.width <= 0 || designSize.height <= 0) return;
+        const center = clampRelative({
+            x: (size.width / 2 - stageX) / scale / designSize.width,
+            y: (size.height / 2 - stageY) / scale / designSize.height,
+        });
+        onViewportChange({ x: center.x, y: center.y, zoom: zoomFactor });
+    }, [onViewportChange, stageX, stageY, scale, zoomFactor, size, designSize]);
+
     // The Stage node is attached once it mounts; content size and base scale
     // react to the design size (background aspect ratio) and fit mode.
     useEffect(() => {
@@ -164,6 +176,24 @@ export const MapCanvas = ({
         controller.setContentSize(designSize.width, designSize.height);
         controller.setBaseScale(computeBaseScale(fit, size, designSize));
     }, [controller, designSize, fit, size]);
+
+    // Applies the map's saved initial view once, the first time the
+    // viewport actually has a real size to fly within - never again after
+    // that (so it doesn't fight the user's own panning/zooming later).
+    const appliedInitialViewRef = useRef(false);
+    useEffect(() => {
+        if (appliedInitialViewRef.current || size.width <= 0 || size.height <= 0) return;
+        appliedInitialViewRef.current = true;
+        if (!initialView) return;
+        const target = toDesignSpace({ x: initialView.x, y: initialView.y }, designSize);
+        if (intro === "flyin") {
+            controller.resetView(true);
+            controller.flyTo(target.x, target.y, initialView.zoom);
+        } else {
+            controller.flyTo(target.x, target.y, initialView.zoom, 0);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [size, designSize]);
 
     useEffect(() => {
         const container = containerRef.current;
@@ -665,6 +695,9 @@ export const MapCanvas = ({
                         onStatusSelect={(status) => handleStatusSelect(iconPickerBubble.id, status)}
                         onDelete={() => handleDelete(iconPickerBubble.id)}
                         onClose={() => setIconPickerBubbleId(null)}
+                        skins={skins}
+                        currentSkinId={iconPickerBubble.skinId}
+                        onSkinSelect={(skinId) => onBubbleUpdate?.(iconPickerBubble.id, { skinId })}
                     />
                 )}
             </div>

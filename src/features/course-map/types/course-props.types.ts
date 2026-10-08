@@ -1,5 +1,16 @@
 import type { DesignSize } from "../coordinates.ts";
-import type { Activity, Availability, Bubble, BubbleUpdate, MapFit, MapMode, MapSettings, Skin, SkinRule } from "../data/types.ts";
+import type {
+    Activity,
+    Availability,
+    Bubble,
+    BubbleUpdate,
+    MapFit,
+    MapInitialView,
+    MapMode,
+    MapSettings,
+    Skin,
+    SkinRule,
+} from "../data/types.ts";
 import type { VisualState } from "../visualState.ts";
 
 export const DESIGN_WIDTH = 1600;
@@ -35,6 +46,8 @@ export interface MapCanvasProps {
     editable: boolean;
     fit?: MapFit;
     mapMode?: MapMode;
+    initialView?: MapInitialView | null;
+    intro?: MapSettings["intro"];
     pathSettings?: MapSettings["path"];
     ambient?: MapSettings["ambient"];
     skins?: Skin[];
@@ -60,4 +73,8 @@ export interface MapCanvasProps {
     // onFocusHandled once it's done so the same bubble can be re-focused.
     focusBubbleId?: string | null;
     onFocusHandled?: () => void;
+    // Reports the live camera center/zoom on every change (a ref write in
+    // the parent, not state - this fires every pan/zoom tick). Backs the
+    // appearance studio's "usar vista actual" capture.
+    onViewportChange?: (view: MapInitialView) => void;
 }
