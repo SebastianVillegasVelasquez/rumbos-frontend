@@ -1,66 +1,83 @@
-import type { IconKey } from "../icons.ts";
+import type { DesignSize } from "../coordinates.ts";
+import type {
+    Activity,
+    Availability,
+    Bubble,
+    BubbleUpdate,
+    MapFit,
+    MapInitialView,
+    MapMode,
+    MapSettings,
+    Skin,
+    SkinRule,
+} from "../data/types.ts";
+import type { VisualState } from "../visualState.ts";
 
-export type BubbleStatus = "no_complete" | "in_progress" | "complete" | "locked";
-export type ActivityType = "quiz" | "url" | "assign" | "resource";
 export const DESIGN_WIDTH = 1600;
-export const DESIGN_HEIGHT = 900;
+// Used before the background image has loaded (and as the seed aspect ratio
+// for any map created without one yet). Once loaded, the real design height
+// is DESIGN_WIDTH * image.naturalHeight / image.naturalWidth - see
+// MapCanvas.tsx.
+export const DEFAULT_DESIGN_HEIGHT = 900;
 
-
-export interface BubbleData {
-    bubbleId: number;
-    activityId: number; //This is the activity id coming from Moodle
-    // Do not use 'x' and 'y' to store pixels,
-    // instead use 0 to 1 scale.
-    x: number;
-    y: number;
-    icon?: IconKey; // Defaults to "question" when unset
-    status: BubbleStatus;
-}
-
-export interface Activity {
-    id: number; // Moodle activity id
-    name: string;
-    type: ActivityType;
-}
-
-export const STATUS_COLORS: Record<BubbleStatus, string> = {
-    locked: "#6b7280",
-    no_complete: "#3b82f6",
-    in_progress: "#f59e0b",
-    complete: "#22c55e",
-};
-
-export interface BubbleProps {
+export interface BubbleVisualProps {
     x: number; // 0 a 1
     y: number; // 0 a 1
-    status: BubbleStatus
-    icon?: IconKey;
+    designSize: DesignSize;
+    visualState: VisualState;
+    skin: Skin["config"];
+    icon?: Bubble["icon"];
+    label?: string;
     draggable?: boolean;
     onClick?: () => void;
+    onHoverChange?: (hovered: boolean) => void;
     onDragEnd?: (pos: { x: number; y: number }) => void;
     onDragStart?: () => void;
     // Bumping this value (e.g. to Date.now()) triggers the same
-    // bounce+ring feedback used for a status->complete transition, without
-    // requiring a status change. Used to highlight a bubble picked from the
-    // activities overview panel.
+    // bounce+ring feedback used for a locked->complete transition, without
+    // requiring a visual-state change. Used to highlight a bubble picked
+    // from the activities overview panel.
     pulseKey?: number;
-}
-
-export interface CourseMap {
-    courseId: number;
-    imageUrl: string;
-    bubbles: BubbleData[];
 }
 
 export interface MapCanvasProps {
     backgroundUrl: string;
-    bubbles: BubbleData[];
+    bubbles: Bubble[];
     editable: boolean;
-    onBubblesChange?: (bubbles: BubbleData[]) => void;
-    onBubbleClick?: (bubble: BubbleData) => void;
+    // Overrides the generic default with the level title and progress
+    // (built by the caller, which knows both).
+    ariaLabel?: string;
+    fit?: MapFit;
+    mapMode?: MapMode;
+    initialView?: MapInitialView | null;
+    intro?: MapSettings["intro"];
+    pathSettings?: MapSettings["path"];
+    ambient?: MapSettings["ambient"];
+    skins?: Skin[];
+    defaultSkinId?: string | null;
+    skinRules?: SkinRule[];
+    onBubbleClick?: (bubble: Bubble) => void;
+    onBubbleMove?: (bubbleId: string, x: number, y: number) => void;
+    onBubbleUpdate?: (bubbleId: string, input: BubbleUpdate) => void;
+    onBubbleDelete?: (bubbleId: string) => void;
+    onActivityDrop?: (activityId: number, x: number, y: number) => void;
+    // Student view: a non-null reason makes the bubble non-interactive and is
+    // shown as a tooltip on hover.
+    getUnavailableReason?: (bubble: Bubble) => string | null;
+    // Used to derive a default icon (by Moodle modname) for bubbles with no
+    // icon of their own, instead of the generic "?", and to resolve a skin
+    // rule by activity type.
+    getModnameForBubble?: (bubble: Bubble) => string | undefined;
+    // From GET /course-maps/{id}/resolved, joined by bubbleId.
+    getAvailability?: (bubble: Bubble) => Availability | undefined;
+    getResolvedActivity?: (bubble: Bubble) => Activity | null;
     // One-shot request to center the viewport on a bubble and briefly
     // highlight it (from the activities overview panel). MapCanvas calls
     // onFocusHandled once it's done so the same bubble can be re-focused.
-    focusBubbleId?: number | null;
+    focusBubbleId?: string | null;
     onFocusHandled?: () => void;
+    // Reports the live camera center/zoom on every change (a ref write in
+    // the parent, not state - this fires every pan/zoom tick). Backs the
+    // appearance studio's "usar vista actual" capture.
+    onViewportChange?: (view: MapInitialView) => void;
 }

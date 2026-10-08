@@ -1,1 +1,122 @@
 @import "tailwindcss";
+@import "@fontsource-variable/fredoka";
+@import "@fontsource-variable/nunito";
+
+/*
+ * Design tokens for Rumbos. Color/radius/font tokens live in @theme so
+ * Tailwind generates both the utility classes (bg-ink, text-teal-dark, ...)
+ * and the backing CSS variables. Non-Tailwind tokens (shadow recipes, motion
+ * durations) are plain :root variables, used via arbitrary-value utilities
+ * (e.g. shadow-[var(--shadow-glow-teal)]). A client theme overrides every
+ * variable at once via [data-theme="cliente"], proving white-labelling.
+ *
+ * Contrast ratios below are measured (see the sprint report), not assumed:
+ *   ink/paper 13.4:1, ink-soft/paper 7.2:1, white/teal-dark 5.1:1,
+ *   white/leaf-dark 5.0:1, white/coral-dark 5.3:1, white/slate-dark 5.9:1,
+ *   ink/sun 8.1:1, sun-dark/paper 5.5:1. Saturated (non "-dark") tones are
+ *   for large-scale/decorative use (icons on tinted backgrounds, gradients,
+ *   bubble fills with Konva-drawn icons at UI-element 3:1), never for small
+ *   body text.
+ */
+@theme {
+    --color-ink: #1e2a4a;
+    --color-ink-soft: #46537a;
+    --color-paper: #fff8ec;
+    --color-surface: #ffffff;
+    --color-surface-muted: #f6efe1;
+
+    --color-teal: #0e9aa7;
+    --color-teal-dark: #0b7a85;
+    --color-teal-tint: #e3f6f7;
+
+    --color-sun: #ffb703;
+    --color-sun-dark: #8a5d00;
+    --color-sun-tint: #fff3d6;
+
+    --color-coral: #ff6b6b;
+    --color-coral-dark: #c23b3b;
+    --color-coral-tint: #ffe9e9;
+
+    --color-leaf: #2fbf71;
+    --color-leaf-dark: #178049;
+    --color-leaf-tint: #e3f8ec;
+
+    --color-slate: #8a94a6;
+    --color-slate-dark: #5b6478;
+    --color-slate-tint: #eef0f4;
+
+    --radius-sm: 0.5rem;
+    --radius-md: 0.875rem;
+    --radius-lg: 1.25rem;
+    --radius-pill: 999px;
+
+    --font-heading: "Fredoka Variable", "Fredoka", system-ui, sans-serif;
+    --font-body: "Nunito Variable", "Nunito", system-ui, sans-serif;
+
+    --shadow-soft: 0 2px 8px -2px rgba(30, 42, 74, 0.12), 0 1px 2px rgba(30, 42, 74, 0.06);
+    --shadow-glow-teal: 0 0 0 4px var(--color-teal-tint), 0 4px 16px -4px rgba(14, 154, 167, 0.45);
+    --shadow-glow-sun: 0 0 0 4px var(--color-sun-tint), 0 4px 16px -4px rgba(255, 183, 3, 0.5);
+    --shadow-glow-leaf: 0 0 0 4px var(--color-leaf-tint), 0 4px 16px -4px rgba(47, 191, 113, 0.45);
+    --shadow-glow-slate: 0 0 0 4px var(--color-slate-tint), 0 4px 16px -4px rgba(138, 148, 166, 0.35);
+}
+
+:root {
+    --duration-fast: 150ms;
+    --duration-base: 250ms;
+    --duration-slow: 600ms;
+    --duration-idle: 3200ms;
+}
+
+/* "Cliente" theme: proves white-labelling, using the client's existing
+   course-page colors in place of the default Rumbos palette. */
+:root[data-theme="cliente"] {
+    --color-ink: #3c1a28;
+    --color-ink-soft: #6b2f41;
+    --color-paper: #fff5f2;
+    --color-surface: #ffffff;
+    --color-surface-muted: #f7e9ec;
+
+    --color-teal: #3c4797;
+    --color-teal-dark: #2c3570;
+    --color-teal-tint: #e6e8f6;
+
+    --color-sun: #ffc425;
+    --color-sun-dark: #8a5d00;
+    --color-sun-tint: #fff3d0;
+
+    --color-coral: #e1134f;
+    --color-coral-dark: #a80e3c;
+    --color-coral-tint: #fbe0e9;
+
+    --color-leaf: #6cb33f;
+    --color-leaf-dark: #4d8a2a;
+    --color-leaf-tint: #e9f3e0;
+
+    --color-slate: #962d46;
+    --color-slate-dark: #6e2033;
+    --color-slate-tint: #f3e3e7;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    :root {
+        --duration-fast: 0ms;
+        --duration-base: 0ms;
+        --duration-slow: 0ms;
+        --duration-idle: 0ms;
+    }
+}
+
+html {
+    background: var(--color-paper);
+}
+
+body {
+    font-family: var(--font-body);
+    color: var(--color-ink);
+    background: var(--color-paper);
+}
+
+h1, h2, h3, h4 {
+    font-family: var(--font-heading);
+}
+
