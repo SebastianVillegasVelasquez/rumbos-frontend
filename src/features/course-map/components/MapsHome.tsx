@@ -19,11 +19,14 @@ import {
     useUpdateCourseMap,
 } from "../data/queries.ts";
 import { getRecentCourseMaps, type RecentCourseMap } from "../data/recentMaps.ts";
+import { courseTitleFrom } from "../courseTitle.ts";
 import type { CourseMapSummary } from "../data/types.ts";
 
 interface MapsHomeProps {
     onOpen: (courseMapId: string) => void;
-    initialCreateCourseId?: number;
+    // A course with several levels opens the carousel instead of a map
+    // directly.
+    onOpenCourse: (moodleCourseId: number) => void;
 }
 
 const relativeTime = new Intl.RelativeTimeFormat("es-CO", { numeric: "auto" });
@@ -97,12 +100,50 @@ const MapCard = ({
     </Card>
 );
 
-export const MapsHome = ({ onOpen, initialCreateCourseId }: MapsHomeProps) => {
+// A course with several levels: one card leading into the level carousel,
+// instead of one card per level cluttering the home grid.
+const CourseCard = ({
+    group,
+    onOpen,
+}: {
+    group: { moodleCourseId: number; levels: CourseMapSummary[] };
+    onOpen: () => void;
+}) => {
+    const cover = group.levels[0];
+    const totalActivities = group.levels.reduce((sum, level) => sum + level.bubbleCount, 0);
+    return (
+        <Card className="group relative overflow-hidden transition-shadow hover:shadow-[0_8px_24px_-8px_rgba(30,42,74,0.25)]">
+            <button type="button" onClick={onOpen} className="block w-full text-left">
+                <div className="relative h-32 w-full overflow-hidden bg-surface-muted">
+                    <img
+                        src={resolveThumbUrl(cover.imageUrl)}
+                        alt=""
+                        loading="lazy"
+                        className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-ink/60 via-ink/0 to-transparent" />
+                    <span className="absolute right-2 top-2 rounded-pill bg-surface/90 px-2 py-0.5 text-xs font-semibold text-ink">
+                        {group.levels.length}
+                    </span>
+                    <p className="absolute bottom-2 left-3 right-3 truncate font-heading text-base font-semibold text-white">
+                        {courseTitleFrom(group.levels)}
+                    </p>
+                </div>
+                <div className="space-y-1 p-3">
+                    <p className="text-xs font-medium text-ink-soft">{es.home.card.course(group.moodleCourseId)}</p>
+                    <p className="text-xs text-slate-dark">{es.home.card.activities(totalActivities)}</p>
+                </div>
+            </button>
+        </Card>
+    );
+};
+
+export const MapsHome = ({ onOpen, onOpenCourse }: MapsHomeProps) => {
     const toast = useToast();
     const [searchInput, setSearchInput] = useState("");
     const q = useDebouncedValue(searchInput, 300);
     const [recent] = useState<RecentCourseMap | null>(() => getRecentCourseMaps()[0] ?? null);
-    const [createOpen, setCreateOpen] = useState(initialCreateCourseId !== undefined);
+    const [createOpen, setCreateOpen] = useState(false);
     const [renameTarget, setRenameTarget] = useState<CourseMapSummary | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<CourseMapSummary | null>(null);
 
@@ -110,6 +151,14 @@ export const MapsHome = ({ onOpen, initialCreateCourseId }: MapsHomeProps) => {
     const items = useMemo(() => (mapsQuery.data?.pages ?? []).flatMap((page) => page.items), [mapsQuery.data]);
     const pages = mapsQuery.data?.pages ?? [];
     const total = pages[0]?.total ?? 0;
+
+    // Groups the flat (updatedAt-sorted) list by course for the grid; a
+    // single-level course still renders as today's plain map card.
+    const courseGroups = useMemo(() => {
+        const byId = new Map<number, CourseMapSummary[]>();
+        for (const item of items) byId.set(item.moodleCourseId, [...(byId.get(item.moodleCourseId) ?? []), item]);
+        return Array.from(byId.entries()).map(([moodleCourseId, levels]) => ({ moodleCourseId, levels }));
+    }, [items]);
 
     return (
         <div className="flex h-full flex-col overflow-y-auto p-6">
@@ -189,15 +238,26 @@ export const MapsHome = ({ onOpen, initialCreateCourseId }: MapsHomeProps) => {
                 {items.length > 0 && (
                     <>
                         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                            {items.map((map) => (
-                                <MapCard
-                                    key={map.id}
-                                    map={map}
-                                    onOpen={onOpen}
-                                    onRename={setRenameTarget}
-                                    onDelete={setDeleteTarget}
-                                />
-                            ))}
+                            {q
+                                ? // Searching flattens: a result could be any
+                                  // level of any course, grouping would hide
+                                  // the very thing that matched.
+                                  items.map((map) => (
+                                      <MapCard key={map.id} map={map} onOpen={onOpen} onRename={setRenameTarget} onDelete={setDeleteTarget} />
+                                  ))
+                                : courseGroups.map((group) =>
+                                      group.levels.length > 1 ? (
+                                          <CourseCard key={group.moodleCourseId} group={group} onOpen={() => onOpenCourse(group.moodleCourseId)} />
+                                      ) : (
+                                          <MapCard
+                                              key={group.levels[0].id}
+                                              map={group.levels[0]}
+                                              onOpen={onOpen}
+                                              onRename={setRenameTarget}
+                                              onDelete={setDeleteTarget}
+                                          />
+                                      )
+                                  )}
                         </div>
                         {items.length < total && (
                             <div className="flex justify-center pt-2">
@@ -214,12 +274,7 @@ export const MapsHome = ({ onOpen, initialCreateCourseId }: MapsHomeProps) => {
                 )}
             </div>
 
-            <CreateMapDialog
-                open={createOpen}
-                onOpenChange={setCreateOpen}
-                onCreated={onOpen}
-                initialCourseId={initialCreateCourseId}
-            />
+            <CreateMapDialog open={createOpen} onOpenChange={setCreateOpen} onCreated={onOpen} />
             <RenameMapDialog key={renameTarget?.id ?? "none"} map={renameTarget} onOpenChange={() => setRenameTarget(null)} />
             <DeleteMapDialog map={deleteTarget} onOpenChange={() => setDeleteTarget(null)} onDeleted={() => toast.show(es.home.card.delete + " ✓", "success")} />
         </div>
@@ -236,15 +291,13 @@ const CreateMapDialog = ({
     open,
     onOpenChange,
     onCreated,
-    initialCourseId,
 }: {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onCreated: (id: string) => void;
-    initialCourseId?: number;
 }) => {
     const [title, setTitle] = useState("");
-    const [courseId, setCourseId] = useState(initialCourseId !== undefined ? String(initialCourseId) : "");
+    const [courseId, setCourseId] = useState("");
     const [backgroundUrl, setBackgroundUrl] = useState(DEFAULT_BACKGROUND_URL);
     const [conflictMapId, setConflictMapId] = useState<string | null>(null);
     const createMap = useCreateCourseMap();
@@ -252,7 +305,7 @@ const CreateMapDialog = ({
     const handleOpenChange = (next: boolean) => {
         if (!next) {
             setTitle("");
-            setCourseId(initialCourseId !== undefined ? String(initialCourseId) : "");
+            setCourseId("");
             setBackgroundUrl(DEFAULT_BACKGROUND_URL);
             setConflictMapId(null);
             createMap.reset();

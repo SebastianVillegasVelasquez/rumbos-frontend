@@ -1,9 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 
 // None of the query params below → home. ?map=<uuid> → open that map.
-// ?course=<moodleCourseId> → look up (or offer to create) the map for that
-// Moodle course; this is the future entry point when launched from Moodle.
-export type Route = { name: "home" } | { name: "map"; mapId: string } | { name: "course"; moodleCourseId: number };
+// ?course=<moodleCourseId> → the course's levels: opens the single level
+// directly, or the carousel with several (or &entry=1 to force the carousel
+// even with one level). This is also the future entry point when launched
+// from Moodle.
+export type Route =
+    | { name: "home" }
+    | { name: "map"; mapId: string }
+    | { name: "course"; moodleCourseId: number; forceEntry: boolean };
 
 const parseRoute = (): Route => {
     const params = new URLSearchParams(window.location.search);
@@ -11,7 +16,9 @@ const parseRoute = (): Route => {
     if (mapId) return { name: "map", mapId };
     const courseId = params.get("course");
     const moodleCourseId = courseId ? Number(courseId) : NaN;
-    if (Number.isInteger(moodleCourseId) && moodleCourseId > 0) return { name: "course", moodleCourseId };
+    if (Number.isInteger(moodleCourseId) && moodleCourseId > 0) {
+        return { name: "course", moodleCourseId, forceEntry: params.get("entry") === "1" };
+    }
     return { name: "home" };
 };
 
@@ -30,7 +37,10 @@ export const useRoute = () => {
         const url = new URL(window.location.href);
         url.search = "";
         if (next.name === "map") url.searchParams.set("map", next.mapId);
-        else if (next.name === "course") url.searchParams.set("course", String(next.moodleCourseId));
+        else if (next.name === "course") {
+            url.searchParams.set("course", String(next.moodleCourseId));
+            if (next.forceEntry) url.searchParams.set("entry", "1");
+        }
         window.history.pushState(null, "", url);
         setRoute(next);
     }, []);

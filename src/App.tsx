@@ -1,9 +1,10 @@
 import { Suspense, lazy, useEffect, useMemo, useState } from "react";
-import { List, Loader2, RefreshCw } from "lucide-react";
+import { ChevronLeft, ChevronRight, List, Loader2, RefreshCw } from "lucide-react";
 import { ActivitySidebar } from "./features/course-map/components/ActivitySidebar.tsx";
 import { ActivityModal } from "./features/course-map/components/ActivityModal.tsx";
 import { ActivitiesOverviewModal } from "./features/course-map/components/ActivitiesOverviewModal.tsx";
 import { MapsHome } from "./features/course-map/components/MapsHome.tsx";
+import { CourseLevels } from "./features/course-map/components/CourseLevels.tsx";
 import { StudentHud } from "./features/course-map/components/StudentHud.tsx";
 import { rememberCourseMap } from "./features/course-map/data/recentMaps.ts";
 import {
@@ -14,6 +15,7 @@ import {
 import {
     useActivities,
     useCourseMap,
+    useCourseMapsByCourse,
     useCreateBubble,
     useDeleteBubble,
     usePendingActivityIds,
@@ -23,6 +25,7 @@ import {
 } from "./features/course-map/data/queries.ts";
 import { ApiError, isUnreachable } from "./features/course-map/data/client.ts";
 import { resolveImageUrl } from "./features/course-map/data/assets.ts";
+import { courseTitleFrom } from "./features/course-map/courseTitle.ts";
 import type { Activity, Bubble, ResolvedBubble } from "./features/course-map/data/types.ts";
 import { useRoute } from "./hooks/useRoute.ts";
 import { Wordmark } from "./components/Logo.tsx";
@@ -67,6 +70,10 @@ function AppShell() {
     const courseMapId = route.name === "map" ? route.mapId : null;
 
     const courseMapQuery = useCourseMap(courseMapId);
+    // Always unfiltered: besides the sidebar, this also backs icon/modname
+    // lookups for every bubble on the map, which can come from any section.
+    // onlySection is applied client-side, just for the sidebar's own list -
+    // see ActivitySidebar's sectionFilter prop.
     const activitiesQuery = useActivities(courseMapId, mode === "editor", false);
     const resolvedQuery = useResolvedCourseMap(courseMapId, mode === "editor");
     const createBubble = useCreateBubble(courseMapId ?? "");
@@ -74,6 +81,15 @@ function AppShell() {
     const deleteBubble = useDeleteBubble(courseMapId ?? "");
     const pendingActivityIds = usePendingActivityIds(courseMapId ?? "");
     const skinsQuery = useSkins();
+    // Siblings of the currently-open level, for the breadcrumb and prev/next
+    // navigation - only meaningful once we know which course this map
+    // belongs to, so it's fetched off the map detail query, not the route.
+    const siblingLevelsQuery = useCourseMapsByCourse(courseMapQuery.data?.moodleCourseId ?? null);
+    const siblingLevels = useMemo(() => siblingLevelsQuery.data ?? [], [siblingLevelsQuery.data]);
+    const currentLevelIndex = siblingLevels.findIndex((level) => level.id === courseMapId);
+    const prevLevel = currentLevelIndex > 0 ? siblingLevels[currentLevelIndex - 1] : null;
+    const nextLevel =
+        currentLevelIndex !== -1 && currentLevelIndex < siblingLevels.length - 1 ? siblingLevels[currentLevelIndex + 1] : null;
 
     useEffect(() => {
         if (courseMapQuery.data) rememberCourseMap(courseMapQuery.data);
@@ -212,7 +228,11 @@ function AppShell() {
                         {
                             onError: (error) => {
                                 if (error instanceof ApiError && error.status === 409) {
-                                    toast.show(es.sidebar.alreadyPlaced, "error");
+                                    const title = error.detail.courseMapTitle;
+                                    toast.show(
+                                        typeof title === "string" ? es.sidebar.placedInAnotherLevel(title) : es.sidebar.alreadyPlaced,
+                                        "error"
+                                    );
                                 }
                             },
                         }
@@ -230,19 +250,27 @@ function AppShell() {
         );
     };
 
+    const levelTitleById = useMemo(() => new Map(siblingLevels.map((level) => [level.id, level.title])), [siblingLevels]);
+
     const sidebarProps = {
         activities,
         pendingActivityIds,
         isLoading: activitiesQuery.isPending,
         error: activitiesQuery.isError,
         onRetry: () => void activitiesQuery.refetch(),
+        currentCourseMapId: courseMapId ?? undefined,
+        levelTitleById,
+        sectionFilter: courseMapQuery.data?.moodleSectionId ?? null,
     };
 
     if (route.name === "home") {
         return (
             <div className="flex h-screen flex-col">
                 <AppHeader onHome={() => navigate({ name: "home" })} />
-                <MapsHome onOpen={(id) => navigate({ name: "map", mapId: id })} />
+                <MapsHome
+                    onOpen={(id) => navigate({ name: "map", mapId: id })}
+                    onOpenCourse={(moodleCourseId) => navigate({ name: "course", moodleCourseId, forceEntry: true })}
+                />
             </div>
         );
     }
@@ -250,20 +278,30 @@ function AppShell() {
     if (route.name === "course") {
         return (
             <div className="flex h-screen flex-col">
-                <AppHeader onHome={() => navigate({ name: "home" })} />
-                <MapsHome
-                    onOpen={(id) => navigate({ name: "map", mapId: id })}
-                    initialCreateCourseId={route.moodleCourseId}
+                <AppHeader onHome={() => navigate({ name: "home" })} mode={mode} onModeChange={setMode} />
+                <CourseLevels
+                    moodleCourseId={route.moodleCourseId}
+                    editable={mode === "editor"}
+                    onOpenLevel={(id) => navigate({ name: "map", mapId: id })}
                 />
             </div>
         );
     }
 
+    const breadcrumb =
+        siblingLevels.length > 1 && currentLevelIndex !== -1 && courseMapQuery.data
+            ? es.levels.breadcrumb(courseTitleFrom(siblingLevels), currentLevelIndex + 1, courseMapQuery.data.title)
+            : courseMapQuery.data?.title;
+
     return (
             <div className="flex h-screen flex-col">
                 <AppHeader
                     onHome={() => navigate({ name: "home" })}
-                    mapTitle={courseMapQuery.data?.title}
+                    mapTitle={breadcrumb}
+                    prevLevelTitle={prevLevel?.title}
+                    nextLevelTitle={nextLevel?.title}
+                    onPrevLevel={prevLevel ? () => navigate({ name: "map", mapId: prevLevel.id }) : undefined}
+                    onNextLevel={nextLevel ? () => navigate({ name: "map", mapId: nextLevel.id }) : undefined}
                     mode={mode}
                     onModeChange={setMode}
                     isSaving={isSaving}
@@ -322,6 +360,7 @@ function AppShell() {
                                     bubbles={bubbles}
                                     activities={activities}
                                     onContinue={(bubble) => setFocusBubbleId(bubble.id)}
+                                    onNextLevel={nextLevel ? () => navigate({ name: "map", mapId: nextLevel.id }) : undefined}
                                 />
                             )}
                             {renderMapArea()}
@@ -387,6 +426,10 @@ function AppShell() {
 const AppHeader = ({
     onHome,
     mapTitle,
+    prevLevelTitle,
+    nextLevelTitle,
+    onPrevLevel,
+    onNextLevel,
     mode,
     onModeChange,
     isSaving,
@@ -394,6 +437,10 @@ const AppHeader = ({
 }: {
     onHome: () => void;
     mapTitle?: string;
+    prevLevelTitle?: string;
+    nextLevelTitle?: string;
+    onPrevLevel?: () => void;
+    onNextLevel?: () => void;
     mode?: Mode;
     onModeChange?: (mode: Mode) => void;
     isSaving?: boolean;
@@ -412,6 +459,28 @@ const AppHeader = ({
                         <span className="text-ink/20">/</span>
                         <span className="truncate text-sm font-semibold text-ink-soft">{mapTitle}</span>
                     </>
+                )}
+                {(onPrevLevel || onNextLevel) && (
+                    <div className="flex items-center gap-0.5">
+                        <IconButton
+                            aria-label={prevLevelTitle ? `${es.levels.prevLevel}: ${prevLevelTitle}` : es.levels.prevLevel}
+                            variant="ghost"
+                            disabled={!onPrevLevel}
+                            onClick={onPrevLevel}
+                            className="h-8 w-8 min-h-0 min-w-0"
+                        >
+                            <ChevronLeft size={16} />
+                        </IconButton>
+                        <IconButton
+                            aria-label={nextLevelTitle ? `${es.levels.nextLevel}: ${nextLevelTitle}` : es.levels.nextLevel}
+                            variant="ghost"
+                            disabled={!onNextLevel}
+                            onClick={onNextLevel}
+                            className="h-8 w-8 min-h-0 min-w-0"
+                        >
+                            <ChevronRight size={16} />
+                        </IconButton>
+                    </div>
                 )}
             </div>
             <div className="flex items-center gap-3">

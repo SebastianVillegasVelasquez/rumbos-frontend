@@ -11,6 +11,15 @@ interface ActivitySidebarProps {
     error: boolean;
     onRetry: () => void;
     className?: string;
+    // Needed to tell "placed on this level" (filtered out, as before) apart
+    // from "placed on another level of the same course" (shown, disabled).
+    currentCourseMapId?: string;
+    levelTitleById?: Map<string, string>;
+    // When the level is linked to a Moodle section, only that section's
+    // activities are offered here (applied client-side so the same
+    // unfiltered `activities` list can also drive modname/icon lookups for
+    // every bubble on the map, regardless of section).
+    sectionFilter?: number | null;
 }
 
 type ActivityType = keyof typeof es.activityTypes;
@@ -42,11 +51,33 @@ export const ActivitySidebar = ({
     error,
     onRetry,
     className,
+    currentCourseMapId,
+    levelTitleById,
+    sectionFilter = null,
 }: ActivitySidebarProps) => {
     const [search, setSearch] = useState("");
     const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set());
 
-    const unplaced = useMemo(() => activities.filter((activity) => !activity.placed), [activities]);
+    // Truly draggable count for the "N por ubicar" badge.
+    const trulyUnplacedCount = useMemo(
+        () =>
+            activities.filter(
+                (activity) => !activity.placed && (sectionFilter === null || activity.sectionId === sectionFilter)
+            ).length,
+        [activities, sectionFilter]
+    );
+    // Rendered list: available to drag, or placed on a different level of
+    // this course (shown disabled with where it is) - only "placed on this
+    // level" is hidden, since that's already on the canvas as a bubble.
+    const unplaced = useMemo(
+        () =>
+            activities.filter(
+                (activity) =>
+                    (!activity.placed || activity.placedInMapId !== currentCourseMapId) &&
+                    (sectionFilter === null || activity.sectionId === sectionFilter)
+            ),
+        [activities, currentCourseMapId, sectionFilter]
+    );
     const filtered = useMemo(() => {
         const q = search.trim().toLowerCase();
         return q ? unplaced.filter((activity) => activity.name.toLowerCase().includes(q)) : unplaced;
@@ -83,7 +114,7 @@ export const ActivitySidebar = ({
             );
         }
         if (isLoading) return <p className="text-sm text-ink-soft">{es.sidebar.loading}</p>;
-        if (unplaced.length === 0) {
+        if (filtered.length === 0) {
             return (
                 <div className="flex flex-col items-center gap-2 rounded-md border border-dashed border-leaf-dark/30 bg-leaf-tint p-6 text-center">
                     <PartyPopper size={22} className="text-leaf-dark" />
@@ -110,15 +141,17 @@ export const ActivitySidebar = ({
                                 <ul className="mt-1.5 space-y-2">
                                     {items.map((activity) => {
                                         const isPending = pendingActivityIds.includes(activity.activityId);
+                                        const placedElsewhere = activity.placed && activity.placedInMapId !== currentCourseMapId;
+                                        const disabled = isPending || placedElsewhere;
                                         return (
                                             <li
                                                 key={activity.activityId}
-                                                draggable={!isPending}
-                                                aria-disabled={isPending}
-                                                onDragStart={(e) => handleDragStart(e, activity)}
+                                                draggable={!disabled}
+                                                aria-disabled={disabled}
+                                                onDragStart={(e) => !disabled && handleDragStart(e, activity)}
                                                 className={`flex flex-col gap-1 rounded-md border-l-4 bg-surface-muted px-3 py-2 text-sm shadow-soft transition-colors ${
                                                     TYPE_ACCENTS[activity.modname] ?? DEFAULT_ACCENT
-                                                } ${isPending ? "cursor-wait opacity-50" : "cursor-grab hover:bg-teal-tint active:cursor-grabbing"}`}
+                                                } ${disabled ? "cursor-not-allowed opacity-50" : "cursor-grab hover:bg-teal-tint active:cursor-grabbing"}`}
                                             >
                                                 <div className="flex items-start justify-between gap-2">
                                                     <span className="line-clamp-2 flex-1 text-ink">{activity.name}</span>
@@ -126,6 +159,13 @@ export const ActivitySidebar = ({
                                                 <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-ink-soft">
                                                     <span className="font-medium">{typeLabel(activity.modname)}</span>
                                                     {activity.hidden && <Badge tone="sun">{es.sidebar.hiddenBadge}</Badge>}
+                                                    {placedElsewhere && (
+                                                        <Badge tone="slate">
+                                                            {es.sidebar.placedInAnotherLevel(
+                                                                (activity.placedInMapId && levelTitleById?.get(activity.placedInMapId)) ?? ""
+                                                            )}
+                                                        </Badge>
+                                                    )}
                                                 </div>
                                             </li>
                                         );
@@ -143,7 +183,7 @@ export const ActivitySidebar = ({
         <aside className={className ?? DEFAULT_CLASS_NAME}>
             <div className="mb-1 flex items-center justify-between">
                 <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-soft">{es.sidebar.title}</h2>
-                <span className="text-xs font-semibold text-teal-dark">{es.sidebar.remainingCount(unplaced.length)}</span>
+                <span className="text-xs font-semibold text-teal-dark">{es.sidebar.remainingCount(trulyUnplacedCount)}</span>
             </div>
             <p className="mb-3 text-xs text-ink-soft">{es.sidebar.hint}</p>
             <div className="relative mb-3">

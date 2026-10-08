@@ -17,6 +17,7 @@ const LIST_PAGE_SIZE = 24;
 
 export const courseMapKeys = {
     list: (params: { q: string; moodleCourseId?: number }) => ["course-maps", "list", params] as const,
+    byCourse: (moodleCourseId: number) => ["course-maps", "by-course", moodleCourseId] as const,
     detail: (courseMapId: string) => ["course-maps", courseMapId, "detail"] as const,
     resolved: (courseMapId: string, includeHidden: boolean) =>
         ["course-maps", courseMapId, "resolved", { includeHidden }] as const,
@@ -53,6 +54,18 @@ export const useCourseMaps = (params: { q: string; moodleCourseId?: number }) =>
         retry: retryTransient,
     });
 
+// All of a course's levels, ordered by position - small enough (a handful of
+// levels, never paginated) to use a plain query instead of useCourseMaps'
+// infinite/search-oriented one.
+export const useCourseMapsByCourse = (moodleCourseId: number | null) =>
+    useQuery({
+        queryKey: courseMapKeys.byCourse(moodleCourseId ?? -1),
+        queryFn: () => courseMapApi.listCourseMaps({ moodleCourseId: moodleCourseId!, limit: 100 }),
+        enabled: moodleCourseId !== null,
+        retry: retryTransient,
+        select: (result) => result.items,
+    });
+
 // includeHidden=false for the student view, true for the editor.
 export const useResolvedCourseMap = (courseMapId: string | null, includeHidden: boolean) =>
     useQuery({
@@ -71,7 +84,7 @@ export const useUpdateCourseMap = () => {
             courseMapApi.patchCourseMap(courseMapId, input),
         onSuccess: (map) => {
             queryClient.setQueryData(courseMapKeys.detail(map.id), map);
-            void queryClient.invalidateQueries({ queryKey: ["course-maps", "list"] });
+            void invalidateCourseMapLists(queryClient);
         },
     });
 };
@@ -81,7 +94,7 @@ export const useDeleteCourseMap = () => {
     return useMutation({
         mutationFn: (courseMapId: string) => courseMapApi.deleteCourseMap(courseMapId),
         onSuccess: () => {
-            void queryClient.invalidateQueries({ queryKey: ["course-maps", "list"] });
+            void invalidateCourseMapLists(queryClient);
         },
     });
 };
@@ -94,32 +107,46 @@ export const useActivities = (courseMapId: string | null, includeHidden: boolean
         retry: retryTransient,
     });
 
+const isCourseMapListKey = (key: readonly unknown[]) =>
+    key[0] === "course-maps" && (key[1] === "list" || key[1] === "by-course");
+
+const invalidateCourseMapLists = (queryClient: ReturnType<typeof useQueryClient>) =>
+    queryClient.invalidateQueries({ predicate: (query) => isCourseMapListKey(query.queryKey) });
+
+interface PositionedItem {
+    id: string;
+    position?: number;
+}
+
+const withPatchedPositions = <T extends PositionedItem>(items: T[], positionById: Map<string, number>): T[] =>
+    items
+        .map((item) => (positionById.has(item.id) ? { ...item, position: positionById.get(item.id) } : item))
+        .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+
 // Optimistic across the whole course: a drag-reorder should feel instant, and
-// on failure every map in the course reverts, not just one.
+// on failure every map in the course reverts, not just one. Patches both
+// shapes a course-maps list query can have: useCourseMaps' infinite
+// {pages:[{items}]} and useCourseMapsByCourse's plain {items}.
 export const useReorderCourseMaps = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: (input: ReorderCourseMapsInput) => courseMapApi.reorderCourseMaps(input),
         onMutate: async (input) => {
-            const listKey = ["course-maps", "list"] as const;
-            await queryClient.cancelQueries({ queryKey: listKey });
-            const snapshots = queryClient.getQueriesData<{ pages: { items: { id: string }[] }[] }>({ queryKey: listKey });
+            await queryClient.cancelQueries({ predicate: (query) => isCourseMapListKey(query.queryKey) });
+            const snapshots = queryClient.getQueriesData<
+                { pages: { items: PositionedItem[] }[] } | { items: PositionedItem[] }
+            >({ predicate: (query) => isCourseMapListKey(query.queryKey) });
             const positionById = new Map(input.mapIds.map((id, index) => [id, index]));
             for (const [key, data] of snapshots) {
                 if (!data) continue;
-                queryClient.setQueryData(key, {
-                    ...data,
-                    pages: data.pages.map((page) => ({
-                        ...page,
-                        items: page.items
-                            .map((item) => (positionById.has(item.id) ? { ...item, position: positionById.get(item.id) } : item))
-                            .sort((a, b) => {
-                                const posA = (a as { position?: number }).position ?? 0;
-                                const posB = (b as { position?: number }).position ?? 0;
-                                return posA - posB;
-                            }),
-                    })),
-                });
+                if ("pages" in data) {
+                    queryClient.setQueryData(key, {
+                        ...data,
+                        pages: data.pages.map((page) => ({ ...page, items: withPatchedPositions(page.items, positionById) })),
+                    });
+                } else {
+                    queryClient.setQueryData(key, { ...data, items: withPatchedPositions(data.items, positionById) });
+                }
             }
             return { snapshots };
         },
@@ -127,7 +154,7 @@ export const useReorderCourseMaps = () => {
             context?.snapshots.forEach(([key, data]) => queryClient.setQueryData(key, data));
         },
         onSettled: () => {
-            void queryClient.invalidateQueries({ queryKey: ["course-maps", "list"] });
+            void invalidateCourseMapLists(queryClient);
         },
     });
 };
@@ -230,8 +257,15 @@ export const useCreateCourseMap = () => {
     const queryClient = useQueryClient();
     return useMutation({
         mutationFn: courseMapApi.createCourseMap,
-        onSuccess: (map) => {
-            queryClient.setQueryData(courseMapKeys.detail(map.id), { ...map, bubbles: [] });
+        onSuccess: () => {
+            // createCourseMap only returns a CourseMapSummary, which is
+            // missing settings/defaultSkinId/skinRules/bubbles - seeding the
+            // detail cache with it would make useCourseMap's data look like
+            // a complete CourseMapDetail while actually being incomplete
+            // (e.g. `.settings` undefined), crashing anything that reads
+            // those fields before the real fetch lands. Let the navigation
+            // to the new map's detail route do a normal fetch instead.
+            void invalidateCourseMapLists(queryClient);
         },
     });
 };

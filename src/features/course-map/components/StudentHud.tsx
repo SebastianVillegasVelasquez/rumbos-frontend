@@ -9,14 +9,18 @@ interface StudentHudProps {
     bubbles: Bubble[];
     activities: Activity[];
     onContinue: (bubble: Bubble) => void;
+    // Present only when this level is complete and another level follows it
+    // in the course.
+    onNextLevel?: () => void;
 }
 
 // Derived entirely from the existing `status` field (see the sprint brief):
 // real per-student completion will come from Moodle completion data later.
-export const StudentHud = ({ bubbles, activities, onContinue }: StudentHudProps) => {
+export const StudentHud = ({ bubbles, activities, onContinue, onNextLevel }: StudentHudProps) => {
     if (bubbles.length === 0) return null;
 
     const completed = bubbles.filter((bubble) => bubble.status === "complete").length;
+    const allComplete = completed === bubbles.length;
     const next = bubbles.find((bubble) => bubble.status === "no_complete" || bubble.status === "in_progress");
     const nextActivity = next ? activities.find((activity) => activity.activityId === next.activityId) : undefined;
 
@@ -24,11 +28,19 @@ export const StudentHud = ({ bubbles, activities, onContinue }: StudentHudProps)
         <Card className="pointer-events-auto absolute left-1/2 top-3 z-10 w-[min(92vw,22rem)] -translate-x-1/2 space-y-2 p-3.5">
             <p className="text-sm font-semibold text-ink">{es.hud.progress(completed, bubbles.length)}</p>
             <ProgressBar value={completed} max={bubbles.length} />
-            {next && nextActivity && (
-                <Button size="sm" variant="secondary" className="w-full" onClick={() => onContinue(next)}>
-                    {es.hud.continue(nextActivity.name)}
+            {allComplete && onNextLevel ? (
+                <Button size="sm" className="w-full" onClick={onNextLevel}>
+                    {es.levels.goToNextLevel}
                     <ArrowRight size={14} />
                 </Button>
+            ) : (
+                next &&
+                nextActivity && (
+                    <Button size="sm" variant="secondary" className="w-full" onClick={() => onContinue(next)}>
+                        {es.hud.continue(nextActivity.name)}
+                        <ArrowRight size={14} />
+                    </Button>
+                )
             )}
         </Card>
     );
