@@ -1,5 +1,5 @@
 import type { DesignSize } from "../coordinates.ts";
-import type { Activity, Availability, Bubble, BubbleUpdate, MapFit, MapMode, Skin, SkinRule } from "../data/types.ts";
+import type { Activity, Availability, Bubble, BubbleUpdate, MapFit, MapMode, MapSettings, Skin, SkinRule } from "../data/types.ts";
 import type { VisualState } from "../visualState.ts";
 
 export const DESIGN_WIDTH = 1600;
@@ -35,6 +35,8 @@ export interface MapCanvasProps {
     editable: boolean;
     fit?: MapFit;
     mapMode?: MapMode;
+    pathSettings?: MapSettings["path"];
+    ambient?: MapSettings["ambient"];
     skins?: Skin[];
     defaultSkinId?: string | null;
     skinRules?: SkinRule[];

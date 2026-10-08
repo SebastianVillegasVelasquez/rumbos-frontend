@@ -31,6 +31,9 @@ import { SegmentedControl } from "./components/ui/SegmentedControl.tsx";
 import { ToastProvider } from "./components/ui/Toast.tsx";
 import { useToast } from "./components/ui/toastContext.ts";
 import { es } from "./i18n/es.ts";
+import { FpsMeter } from "./fx/FpsMeter.tsx";
+import { isFpsDebugEnabled } from "./fx/debug.ts";
+import { useAnimationQuality, type QualitySetting } from "./fx/quality.ts";
 
 type Mode = "editor" | "student";
 
@@ -46,6 +49,7 @@ function App() {
     return (
         <ToastProvider>
             <AppShell />
+            {isFpsDebugEnabled() && <FpsMeter />}
         </ToastProvider>
     );
 }
@@ -193,6 +197,8 @@ function AppShell() {
                 editable={mode === "editor"}
                 fit={courseMapQuery.data.settings.fit}
                 mapMode={courseMapQuery.data.settings.mode}
+                pathSettings={courseMapQuery.data.settings.path}
+                ambient={courseMapQuery.data.settings.ambient}
                 skins={skinsQuery.data?.items ?? []}
                 defaultSkinId={courseMapQuery.data.defaultSkinId}
                 skinRules={courseMapQuery.data.skinRules}
@@ -392,45 +398,69 @@ const AppHeader = ({
     onModeChange?: (mode: Mode) => void;
     isSaving?: boolean;
     onActivitiesOverview?: () => void;
-}) => (
-    <header className="flex flex-wrap items-center justify-between gap-3 border-b border-ink/10 bg-surface px-6 py-3 shadow-soft">
-        <div className="flex items-center gap-3">
-            <button type="button" onClick={onHome} className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-dark">
-                <Wordmark />
-            </button>
-            {mapTitle && (
-                <>
-                    <span className="text-ink/20">/</span>
-                    <span className="truncate text-sm font-semibold text-ink-soft">{mapTitle}</span>
-                </>
-            )}
-        </div>
-        <div className="flex items-center gap-3">
-            {isSaving !== undefined && (
-                <span className="text-xs font-medium text-ink-soft">
-                    {isSaving ? es.app.saving : es.app.saved}
-                </span>
-            )}
-            {onActivitiesOverview && (
-                <Button variant="secondary" size="sm" onClick={onActivitiesOverview}>
-                    {es.app.activitiesOverview}
-                </Button>
-            )}
-            {mode && onModeChange && (
-                // TEMPORARY: a mode toggle stands in for real editor/student
-                // roles until authentication exists.
-                <SegmentedControl
-                    aria-label={`${es.app.modeEditor} / ${es.app.modeStudent}`}
-                    value={mode}
-                    onChange={onModeChange}
-                    options={[
-                        { value: "editor", label: es.app.modeEditor },
-                        { value: "student", label: es.app.modeStudent },
-                    ]}
-                />
-            )}
-        </div>
-    </header>
-);
+}) => {
+    const { setting, setSetting } = useAnimationQuality();
+
+    return (
+        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-ink/10 bg-surface px-6 py-3 shadow-soft">
+            <div className="flex items-center gap-3">
+                <button type="button" onClick={onHome} className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-dark">
+                    <Wordmark />
+                </button>
+                {mapTitle && (
+                    <>
+                        <span className="text-ink/20">/</span>
+                        <span className="truncate text-sm font-semibold text-ink-soft">{mapTitle}</span>
+                    </>
+                )}
+            </div>
+            <div className="flex items-center gap-3">
+                {isSaving !== undefined && (
+                    <span className="text-xs font-medium text-ink-soft">
+                        {isSaving ? es.app.saving : es.app.saved}
+                    </span>
+                )}
+                {mode && (
+                    // Appearance studio (Part 4) will host this alongside the
+                    // other map settings; exposed here in the meantime so
+                    // it's reachable and testable.
+                    <label className="flex items-center gap-1.5 text-xs font-medium text-ink-soft">
+                        <span className="hidden sm:inline">{es.animationQuality.label}</span>
+                        <select
+                            aria-label={es.animationQuality.label}
+                            value={setting}
+                            onChange={(e) => setSetting(e.target.value as QualitySetting)}
+                            className="rounded-md border border-ink/15 bg-surface px-2 py-1 text-xs font-medium text-ink"
+                        >
+                            {(["auto", "high", "medium", "low", "off"] as const).map((option) => (
+                                <option key={option} value={option}>
+                                    {es.animationQuality.options[option]}
+                                </option>
+                            ))}
+                        </select>
+                    </label>
+                )}
+                {onActivitiesOverview && (
+                    <Button variant="secondary" size="sm" onClick={onActivitiesOverview}>
+                        {es.app.activitiesOverview}
+                    </Button>
+                )}
+                {mode && onModeChange && (
+                    // TEMPORARY: a mode toggle stands in for real editor/student
+                    // roles until authentication exists.
+                    <SegmentedControl
+                        aria-label={`${es.app.modeEditor} / ${es.app.modeStudent}`}
+                        value={mode}
+                        onChange={onModeChange}
+                        options={[
+                            { value: "editor", label: es.app.modeEditor },
+                            { value: "student", label: es.app.modeStudent },
+                        ]}
+                    />
+                )}
+            </div>
+        </header>
+    );
+};
 
 export default App;

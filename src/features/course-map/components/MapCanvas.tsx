@@ -1,21 +1,35 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import KonvaLib from "konva";
-import { Stage, Layer, Image as KonvaImage, Line } from "react-konva";
-import type Konva from "konva";
+import Konva from "konva";
+import { Stage, Layer, Image as KonvaImage, Line, Circle } from "react-konva";
 import useImage from "use-image";
 import { Minus, Plus, Scan } from "lucide-react";
 import { DEFAULT_DESIGN_HEIGHT, DESIGN_WIDTH, type MapCanvasProps } from "../types/course-props.types.ts";
 import { clampRelative, toDesignSpace, toRelativeSpace, type DesignSize } from "../coordinates.ts";
 import { dominantAxis, normalizeWheelDelta } from "../viewport/math.ts";
 import { useViewportController } from "../viewport/useViewportController.ts";
+import { sharedTicker } from "../viewport/ticker.ts";
 import BubbleVisual from "./BubbleVisual.tsx";
 import { IconPickerPopover } from "./IconPickerPopover.tsx";
 import { defaultIconForModname, type IconKey } from "../icons.ts";
-import { deriveVisualState, nextIncompleteSequence } from "../visualState.ts";
+import { deriveVisualState, nextIncompleteSequence, type VisualState } from "../visualState.ts";
 import { resolveSkin } from "../resolveSkin.ts";
-import type { Bubble as BubbleModel, MapFit } from "../data/types.ts";
+import type { Bubble as BubbleModel, MapFit, MapSettings } from "../data/types.ts";
 import { es } from "../../../i18n/es.ts";
 import { IconButton } from "../../../components/ui/Button.tsx";
+import { useAnimationQuality } from "../../../fx/quality.ts";
+import { AmbientLayer } from "../../../fx/AmbientLayer.tsx";
+import { isSegmentComplete, travelerTargetT } from "../../../fx/path.ts";
+import { pointAtT } from "../../../fx/math/pointAtT.ts";
+import { COMPLETION, PATH, TRANSITIONS } from "../../../fx/constants.ts";
+
+const DEFAULT_PATH_SETTINGS: MapSettings["path"] = { visible: true, style: "dashed", color: null, animated: true };
+const DEFAULT_AMBIENT_SETTINGS: MapSettings["ambient"] = { kind: "none", intensity: 0 };
+
+const PATH_DASH: Record<MapSettings["path"]["style"], number[] | undefined> = {
+    dashed: [PATH.dashLength, PATH.gapLength],
+    dotted: [2, 7],
+    solid: undefined,
+};
 
 const computeBaseScale = (fit: MapFit, viewport: { width: number; height: number }, design: DesignSize) => {
     if (design.width <= 0 || design.height <= 0 || viewport.width <= 0 || viewport.height <= 0) return 1;
@@ -55,6 +69,8 @@ export const MapCanvas = ({
     editable,
     fit = "fit-width",
     mapMode = "explorative",
+    pathSettings = DEFAULT_PATH_SETTINGS,
+    ambient = DEFAULT_AMBIENT_SETTINGS,
     skins = [],
     defaultSkinId = null,
     skinRules = [],
@@ -79,6 +95,8 @@ export const MapCanvas = ({
     const [hoveredBubbleId, setHoveredBubbleId] = useState<string | null>(null);
     const [focusPulse, setFocusPulse] = useState<{ bubbleId: string; key: number } | null>(null);
     const pathRef = useRef<Konva.Line>(null);
+    const completedPathRef = useRef<Konva.Line>(null);
+    const travelerRef = useRef<Konva.Circle>(null);
 
     // The design-space canvas follows the background image's own aspect
     // ratio (width is always fixed; height adapts), falling back to the
@@ -94,6 +112,36 @@ export const MapCanvas = ({
     // horizontally (fit-height leaves no vertical room to pan).
     const primaryAxis: "x" | "y" = fit === "fit-height" ? "x" : "y";
     const nextSequence = useMemo(() => nextIncompleteSequence(bubbles), [bubbles]);
+    const { tier } = useAnimationQuality();
+
+    // Sequence order (not raw API order) is what the connector path and the
+    // traveler dot follow.
+    const sortedBubbles = useMemo(() => [...bubbles].sort((a, b) => a.sequence - b.sequence), [bubbles]);
+    const sortedVisualStates = useMemo<VisualState[]>(
+        () =>
+            sortedBubbles.map((bubble) =>
+                deriveVisualState({
+                    status: bubble.status,
+                    sequence: bubble.sequence,
+                    mode: mapMode,
+                    availability: getAvailability?.(bubble),
+                    view: editable ? "editor" : "student",
+                    nextIncompleteSequence: nextSequence,
+                })
+            ),
+        [sortedBubbles, mapMode, getAvailability, editable, nextSequence]
+    );
+    const pathPoints = useMemo(
+        () => sortedBubbles.flatMap((bubble) => { const p = toDesignSpace({ x: bubble.x, y: bubble.y }, designSize); return [p.x, p.y]; }),
+        [sortedBubbles, designSize]
+    );
+    const visualStateById = useMemo(
+        () => new Map(sortedBubbles.map((bubble, i) => [bubble.id, sortedVisualStates[i]])),
+        [sortedBubbles, sortedVisualStates]
+    );
+    const [showLevelComplete, setShowLevelComplete] = useState(false);
+    const burstLayerRef = useRef<Konva.Layer>(null);
+    const wasAllCompleteRef = useRef<boolean | null>(null);
 
     // Stable for the component's lifetime (see useViewportController), so it
     // can be used directly in effects/handlers without a ref indirection.
@@ -148,21 +196,101 @@ export const MapCanvas = ({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [focusBubbleId]);
 
-    // Slow marching-ants animation on the connector path ("camino"); skipped
-    // entirely under prefers-reduced-motion. (Migrates onto the shared
-    // ticker in Part 2 alongside the rest of the fx engine.)
+    // Level completion celebration: fires only on an observed live
+    // transition into "every bubble complete" (never on first load, via the
+    // null-initialized ref), pulls the camera back to show the whole map,
+    // and shows a brief banner plus a one-shot particle burst sized by
+    // quality tier.
+    useEffect(() => {
+        if (bubbles.length === 0) return;
+        const allComplete = bubbles.every((bubble) => bubble.status === "complete");
+        const wasAllComplete = wasAllCompleteRef.current;
+        wasAllCompleteRef.current = allComplete;
+        if (wasAllComplete === null || wasAllComplete || !allComplete) return;
+        if (tier === "off" || prefersReducedMotion()) return;
+
+        controller.resetView();
+        // One-shot imperative reaction to an observed live transition (not
+        // derived render state), so a direct setState here is correct.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setShowLevelComplete(true);
+        const hideTimeout = window.setTimeout(() => setShowLevelComplete(false), COMPLETION.bannerDurationMs);
+
+        const burstLayer = burstLayerRef.current;
+        const count = COMPLETION.celebration[tier];
+        if (burstLayer && count > 0) {
+            const centerX = designSize.width / 2;
+            const centerY = designSize.height / 2;
+            const palette = ["#ffd866", "#7de3a8", "#5ed3dd", "#ffffff"];
+            for (let i = 0; i < count; i++) {
+                const angle = (i / count) * Math.PI * 2 + Math.random() * 0.3;
+                const distance = 120 + Math.random() * 180;
+                const particle = new Konva.Circle({
+                    x: centerX,
+                    y: centerY,
+                    radius: 3 + Math.random() * 3,
+                    fill: palette[i % palette.length],
+                    opacity: 1,
+                    listening: false,
+                });
+                burstLayer.add(particle);
+                new Konva.Tween({
+                    node: particle,
+                    x: centerX + Math.cos(angle) * distance,
+                    y: centerY + Math.sin(angle) * distance,
+                    opacity: 0,
+                    duration: TRANSITIONS.burstDurationS,
+                    easing: Konva.Easings.EaseOut,
+                    onFinish: () => particle.destroy(),
+                }).play();
+            }
+        }
+
+        return () => window.clearTimeout(hideTimeout);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [bubbles, tier]);
+
+    // Connector path ("camino") animation: a slow "energy flow" dash offset
+    // on the whole path (faster/brighter on completed segments, via the
+    // separate overlay line below) plus, at high quality, a light dot
+    // traveling toward the "next" bubble. All driven off the shared ticker;
+    // skipped entirely when animated=false, quality is "off", or
+    // prefers-reduced-motion is set.
     useEffect(() => {
         const line = pathRef.current;
-        if (!line || prefersReducedMotion()) return;
-        const anim = new KonvaLib.Animation((frame) => {
-            if (!frame) return;
-            line.dashOffset(-(frame.time / 35) % 24);
-        }, line.getLayer());
-        anim.start();
-        return () => {
-            anim.stop();
-        };
-    }, [bubbles.length]);
+        const completedLine = completedPathRef.current;
+        const traveler = travelerRef.current;
+        const stage = line?.getStage();
+        if (!line || !stage) return;
+        const animated = pathSettings.animated && tier !== "off" && !prefersReducedMotion();
+
+        if (!animated) {
+            line.dashOffset(0);
+            completedLine?.dashOffset(0);
+            traveler?.visible(false);
+            return;
+        }
+
+        const targetT = travelerTargetT(sortedVisualStates);
+        const showTraveler = tier === "high" && targetT !== null && pathPoints.length >= 4;
+
+        const unsubscribe = sharedTicker.subscribe(stage, (frame) => {
+            line.dashOffset(-(frame.time * PATH.flowSpeedPxPerMs) % (PATH.dashLength + PATH.gapLength));
+            if (completedLine) completedLine.dashOffset(-(frame.time * PATH.flowSpeedPxPerMs * 1.6) % (PATH.dashLength + PATH.gapLength));
+            if (traveler && showTraveler && targetT !== null) {
+                const loopT = ((frame.time % PATH.travelerPeriodMs) / PATH.travelerPeriodMs) * targetT;
+                const point = pointAtT(pathPoints, loopT);
+                if (point) {
+                    traveler.visible(true);
+                    traveler.x(point.x);
+                    traveler.y(point.y);
+                }
+            } else {
+                traveler?.visible(false);
+            }
+        });
+        return unsubscribe;
+    }, [pathSettings.animated, tier, sortedVisualStates, pathPoints]);
 
     // Single owner of wheel/pointer/touch/keyboard input, all funneled
     // through the viewport controller - see viewport/useViewportController.ts.
@@ -438,35 +566,43 @@ export const MapCanvas = ({
                             height={designSize.height}
                         />
                     </Layer>
+                    <AmbientLayer kind={ambient.kind} intensity={ambient.intensity} designSize={designSize} tier={tier} />
                     <Layer listening={false}>
-                        {bubbles.length > 1 && (
-                            <Line
-                                ref={pathRef}
-                                points={bubbles.flatMap((bubble) => {
-                                    const point = toDesignSpace({ x: bubble.x, y: bubble.y }, designSize);
-                                    return [point.x, point.y];
-                                })}
-                                stroke="#0e9aa7"
-                                strokeWidth={4}
-                                dash={[16, 10]}
-                                lineCap="round"
-                                lineJoin="round"
-                                opacity={0.55}
-                            />
+                        {pathSettings.visible && pathPoints.length >= 4 && (
+                            <>
+                                <Line
+                                    ref={pathRef}
+                                    points={pathPoints}
+                                    stroke={pathSettings.color ?? "#0e9aa7"}
+                                    strokeWidth={4}
+                                    dash={PATH_DASH[pathSettings.style]}
+                                    lineCap="round"
+                                    lineJoin="round"
+                                    opacity={0.55}
+                                />
+                                {sortedVisualStates.some((state, i) => i > 0 && isSegmentComplete(sortedVisualStates[i - 1], state)) && (
+                                    <Line
+                                        ref={completedPathRef}
+                                        points={pathPoints.slice(
+                                            0,
+                                            (sortedVisualStates.findLastIndex((state) => state === "complete") + 1) * 2
+                                        )}
+                                        stroke={pathSettings.color ?? "#2fbf71"}
+                                        strokeWidth={4}
+                                        dash={PATH_DASH[pathSettings.style]}
+                                        lineCap="round"
+                                        lineJoin="round"
+                                        opacity={0.85}
+                                    />
+                                )}
+                                <Circle ref={travelerRef} radius={5} fill="#ffffff" shadowColor="#ffd866" shadowBlur={8} shadowOpacity={0.9} visible={false} />
+                            </>
                         )}
                     </Layer>
                     <Layer>
                         {bubbles.map((bubble) => {
-                            const availability = getAvailability?.(bubble);
                             const modname = getModnameForBubble?.(bubble);
-                            const visualState = deriveVisualState({
-                                status: bubble.status,
-                                sequence: bubble.sequence,
-                                mode: mapMode,
-                                availability,
-                                view: editable ? "editor" : "student",
-                                nextIncompleteSequence: nextSequence,
-                            });
+                            const visualState = visualStateById.get(bubble.id) ?? "locked";
                             const skin = resolveSkin({
                                 bubbleSkinId: bubble.skinId,
                                 modname,
@@ -494,7 +630,16 @@ export const MapCanvas = ({
                             );
                         })}
                     </Layer>
+                    <Layer ref={burstLayerRef} listening={false} />
                 </Stage>
+                {showLevelComplete && (
+                    <div
+                        role="status"
+                        className="pointer-events-none absolute left-1/2 top-6 z-30 -translate-x-1/2 rounded-pill bg-leaf-dark px-5 py-2.5 text-sm font-semibold text-white shadow-soft"
+                    >
+                        {es.canvas.levelComplete}
+                    </div>
+                )}
                 {hoveredUnavailableBubble && hoveredUnavailableReason && (
                     <div
                         role="tooltip"

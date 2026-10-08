@@ -8,6 +8,9 @@ import { ICON_DATA_URIS_DARK, ICON_DATA_URIS_LIGHT, iconDataUri } from "../icons
 import { contrastingTextColor } from "../color.ts";
 import { resolveImageUrl } from "../data/assets.ts";
 import type { ImageSkin, ImageSkinState, SkinPalette } from "../data/types.ts";
+import { sharedTicker } from "../viewport/ticker.ts";
+import { useAnimationQuality } from "../../../fx/quality.ts";
+import { IDLE } from "../../../fx/constants.ts";
 
 const HOVER_SCALE = 1.12;
 const PULSE_SCALE = 1.3;
@@ -112,74 +115,90 @@ const BubbleVisual = ({
 
     const groupRef = useRef<Konva.Group>(null);
     const ringRef = useRef<Konva.Circle>(null);
-    const idleAnimRef = useRef<Konva.Animation | null>(null);
     const [idlePhase] = useState(() => Math.random() * Math.PI * 2);
     const [isHovered, setIsHovered] = useState(false);
     const [isPulsing, setIsPulsing] = useState(false);
     const prevVisualStateRef = useRef(visualState);
     const prevPulseKeyRef = useRef(pulseKey);
     const isActionable = !muted && (visualState === "available" || visualState === "next" || visualState === "inProgress");
+    const { tier } = useAnimationQuality();
+    const animationsOff = tier === "off";
+    const tweenDuration = (seconds: number) => (animationsOff ? 0 : seconds);
 
     // Cosmetic-only feedback: briefly pulse when a bubble transitions to
-    // "complete". Driven purely by the resolved visual state - no new data.
+    // "complete". Driven purely by the resolved visual state - no new data,
+    // and only on an observed live change (never on first mount, since the
+    // ref starts equal to the initial visualState).
     useEffect(() => {
-        if (prevVisualStateRef.current !== "complete" && visualState === "complete") setIsPulsing(true);
+        if (prevVisualStateRef.current !== "complete" && visualState === "complete" && !animationsOff) setIsPulsing(true);
         prevVisualStateRef.current = visualState;
-    }, [visualState]);
+    }, [visualState, animationsOff]);
 
     useEffect(() => {
-        if (pulseKey !== undefined && pulseKey !== prevPulseKeyRef.current) setIsPulsing(true);
+        if (pulseKey !== undefined && pulseKey !== prevPulseKeyRef.current && !animationsOff) setIsPulsing(true);
         prevPulseKeyRef.current = pulseKey;
-    }, [pulseKey]);
+    }, [pulseKey, animationsOff]);
 
-    const idleEffect = skin.kind === "procedural" ? skin.effects.idle : skin.effects.idle === "breathe" ? "breathe" : "none";
+    const idleEffect =
+        animationsOff || tier === "low"
+            ? skin.kind === "procedural" && skin.effects.idle !== "none"
+                ? "breathe"
+                : "none"
+            : skin.kind === "procedural"
+              ? skin.effects.idle
+              : skin.effects.idle === "breathe"
+                ? "breathe"
+                : "none";
 
-    // Subtle idle loop (gentle scale + glow breathing) on bubbles the
-    // student can still act on. A single Konva.Animation per actionable
-    // bubble - Konva batches every active animation into one shared RAF
-    // loop, so this stays cheap even with several bubbles animating at once.
-    // (Migrates onto the fx/ shared ticker in Part 2.)
+    // Subtle idle loop (gentle scale/offset breathing) on bubbles the
+    // student can still act on, piggybacking on the fx engine's single
+    // shared ticker (viewport/ticker.ts) instead of a per-bubble timer.
     useEffect(() => {
         const group = groupRef.current;
-        if (!isActionable || isHovered || isPulsing || !group || idleEffect === "none") {
-            idleAnimRef.current?.stop();
-            idleAnimRef.current = null;
+        const stage = group?.getStage();
+        if (!isActionable || isHovered || isPulsing || !group || !stage || idleEffect === "none" || animationsOff) {
             if (group) {
                 group.scaleX(1);
                 group.scaleY(1);
+                group.offsetY(0);
             }
             return;
         }
 
-        const anim = new Konva.Animation((frame) => {
-            if (!frame) return;
-            const wave = (Math.sin(frame.time / 650 + idlePhase) + 1) / 2; // 0..1
+        const params = idleEffect === "float" ? IDLE.float : idleEffect === "pulse" ? IDLE.pulse : IDLE.breathe;
+        const unsubscribe = sharedTicker.subscribe(stage, (frame) => {
+            const wave = (Math.sin((frame.time / params.periodMs) * (2 * Math.PI) + idlePhase) + 1) / 2; // 0..1
             if (idleEffect === "float") {
-                group.offsetY(-wave * 6);
+                group.offsetY(-wave * params.amplitude);
             } else {
-                const idleScale = 1 + wave * (idleEffect === "pulse" ? 0.05 : 0.035);
+                const idleScale = 1 + wave * params.amplitude;
                 group.scaleX(idleScale);
                 group.scaleY(idleScale);
             }
-        }, group.getLayer());
-        anim.start();
-        idleAnimRef.current = anim;
+        });
 
         return () => {
-            anim.stop();
+            unsubscribe();
             group.scaleX(1);
             group.scaleY(1);
             group.offsetY(0);
         };
-    }, [isActionable, isHovered, isPulsing, idlePhase, idleEffect]);
+    }, [isActionable, isHovered, isPulsing, idlePhase, idleEffect, animationsOff]);
 
     useEffect(() => {
         if (!isHovered) return;
         const group = groupRef.current;
         if (!group) return;
-        const tween = new Konva.Tween({ node: group, scaleX: HOVER_SCALE, scaleY: HOVER_SCALE, duration: 0.12, easing: Konva.Easings.EaseOut });
+        const tween = new Konva.Tween({
+            node: group,
+            scaleX: HOVER_SCALE,
+            scaleY: HOVER_SCALE,
+            duration: tweenDuration(0.12),
+            easing: Konva.Easings.EaseOut,
+        });
         tween.play();
         return () => tween.destroy();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [isHovered]);
 
     const glowColor = skin.kind === "procedural" ? skin.palette[PALETTE_STATE[visualState]].glow : "#2fbf71";
@@ -245,7 +264,7 @@ const BubbleVisual = ({
         onHoverChange?.(false);
         const group = groupRef.current;
         if (group && !isPulsing) {
-            new Konva.Tween({ node: group, scaleX: 1, scaleY: 1, duration: 0.12, easing: Konva.Easings.EaseOut }).play();
+            new Konva.Tween({ node: group, scaleX: 1, scaleY: 1, duration: tweenDuration(0.12), easing: Konva.Easings.EaseOut }).play();
         }
         const stage = e.target.getStage();
         if (stage) stage.container().style.cursor = "default";

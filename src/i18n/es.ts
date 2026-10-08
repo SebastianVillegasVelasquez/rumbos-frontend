@@ -157,6 +157,17 @@ export const es = {
         resetZoom: "Restablecer zoom",
         fitToScreen: "Ajustar a pantalla",
         ariaLabel: "Mapa del curso. Usa el resumen de actividades para navegar por teclado.",
+        levelComplete: "¡Nivel completado!",
+    },
+    animationQuality: {
+        label: "Calidad de animación",
+        options: {
+            auto: "Automática",
+            high: "Alta",
+            medium: "Media",
+            low: "Baja",
+            off: "Sin animaciones",
+        },
     },
     hud: {
         progress: (done: number, total: number) => `${done} de ${total} actividades completadas`,
