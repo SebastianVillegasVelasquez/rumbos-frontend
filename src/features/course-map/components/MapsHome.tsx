@@ -113,7 +113,7 @@ const CourseCard = ({
     const totalActivities = group.levels.reduce((sum, level) => sum + level.bubbleCount, 0);
     return (
         <Card className="group relative overflow-hidden transition-shadow hover:shadow-[0_8px_24px_-8px_rgba(30,42,74,0.25)]">
-            <button type="button" onClick={onOpen} className="block w-full text-left">
+            <button type="button" onClick={onOpen} aria-label={courseTitleFrom(group.levels)} className="block w-full text-left">
                 <div className="relative h-32 w-full overflow-hidden bg-surface-muted">
                     <img
                         src={resolveThumbUrl(cover.imageUrl)}

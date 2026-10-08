@@ -67,6 +67,7 @@ export const MapCanvas = ({
     backgroundUrl,
     bubbles,
     editable,
+    ariaLabel,
     fit = "fit-width",
     mapMode = "explorative",
     initialView = null,
@@ -565,7 +566,7 @@ export const MapCanvas = ({
             <div
                 ref={containerRef}
                 role="img"
-                aria-label={es.canvas.ariaLabel}
+                aria-label={ariaLabel ?? es.canvas.ariaLabel}
                 tabIndex={0}
                 className="relative h-full w-full overflow-hidden rounded-lg border border-ink/10 bg-surface-muted outline-none focus-visible:ring-2 focus-visible:ring-teal-dark [&::-webkit-scrollbar]:hidden"
                 style={{ touchAction: "none", overscrollBehavior: "contain", scrollbarWidth: "none" }}

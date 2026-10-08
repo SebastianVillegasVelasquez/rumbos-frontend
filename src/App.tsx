@@ -220,6 +220,11 @@ function AppShell() {
             >
             <MapCanvas
                 backgroundUrl={resolveImageUrl(courseMapQuery.data.imageUrl)}
+                ariaLabel={es.canvas.ariaLabelWithProgress(
+                    courseMapQuery.data.title,
+                    bubbles.filter((bubble) => bubble.status === "complete").length,
+                    bubbles.length
+                )}
                 bubbles={bubbles}
                 editable={mode === "editor"}
                 fit={courseMapQuery.data.settings.fit}
@@ -431,6 +436,9 @@ function AppShell() {
                     open={isActivitiesOverviewOpen}
                     bubbles={bubbles}
                     activities={activities}
+                    mode={courseMapQuery.data?.settings.mode ?? "explorative"}
+                    view={mode === "editor" ? "editor" : "student"}
+                    getAvailability={getAvailabilityForBubble}
                     onClose={() => setIsActivitiesOverviewOpen(false)}
                     onSelectBubble={handleSelectBubbleFromOverview}
                 />

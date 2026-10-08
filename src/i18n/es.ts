@@ -152,9 +152,13 @@ export const es = {
     overview: {
         title: "Resumen de actividades",
         groups: {
+            next: { title: "Siguiente", description: "La actividad que sigue en el recorrido guiado" },
             complete: { title: "Completadas", description: "Actividades terminadas" },
             in_progress: { title: "En progreso", description: "Comenzadas pero no terminadas" },
-            pending: { title: "Bloqueadas / Pendientes", description: "Aún no disponibles o sin comenzar" },
+            available: { title: "Disponibles", description: "Puedes comenzarlas cuando quieras" },
+            locked: { title: "Bloqueadas", description: "Completa la actividad anterior para desbloquearlas" },
+            teaser: { title: "Próximamente", description: "Tu docente aún no las publicó" },
+            unavailable: { title: "No disponibles", description: "No se pudieron verificar en este momento" },
         },
         empty: "Nada por aquí todavía.",
         close: "Cerrar",
@@ -210,6 +214,8 @@ export const es = {
         resetZoom: "Restablecer zoom",
         fitToScreen: "Ajustar a pantalla",
         ariaLabel: "Mapa del curso. Usa el resumen de actividades para navegar por teclado.",
+        ariaLabelWithProgress: (levelTitle: string, done: number, total: number) =>
+            `Mapa de ${levelTitle}. ${done} de ${total} actividades completadas. Usa el resumen de actividades para navegar por teclado.`,
         levelComplete: "¡Nivel completado!",
     },
     animationQuality: {

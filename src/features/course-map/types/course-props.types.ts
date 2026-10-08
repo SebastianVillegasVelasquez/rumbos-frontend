@@ -44,6 +44,9 @@ export interface MapCanvasProps {
     backgroundUrl: string;
     bubbles: Bubble[];
     editable: boolean;
+    // Overrides the generic default with the level title and progress
+    // (built by the caller, which knows both).
+    ariaLabel?: string;
     fit?: MapFit;
     mapMode?: MapMode;
     initialView?: MapInitialView | null;
