@@ -1,4 +1,5 @@
 import { ApiError } from "./client.ts";
+import { DEFAULT_BACKGROUND_URL } from "../../../assets/backgrounds/index.ts";
 import type { CourseMapApi } from "./courseMapApi.ts";
 import type {
     Activity,
@@ -38,7 +39,7 @@ import type {
 // asset-upload failure modes with ?mockAssets=quota|down, for demoing every
 // state without a real backend.
 
-const DEFAULT_IMAGE_URL = "/fondo.webp";
+const DEFAULT_IMAGE_URL = DEFAULT_BACKGROUND_URL;
 const MOCK_MODULE_URL = "https://moodle.example.com/mod/";
 const DEFAULT_LIMIT = 24;
 const MAX_LIMIT = 100;
