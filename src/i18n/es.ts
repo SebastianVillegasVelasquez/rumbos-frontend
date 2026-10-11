@@ -351,7 +351,6 @@ export const es = {
             pathAnimated: "Animar el camino",
             background: "Fondo del mapa",
             changeBackground: "Cambiar fondo",
-            backgroundAspectWarning: "La nueva imagen tiene una proporción distinta a la actual; las burbujas podrían verse desplazadas.",
         },
         ambient: {
             kind: "Ambiente",

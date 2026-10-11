@@ -7,7 +7,8 @@ import { ConfirmDialog } from "../../../components/ui/ConfirmDialog.tsx";
 import { DropdownMenu } from "../../../components/ui/DropdownMenu.tsx";
 import { Skeleton, EmptyState } from "../../../components/ui/Skeleton.tsx";
 import { useToast } from "../../../components/ui/toastContext.ts";
-import { backgroundOptions, DEFAULT_BACKGROUND_URL } from "../../../assets/backgrounds/index.ts";
+import { BackgroundField, type BackgroundChoice } from "./background/BackgroundField.tsx";
+import { DEFAULT_BACKGROUND_CHOICE } from "./background/defaultBackground.ts";
 import { es } from "../../../i18n/es.ts";
 import { ApiError, isUnreachable } from "../data/client.ts";
 import { resolveThumbUrl } from "../data/assets.ts";
@@ -298,7 +299,7 @@ const CreateMapDialog = ({
 }) => {
     const [title, setTitle] = useState("");
     const [courseId, setCourseId] = useState("");
-    const [backgroundUrl, setBackgroundUrl] = useState(DEFAULT_BACKGROUND_URL);
+    const [background, setBackground] = useState<BackgroundChoice | null>(DEFAULT_BACKGROUND_CHOICE);
     const [conflictMapId, setConflictMapId] = useState<string | null>(null);
     const createMap = useCreateCourseMap();
 
@@ -306,7 +307,7 @@ const CreateMapDialog = ({
         if (!next) {
             setTitle("");
             setCourseId("");
-            setBackgroundUrl(DEFAULT_BACKGROUND_URL);
+            setBackground(DEFAULT_BACKGROUND_CHOICE);
             setConflictMapId(null);
             createMap.reset();
         }
@@ -319,11 +320,11 @@ const CreateMapDialog = ({
         e.preventDefault();
         const trimmedTitle = title.trim();
         const moodleCourseId = Number(courseId);
-        if (!trimmedTitle || !Number.isInteger(moodleCourseId) || moodleCourseId <= 0) return;
+        if (!trimmedTitle || !Number.isInteger(moodleCourseId) || moodleCourseId <= 0 || !background) return;
 
         setConflictMapId(null);
         createMap.mutate(
-            { title: trimmedTitle, moodleCourseId, imageUrl: backgroundUrl },
+            { title: trimmedTitle, moodleCourseId, imageUrl: background.imageUrl },
             {
                 onSuccess: (map) => onCreated(map.id),
                 onError: async (error) => {
@@ -371,22 +372,7 @@ const CreateMapDialog = ({
                     <span className="text-xs font-semibold uppercase tracking-wide text-ink-soft">
                         {es.home.create.backgroundLabel}
                     </span>
-                    <div className="flex gap-2">
-                        {backgroundOptions.map((option) => (
-                            <button
-                                key={option.id}
-                                type="button"
-                                onClick={() => setBackgroundUrl(option.url)}
-                                aria-label={option.label}
-                                aria-pressed={backgroundUrl === option.url}
-                                className={`h-14 w-20 overflow-hidden rounded-md border-2 ${
-                                    backgroundUrl === option.url ? "border-teal-dark" : "border-transparent"
-                                }`}
-                            >
-                                <img src={option.url} alt="" className="h-full w-full object-cover" />
-                            </button>
-                        ))}
-                    </div>
+                    <BackgroundField value={background} onChange={setBackground} />
                 </div>
 
                 {errorKind === "conflict" && (
@@ -406,7 +392,7 @@ const CreateMapDialog = ({
                     <Button type="button" variant="secondary" onClick={() => handleOpenChange(false)}>
                         {es.home.create.cancel}
                     </Button>
-                    <Button type="submit" disabled={createMap.isPending}>
+                    <Button type="submit" disabled={createMap.isPending || !background}>
                         {createMap.isPending ? es.home.create.submitting : es.home.create.submit}
                     </Button>
                 </div>
