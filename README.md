@@ -36,22 +36,111 @@ no router dependency:
 
 - *(no query string)* — "Mis mapas" home.
 - `?map=<course-map-uuid>` — opens that level directly.
+- `?view=published` (optional, combinable) — opens straight into the student
+  experience (published data) instead of the editor.
 - `?course=<moodleCourseId>` — the course's levels: a single level opens
   directly, several show the level carousel (`&entry=1` forces the carousel
   even with a single level), and none shows an empty state (an editor gets a
   "crear el primer nivel" CTA; a student sees there's nothing yet). This is
   also the future entry point when launched from Moodle.
 
+## Draft vs published
+
+Editors work on a **draft**; students only ever see a **published** snapshot,
+even while someone is editing.
+
+- Everything the editor reads and writes (`/course-maps/...`) is the draft.
+  Publishing (`POST /course-maps/{id}/publish`) stores an immutable snapshot;
+  students read `/published/course-maps/...`. Bubble `status` and level
+  `position` are always live and belong to neither the draft nor a snapshot.
+- The map header shows a status chip (*Sin publicar* / *Publicado · versión N* /
+  *Cambios sin publicar*), refreshed after every batch of successful writes,
+  publish, discard and restore.
+- **Publicar** reviews the changes (*Fondo cambiado*, *3 burbujas movidas*…) and
+  sends the `draftHash` it showed, so a draft that changed during the review is
+  rejected and re-reviewed instead of published unseen.
+- **Descartar cambios** returns the draft to the published version;
+  **Historial** lists the versions and **Restaurar en el borrador** loads one
+  into the draft (it never publishes). Anything the server had to adjust (for
+  example a deleted skin) is shown as a warning.
+- View modes: **Edición** (draft, editable), **Vista previa (borrador)** (the
+  draft as a student would see it) and **Publicado** (read-only, exactly what
+  students see; disabled until the level has been published). `?view=published`
+  opens the student experience directly. A link to a never-published level
+  shows "Este nivel aún no está disponible."
+- Rendering goes through one `RenderableMap` (`renderable.ts`) with two adapters
+  (draft → renderable, published → renderable; published skins come from the
+  snapshot's frozen copies). Draft and published data use separate TanStack
+  Query roots (`course-maps/...` vs `published/...`): draft edits never
+  invalidate published queries, and publishing refreshes only the published ones.
+
+## Concurrent editing: the write queue
+
+There is no authentication yet, so the UI never says *who* edited, only that
+*someone else* did.
+
+- Draft-content writes are guarded with `If-Match` (map `revision`, bubble
+  `version`). Every guarded write of a map goes through **one FIFO queue**
+  (`data/writeQueue.ts`, registry in `writeQueues.ts`). Jobs run one at a time and
+  read the version they need when they *run*, after the previous response has
+  already updated the query cache, so two quick edits never conflict with each
+  other. Rapid drags of one bubble collapse into the latest position while
+  queued.
+- Status-only bubble PATCHes (the progress simulator) are live data: no
+  `If-Match`, no queue.
+- A draft fetch is only trusted if no guarded write overlapped it
+  (`fetchDraftConsistently`), otherwise a refetch could return an older version
+  than the cache.
+- **412 on a bubble**: the queue halts, the draft is reloaded, the other
+  person's version of the bubble wins and the local change is dropped, with a
+  toast. **412 on the map** (title, appearance, background): a dialog offers
+  *Recargar* (discard mine) or *Aplicar los míos de todas formas* (re-send with
+  the fresh revision). **428** is a client bug: logged in the console, generic
+  error in the UI.
+- `WriteSyncHost` (mounted once at the root) owns all of this UI.
+
+## Backgrounds and the asset library
+
+The background picker (`components/background/`) is the only way to choose a
+background, both when replacing a level's and when creating a level:
+**Biblioteca** (search, paging, credit, usage badges, edit title/credit, delete
+unused), **Subir nueva** (drag and drop, client-side checks, title and
+*Autor, fuente o licencia*) and **Predefinidos** (bundled art). Choosing an
+image shows it under the level's current bubbles with the old and new aspect
+ratios; *Aplicar* is a guarded change with a 10-second *Deshacer*. The previous
+image is never deleted, and deleting an image that is in use is refused with
+exactly where it is used. Bubble art for image skins reuses the same library
+and uploader.
+
+`VITE_SHOW_BUNDLED_BACKGROUNDS` controls the **Predefinidos** tab. It defaults to
+`true` in development and `false` in production builds, because the bundled art
+has no verified license.
+
+## Tests
+
+`pnpm test` runs `node --test` over `src/**/*.test.ts` (Node 24 strips types, no
+new dependency). It covers the pure logic only: the write queue (ordering,
+collapsing, conflicts), canonical JSON hashing, upload limits and the change
+sentences. Component behaviour is checked by hand.
+
 ## Running without a backend
 
 Set `VITE_USE_MOCK_API=true`. The app then uses an in-memory mock that
-follows the backend's contract v2: several levels per Moodle course (unique
+follows the backend's contract v3: draft vs published with snapshots, `If-Match` revisions/versions (428/412), the asset library (metadata, usage, delete with 409) and the `/published` read API, plus several levels per Moodle course (unique
 per Moodle section, not per course), map settings/appearance, skins (four
 built-in procedural skins plus whatever you create in the studio), an asset
 store for uploaded images, and the full `/resolved` availability contract.
 Its state resets on every full page reload, reseeded with a Fundamentos de
-programación course that has three levels (different bubble counts, modes
-and completion states) plus a few single-level courses.
+programación course that has three levels (level 1 published and up to date,
+level 2 with unpublished changes on top of three publications, level 3 never
+published), a few single-level courses and three generated library backgrounds
+of different aspect ratios.
+
+In development, `window.__rumbosMock` lets one tab act as "another editor" to
+exercise the conflict flows: `editBubbleElsewhere(mapId, bubbleId)` and
+`editMapElsewhere(mapId)` bump a version/revision behind the app's back, and
+`maps()` / `bubbles(mapId)` list ids. `?mockLatency=300` adds artificial latency
+to every call, which makes the write queue observable.
 
 ### Forcing a Moodle-connectivity state in the mock
 
@@ -104,6 +193,7 @@ from the appearance studio's "Animación" tab.
 | `VITE_API_PROXY_TARGET` | `http://localhost:8000` | Dev-only target of the `/api` proxy. |
 | `VITE_ACTIVITY_OPEN_MODE` | `tab` | `tab` opens a Moodle activity in a new window. `modal` shows it in an iframe with a new-tab link. |
 | `VITE_USE_MOCK_API` | `false` | `true` swaps the backend for the in-memory mock. |
+| `VITE_SHOW_BUNDLED_BACKGROUNDS` | `true` in dev, `false` in production builds | Shows the bundled demo backgrounds in the picker's *Predefinidos* tab. |
 
 ## Theming
 
@@ -127,7 +217,7 @@ keeping the "Mis mapas" home bundle lighter. `MapCanvas` and
 everything it imports), so opening one doesn't pay for Konva twice if you
 later open the other. As of this sprint: the shared Konva chunk is ~338 KB
 (~104 KB gzipped); the rest of the app (home, data layer, every non-Konva UI
-component) is ~435 KB (~136 KB gzipped) and never touches Konva. Run
+component) is ~417 KB (~128 KB gzipped) and never touches Konva. Run
 `pnpm build` to regenerate these numbers for any future change.
 
 ## Scripts
@@ -135,6 +225,7 @@ component) is ~435 KB (~136 KB gzipped) and never touches Konva. Run
 - `pnpm dev`: development server.
 - `pnpm build`: type-check and production build.
 - `pnpm lint`: ESLint.
+- `pnpm test`: unit tests for the pure logic (Node's built-in runner).
 
 ## Structure
 
