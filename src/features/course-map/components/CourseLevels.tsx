@@ -13,8 +13,8 @@ import {
     useDeleteCourseMap,
     useCourseMapsByCourse,
     useReorderCourseMaps,
-    useUpdateCourseMap,
 } from "../data/queries.ts";
+import { useUpdateCourseMap } from "../data/draftMutations.ts";
 import type { CourseMapSummary } from "../data/types.ts";
 
 interface CourseLevelsProps {

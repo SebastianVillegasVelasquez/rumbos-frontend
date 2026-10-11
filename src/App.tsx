@@ -17,13 +17,11 @@ import {
     useCourseMap,
     useCourseMapsByCourse,
     useCreateBubble,
-    useDeleteBubble,
     usePendingActivityIds,
     useResolvedCourseMap,
     useSkins,
-    useUpdateBubble,
-    useUpdateCourseMap,
 } from "./features/course-map/data/queries.ts";
+import { useDeleteBubble, useUpdateBubble, useUpdateCourseMap } from "./features/course-map/data/draftMutations.ts";
 import { ApiError, isUnreachable } from "./features/course-map/data/client.ts";
 import { resolveImageUrl } from "./features/course-map/data/assets.ts";
 import { courseTitleFrom } from "./features/course-map/courseTitle.ts";

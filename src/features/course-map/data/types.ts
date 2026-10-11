@@ -1,5 +1,6 @@
 // Mirrors the backend's camelCase JSON contract (app/schemas in rumbos-backend).
-// Contract v2: several maps ("levels") per course, map settings/appearance,
+// Contract v3: draft vs published, optimistic concurrency (revision/version +
+// If-Match), an asset library. Contract v2: several maps ("levels") per course, map settings/appearance,
 // procedural and image skins, and an asset store for backgrounds/bubble art.
 
 export type BubbleStatus = "locked" | "no_complete" | "in_progress" | "complete";
@@ -16,8 +17,19 @@ export interface Bubble {
     status: BubbleStatus;
     skinId: string | null;
     sequence: number;
+    // Optimistic-concurrency counter; bumped by every content edit (not by
+    // status-only updates, which are live demo data).
+    version: number;
     createdAt: string;
     updatedAt: string;
+}
+
+export type PublicationStatus = "never_published" | "up_to_date" | "unpublished_changes";
+
+export interface PublicationBadge {
+    status: PublicationStatus;
+    number: number | null;
+    publishedAt: string | null;
 }
 
 export interface CourseMapSummary {
@@ -29,6 +41,7 @@ export interface CourseMapSummary {
     imageUrl: string;
     bubbleCount: number;
     completeCount: number;
+    publication: PublicationBadge;
     createdAt: string;
     updatedAt: string;
 }
@@ -83,6 +96,7 @@ export interface CourseMapRead {
     defaultSkinId: string | null;
     skinRules: SkinRule[];
     bubbles: Bubble[];
+    revision: number;
     createdAt: string;
     updatedAt: string;
 }
@@ -296,7 +310,167 @@ export interface Asset {
     bytes: number;
     url: string;
     thumbUrl: string | null;
+    title: string;
+    credit: string | null;
+    originalFilename: string | null;
     createdAt: string;
+}
+
+export interface AssetUsage {
+    maps: number;
+    skins: number;
+    publications: number;
+}
+
+export interface AssetListItem extends Asset {
+    usage: AssetUsage;
+}
+
+export interface AssetListParams {
+    kind?: AssetKind;
+    q?: string;
+    limit?: number;
+    offset?: number;
+}
+
+export interface AssetListResult {
+    items: AssetListItem[];
+    total: number;
+    limit: number;
+    offset: number;
+}
+
+export interface AssetCreate {
+    file: File;
+    kind: AssetKind;
+    title?: string;
+    credit?: string;
+}
+
+// `created` is false when the backend answered 200: identical content already
+// existed and that asset was returned instead of storing a duplicate.
+export interface AssetCreateResult {
+    asset: Asset;
+    created: boolean;
+}
+
+export interface AssetPatch {
+    title?: string;
+    credit?: string | null;
+}
+
+// ---- Draft vs published -------------------------------------------------------
+
+export interface Warning {
+    code: string;
+    message: string;
+}
+
+export interface PublicationChanges {
+    backgroundChanged: boolean;
+    titleChanged: boolean;
+    settingsChanged: boolean;
+    skinsChanged: boolean;
+    bubblesAdded: number;
+    bubblesRemoved: number;
+    bubblesMoved: number;
+    bubblesRestyled: number;
+}
+
+export interface PublicationState {
+    status: PublicationStatus;
+    currentNumber: number | null;
+    currentPublishedAt: string | null;
+    currentNote: string | null;
+    draftHash: string;
+    changes: PublicationChanges | null;
+}
+
+export interface PublishInput {
+    draftHash: string;
+    note?: string;
+}
+
+export interface PublicationSummary {
+    number: number;
+    createdAt: string;
+    note: string | null;
+    title: string;
+    bubbleCount: number;
+}
+
+export interface PublicationListResult {
+    items: PublicationSummary[];
+}
+
+// Result of discard-changes / restore: the new draft plus anything the server
+// had to adjust on the way (e.g. a skin that no longer exists was reset).
+export interface DraftReplaceResult {
+    map: CourseMapRead;
+    warnings: Warning[];
+}
+
+// ---- Published (student) read API ------------------------------------------------
+
+export interface PublishedMapSummary {
+    id: string;
+    title: string;
+    moodleCourseId: number;
+    moodleSectionId: number | null;
+    position: number;
+    imageUrl: string;
+    bubbleCount: number;
+    completeCount: number;
+    publicationNumber: number;
+    publishedAt: string;
+}
+
+export interface PublishedMapListParams {
+    moodleCourseId?: number;
+    limit?: number;
+    offset?: number;
+}
+
+export interface PublishedMapListResult {
+    items: PublishedMapSummary[];
+    total: number;
+    limit: number;
+    offset: number;
+}
+
+export interface PublishedSkin {
+    name: string;
+    isDefault: boolean;
+    config: SkinConfig;
+}
+
+export interface PublishedBubble {
+    id: string;
+    activityId: number;
+    x: number;
+    y: number;
+    icon: BubbleIcon | null;
+    skinId: string | null;
+    sequence: number;
+    // Always live, not part of a publication.
+    status: BubbleStatus;
+}
+
+export interface PublishedMapRead {
+    id: string;
+    title: string;
+    moodleCourseId: number;
+    moodleSectionId: number | null;
+    position: number;
+    imageUrl: string;
+    settings: MapSettings;
+    defaultSkinId: string | null;
+    skinRules: SkinRule[];
+    // Frozen copies taken at publish time.
+    skins: Record<string, PublishedSkin>;
+    bubbles: PublishedBubble[];
+    publicationNumber: number;
+    publishedAt: string;
 }
 
 // ---- Errors -----------------------------------------------------------------

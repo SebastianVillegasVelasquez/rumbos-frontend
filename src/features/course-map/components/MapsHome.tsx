@@ -16,8 +16,8 @@ import {
     useCourseMaps,
     useCreateCourseMap,
     useDeleteCourseMap,
-    useUpdateCourseMap,
 } from "../data/queries.ts";
+import { useUpdateCourseMap } from "../data/draftMutations.ts";
 import { getRecentCourseMaps, type RecentCourseMap } from "../data/recentMaps.ts";
 import { courseTitleFrom } from "../courseTitle.ts";
 import type { CourseMapSummary } from "../data/types.ts";

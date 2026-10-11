@@ -437,7 +437,7 @@ const ImageFields = ({ config, onChange }: { config: ImageSkin; onChange: (c: Im
         createAsset.mutate(
             { file, kind },
             {
-                onSuccess: (asset) => {
+                onSuccess: ({ asset }) => {
                     setUploadingState(null);
                     onChange({ ...config, states: { ...config.states, [state]: asset.id } });
                 },

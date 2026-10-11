@@ -6,12 +6,8 @@ import { SegmentedControl } from "../../../components/ui/SegmentedControl.tsx";
 import { ConfirmDialog } from "../../../components/ui/ConfirmDialog.tsx";
 import { SkinStudio } from "./SkinStudio.tsx";
 import { useAnimationQuality, type QualitySetting } from "../../../fx/quality.ts";
-import {
-    useCreateAsset,
-    useReorderBubbles,
-    useUpdateAppearance,
-    useUpdateBubble,
-} from "../data/queries.ts";
+import { useCreateAsset, useReorderBubbles } from "../data/queries.ts";
+import { useUpdateAppearance, useUpdateBubble } from "../data/draftMutations.ts";
 import { backgroundOptions } from "../../../assets/backgrounds/index.ts";
 import { es } from "../../../i18n/es.ts";
 import type {
@@ -212,7 +208,7 @@ const MapTab = ({
         } catch {
             // Non-fatal: the asset upload itself still validates the file.
         }
-        createAsset.mutate({ file, kind: "background" }, { onSuccess: (asset) => onBackgroundChange(asset.url) });
+        createAsset.mutate({ file, kind: "background" }, { onSuccess: ({ asset }) => onBackgroundChange(asset.url) });
     };
 
     return (
