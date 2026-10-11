@@ -34,7 +34,7 @@ needed.
 Navigation is a tiny `history.pushState`/`popstate` wrapper (`src/hooks/useRoute.ts`),
 no router dependency:
 
-- *(no query string)* — "Mis mapas" home.
+- _(no query string)_ — "Mis mapas" home.
 - `?map=<course-map-uuid>` — opens that level directly.
 - `?view=published` (optional, combinable) — opens straight into the student
   experience (published data) instead of the editor.
@@ -53,10 +53,10 @@ even while someone is editing.
   Publishing (`POST /course-maps/{id}/publish`) stores an immutable snapshot;
   students read `/published/course-maps/...`. Bubble `status` and level
   `position` are always live and belong to neither the draft nor a snapshot.
-- The map header shows a status chip (*Sin publicar* / *Publicado · versión N* /
-  *Cambios sin publicar*), refreshed after every batch of successful writes,
+- The map header shows a status chip (_Sin publicar_ / _Publicado · versión N_ /
+  _Cambios sin publicar_), refreshed after every batch of successful writes,
   publish, discard and restore.
-- **Publicar** reviews the changes (*Fondo cambiado*, *3 burbujas movidas*…) and
+- **Publicar** reviews the changes (_Fondo cambiado_, _3 burbujas movidas_…) and
   sends the `draftHash` it showed, so a draft that changed during the review is
   rejected and re-reviewed instead of published unseen.
 - **Descartar cambios** returns the draft to the published version;
@@ -76,13 +76,13 @@ even while someone is editing.
 
 ## Concurrent editing: the write queue
 
-There is no authentication yet, so the UI never says *who* edited, only that
-*someone else* did.
+There is no authentication yet, so the UI never says _who_ edited, only that
+_someone else_ did.
 
 - Draft-content writes are guarded with `If-Match` (map `revision`, bubble
   `version`). Every guarded write of a map goes through **one FIFO queue**
   (`data/writeQueue.ts`, registry in `writeQueues.ts`). Jobs run one at a time and
-  read the version they need when they *run*, after the previous response has
+  read the version they need when they _run_, after the previous response has
   already updated the query cache, so two quick edits never conflict with each
   other. Rapid drags of one bubble collapse into the latest position while
   queued.
@@ -94,7 +94,7 @@ There is no authentication yet, so the UI never says *who* edited, only that
 - **412 on a bubble**: the queue halts, the draft is reloaded, the other
   person's version of the bubble wins and the local change is dropped, with a
   toast. **412 on the map** (title, appearance, background): a dialog offers
-  *Recargar* (discard mine) or *Aplicar los míos de todas formas* (re-send with
+  _Recargar_ (discard mine) or _Aplicar los míos de todas formas_ (re-send with
   the fresh revision). **428** is a client bug: logged in the console, generic
   error in the UI.
 - `WriteSyncHost` (mounted once at the root) owns all of this UI.
@@ -105,9 +105,9 @@ The background picker (`components/background/`) is the only way to choose a
 background, both when replacing a level's and when creating a level:
 **Biblioteca** (search, paging, credit, usage badges, edit title/credit, delete
 unused), **Subir nueva** (drag and drop, client-side checks, title and
-*Autor, fuente o licencia*) and **Predefinidos** (bundled art). Choosing an
+_Autor, fuente o licencia_) and **Predefinidos** (bundled art). Choosing an
 image shows it under the level's current bubbles with the old and new aspect
-ratios; *Aplicar* is a guarded change with a 10-second *Deshacer*. The previous
+ratios; _Aplicar_ is a guarded change with a 10-second _Deshacer_. The previous
 image is never deleted, and deleting an image that is in use is refused with
 exactly where it is used. Bubble art for image skins reuses the same library
 and uploader.
@@ -147,12 +147,12 @@ to every call, which makes the write queue observable.
 Append `?mockMoodle=<state>` to force every bubble's resolved availability,
 for demoing the precise-availability-states UI without a real Moodle:
 
-| Value | Effect |
-| --- | --- |
-| `down` | `moodleStatus: "unavailable"`; every bubble becomes `unknown`. |
-| `hidden` | Every bubble resolves to `hidden`. |
-| `missing` | Every bubble resolves to `missing`. |
-| `cached` | `moodleStatus: "cached"`; availability resolves normally. |
+| Value     | Effect                                                         |
+| --------- | -------------------------------------------------------------- |
+| `down`    | `moodleStatus: "unavailable"`; every bubble becomes `unknown`. |
+| `hidden`  | Every bubble resolves to `hidden`.                             |
+| `missing` | Every bubble resolves to `missing`.                            |
+| `cached`  | `moodleStatus: "cached"`; availability resolves normally.      |
 
 Example: `http://localhost:5173/?map=<uuid>&mockMoodle=hidden`.
 
@@ -161,15 +161,15 @@ Example: `http://localhost:5173/?map=<uuid>&mockMoodle=hidden`.
 Append `?mockAssets=<state>` to the appearance studio's URL to demo the
 image-skin/background upload error states:
 
-| Value | Effect |
-| --- | --- |
+| Value   | Effect                                                |
+| ------- | ----------------------------------------------------- |
 | `quota` | Every upload fails with `asset_quota_exceeded` (507). |
-| `down` | Every upload fails with `uploads_disabled` (503). |
+| `down`  | Every upload fails with `uploads_disabled` (503).     |
 
 ### Debug flags
 
-| Flag | Effect |
-| --- | --- |
+| Flag         | Effect                                                                                                            |
+| ------------ | ----------------------------------------------------------------------------------------------------------------- |
 | `?debug=fps` | Shows a dev-only rolling FPS counter (top-left), independent of the shared ticker so it measures real frame time. |
 
 ## Procedural animation and quality tiers
@@ -187,13 +187,13 @@ from the appearance studio's "Animación" tab.
 
 ## Environment variables
 
-| Variable | Default | Purpose |
-| --- | --- | --- |
-| `VITE_API_BASE_URL` | `/api` | Base URL the browser calls for the API. |
-| `VITE_API_PROXY_TARGET` | `http://localhost:8000` | Dev-only target of the `/api` proxy. |
-| `VITE_ACTIVITY_OPEN_MODE` | `tab` | `tab` opens a Moodle activity in a new window. `modal` shows it in an iframe with a new-tab link. |
-| `VITE_USE_MOCK_API` | `false` | `true` swaps the backend for the in-memory mock. |
-| `VITE_SHOW_BUNDLED_BACKGROUNDS` | `true` in dev, `false` in production builds | Shows the bundled demo backgrounds in the picker's *Predefinidos* tab. |
+| Variable                        | Default                                     | Purpose                                                                                           |
+| ------------------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `VITE_API_BASE_URL`             | `/api`                                      | Base URL the browser calls for the API.                                                           |
+| `VITE_API_PROXY_TARGET`         | `http://localhost:8000`                     | Dev-only target of the `/api` proxy.                                                              |
+| `VITE_ACTIVITY_OPEN_MODE`       | `tab`                                       | `tab` opens a Moodle activity in a new window. `modal` shows it in an iframe with a new-tab link. |
+| `VITE_USE_MOCK_API`             | `false`                                     | `true` swaps the backend for the in-memory mock.                                                  |
+| `VITE_SHOW_BUNDLED_BACKGROUNDS` | `true` in dev, `false` in production builds | Shows the bundled demo backgrounds in the picker's _Predefinidos_ tab.                            |
 
 ## Theming
 
