@@ -10,7 +10,7 @@ import {
     removeBubbleFromCache,
     replaceDraft,
 } from "./draftCache.ts";
-import { courseMapKeys } from "./queryKeys.ts";
+import { courseMapKeys, publishedKeys } from "./queryKeys.ts";
 import { getWriteQueue } from "./writeQueues.ts";
 import { isWriteDiscarded, type WriteJob } from "./writeQueue.ts";
 import type {
@@ -91,7 +91,12 @@ export const useUpdateBubble = (courseMapId: string) => {
         onSettled: (_data, _error, { input }) => {
             // Status writes don't go through the queue, so nothing else
             // reconciles them with the server.
-            if (isStatusOnly(input)) void queryClient.invalidateQueries({ queryKey: detailKey });
+            if (isStatusOnly(input)) {
+                void queryClient.invalidateQueries({ queryKey: detailKey });
+                // Status is live data shared with the student view (not a
+                // draft edit), which picks it up on its next fetch.
+                void queryClient.invalidateQueries({ queryKey: publishedKeys.all() });
+            }
         },
     });
 };
