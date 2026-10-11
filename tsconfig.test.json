@@ -19,5 +19,5 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src/**/*.test.ts", "src/features/course-map/data/writeQueue.ts", "src/features/course-map/data/canonicalJson.ts"]
+  "include": ["src/**/*.test.ts", "src/features/course-map/data/writeQueue.ts", "src/features/course-map/data/canonicalJson.ts", "src/features/course-map/data/assetLimits.ts", "src/features/course-map/publicationText.ts", "src/i18n/es.ts"]
 }
