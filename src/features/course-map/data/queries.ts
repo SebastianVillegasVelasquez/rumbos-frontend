@@ -285,13 +285,15 @@ export const useCreateBubble = (courseMapId: string) => {
 
 // Reads wait for the map's write queue to drain so the diff and the hash the
 // editor reviews describe the draft the server actually has.
+export const fetchPublicationState = async (courseMapId: string) => {
+    await getWriteQueue(courseMapId).whenIdle();
+    return courseMapApi.getPublicationState(courseMapId);
+};
+
 export const usePublicationState = (courseMapId: string | null) =>
     useQuery({
         queryKey: courseMapKeys.publicationState(courseMapId ?? ""),
-        queryFn: async () => {
-            await getWriteQueue(courseMapId!).whenIdle();
-            return courseMapApi.getPublicationState(courseMapId!);
-        },
+        queryFn: () => fetchPublicationState(courseMapId!),
         enabled: courseMapId !== null,
         retry: retryTransient,
     });

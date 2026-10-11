@@ -75,17 +75,29 @@ export async function apiRequest<T>(
 
 // Multipart upload for /assets. Separate from apiRequest because the body is
 // FormData, not JSON (no Content-Type header: the browser sets the boundary).
-// Also reports the HTTP status, since /assets answers 201 for new content and
-// 200 when identical content already existed.
-export async function apiUpload<T>(path: string, form: FormData): Promise<{ data: T; status: number }> {
-    let response: Response;
-    try {
-        response = await fetch(`${API_BASE_URL}${path}`, { method: "POST", body: form });
-    } catch {
-        throw new ApiError(0, undefined);
-    }
-
-    const parsed = parseBody(await response.text());
-    if (!response.ok) throw new ApiError(response.status, parsed);
-    return { data: parsed as T, status: response.status };
+// Uses XMLHttpRequest rather than fetch because only XHR reports upload
+// progress. Also reports the HTTP status, since /assets answers 201 for new
+// content and 200 when identical content already existed.
+export function apiUpload<T>(
+    path: string,
+    form: FormData,
+    onProgress?: (fraction: number) => void
+): Promise<{ data: T; status: number }> {
+    return new Promise((resolve, reject) => {
+        const request = new XMLHttpRequest();
+        request.open("POST", `${API_BASE_URL}${path}`);
+        if (onProgress) {
+            request.upload.onprogress = (event) => {
+                if (event.lengthComputable) onProgress(event.loaded / event.total);
+            };
+        }
+        request.onerror = () => reject(new ApiError(0, undefined));
+        request.onabort = () => reject(new ApiError(0, undefined));
+        request.onload = () => {
+            const parsed = parseBody(request.responseText);
+            if (request.status >= 200 && request.status < 300) resolve({ data: parsed as T, status: request.status });
+            else reject(new ApiError(request.status, parsed));
+        };
+        request.send(form);
+    });
 }

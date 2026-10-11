@@ -24,6 +24,11 @@ export interface Bubble {
     updatedAt: string;
 }
 
+// What the canvas, the HUD and the overview actually read from a bubble. A
+// draft Bubble and a published bubble both satisfy it, which is what lets one
+// renderer serve editors and students.
+export type RenderableBubble = Pick<Bubble, "id" | "activityId" | "x" | "y" | "icon" | "skinId" | "sequence" | "status">;
+
 export type PublicationStatus = "never_published" | "up_to_date" | "unpublished_changes";
 
 export interface PublicationBadge {
@@ -345,6 +350,8 @@ export interface AssetCreate {
     kind: AssetKind;
     title?: string;
     credit?: string;
+    // Upload progress as a 0..1 fraction (real client only).
+    onProgress?: (fraction: number) => void;
 }
 
 // `created` is false when the backend answered 200: identical content already

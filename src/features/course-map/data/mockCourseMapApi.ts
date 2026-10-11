@@ -1,4 +1,5 @@
 import { ApiError } from "./client.ts";
+import { ASSET_LIMITS, ALLOWED_IMAGE_MIME, CREDIT_MAX_LENGTH, TITLE_MAX_LENGTH, checkDimensions } from "./assetLimits.ts";
 import { canonicalJson, sha256Hex } from "./canonicalJson.ts";
 import { DEFAULT_BACKGROUND_URL } from "../../../assets/backgrounds/index.ts";
 import type { CourseMapApi } from "./courseMapApi.ts";
@@ -72,13 +73,9 @@ const DEFAULT_LIMIT = 24;
 const MAX_LIMIT = 100;
 const ASSET_QUOTA = 50;
 
-const BACKGROUND_MAX_BYTES = 8 * 1024 * 1024;
-const BACKGROUND_MAX_SIDE = 8192;
-const BUBBLE_MAX_BYTES = 2 * 1024 * 1024;
-const BUBBLE_MAX_SIDE = 1024;
-const ALLOWED_MIME = new Set(["image/png", "image/jpeg", "image/webp"]);
-const TITLE_MAX = 120;
-const CREDIT_MAX = 300;
+const ALLOWED_MIME = new Set<string>(ALLOWED_IMAGE_MIME);
+const TITLE_MAX = TITLE_MAX_LENGTH;
+const CREDIT_MAX = CREDIT_MAX_LENGTH;
 const NOTE_MAX = 200;
 
 const newId = () =>
@@ -1074,7 +1071,7 @@ const impl: CourseMapApi = {
         return { items: filtered.slice(offset, offset + limit).map(toListItem), total: filtered.length, limit, offset };
     },
 
-    async createAsset({ file, kind, title, credit }: AssetCreate): Promise<AssetCreateResult> {
+    async createAsset({ file, kind, title, credit, onProgress }: AssetCreate): Promise<AssetCreateResult> {
         const override = mockAssetsOverride();
         if (override === "down") throw businessError(503, "uploads_disabled", "Las subidas están deshabilitadas temporalmente");
         if (override === "quota" || assets.length >= ASSET_QUOTA) {
@@ -1084,15 +1081,14 @@ const impl: CourseMapApi = {
             throw businessError(422, "asset_type_not_allowed", "Formato de imagen no permitido (usa PNG, JPEG o WebP)");
         }
         validateAssetMetadata(title, credit);
-        const maxBytes = kind === "background" ? BACKGROUND_MAX_BYTES : BUBBLE_MAX_BYTES;
-        if (file.size > maxBytes) {
+        if (file.size > ASSET_LIMITS[kind].maxBytes) {
             throw businessError(413, "asset_too_large", "El archivo supera el tamaño máximo permitido");
         }
         const { width, height } = await readImageSize(file);
-        const maxSide = kind === "background" ? BACKGROUND_MAX_SIDE : BUBBLE_MAX_SIDE;
-        if (width > maxSide || height > maxSide) {
+        if (checkDimensions(width, height, kind) !== null) {
             throw businessError(422, "asset_dimensions_too_large", "La imagen supera las dimensiones máximas permitidas");
         }
+        onProgress?.(1);
         // Identical content is stored once: 200 with the existing asset.
         const digest = await sha256Hex(await file.arrayBuffer());
         const existing = assets.find((asset) => asset.kind === kind && asset.sha256 === digest);
@@ -1337,6 +1333,7 @@ export const getMockAssetObjectUrl = (assetId: string): string | null => assetOb
 // Dev-only: act as "another editor" so conflicts can be provoked from one tab.
 //   __rumbosMock.editBubbleElsewhere(mapId, bubbleId)  bumps that bubble's version and nudges it
 //   __rumbosMock.editMapElsewhere(mapId)               bumps the map revision and renames it
+//   __rumbosMock.maps() / .bubbles(mapId)              ids and current revisions/versions
 if (import.meta.env.DEV && typeof window !== "undefined") {
     (window as unknown as { __rumbosMock: unknown }).__rumbosMock = {
         editBubbleElsewhere: (mapId: string, bubbleId: string) => {
@@ -1360,5 +1357,6 @@ if (import.meta.env.DEV && typeof window !== "undefined") {
             });
         },
         maps: () => maps.map(({ id, title, revision }) => ({ id, title, revision })),
+        bubbles: (mapId: string) => requireMap(mapId).bubbles.map(({ id, x, y, version }) => ({ id, x, y, version })),
     };
 }

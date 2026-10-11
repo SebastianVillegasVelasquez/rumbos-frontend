@@ -139,13 +139,13 @@ export const realCourseMapApi: CourseMapApi = {
     listAssets: (params) =>
         apiRequest(`/assets${buildQuery(params as Record<string, string | number | boolean | undefined>)}`),
 
-    createAsset: async ({ file, kind, title, credit }) => {
+    createAsset: async ({ file, kind, title, credit, onProgress }) => {
         const form = new FormData();
         form.set("file", file);
         form.set("kind", kind);
         if (title) form.set("title", title);
         if (credit) form.set("credit", credit);
-        const { data, status } = await apiUpload<Asset>("/assets", form);
+        const { data, status } = await apiUpload<Asset>("/assets", form, onProgress);
         return { asset: data, created: status !== 200 };
     },
 
