@@ -314,16 +314,6 @@ export const es = {
             imageFallbackNote: "Los estados sin imagen propia usan la de \"Disponible\".",
             anchor: "Anclaje",
             anchors: { center: "Centro", bottom: "Base" },
-            uploading: "Subiendo…",
-            uploadErrors: {
-                asset_type_not_allowed: "Formato no permitido. Usa PNG, JPEG o WebP.",
-                asset_too_large: "El archivo es demasiado grande.",
-                asset_invalid_image: "El archivo no es una imagen válida.",
-                asset_dimensions_too_large: "La imagen supera el tamaño máximo.",
-                asset_quota_exceeded: "Se alcanzó el límite de almacenamiento de imágenes.",
-                uploads_disabled: "Las subidas están deshabilitadas temporalmente.",
-                unknown_error: "No se pudo subir la imagen.",
-            },
         },
         map: {
             mode: "Modo",

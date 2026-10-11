@@ -1,17 +1,16 @@
-import { useRef, useState } from "react";
+import { Suspense, lazy, useState } from "react";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 import { SkinPreviewRow } from "./SkinPreview.tsx";
 import { Button, IconButton } from "../../../components/ui/Button.tsx";
 import { Badge } from "../../../components/ui/Card.tsx";
 import { ConfirmDialog } from "../../../components/ui/ConfirmDialog.tsx";
 import { DropdownMenu } from "../../../components/ui/DropdownMenu.tsx";
-import { useCreateAsset, useCreateSkin, useDeleteSkin, useUpdateSkin } from "../data/queries.ts";
-import { ApiError } from "../data/client.ts";
+import { useCreateSkin, useDeleteSkin, useUpdateSkin } from "../data/queries.ts";
+import { resolveImageUrl } from "../data/assets.ts";
 import { ICON_KEYS, ICON_LABELS, type IconKey } from "../icons.ts";
 import { contrastRatio } from "../color.ts";
 import { es } from "../../../i18n/es.ts";
 import type {
-    AssetKind,
     ImageSkin,
     ImageSkinState,
     ProceduralSkin,
@@ -20,6 +19,9 @@ import type {
     SkinPalette,
     SkinShape,
 } from "../data/types.ts";
+
+// Library + uploader for bubble art only load when someone opens the picker.
+const BubbleArtPicker = lazy(() => import("./background/BubbleArtPicker.tsx").then((m) => ({ default: m.BubbleArtPicker })));
 
 const MODNAMES = ["quiz", "scorm", "customcert", "assign", "resource", "url"] as const;
 
@@ -423,32 +425,7 @@ const ProceduralFields = ({ config, onChange }: { config: ProceduralSkin; onChan
 const IMAGE_STATE_KEYS: ImageSkinState[] = ["available", "locked", "next", "inProgress", "complete", "hover"];
 
 const ImageFields = ({ config, onChange }: { config: ImageSkin; onChange: (c: ImageSkin) => void }) => {
-    const createAsset = useCreateAsset();
-    const [uploadError, setUploadError] = useState<string | null>(null);
-    const [uploadingState, setUploadingState] = useState<ImageSkinState | null>(null);
-    const fileInputs = useRef<Partial<Record<ImageSkinState, HTMLInputElement | null>>>({});
-
-    const kind: AssetKind = "bubble";
-
-    const handleFile = (state: ImageSkinState, file: File | undefined) => {
-        if (!file) return;
-        setUploadError(null);
-        setUploadingState(state);
-        createAsset.mutate(
-            { file, kind },
-            {
-                onSuccess: ({ asset }) => {
-                    setUploadingState(null);
-                    onChange({ ...config, states: { ...config.states, [state]: asset.id } });
-                },
-                onError: (error) => {
-                    setUploadingState(null);
-                    const code = error instanceof ApiError ? error.detail.code : "unknown_error";
-                    setUploadError(es.studio.bubbles.uploadErrors[code as keyof typeof es.studio.bubbles.uploadErrors] ?? es.studio.bubbles.uploadErrors.unknown_error);
-                },
-            }
-        );
-    };
+    const [pickingState, setPickingState] = useState<ImageSkinState | null>(null);
 
     return (
         <div className="space-y-4">
@@ -461,25 +438,31 @@ const ImageFields = ({ config, onChange }: { config: ImageSkin; onChange: (c: Im
                             <span className="text-[11px] font-medium text-ink-soft">{es.studio.bubbles.imageStates[state]}</span>
                             <button
                                 type="button"
-                                onClick={() => fileInputs.current[state]?.click()}
-                                className="flex h-20 w-full items-center justify-center rounded-md border-2 border-dashed border-ink/15 bg-surface-muted text-xs text-ink-soft hover:border-teal-dark"
+                                onClick={() => setPickingState(state)}
+                                aria-label={`${es.studio.bubbles.pickImage}: ${es.studio.bubbles.imageStates[state]}`}
+                                className="flex h-20 w-full items-center justify-center overflow-hidden rounded-md border-2 border-dashed border-ink/15 bg-surface-muted text-xs text-ink-soft hover:border-teal-dark"
                             >
-                                {uploadingState === state ? es.studio.bubbles.uploading : assetId ? "✓" : "+"}
+                                {assetId ? (
+                                    <img src={resolveImageUrl(`/assets/${assetId}`)} alt="" className="h-full w-full object-contain" />
+                                ) : (
+                                    "+"
+                                )}
                             </button>
-                            <input
-                                ref={(el) => {
-                                    fileInputs.current[state] = el;
-                                }}
-                                type="file"
-                                accept="image/png,image/jpeg,image/webp"
-                                className="hidden"
-                                onChange={(e) => handleFile(state, e.target.files?.[0])}
-                            />
                         </div>
                     );
                 })}
             </div>
-            {uploadError && <p className="text-xs text-coral-dark">{uploadError}</p>}
+            {pickingState && (
+                <Suspense fallback={null}>
+                    <BubbleArtPicker
+                        open
+                        onOpenChange={(open) => !open && setPickingState(null)}
+                        title={`${es.studio.bubbles.pickImage}: ${es.studio.bubbles.imageStates[pickingState]}`}
+                        currentAssetId={config.states[pickingState]}
+                        onSelect={(asset) => onChange({ ...config, states: { ...config.states, [pickingState]: asset.id } })}
+                    />
+                </Suspense>
+            )}
             <p className="text-xs text-ink-soft">{es.studio.bubbles.imageFallbackNote}</p>
 
             <div className="grid grid-cols-2 gap-3">
