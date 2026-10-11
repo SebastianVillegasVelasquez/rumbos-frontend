@@ -1,6 +1,9 @@
 interface SegmentedOption<T extends string> {
     value: T;
     label: string;
+    disabled?: boolean;
+    // Explains why an option is disabled (tooltip and screen-reader text).
+    hint?: string;
 }
 
 interface SegmentedControlProps<T extends string> {
@@ -30,9 +33,14 @@ export function SegmentedControl<T extends string>({
                         type="button"
                         role="radio"
                         aria-checked={active}
+                        aria-disabled={option.disabled || undefined}
+                        disabled={option.disabled}
+                        title={option.disabled ? option.hint : undefined}
                         onClick={() => onChange(option.value)}
                         className={`min-h-[36px] rounded-pill px-3.5 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-dark ${
                             active ? "bg-teal-dark text-white shadow-soft" : "text-ink-soft hover:text-ink"
+                        } ${
+                            option.disabled ? "cursor-not-allowed opacity-50 hover:text-ink-soft" : ""
                         }`}
                     >
                         {option.label}

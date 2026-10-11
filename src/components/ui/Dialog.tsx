@@ -9,13 +9,16 @@ interface DialogProps {
     description?: string;
     children: ReactNode;
     footer?: ReactNode;
+    size?: "md" | "lg";
 }
 
-export const Dialog = ({ open, onOpenChange, title, description, children, footer }: DialogProps) => (
+export const Dialog = ({ open, onOpenChange, title, description, children, footer, size = "md" }: DialogProps) => (
     <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
         <RadixDialog.Portal>
             <RadixDialog.Overlay className="fixed inset-0 z-40 bg-ink/40 backdrop-blur-sm" />
-            <RadixDialog.Content className="fixed left-1/2 top-1/2 z-50 w-[min(90vw,32rem)] -translate-x-1/2 -translate-y-1/2 rounded-lg bg-surface p-6 shadow-soft focus:outline-none">
+            <RadixDialog.Content className={`fixed left-1/2 top-1/2 z-50 max-h-[92vh] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-lg bg-surface p-4 shadow-soft focus:outline-none sm:p-6 ${
+                    size === "lg" ? "w-[min(96vw,60rem)]" : "w-[min(90vw,32rem)]"
+                }`}>
                 <div className="mb-4 flex items-start justify-between gap-4">
                     <div>
                         <RadixDialog.Title className="font-heading text-lg font-semibold text-ink">
