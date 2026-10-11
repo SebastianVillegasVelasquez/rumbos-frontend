@@ -35,7 +35,9 @@ export const useRoute = () => {
 
     const navigate = useCallback((next: Route) => {
         const url = new URL(window.location.href);
+        const view = url.searchParams.get("view");
         url.search = "";
+        if (view) url.searchParams.set("view", view);
         if (next.name === "map") url.searchParams.set("map", next.mapId);
         else if (next.name === "course") {
             url.searchParams.set("course", String(next.moodleCourseId));

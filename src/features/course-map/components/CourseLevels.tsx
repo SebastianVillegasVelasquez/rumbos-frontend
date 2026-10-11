@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Loader2 } from "lucide-react";
-import { LevelCarousel, LevelCarouselEmpty } from "./LevelCarousel.tsx";
+import { LevelCarousel, LevelCarouselEmpty, type LevelItem } from "./LevelCarousel.tsx";
 import { Button } from "../../../components/ui/Button.tsx";
 import { Dialog } from "../../../components/ui/Dialog.tsx";
 import { ConfirmDialog } from "../../../components/ui/ConfirmDialog.tsx";
-import { backgroundOptions, DEFAULT_BACKGROUND_URL } from "../../../assets/backgrounds/index.ts";
+import { BackgroundField, type BackgroundChoice } from "./background/BackgroundField.tsx";
+import { DEFAULT_BACKGROUND_CHOICE } from "./background/defaultBackground.ts";
 import { es } from "../../../i18n/es.ts";
 import { ApiError, isUnreachable } from "../data/client.ts";
 import {
@@ -12,20 +13,31 @@ import {
     useCreateCourseMap,
     useDeleteCourseMap,
     useCourseMapsByCourse,
+    usePublishedMapsByCourse,
     useReorderCourseMaps,
-    useUpdateCourseMap,
 } from "../data/queries.ts";
+import { useUpdateCourseMap } from "../data/draftMutations.ts";
 import type { CourseMapSummary } from "../data/types.ts";
 
 interface CourseLevelsProps {
     moodleCourseId: number;
-    editable: boolean;
+    // Edición and Vista previa list the draft levels; Publicado lists only what
+    // students can see.
+    viewMode: "edit" | "preview" | "published";
     onOpenLevel: (courseMapId: string) => void;
 }
 
-export const CourseLevels = ({ moodleCourseId, editable, onOpenLevel }: CourseLevelsProps) => {
-    const levelsQuery = useCourseMapsByCourse(moodleCourseId);
-    const levels = useMemo(() => levelsQuery.data ?? [], [levelsQuery.data]);
+export const CourseLevels = ({ moodleCourseId, viewMode, onOpenLevel }: CourseLevelsProps) => {
+    const editable = viewMode === "edit";
+    const showPublished = viewMode === "published";
+    const draftQuery = useCourseMapsByCourse(showPublished ? null : moodleCourseId);
+    const publishedQuery = usePublishedMapsByCourse(showPublished ? moodleCourseId : null);
+    const levelsQuery = showPublished ? publishedQuery : draftQuery;
+    const draftLevels = useMemo(() => draftQuery.data ?? [], [draftQuery.data]);
+    const levels: LevelItem[] = useMemo(
+        () => (showPublished ? publishedQuery.data ?? [] : draftLevels),
+        [showPublished, publishedQuery.data, draftLevels]
+    );
     const [createOpen, setCreateOpen] = useState(false);
     const [renameTarget, setRenameTarget] = useState<CourseMapSummary | null>(null);
     const [deleteTarget, setDeleteTarget] = useState<CourseMapSummary | null>(null);
@@ -57,8 +69,8 @@ export const CourseLevels = ({ moodleCourseId, editable, onOpenLevel }: CourseLe
                     editable={editable}
                     onOpen={onOpenLevel}
                     onCreateLevel={() => setCreateOpen(true)}
-                    onRenameLevel={setRenameTarget}
-                    onDeleteLevel={setDeleteTarget}
+                    onRenameLevel={(level) => setRenameTarget(draftLevels.find((item) => item.id === level.id) ?? null)}
+                    onDeleteLevel={(level) => setDeleteTarget(draftLevels.find((item) => item.id === level.id) ?? null)}
                     onReorder={(mapIds) => reorderLevels.mutate({ moodleCourseId, mapIds })}
                 />
             )}
@@ -95,7 +107,7 @@ const CreateLevelDialog = ({
     onCreated: (id: string) => void;
 }) => {
     const [title, setTitle] = useState("");
-    const [backgroundUrl, setBackgroundUrl] = useState(DEFAULT_BACKGROUND_URL);
+    const [background, setBackground] = useState<BackgroundChoice | null>(DEFAULT_BACKGROUND_CHOICE);
     const [sectionId, setSectionId] = useState<string>("");
     const createMap = useCreateCourseMap();
     // Sections come from any existing level's activity list (modname/section
@@ -111,7 +123,7 @@ const CreateLevelDialog = ({
     const handleOpenChange = (next: boolean) => {
         if (!next) {
             setTitle("");
-            setBackgroundUrl(DEFAULT_BACKGROUND_URL);
+            setBackground(DEFAULT_BACKGROUND_CHOICE);
             setSectionId("");
             createMap.reset();
         }
@@ -123,12 +135,12 @@ const CreateLevelDialog = ({
     const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         const trimmedTitle = title.trim();
-        if (!trimmedTitle) return;
+        if (!trimmedTitle || !background) return;
         createMap.mutate(
             {
                 title: trimmedTitle,
                 moodleCourseId,
-                imageUrl: backgroundUrl,
+                imageUrl: background.imageUrl,
                 moodleSectionId: sectionId ? Number(sectionId) : undefined,
             },
             { onSuccess: (map) => onCreated(map.id) }
@@ -170,22 +182,7 @@ const CreateLevelDialog = ({
                 )}
                 <div className="space-y-1.5">
                     <span className="text-xs font-semibold uppercase tracking-wide text-ink-soft">{es.levels.create.backgroundLabel}</span>
-                    <div className="flex gap-2">
-                        {backgroundOptions.map((option) => (
-                            <button
-                                key={option.id}
-                                type="button"
-                                onClick={() => setBackgroundUrl(option.url)}
-                                aria-label={option.label}
-                                aria-pressed={backgroundUrl === option.url}
-                                className={`h-14 w-20 overflow-hidden rounded-md border-2 ${
-                                    backgroundUrl === option.url ? "border-teal-dark" : "border-transparent"
-                                }`}
-                            >
-                                <img src={option.url} alt="" className="h-full w-full object-cover" />
-                            </button>
-                        ))}
-                    </div>
+                    <BackgroundField value={background} onChange={setBackground} />
                 </div>
 
                 {errorKind === "conflict" && <p className="text-sm text-coral-dark">{es.levels.create.conflict}</p>}
@@ -196,7 +193,7 @@ const CreateLevelDialog = ({
                     <Button type="button" variant="secondary" onClick={() => handleOpenChange(false)}>
                         {es.levels.create.cancel}
                     </Button>
-                    <Button type="submit" disabled={createMap.isPending}>
+                    <Button type="submit" disabled={createMap.isPending || !background}>
                         {createMap.isPending ? es.levels.create.submitting : es.levels.create.submit}
                     </Button>
                 </div>

@@ -6,11 +6,23 @@ import { Button, IconButton } from "../../../components/ui/Button.tsx";
 import { DropdownMenu } from "../../../components/ui/DropdownMenu.tsx";
 import { resolveThumbUrl } from "../data/assets.ts";
 import { es } from "../../../i18n/es.ts";
-import type { CourseMapSummary } from "../data/types.ts";
+import type { PublicationBadge } from "../data/types.ts";
+import { PublicationChip } from "./publication/PublicationChip.tsx";
+
+// What a level card needs. Draft summaries and published summaries both fit,
+// so the carousel renders either without caring where it came from.
+export interface LevelItem {
+    id: string;
+    title: string;
+    imageUrl: string;
+    bubbleCount: number;
+    completeCount: number;
+    publication?: PublicationBadge;
+}
 
 type BadgeTone = "slate" | "sun" | "teal" | "leaf";
 
-const badgeFor = (map: CourseMapSummary): { label: string; tone: BadgeTone } => {
+const badgeFor = (map: LevelItem): { label: string; tone: BadgeTone } => {
     if (map.bubbleCount === 0) return { label: es.levels.badge.empty, tone: "slate" };
     if (map.completeCount === 0) return { label: es.levels.badge.new, tone: "sun" };
     if (map.completeCount >= map.bubbleCount) return { label: es.levels.badge.completed, tone: "leaf" };
@@ -21,12 +33,12 @@ const prefersReducedMotion = () =>
     typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 interface LevelCarouselProps {
-    levels: CourseMapSummary[];
+    levels: LevelItem[];
     editable: boolean;
     onOpen: (courseMapId: string) => void;
     onCreateLevel?: () => void;
-    onRenameLevel?: (map: CourseMapSummary) => void;
-    onDeleteLevel?: (map: CourseMapSummary) => void;
+    onRenameLevel?: (map: LevelItem) => void;
+    onDeleteLevel?: (map: LevelItem) => void;
     onReorder?: (mapIds: string[]) => void;
 }
 
@@ -43,7 +55,7 @@ export const LevelCarousel = ({
     const dragIdRef = useRef<string | null>(null);
     const cover = levels[0] ? resolveThumbUrl(levels[0].imageUrl) : undefined;
 
-    const moveBy = (map: CourseMapSummary, delta: number) => {
+    const moveBy = (map: LevelItem, delta: number) => {
         const index = levels.findIndex((level) => level.id === map.id);
         const targetIndex = index + delta;
         if (targetIndex < 0 || targetIndex >= levels.length) return;
@@ -52,7 +64,7 @@ export const LevelCarousel = ({
         onReorder?.(next);
     };
 
-    const handleDrop = (targetMap: CourseMapSummary) => {
+    const handleDrop = (targetMap: LevelItem) => {
         const draggedId = dragIdRef.current;
         dragIdRef.current = null;
         if (!draggedId || draggedId === targetMap.id) return;
@@ -149,7 +161,7 @@ const LevelCard = ({
     onDragStart,
     onDropOn,
 }: {
-    map: CourseMapSummary;
+    map: LevelItem;
     levelNumber: number;
     editable: boolean;
     canMoveUp: boolean;
@@ -223,6 +235,9 @@ const LevelCard = ({
                         <span>{es.levels.progress(map.completeCount, map.bubbleCount)}</span>
                     </div>
                     <ProgressBar value={map.completeCount} max={Math.max(map.bubbleCount, 1)} />
+                    {editable && map.publication && (
+                        <PublicationChip status={map.publication.status} number={map.publication.number} />
+                    )}
                 </div>
             </Card>
             {editable && (

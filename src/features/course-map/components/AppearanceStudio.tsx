@@ -6,13 +6,9 @@ import { SegmentedControl } from "../../../components/ui/SegmentedControl.tsx";
 import { ConfirmDialog } from "../../../components/ui/ConfirmDialog.tsx";
 import { SkinStudio } from "./SkinStudio.tsx";
 import { useAnimationQuality, type QualitySetting } from "../../../fx/quality.ts";
-import {
-    useCreateAsset,
-    useReorderBubbles,
-    useUpdateAppearance,
-    useUpdateBubble,
-} from "../data/queries.ts";
-import { backgroundOptions } from "../../../assets/backgrounds/index.ts";
+import { useReorderBubbles } from "../data/queries.ts";
+import { useUpdateAppearance, useUpdateBubble } from "../data/draftMutations.ts";
+import { resolveThumbUrl } from "../data/assets.ts";
 import { es } from "../../../i18n/es.ts";
 import type {
     AmbientKind,
@@ -35,13 +31,13 @@ interface AppearanceStudioProps {
     skins: Skin[];
     getCurrentView: () => MapInitialView | null;
     onClose: () => void;
-    onBackgroundChange: (url: string) => void;
+    onChangeBackground: () => void;
 }
 
 const settingsEqual = (a: MapSettings, b: MapSettings) => JSON.stringify(a) === JSON.stringify(b);
 const rulesEqual = (a: SkinRule[], b: SkinRule[]) => JSON.stringify(a) === JSON.stringify(b);
 
-export const AppearanceStudio = ({ courseMap, skins, getCurrentView, onClose, onBackgroundChange }: AppearanceStudioProps) => {
+export const AppearanceStudio = ({ courseMap, skins, getCurrentView, onClose, onChangeBackground }: AppearanceStudioProps) => {
     const [tab, setTab] = useState<Tab>("bubbles");
     const [settings, setSettings] = useState<MapSettings>(courseMap.settings);
     const [defaultSkinId, setDefaultSkinId] = useState(courseMap.defaultSkinId);
@@ -125,7 +121,7 @@ export const AppearanceStudio = ({ courseMap, skins, getCurrentView, onClose, on
                     />
                 )}
                 {tab === "map" && (
-                    <MapTab settings={settings} onChange={setSettings} getCurrentView={getCurrentView} onBackgroundChange={onBackgroundChange} currentImageUrl={courseMap.imageUrl} />
+                    <MapTab settings={settings} onChange={setSettings} getCurrentView={getCurrentView} onChangeBackground={onChangeBackground} currentImageUrl={courseMap.imageUrl} />
                 )}
                 {tab === "ambient" && <AmbientTab settings={settings} onChange={setSettings} />}
                 {tab === "sequence" && <SequenceTab courseMapId={courseMap.id} bubbles={courseMap.bubbles} mode={settings.mode} />}
@@ -170,19 +166,16 @@ const MapTab = ({
     settings,
     onChange,
     getCurrentView,
-    onBackgroundChange,
+    onChangeBackground,
     currentImageUrl,
 }: {
     settings: MapSettings;
     onChange: (s: MapSettings) => void;
     getCurrentView: () => MapInitialView | null;
-    onBackgroundChange: (url: string) => void;
+    onChangeBackground: () => void;
     currentImageUrl: string;
 }) => {
-    const createAsset = useCreateAsset();
     const [viewCaptured, setViewCaptured] = useState(false);
-    const [aspectWarning, setAspectWarning] = useState(false);
-    const fileInputRef = useRef<HTMLInputElement>(null);
 
     const handleCaptureView = () => {
         const view = getCurrentView();
@@ -190,29 +183,6 @@ const MapTab = ({
         onChange({ ...settings, initialView: view });
         setViewCaptured(true);
         setTimeout(() => setViewCaptured(false), 2000);
-    };
-
-    const handleBackgroundFile = async (file: File | undefined) => {
-        if (!file) return;
-        setAspectWarning(false);
-        try {
-            const bitmap = await createImageBitmap(file);
-            const currentImg = new Image();
-            currentImg.src = currentImageUrl;
-            await new Promise((resolve) => {
-                currentImg.onload = resolve;
-                currentImg.onerror = resolve;
-            });
-            if (currentImg.naturalWidth > 0) {
-                const oldRatio = currentImg.naturalWidth / currentImg.naturalHeight;
-                const newRatio = bitmap.width / bitmap.height;
-                if (Math.abs(oldRatio - newRatio) / oldRatio > 0.05) setAspectWarning(true);
-            }
-            bitmap.close?.();
-        } catch {
-            // Non-fatal: the asset upload itself still validates the file.
-        }
-        createAsset.mutate({ file, kind: "background" }, { onSuccess: (asset) => onBackgroundChange(asset.url) });
     };
 
     return (
@@ -306,28 +276,12 @@ const MapTab = ({
 
             <div className="space-y-2">
                 <span className="text-xs font-semibold uppercase tracking-wide text-ink-soft">{es.studio.map.background}</span>
-                <div className="flex gap-2">
-                    {backgroundOptions.map((option) => (
-                        <button
-                            key={option.id}
-                            type="button"
-                            onClick={() => onBackgroundChange(option.url)}
-                            aria-label={option.label}
-                            className="h-14 w-20 overflow-hidden rounded-md border-2 border-transparent hover:border-teal-dark"
-                        >
-                            <img src={option.url} alt="" className="h-full w-full object-cover" />
-                        </button>
-                    ))}
-                    <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="flex h-14 w-20 items-center justify-center rounded-md border-2 border-dashed border-ink/15 text-xs text-ink-soft hover:border-teal-dark"
-                    >
+                <div className="flex items-center gap-3">
+                    <img src={resolveThumbUrl(currentImageUrl)} alt={es.background.currentBackground} className="h-14 w-20 rounded-md border border-ink/10 object-cover" />
+                    <Button size="sm" variant="secondary" onClick={onChangeBackground}>
                         {es.studio.map.changeBackground}
-                    </button>
-                    <input ref={fileInputRef} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e) => void handleBackgroundFile(e.target.files?.[0])} />
+                    </Button>
                 </div>
-                {aspectWarning && <p className="text-xs text-sun-dark">{es.studio.map.backgroundAspectWarning}</p>}
             </div>
         </div>
     );

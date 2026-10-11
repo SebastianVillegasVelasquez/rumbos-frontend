@@ -1,42 +1,31 @@
-import { useInfiniteQuery, useMutation, useMutationState, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useInfiniteQuery, useMutation, useMutationState, useQuery, useQueryClient } from "@tanstack/react-query";
 import { courseMapApi } from "./index.ts";
-import { ApiError } from "./client.ts";
+import { fetchDraftConsistently } from "./draftCache.ts";
+import { getWriteQueue } from "./writeQueues.ts";
+import { assetKeys, courseMapKeys, publishedKeys, retryTransient } from "./queryKeys.ts";
 import type {
-    AppearanceUpdate,
-    AssetKind,
+    AssetCreate,
+    AssetListParams,
+    AssetPatch,
     BubbleCreate,
-    BubbleUpdate,
     CourseMapDetail,
-    CourseMapPatch,
+    PublishInput,
     ReorderCourseMapsInput,
     SkinConfig,
     SkinPatch,
 } from "./types.ts";
 
+export { assetKeys, courseMapKeys, publishedKeys };
+
 const LIST_PAGE_SIZE = 24;
 
-export const courseMapKeys = {
-    list: (params: { q: string; moodleCourseId?: number }) => ["course-maps", "list", params] as const,
-    byCourse: (moodleCourseId: number) => ["course-maps", "by-course", moodleCourseId] as const,
-    detail: (courseMapId: string) => ["course-maps", courseMapId, "detail"] as const,
-    resolved: (courseMapId: string, includeHidden: boolean) =>
-        ["course-maps", courseMapId, "resolved", { includeHidden }] as const,
-    activities: (courseMapId: string) => ["course-maps", courseMapId, "activities"] as const,
-    activitiesList: (courseMapId: string, includeHidden: boolean, onlySection: boolean) =>
-        [...courseMapKeys.activities(courseMapId), { includeHidden, onlySection }] as const,
-    createBubble: (courseMapId: string) => ["course-maps", courseMapId, "create-bubble"] as const,
-    skins: () => ["skins"] as const,
-};
-
-// A 4xx answer is a definitive "no" (not found, conflict, bad input), so only
-// transient failures are retried.
-const retryTransient = (failureCount: number, error: Error) =>
-    !(error instanceof ApiError && error.status >= 400 && error.status < 500) && failureCount < 2;
-
+// The draft is fetched only when no guarded write overlaps the request (see
+// fetchDraftConsistently), so a refetch can never hand back an older version
+// than the one an in-flight write has just produced.
 export const useCourseMap = (courseMapId: string | null) =>
     useQuery({
         queryKey: courseMapKeys.detail(courseMapId ?? ""),
-        queryFn: () => courseMapApi.getCourseMap(courseMapId!),
+        queryFn: ({ client }) => fetchDraftConsistently(client, courseMapId!),
         enabled: courseMapId !== null,
         retry: retryTransient,
     });
@@ -76,18 +65,6 @@ export const useResolvedCourseMap = (courseMapId: string | null, includeHidden: 
         refetchOnWindowFocus: true,
         retry: retryTransient,
     });
-
-export const useUpdateCourseMap = () => {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: ({ courseMapId, input }: { courseMapId: string; input: CourseMapPatch }) =>
-            courseMapApi.patchCourseMap(courseMapId, input),
-        onSuccess: (map) => {
-            queryClient.setQueryData(courseMapKeys.detail(map.id), map);
-            void invalidateCourseMapLists(queryClient);
-        },
-    });
-};
 
 export const useDeleteCourseMap = () => {
     const queryClient = useQueryClient();
@@ -155,26 +132,6 @@ export const useReorderCourseMaps = () => {
         },
         onSettled: () => {
             void invalidateCourseMapLists(queryClient);
-        },
-    });
-};
-
-export const useUpdateAppearance = (courseMapId: string) => {
-    const queryClient = useQueryClient();
-    const detailKey = courseMapKeys.detail(courseMapId);
-    return useMutation({
-        mutationFn: (input: AppearanceUpdate) => courseMapApi.updateAppearance(courseMapId, input),
-        onMutate: async (input) => {
-            await queryClient.cancelQueries({ queryKey: detailKey });
-            const previous = queryClient.getQueryData<CourseMapDetail>(detailKey);
-            queryClient.setQueryData<CourseMapDetail>(detailKey, (current) => current && { ...current, ...input });
-            return { previous };
-        },
-        onError: (_error, _input, context) => {
-            if (context?.previous) queryClient.setQueryData(detailKey, context.previous);
-        },
-        onSettled: () => {
-            void queryClient.invalidateQueries({ queryKey: detailKey });
         },
     });
 };
@@ -248,10 +205,44 @@ export const useDeleteSkin = () => {
     });
 };
 
-export const useCreateAsset = () =>
-    useMutation({
-        mutationFn: ({ file, kind }: { file: File; kind: AssetKind }) => courseMapApi.createAsset(file, kind),
+export const useAssets = (params: AssetListParams, enabled = true) =>
+    useQuery({
+        queryKey: assetKeys.list(params),
+        queryFn: () => courseMapApi.listAssets(params),
+        placeholderData: keepPreviousData,
+        enabled,
+        retry: retryTransient,
     });
+
+export const useCreateAsset = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (input: AssetCreate) => courseMapApi.createAsset(input),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: assetKeys.all() });
+        },
+    });
+};
+
+export const usePatchAsset = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: ({ assetId, input }: { assetId: string; input: AssetPatch }) => courseMapApi.patchAsset(assetId, input),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: assetKeys.all() });
+        },
+    });
+};
+
+export const useDeleteAsset = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: (assetId: string) => courseMapApi.deleteAsset(assetId),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: assetKeys.all() });
+        },
+    });
+};
 
 export const useCreateCourseMap = () => {
     const queryClient = useQueryClient();
@@ -290,54 +281,70 @@ export const useCreateBubble = (courseMapId: string) => {
     });
 };
 
-// Optimistic: the cache is patched before the request, so a dropped or
-// dragged bubble stays where the user put it. On failure only that bubble's
-// previous state is restored, leaving other in-flight edits untouched.
-export const useUpdateBubble = (courseMapId: string) => {
+// ---- Draft vs published -------------------------------------------------------
+
+// Reads wait for the map's write queue to drain so the diff and the hash the
+// editor reviews describe the draft the server actually has.
+export const fetchPublicationState = async (courseMapId: string) => {
+    await getWriteQueue(courseMapId).whenIdle();
+    return courseMapApi.getPublicationState(courseMapId);
+};
+
+export const usePublicationState = (courseMapId: string | null) =>
+    useQuery({
+        queryKey: courseMapKeys.publicationState(courseMapId ?? ""),
+        queryFn: () => fetchPublicationState(courseMapId!),
+        enabled: courseMapId !== null,
+        retry: retryTransient,
+    });
+
+export const usePublications = (courseMapId: string | null, enabled: boolean) =>
+    useQuery({
+        queryKey: courseMapKeys.publications(courseMapId ?? ""),
+        queryFn: () => courseMapApi.listPublications(courseMapId!, 50),
+        enabled: enabled && courseMapId !== null,
+        retry: retryTransient,
+    });
+
+export const usePublish = (courseMapId: string) => {
     const queryClient = useQueryClient();
-    const detailKey = courseMapKeys.detail(courseMapId);
     return useMutation({
-        mutationFn: ({ bubbleId, input }: { bubbleId: string; input: BubbleUpdate }) =>
-            courseMapApi.updateBubble(courseMapId, bubbleId, input),
-        onMutate: async ({ bubbleId, input }) => {
-            await queryClient.cancelQueries({ queryKey: detailKey });
-            const map = queryClient.getQueryData<CourseMapDetail>(detailKey);
-            const previous = map?.bubbles.find((bubble) => bubble.id === bubbleId);
-            queryClient.setQueryData<CourseMapDetail>(detailKey, (current) =>
-                current && {
-                    ...current,
-                    bubbles: current.bubbles.map((bubble) =>
-                        bubble.id === bubbleId ? { ...bubble, ...input } : bubble
-                    ),
-                }
-            );
-            return { previous };
-        },
-        onError: (_error, { bubbleId }, context) => {
-            const previous = context?.previous;
-            if (!previous) return;
-            queryClient.setQueryData<CourseMapDetail>(detailKey, (current) =>
-                current && {
-                    ...current,
-                    bubbles: current.bubbles.map((bubble) =>
-                        bubble.id === bubbleId ? previous : bubble
-                    ),
-                }
-            );
-        },
-        onSettled: () => {
-            void queryClient.invalidateQueries({ queryKey: detailKey });
+        mutationFn: (input: PublishInput) => courseMapApi.publish(courseMapId, input),
+        onSuccess: () => {
+            void queryClient.invalidateQueries({ queryKey: courseMapKeys.publicationState(courseMapId) });
+            void queryClient.invalidateQueries({ queryKey: courseMapKeys.publications(courseMapId) });
+            void invalidateCourseMapLists(queryClient);
+            // Publishing is the one action that changes what students see.
+            void queryClient.invalidateQueries({ queryKey: publishedKeys.all() });
         },
     });
 };
 
-export const useDeleteBubble = (courseMapId: string) => {
-    const queryClient = useQueryClient();
-    return useMutation({
-        mutationFn: (bubbleId: string) => courseMapApi.deleteBubble(courseMapId, bubbleId),
-        onSettled: () => {
-            void queryClient.invalidateQueries({ queryKey: courseMapKeys.detail(courseMapId) });
-            void queryClient.invalidateQueries({ queryKey: courseMapKeys.activities(courseMapId) });
-        },
+// ---- Published (student) read API ------------------------------------------------
+
+export const usePublishedMapsByCourse = (moodleCourseId: number | null) =>
+    useQuery({
+        queryKey: publishedKeys.byCourse(moodleCourseId ?? -1),
+        queryFn: () => courseMapApi.listPublishedCourseMaps({ moodleCourseId: moodleCourseId!, limit: 100 }),
+        enabled: moodleCourseId !== null,
+        retry: retryTransient,
+        select: (result) => result.items,
     });
-};
+
+export const usePublishedCourseMap = (courseMapId: string | null) =>
+    useQuery({
+        queryKey: publishedKeys.detail(courseMapId ?? ""),
+        queryFn: () => courseMapApi.getPublishedCourseMap(courseMapId!),
+        enabled: courseMapId !== null,
+        retry: retryTransient,
+    });
+
+export const usePublishedResolvedCourseMap = (courseMapId: string | null, includeHidden: boolean) =>
+    useQuery({
+        queryKey: publishedKeys.resolved(courseMapId ?? "", includeHidden),
+        queryFn: () => courseMapApi.getPublishedResolvedCourseMap(courseMapId!, includeHidden),
+        enabled: courseMapId !== null,
+        staleTime: 30_000,
+        refetchOnWindowFocus: true,
+        retry: retryTransient,
+    });

@@ -1,5 +1,5 @@
 import { ArrowRight } from "lucide-react";
-import type { Activity, Bubble } from "../data/types.ts";
+import type { Activity, RenderableBubble as Bubble } from "../data/types.ts";
 import { es } from "../../../i18n/es.ts";
 import { Card } from "../../../components/ui/Card.tsx";
 import { ProgressBar } from "../../../components/ui/Skeleton.tsx";

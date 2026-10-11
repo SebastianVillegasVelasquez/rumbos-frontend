@@ -28,6 +28,12 @@ export class ApiError extends Error {
 // Status 0 means the request never got a response (backend down, network).
 export const isUnreachable = (error: unknown) => error instanceof ApiError && error.status === 0;
 
+// 412 version_conflict: someone else changed the guarded resource first.
+export const isVersionConflict = (error: unknown) => error instanceof ApiError && error.status === 412;
+
+// 428 precondition_required: the client forgot If-Match. Always a client bug.
+export const isPreconditionRequired = (error: unknown) => error instanceof ApiError && error.status === 428;
+
 const parseBody = (text: string): unknown => {
     if (!text) return undefined;
     try {
@@ -37,13 +43,23 @@ const parseBody = (text: string): unknown => {
     }
 };
 
-export async function apiRequest<T>(path: string, options: { method?: string; body?: unknown } = {}): Promise<T> {
-    const { method = "GET", body } = options;
+// Guarded endpoints (contract v3) take the revision/version the client last
+// saw as a quoted-number If-Match header.
+const ifMatchHeader = (ifMatch: number) => `"${ifMatch}"`;
+
+export async function apiRequest<T>(
+    path: string,
+    options: { method?: string; body?: unknown; ifMatch?: number } = {}
+): Promise<T> {
+    const { method = "GET", body, ifMatch } = options;
+    const headers: Record<string, string> = {};
+    if (body !== undefined) headers["Content-Type"] = "application/json";
+    if (ifMatch !== undefined) headers["If-Match"] = ifMatchHeader(ifMatch);
     let response: Response;
     try {
         response = await fetch(`${API_BASE_URL}${path}`, {
             method,
-            headers: body !== undefined ? { "Content-Type": "application/json" } : undefined,
+            headers: Object.keys(headers).length > 0 ? headers : undefined,
             body: body !== undefined ? JSON.stringify(body) : undefined,
         });
     } catch {
@@ -59,15 +75,29 @@ export async function apiRequest<T>(path: string, options: { method?: string; bo
 
 // Multipart upload for /assets. Separate from apiRequest because the body is
 // FormData, not JSON (no Content-Type header: the browser sets the boundary).
-export async function apiUpload<T>(path: string, form: FormData): Promise<T> {
-    let response: Response;
-    try {
-        response = await fetch(`${API_BASE_URL}${path}`, { method: "POST", body: form });
-    } catch {
-        throw new ApiError(0, undefined);
-    }
-
-    const parsed = parseBody(await response.text());
-    if (!response.ok) throw new ApiError(response.status, parsed);
-    return parsed as T;
+// Uses XMLHttpRequest rather than fetch because only XHR reports upload
+// progress. Also reports the HTTP status, since /assets answers 201 for new
+// content and 200 when identical content already existed.
+export function apiUpload<T>(
+    path: string,
+    form: FormData,
+    onProgress?: (fraction: number) => void
+): Promise<{ data: T; status: number }> {
+    return new Promise((resolve, reject) => {
+        const request = new XMLHttpRequest();
+        request.open("POST", `${API_BASE_URL}${path}`);
+        if (onProgress) {
+            request.upload.onprogress = (event) => {
+                if (event.lengthComputable) onProgress(event.loaded / event.total);
+            };
+        }
+        request.onerror = () => reject(new ApiError(0, undefined));
+        request.onabort = () => reject(new ApiError(0, undefined));
+        request.onload = () => {
+            const parsed = parseBody(request.responseText);
+            if (request.status >= 200 && request.status < 300) resolve({ data: parsed as T, status: request.status });
+            else reject(new ApiError(request.status, parsed));
+        };
+        request.send(form);
+    });
 }
