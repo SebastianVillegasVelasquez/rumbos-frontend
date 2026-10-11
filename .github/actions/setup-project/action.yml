@@ -1,0 +1,16 @@
+name: Setup Node and pnpm config
+author: Johan Sebastian Villegas Velasquez
+description: "Uses the checkout actions to clone the source code, installs uv from the Astral action, \
+configure python and sync dependencies using --dev and --frozen flags. The uv step uses 'enable-cache: true'. So, if this actions \
+is used more than once the dependencies will not be downloaded from the internet but from the GitHub cache"
+runs:
+  using: "composite"
+  steps:
+    - name: Install node
+      uses: astral-sh/setup-uv@v5
+
+
+    - name: Sync project
+      shell: bash
+      run: |
+        uv sync --frozen --dev
