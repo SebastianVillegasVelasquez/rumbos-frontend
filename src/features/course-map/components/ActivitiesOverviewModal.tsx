@@ -1,6 +1,6 @@
 import * as RadixDialog from "@radix-ui/react-dialog";
 import { X } from "lucide-react";
-import type { Activity, Availability, Bubble, MapMode } from "../data/types.ts";
+import type { Activity, Availability, MapMode, RenderableBubble as Bubble } from "../data/types.ts";
 import { deriveVisualState, nextIncompleteSequence, type VisualState } from "../visualState.ts";
 import { es } from "../../../i18n/es.ts";
 import { Badge } from "../../../components/ui/Card.tsx";

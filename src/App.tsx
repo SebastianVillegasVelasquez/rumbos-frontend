@@ -25,7 +25,7 @@ import { useDeleteBubble, useUpdateBubble, useUpdateCourseMap } from "./features
 import { ApiError, isUnreachable } from "./features/course-map/data/client.ts";
 import { resolveImageUrl } from "./features/course-map/data/assets.ts";
 import { courseTitleFrom } from "./features/course-map/courseTitle.ts";
-import type { Activity, Bubble, MapInitialView, ResolvedBubble } from "./features/course-map/data/types.ts";
+import type { Activity, MapInitialView, RenderableBubble as Bubble, ResolvedBubble } from "./features/course-map/data/types.ts";
 import { useRoute } from "./hooks/useRoute.ts";
 import { Wordmark } from "./components/Logo.tsx";
 import { Button, IconButton } from "./components/ui/Button.tsx";

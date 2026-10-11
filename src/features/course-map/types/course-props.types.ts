@@ -3,6 +3,7 @@ import type {
     Activity,
     Availability,
     Bubble,
+    RenderableBubble,
     BubbleUpdate,
     MapFit,
     MapInitialView,
@@ -42,7 +43,7 @@ export interface BubbleVisualProps {
 
 export interface MapCanvasProps {
     backgroundUrl: string;
-    bubbles: Bubble[];
+    bubbles: RenderableBubble[];
     editable: boolean;
     // Overrides the generic default with the level title and progress
     // (built by the caller, which knows both).
@@ -56,21 +57,21 @@ export interface MapCanvasProps {
     skins?: Skin[];
     defaultSkinId?: string | null;
     skinRules?: SkinRule[];
-    onBubbleClick?: (bubble: Bubble) => void;
+    onBubbleClick?: (bubble: RenderableBubble) => void;
     onBubbleMove?: (bubbleId: string, x: number, y: number) => void;
     onBubbleUpdate?: (bubbleId: string, input: BubbleUpdate) => void;
     onBubbleDelete?: (bubbleId: string) => void;
     onActivityDrop?: (activityId: number, x: number, y: number) => void;
     // Student view: a non-null reason makes the bubble non-interactive and is
     // shown as a tooltip on hover.
-    getUnavailableReason?: (bubble: Bubble) => string | null;
+    getUnavailableReason?: (bubble: RenderableBubble) => string | null;
     // Used to derive a default icon (by Moodle modname) for bubbles with no
     // icon of their own, instead of the generic "?", and to resolve a skin
     // rule by activity type.
-    getModnameForBubble?: (bubble: Bubble) => string | undefined;
+    getModnameForBubble?: (bubble: RenderableBubble) => string | undefined;
     // From GET /course-maps/{id}/resolved, joined by bubbleId.
-    getAvailability?: (bubble: Bubble) => Availability | undefined;
-    getResolvedActivity?: (bubble: Bubble) => Activity | null;
+    getAvailability?: (bubble: RenderableBubble) => Availability | undefined;
+    getResolvedActivity?: (bubble: RenderableBubble) => Activity | null;
     // One-shot request to center the viewport on a bubble and briefly
     // highlight it (from the activities overview panel). MapCanvas calls
     // onFocusHandled once it's done so the same bubble can be re-focused.

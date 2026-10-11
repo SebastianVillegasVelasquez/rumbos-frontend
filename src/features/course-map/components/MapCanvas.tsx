@@ -13,7 +13,7 @@ import { IconPickerPopover } from "./IconPickerPopover.tsx";
 import { defaultIconForModname, type IconKey } from "../icons.ts";
 import { deriveVisualState, nextIncompleteSequence, type VisualState } from "../visualState.ts";
 import { resolveSkin } from "../resolveSkin.ts";
-import type { Bubble as BubbleModel, MapFit, MapSettings } from "../data/types.ts";
+import type { RenderableBubble as BubbleModel, MapFit, MapSettings } from "../data/types.ts";
 import { es } from "../../../i18n/es.ts";
 import { IconButton } from "../../../components/ui/Button.tsx";
 import { useAnimationQuality } from "../../../fx/quality.ts";
