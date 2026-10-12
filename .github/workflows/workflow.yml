@@ -11,9 +11,10 @@ jobs:
       - name: Clone source code
         uses: actions/checkout@v7
 
-      - name: Installs the node and pnpm
+      - name: Install node and pnpm
         uses: pnpm/setup@v3
         with:
+          version: 12
           runtime: node@24
           cache: true
 
