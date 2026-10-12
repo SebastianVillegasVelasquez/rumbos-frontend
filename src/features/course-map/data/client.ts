@@ -1,6 +1,6 @@
 import type { ApiErrorDetail } from './types.ts'
 
-export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
+export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1'
 
 export class ApiError extends Error {
   readonly status: number

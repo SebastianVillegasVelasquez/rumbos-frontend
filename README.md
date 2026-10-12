@@ -26,7 +26,7 @@ Spanish (`<html lang="es">`); see `src/i18n/es.ts` for the string dictionary.
    leading into their level carousel) with create/rename/delete.
 
 In development the Vite dev server proxies `/api/*` to the backend
-(`VITE_API_PROXY_TARGET`, with the `/api` prefix stripped), so no CORS setup is
+(`VITE_API_PROXY_TARGET`, prefix kept, so the backend receives `/api/v1/...`), so no CORS setup is
 needed.
 
 ## Routes
@@ -189,7 +189,7 @@ from the appearance studio's "Animación" tab.
 
 | Variable                        | Default                                     | Purpose                                                                                           |
 | ------------------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `VITE_API_BASE_URL`             | `/api`                                      | Base URL the browser calls for the API.                                                           |
+| `VITE_API_BASE_URL`             | `/api/v1`                                   | Base URL the browser calls for the API.                                                           |
 | `VITE_API_PROXY_TARGET`         | `http://localhost:8000`                     | Dev-only target of the `/api` proxy.                                                              |
 | `VITE_ACTIVITY_OPEN_MODE`       | `tab`                                       | `tab` opens a Moodle activity in a new window. `modal` shows it in an iframe with a new-tab link. |
 | `VITE_USE_MOCK_API`             | `false`                                     | `true` swaps the backend for the in-memory mock.                                                  |
