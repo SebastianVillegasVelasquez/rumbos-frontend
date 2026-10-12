@@ -69,6 +69,10 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
+          build-args: |
+            VITE_API_BASE_URL=${{ vars.VITE_API_BASE_URL }}
+            VITE_ACTIVITY_OPEN_MODE=${{ vars.VITE_ACTIVITY_OPEN_MODE }}
+            VITE_USE_MOCK_API=${{ vars.VITE_USE_MOCK_API }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
