@@ -1,5 +1,5 @@
 import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
-import { ChevronLeft, ChevronRight, List, Loader2, RefreshCw } from 'lucide-react'
+import { ChevronLeft, ChevronRight, List, Loader2, RefreshCw, X } from 'lucide-react'
 import { ActivitySidebar } from './features/course-map/components/ActivitySidebar.tsx'
 import { ActivityModal } from './features/course-map/components/ActivityModal.tsx'
 import { ActivitiesOverviewModal } from './features/course-map/components/ActivitiesOverviewModal.tsx'
@@ -435,7 +435,7 @@ function AppShell() {
       {viewMode === 'preview' && (
         <p
           role="status"
-          className="border-b border-sun/40 bg-sun-tint px-4 py-2 text-sm text-sun-dark sm:px-6"
+          className="border-b-soft bg-sun-tint px-4 py-2 text-sm font-semibold text-sun-dark sm:px-6"
         >
           {es.viewMode.previewBanner}
         </p>
@@ -443,7 +443,7 @@ function AppShell() {
       {showPublished && renderable && (
         <p
           role="status"
-          className="border-b border-leaf-dark/20 bg-leaf-tint px-4 py-2 text-sm text-leaf-dark sm:px-6"
+          className="border-b-soft bg-leaf-tint px-4 py-2 text-sm font-semibold text-leaf-dark sm:px-6"
         >
           {es.viewMode.publishedBanner}
         </p>
@@ -451,7 +451,7 @@ function AppShell() {
       {isEditor && neverPublished && (
         <p
           role="status"
-          className="border-b border-sun/40 bg-sun-tint px-4 py-2 text-sm text-sun-dark sm:px-6"
+          className="border-b-soft bg-sun-tint px-4 py-2 text-sm font-semibold text-sun-dark sm:px-6"
         >
           {es.publication.neverPublishedBanner}
         </p>
@@ -460,33 +460,33 @@ function AppShell() {
         {isEditor && (
           <ActivitySidebar
             {...sidebarProps}
-            className="hidden w-64 shrink-0 flex-col border-r border-ink/10 bg-surface p-4 md:flex"
+            className="border-r-soft hidden w-64 shrink-0 flex-col bg-surface p-4 md:flex"
           />
         )}
         <main className="flex min-h-0 flex-1 flex-col overflow-hidden p-6">
           {moodleStatus === 'unavailable' && (
             <div
               role="alert"
-              className="mb-3 flex items-center justify-between gap-3 rounded-md border border-sun/40 bg-sun-tint px-4 py-2 text-sm text-sun-dark"
+              className="border-soft mb-3 flex items-center justify-between gap-3 rounded-md bg-sun-tint px-4 py-2 text-sm font-semibold text-sun-dark"
             >
               <span>{es.moodleBanner.unavailable}</span>
               <button
                 type="button"
                 onClick={() => void resolvedQuery.refetch()}
-                className="flex shrink-0 items-center gap-1 font-medium hover:underline"
+                className="flex min-h-[44px] shrink-0 items-center gap-1 font-bold underline-offset-2 hover:underline"
               >
-                <RefreshCw size={13} />
+                <RefreshCw size={16} strokeWidth={2.5} />
                 {es.moodleBanner.retry}
               </button>
             </div>
           )}
           {moodleStatus === 'cached' && !cachedNoticeDismissed && (
-            <div className="mb-3 flex items-center justify-between gap-3 rounded-md border border-ink/10 bg-surface-muted px-4 py-2 text-xs text-ink-soft">
+            <div className="border-soft mb-3 flex items-center justify-between gap-3 rounded-md bg-surface-muted px-4 py-2 text-xs font-semibold text-ink-soft">
               <span>{es.moodleBanner.cached}</span>
               <button
                 type="button"
                 onClick={() => setCachedNoticeDismissed(true)}
-                className="font-medium hover:underline"
+                className="min-h-[44px] font-bold underline-offset-2 hover:underline"
               >
                 {es.app.dismiss}
               </button>
@@ -495,13 +495,13 @@ function AppShell() {
           {saveErrorMessage && (
             <div
               role="alert"
-              className="mb-3 flex items-center justify-between rounded-md border border-coral-dark/30 bg-coral-tint px-4 py-2 text-sm text-coral-dark"
+              className="border-soft mb-3 flex items-center justify-between rounded-md bg-danger-tint px-4 py-2 text-sm font-semibold text-danger"
             >
               <span>{saveErrorMessage}</span>
               <button
                 type="button"
                 onClick={dismissSaveError}
-                className="ml-4 font-medium hover:underline"
+                className="ml-4 min-h-[44px] font-bold underline-offset-2 hover:underline"
               >
                 {es.app.dismiss}
               </button>
@@ -527,12 +527,12 @@ function AppShell() {
         <button
           type="button"
           onClick={() => setIsMobileSidebarOpen(true)}
-          className="fixed bottom-6 right-6 z-30 flex min-h-[44px] items-center gap-2 rounded-pill bg-teal-dark px-5 py-3 text-sm font-semibold text-white shadow-soft md:hidden"
+          className="border-strong fixed bottom-6 left-4 z-30 flex min-h-[44px] items-center gap-2 rounded-md bg-primary px-5 py-3 text-sm font-bold text-white shadow-md md:hidden"
         >
-          <List size={16} />
+          <List size={18} strokeWidth={2.5} />
           {es.app.activities}
           {unplacedCount > 0 && (
-            <span className="flex h-5 w-5 items-center justify-center rounded-pill bg-white text-xs font-bold text-teal-dark">
+            <span className="flex h-6 min-w-6 items-center justify-center rounded-md bg-surface px-1 text-xs font-bold text-primary">
               {unplacedCount}
             </span>
           )}
@@ -542,25 +542,24 @@ function AppShell() {
       {isEditor && isMobileSidebarOpen && (
         <div
           role="presentation"
-          className="fixed inset-0 z-40 flex items-end bg-ink/40 md:hidden"
+          className="fixed inset-0 z-40 flex items-end bg-ink/50 md:hidden"
           onClick={() => setIsMobileSidebarOpen(false)}
         >
           <div
-            className="max-h-[75vh] w-full overflow-y-auto rounded-t-lg bg-surface shadow-soft"
+            className="border-strong flex max-h-[75dvh] w-full flex-col rounded-t-lg border-b-0 bg-surface"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="mx-auto mt-2 h-1 w-10 rounded-pill bg-ink/15" />
-            <div className="flex justify-end px-4 pt-2">
+            <div className="mx-auto mt-2 h-1.5 w-10 shrink-0 rounded-pill bg-ink" />
+            <div className="flex shrink-0 justify-end px-4 pt-2">
               <IconButton
                 aria-label={es.app.close}
                 variant="ghost"
                 onClick={() => setIsMobileSidebarOpen(false)}
-                className="h-9 w-9 min-h-0 min-w-0"
               >
-                &#10005;
+                <X size={20} strokeWidth={3} />
               </IconButton>
             </div>
-            <ActivitySidebar {...sidebarProps} className="flex flex-col p-4 pt-0" />
+            <ActivitySidebar {...sidebarProps} className="flex min-h-0 flex-1 flex-col p-4 pt-0" />
           </div>
         </div>
       )}
@@ -632,23 +631,26 @@ const AppHeader = ({
   onAppearance?: () => void
 }) => {
   return (
-    <header className="flex flex-wrap items-center justify-between gap-3 border-b border-ink/10 bg-surface px-4 py-3 shadow-soft sm:px-6">
-      <div className="flex min-w-0 items-center gap-3">
+    <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b-strong bg-accent px-3 py-2 sm:px-6 sm:py-3">
+      <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
         <button
           type="button"
           onClick={onHome}
-          className="rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-dark"
+          aria-label={es.app.wordmark}
+          className="inline-flex min-h-[44px] shrink-0 items-center rounded-md"
         >
-          <Wordmark />
+          <Wordmark collapsible={Boolean(mapTitle)} />
         </button>
         {mapTitle && (
           <>
-            <span className="text-ink/20">/</span>
-            <span className="truncate text-sm font-semibold text-ink-soft">{mapTitle}</span>
+            <span className="shrink-0 text-ink">/</span>
+            <span className="min-w-0 truncate text-sm font-bold text-ink" title={mapTitle}>
+              {mapTitle}
+            </span>
           </>
         )}
         {(onPrevLevel || onNextLevel) && (
-          <div className="flex items-center gap-0.5">
+          <div className="flex shrink-0 items-center">
             <IconButton
               aria-label={
                 prevLevelTitle ? `${es.levels.prevLevel}: ${prevLevelTitle}` : es.levels.prevLevel
@@ -656,7 +658,6 @@ const AppHeader = ({
               variant="ghost"
               disabled={!onPrevLevel}
               onClick={onPrevLevel}
-              className="h-8 w-8 min-h-0 min-w-0"
             >
               <ChevronLeft size={16} />
             </IconButton>
@@ -667,26 +668,40 @@ const AppHeader = ({
               variant="ghost"
               disabled={!onNextLevel}
               onClick={onNextLevel}
-              className="h-8 w-8 min-h-0 min-w-0"
             >
               <ChevronRight size={16} />
             </IconButton>
           </div>
         )}
-      </div>
-      <div className="flex flex-wrap items-center gap-3">
         {isSaving !== undefined && (
-          <span className="text-xs font-medium text-ink-soft">
+          <span className="ml-auto shrink-0 text-xs font-bold text-ink lg:hidden">
+            {isSaving ? es.app.saving : es.app.saved}
+          </span>
+        )}
+      </div>
+      <div className="flex w-full flex-wrap items-center justify-end gap-x-2 gap-y-2 lg:w-auto lg:gap-3">
+        {isSaving !== undefined && (
+          <span className="hidden text-xs font-bold text-ink lg:inline">
             {isSaving ? es.app.saving : es.app.saved}
           </span>
         )}
         {onAppearance && (
-          <Button variant="secondary" size="sm" onClick={onAppearance}>
+          <Button
+            variant="surface"
+            size="sm"
+            onClick={onAppearance}
+            className="flex-1 sm:flex-none"
+          >
             {es.studio.open}
           </Button>
         )}
         {onActivitiesOverview && (
-          <Button variant="secondary" size="sm" onClick={onActivitiesOverview}>
+          <Button
+            variant="surface"
+            size="sm"
+            onClick={onActivitiesOverview}
+            className="flex-1 sm:flex-none"
+          >
             {es.app.activitiesOverview}
           </Button>
         )}
@@ -695,6 +710,7 @@ const AppHeader = ({
           // roles until authentication exists.
           <SegmentedControl
             aria-label={es.viewMode.label}
+            fullWidth
             value={viewMode}
             onChange={onViewModeChange}
             options={[
