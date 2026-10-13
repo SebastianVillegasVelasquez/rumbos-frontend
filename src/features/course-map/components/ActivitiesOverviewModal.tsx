@@ -76,20 +76,20 @@ export const ActivitiesOverviewModal = ({
   return (
     <RadixDialog.Root open={open} onOpenChange={(next) => !next && onClose()}>
       <RadixDialog.Portal>
-        <RadixDialog.Overlay className="fixed inset-0 z-50 bg-ink/50 backdrop-blur-sm" />
-        <RadixDialog.Content className="fixed left-1/2 top-1/2 z-50 flex max-h-[80vh] w-[min(95vw,40rem)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden rounded-lg bg-surface shadow-soft focus:outline-none">
-          <div className="flex items-center justify-between border-b border-ink/10 px-4 py-3">
-            <RadixDialog.Title className="font-heading font-semibold text-ink">
+        <RadixDialog.Overlay className="fixed inset-0 z-50 bg-ink/50" />
+        <RadixDialog.Content className="fixed left-1/2 top-1/2 z-50 flex max-h-[calc(100dvh-2.5rem)] w-[min(calc(100vw-2.5rem),40rem)] -translate-x-1/2 -translate-y-1/2 flex-col overflow-hidden border-strong rounded-lg bg-surface shadow-lg focus:outline-none">
+          <div className="flex items-center justify-between gap-3 border-b-soft px-3 py-3 sm:px-4">
+            <RadixDialog.Title className="min-w-0 font-heading text-lg font-extrabold text-ink">
               {es.overview.title}
             </RadixDialog.Title>
             <RadixDialog.Close
               aria-label={es.overview.close}
-              className="rounded-pill p-1.5 text-ink-soft hover:bg-surface-muted hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-dark"
+              className="border-soft inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-surface text-ink hover:bg-accent"
             >
-              <X size={18} />
+              <X size={20} strokeWidth={3} />
             </RadixDialog.Close>
           </div>
-          <div className="flex-1 space-y-5 overflow-y-auto p-4">
+          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-3 sm:p-4">
             {GROUP_ORDER.filter(({ key }) => (byGroup.get(key)?.length ?? 0) > 0).map(
               ({ key, tone }) => {
                 const groupMeta = es.overview.groups[key]
@@ -97,12 +97,12 @@ export const ActivitiesOverviewModal = ({
                 return (
                   <section key={key}>
                     <div className="mb-1 flex items-center gap-2">
-                      <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-soft">
+                      <h3 className="text-xs font-bold uppercase tracking-wide text-ink-soft">
                         {groupMeta.title}
                       </h3>
                       <Badge tone={tone}>{groupBubbles.length}</Badge>
                     </div>
-                    <p className="mb-2 text-xs text-ink-soft/70">{groupMeta.description}</p>
+                    <p className="mb-2 text-xs text-ink-soft">{groupMeta.description}</p>
                     <ul className="space-y-1.5">
                       {groupBubbles.map((bubble) => {
                         const activity = activityById.get(bubble.activityId)
@@ -111,13 +111,13 @@ export const ActivitiesOverviewModal = ({
                             <button
                               type="button"
                               onClick={() => onSelectBubble(bubble)}
-                              className="flex min-h-[44px] w-full items-center justify-between rounded-md border border-ink/10 bg-surface-muted px-3 py-2 text-left text-sm shadow-soft transition-colors hover:bg-teal-tint focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-dark"
+                              className="flex min-h-[44px] w-full items-center justify-between rounded-md border-hair bg-surface-muted px-3 py-2 text-left text-sm transition-colors hover:bg-primary-tint"
                             >
-                              <span className="truncate text-ink">
+                              <span className="min-w-0 truncate font-semibold text-ink">
                                 {activity?.name ?? `#${bubble.activityId}`}
                               </span>
                               {activity && (
-                                <span className="ml-3 shrink-0 text-[11px] font-medium uppercase text-ink-soft">
+                                <span className="ml-3 shrink-0 text-[11px] font-bold uppercase text-ink-soft">
                                   {es.activityTypes[
                                     activity.modname as keyof typeof es.activityTypes
                                   ] ?? es.activityTypes.default}
@@ -132,7 +132,9 @@ export const ActivitiesOverviewModal = ({
                 )
               }
             )}
-            {bubbles.length === 0 && <p className="text-sm text-slate-dark">{es.overview.empty}</p>}
+            {bubbles.length === 0 && (
+              <p className="text-sm font-semibold text-ink-soft">{es.overview.empty}</p>
+            )}
           </div>
         </RadixDialog.Content>
       </RadixDialog.Portal>

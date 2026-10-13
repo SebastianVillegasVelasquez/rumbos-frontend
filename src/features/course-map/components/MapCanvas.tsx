@@ -724,7 +724,7 @@ export const MapCanvas = ({
         {showLevelComplete && (
           <div
             role="status"
-            className="pointer-events-none absolute left-1/2 top-6 z-30 -translate-x-1/2 rounded-pill bg-leaf-dark px-5 py-2.5 text-sm font-semibold text-white shadow-soft"
+            className="border-strong pointer-events-none absolute left-1/2 top-6 z-30 -translate-x-1/2 rounded-md bg-leaf-dark px-5 py-2.5 text-sm font-bold text-white shadow-sm"
           >
             {es.canvas.levelComplete}
           </div>
@@ -732,7 +732,7 @@ export const MapCanvas = ({
         {hoveredUnavailableBubble && hoveredUnavailableReason && (
           <div
             role="tooltip"
-            className="pointer-events-none absolute z-20 -translate-x-1/2 -translate-y-[calc(100%+40px)] whitespace-nowrap rounded-md bg-ink px-2.5 py-1.5 text-xs font-medium text-white shadow-soft"
+            className="pointer-events-none absolute z-20 -translate-x-1/2 -translate-y-[calc(100%+40px)] border-hair whitespace-nowrap rounded-md bg-ink px-2.5 py-1.5 text-xs font-semibold text-white"
             style={{
               left:
                 stageX +
@@ -778,34 +778,34 @@ export const MapCanvas = ({
           />
         )}
       </div>
-      <div className="pointer-events-none absolute bottom-3 right-3 flex items-center gap-1 rounded-pill bg-surface/95 p-1.5 shadow-soft backdrop-blur">
+      <div className="border-soft pointer-events-none absolute bottom-3 right-3 flex items-center gap-1 rounded-md bg-surface p-1">
         <IconButton
           onClick={() => handleZoomButton(1 / ZOOM_STEP)}
           aria-label={es.canvas.zoomOut}
           variant="ghost"
-          className="pointer-events-auto h-8 w-8 min-h-0 min-w-0"
+          className="pointer-events-auto"
         >
-          <Minus size={15} />
+          <Minus size={18} strokeWidth={3} />
         </IconButton>
-        <span className="pointer-events-auto min-w-[3rem] text-center text-xs font-medium text-ink-soft">
+        <span className="pointer-events-auto min-w-[3rem] text-center text-xs font-bold text-ink">
           {Math.round(zoomFactor * 100)}%
         </span>
         <IconButton
           onClick={() => handleZoomButton(ZOOM_STEP)}
           aria-label={es.canvas.zoomIn}
           variant="ghost"
-          className="pointer-events-auto h-8 w-8 min-h-0 min-w-0"
+          className="pointer-events-auto"
         >
-          <Plus size={15} />
+          <Plus size={18} strokeWidth={3} />
         </IconButton>
         <IconButton
           onClick={handleZoomReset}
           aria-label={es.canvas.fitToScreen}
           title={es.canvas.fitToScreen}
           variant="ghost"
-          className="pointer-events-auto ml-1 h-8 w-8 min-h-0 min-w-0"
+          className="pointer-events-auto"
         >
-          <Scan size={15} />
+          <Scan size={18} strokeWidth={2.5} />
         </IconButton>
       </div>
     </div>

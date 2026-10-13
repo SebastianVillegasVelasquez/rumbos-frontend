@@ -3,6 +3,7 @@ import { ChevronDown, PartyPopper, Search } from 'lucide-react'
 import type { Activity } from '../data/types.ts'
 import { es } from '../../../i18n/es.ts'
 import { Badge } from '../../../components/ui/Card.tsx'
+import { Input } from '../../../components/ui/Input.tsx'
 
 interface ActivitySidebarProps {
   activities: Activity[]
@@ -29,10 +30,10 @@ const typeLabel = (modname: string) =>
 
 // Type-colored left border, using the design-system status/accent tones.
 const TYPE_ACCENTS: Record<string, string> = {
-  quiz: 'border-l-teal-dark',
+  quiz: 'border-l-primary',
   scorm: 'border-l-leaf-dark',
   customcert: 'border-l-sun-dark',
-  assign: 'border-l-coral-dark',
+  assign: 'border-l-danger',
   resource: 'border-l-slate-dark',
   url: 'border-l-ink',
 }
@@ -43,7 +44,7 @@ const handleDragStart = (e: React.DragEvent<HTMLLIElement>, activity: Activity) 
   e.dataTransfer.effectAllowed = 'copy'
 }
 
-const DEFAULT_CLASS_NAME = 'flex w-64 shrink-0 flex-col border-r border-ink/10 bg-surface p-4'
+const DEFAULT_CLASS_NAME = 'flex w-64 shrink-0 flex-col border-r-soft bg-surface p-4'
 
 export const ActivitySidebar = ({
   activities,
@@ -108,11 +109,11 @@ export const ActivitySidebar = ({
     if (error) {
       return (
         <div className="space-y-2">
-          <p className="text-sm text-coral-dark">{es.sidebar.loadError}</p>
+          <p className="text-sm font-semibold text-danger">{es.sidebar.loadError}</p>
           <button
             type="button"
             onClick={onRetry}
-            className="text-sm font-medium text-teal-dark hover:underline"
+            className="inline-flex min-h-[44px] items-center text-sm font-bold text-primary underline-offset-2 hover:underline"
           >
             {es.app.retry}
           </button>
@@ -122,8 +123,8 @@ export const ActivitySidebar = ({
     if (isLoading) return <p className="text-sm text-ink-soft">{es.sidebar.loading}</p>
     if (filtered.length === 0) {
       return (
-        <div className="flex flex-col items-center gap-2 rounded-md border border-dashed border-leaf-dark/30 bg-leaf-tint p-6 text-center">
-          <PartyPopper size={22} className="text-leaf-dark" />
+        <div className="flex flex-col items-center gap-2 rounded-md border-soft border-dashed bg-leaf-tint p-6 text-center">
+          <PartyPopper size={22} strokeWidth={2.5} className="text-leaf-dark" aria-hidden />
           <p className="text-sm font-semibold text-leaf-dark">{es.sidebar.empty}</p>
         </div>
       )
@@ -138,12 +139,14 @@ export const ActivitySidebar = ({
               <button
                 type="button"
                 onClick={() => toggleSection(sectionName)}
-                className="flex w-full min-h-[32px] items-center justify-between text-left text-xs font-semibold uppercase tracking-wide text-ink-soft"
+                className="flex w-full min-h-[44px] items-center justify-between text-left text-xs font-bold uppercase tracking-wide text-ink-soft"
               >
                 <span className="truncate">{sectionName}</span>
                 <ChevronDown
-                  size={14}
-                  className={`shrink-0 transition-transform ${isCollapsed ? '-rotate-90' : ''}`}
+                  size={16}
+                  strokeWidth={3}
+                  aria-hidden
+                  className={`shrink-0 motion-safe:transition-transform ${isCollapsed ? '-rotate-90' : ''}`}
                 />
               </button>
               {!isCollapsed && (
@@ -159,15 +162,17 @@ export const ActivitySidebar = ({
                         draggable={!disabled}
                         aria-disabled={disabled}
                         onDragStart={(e) => !disabled && handleDragStart(e, activity)}
-                        className={`flex flex-col gap-1 rounded-md border-l-4 bg-surface-muted px-3 py-2 text-sm shadow-soft transition-colors ${
+                        className={`flex min-h-[44px] flex-col justify-center gap-1 rounded-md border-hair border-l-[6px] bg-surface-muted px-3 py-2 text-sm transition-colors ${
                           TYPE_ACCENTS[activity.modname] ?? DEFAULT_ACCENT
-                        } ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-grab hover:bg-teal-tint active:cursor-grabbing'}`}
+                        } ${disabled ? 'cursor-not-allowed opacity-50' : 'cursor-grab hover:bg-primary-tint active:cursor-grabbing'}`}
                       >
                         <div className="flex items-start justify-between gap-2">
-                          <span className="line-clamp-2 flex-1 text-ink">{activity.name}</span>
+                          <span className="line-clamp-2 min-w-0 flex-1 break-words font-semibold text-ink">
+                            {activity.name}
+                          </span>
                         </div>
                         <div className="flex flex-wrap items-center gap-1.5 text-[11px] text-ink-soft">
-                          <span className="font-medium">{typeLabel(activity.modname)}</span>
+                          <span className="font-bold">{typeLabel(activity.modname)}</span>
                           {activity.hidden && <Badge tone="sun">{es.sidebar.hiddenBadge}</Badge>}
                           {placedElsewhere && (
                             <Badge tone="slate">
@@ -193,26 +198,29 @@ export const ActivitySidebar = ({
 
   return (
     <aside className={className ?? DEFAULT_CLASS_NAME}>
-      <div className="mb-1 flex items-center justify-between">
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-ink-soft">
+      <div className="mb-1 flex flex-wrap items-center justify-between gap-x-3">
+        <h2 className="text-xs font-bold uppercase tracking-wide text-ink-soft">
           {es.sidebar.title}
         </h2>
-        <span className="text-xs font-semibold text-teal-dark">
+        <span className="text-xs font-bold text-primary">
           {es.sidebar.remainingCount(trulyUnplacedCount)}
         </span>
       </div>
       <p className="mb-3 text-xs text-ink-soft">{es.sidebar.hint}</p>
       <div className="relative mb-3">
         <Search
-          size={14}
-          className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-dark"
+          size={16}
+          strokeWidth={2.5}
+          aria-hidden
+          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-dark"
         />
-        <input
+        <Input
+          density="compact"
           type="search"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder={es.sidebar.searchPlaceholder}
-          className="h-9 w-full rounded-md border border-ink/10 bg-surface pl-8 pr-2 text-xs placeholder:text-slate-dark focus:border-teal-dark focus:outline-none"
+          className="pl-9 text-xs"
         />
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">{renderList()}</div>

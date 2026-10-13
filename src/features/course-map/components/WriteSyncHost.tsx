@@ -108,14 +108,14 @@ export const WriteSyncHost = () => {
   return (
     <RadixAlertDialog.Root open={current !== undefined}>
       <RadixAlertDialog.Portal>
-        <RadixAlertDialog.Overlay className="fixed inset-0 z-[70] bg-ink/50 backdrop-blur-sm" />
+        <RadixAlertDialog.Overlay className="fixed inset-0 z-[70] bg-ink/50" />
         <RadixAlertDialog.Content
           // No dismiss shortcut: the user has to pick what happens to
           // their change.
           onEscapeKeyDown={(event) => event.preventDefault()}
-          className="fixed left-1/2 top-1/2 z-[71] w-[min(92vw,30rem)] -translate-x-1/2 -translate-y-1/2 rounded-lg bg-surface p-6 shadow-soft focus:outline-none"
+          className="fixed left-1/2 top-1/2 z-[71] max-h-[calc(100dvh-2.5rem)] w-[min(calc(100vw-2.5rem),30rem)] overflow-y-auto -translate-x-1/2 -translate-y-1/2 border-strong rounded-lg bg-surface p-4 shadow-lg sm:p-6 focus:outline-none"
         >
-          <RadixAlertDialog.Title className="font-heading text-lg font-semibold text-ink">
+          <RadixAlertDialog.Title className="font-heading text-xl font-extrabold text-ink">
             {es.conflict.mapTitle}
           </RadixAlertDialog.Title>
           <RadixAlertDialog.Description className="mt-2 text-sm text-ink-soft">
@@ -123,11 +123,21 @@ export const WriteSyncHost = () => {
               ? es.conflict.mapDescriptionMany(current.droppedCount + 1)
               : es.conflict.mapDescription}
           </RadixAlertDialog.Description>
-          <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <Button variant="secondary" disabled={working} onClick={() => void resolve('reload')}>
+          <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end sm:gap-2">
+            <Button
+              variant="secondary"
+              className="w-full sm:w-auto"
+              disabled={working}
+              onClick={() => void resolve('reload')}
+            >
               {es.conflict.reload}
             </Button>
-            <Button variant="primary" disabled={working} onClick={() => void resolve('mine')}>
+            <Button
+              variant="primary"
+              className="w-full sm:w-auto"
+              disabled={working}
+              onClick={() => void resolve('mine')}
+            >
               {working ? es.conflict.working : es.conflict.applyMine}
             </Button>
           </div>
