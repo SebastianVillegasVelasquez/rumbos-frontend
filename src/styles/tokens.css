@@ -1,0 +1,175 @@
+/*
+ * Rumbos design tokens: the single source of truth for color, border, shadow,
+ * radius, type and page background. Nothing outside this file may hardcode
+ * those values; components use the generated utilities (bg-primary,
+ * border-strong, shadow-md, rounded-md ...).
+ *
+ * The student view shares this file. A client theme overrides the variables
+ * at the bottom ([data-theme="cliente"]) without touching components.
+ *
+ * Contrast ratios (WCAG 2.x, computed, not eyeballed):
+ *   ink/paper 13.2:1 · ink/surface 14.7:1 · ink-soft/paper 7.5:1
+ *   white/primary 5.6:1 · ink/accent 8.4:1 · primary/paper 5.0:1
+ *   sun-dark/sun-tint 7.2:1 · danger/surface 6.5:1 · danger/coral-tint 5.4:1
+ *   leaf-dark/leaf-tint 5.7:1 · slate-dark/surface 7.2:1
+ *   --pop (pink) is decorative only: never carries text.
+ */
+@theme {
+  /* Core palette */
+  --color-ink: #12284a;
+  --color-paper: #fff1d6;
+  --color-surface: #ffffff;
+  --color-primary: #0b7377;
+  --color-accent: #ffb703;
+  --color-pop: #ff8fa3;
+
+  /* Derived text/surface tones (all measured above) */
+  --color-ink-soft: #3b4e70;
+  --color-surface-muted: #fff8e8;
+  --color-primary-tint: #ddf1ef;
+  --color-sun-dark: #6b4700;
+  --color-sun-tint: #ffedb8;
+  --color-danger: #b3261e;
+  --color-danger-tint: #ffe3e7;
+  --color-leaf-dark: #146b3f;
+  --color-leaf-tint: #dff5e8;
+  --color-slate: #8a94a6;
+  --color-slate-dark: #4a5873;
+  --color-slate-tint: #eef0f4;
+
+  /* Legacy names still used by views not yet migrated. They resolve to the
+     new palette so every view inherits it; retire them view by view. */
+  --color-teal: var(--color-primary);
+  --color-teal-dark: var(--color-primary);
+  --color-teal-tint: var(--color-primary-tint);
+  --color-sun: var(--color-accent);
+  --color-coral: var(--color-pop);
+  --color-coral-dark: var(--color-danger);
+  --color-coral-tint: var(--color-danger-tint);
+  --color-leaf: var(--color-leaf-dark);
+
+  /* Hard shadows: offset only, never blurred */
+  --shadow-lg: 10px 10px 0 var(--color-ink);
+  --shadow-md: 5px 5px 0 var(--color-ink);
+  --shadow-md-hover: 7px 7px 0 var(--color-ink);
+  --shadow-sm: 3px 3px 0 var(--color-ink);
+
+  /* Radii: controls and large cards only (circles use --radius-pill) */
+  --radius-sm: 14px;
+  --radius-md: 14px;
+  --radius-lg: 24px;
+  --radius-pill: 999px;
+
+  /* Type */
+  --font-heading: 'Outfit Variable', 'Outfit', system-ui, sans-serif;
+  --font-body: 'Figtree Variable', 'Figtree', system-ui, sans-serif;
+}
+
+:root {
+  /* Border widths; the color is always --color-ink */
+  --bw-strong: 3px;
+  --bw-soft: 2px;
+  --bw-hair: 1.5px;
+
+  --duration-fast: 150ms;
+  --duration-base: 250ms;
+  --duration-slow: 600ms;
+  --duration-idle: 3200ms;
+
+  /* Page grid: 32px cells, ink lines at 7% */
+  --grid-size: 32px;
+  --grid-line: color-mix(in srgb, var(--color-ink) 7%, transparent);
+}
+
+/* "Cliente" theme: proves white-labelling by swapping the palette only. */
+:root[data-theme='cliente'] {
+  --color-ink: #3c1a28;
+  --color-ink-soft: #6b2f41;
+  --color-paper: #fff5f2;
+  --color-surface-muted: #fffaf8;
+  --color-primary: #2c3570;
+  --color-primary-tint: #e6e8f6;
+  --color-accent: #ffc425;
+  --color-pop: #e1134f;
+  --color-danger: #a80e3c;
+  --color-danger-tint: #fbe0e9;
+  --color-leaf-dark: #4d8a2a;
+  --color-leaf-tint: #e9f3e0;
+  --color-slate: #962d46;
+  --color-slate-dark: #6e2033;
+  --color-slate-tint: #f3e3e7;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration-fast: 0ms;
+    --duration-base: 0ms;
+    --duration-slow: 0ms;
+    --duration-idle: 0ms;
+  }
+}
+
+/* Border recipes: width from the scale, color always ink */
+@utility border-strong {
+  border-style: solid;
+  border-width: var(--bw-strong);
+  border-color: var(--color-ink);
+}
+@utility border-soft {
+  border-style: solid;
+  border-width: var(--bw-soft);
+  border-color: var(--color-ink);
+}
+@utility border-hair {
+  border-style: solid;
+  border-width: var(--bw-hair);
+  border-color: var(--color-ink);
+}
+@utility border-b-strong {
+  border-bottom: var(--bw-strong) solid var(--color-ink);
+}
+@utility border-l-strong {
+  border-left: var(--bw-strong) solid var(--color-ink);
+}
+@utility border-r-soft {
+  border-right: var(--bw-soft) solid var(--color-ink);
+}
+@utility border-b-soft {
+  border-bottom: var(--bw-soft) solid var(--color-ink);
+}
+@utility border-t-soft {
+  border-top: var(--bw-soft) solid var(--color-ink);
+}
+
+@layer base {
+  html {
+    background: var(--color-paper);
+  }
+
+  body {
+    font-family: var(--font-body);
+    font-weight: 500;
+    color: var(--color-ink);
+    background-color: var(--color-paper);
+    background-image:
+      linear-gradient(var(--grid-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+    background-size: var(--grid-size) var(--grid-size);
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  .font-heading {
+    font-family: var(--font-heading);
+    font-weight: 800;
+    letter-spacing: -0.025em;
+  }
+
+  /* Focus is never removed: 3px primary outline, 3px offset */
+  :focus-visible {
+    outline: 3px solid var(--color-primary);
+    outline-offset: 3px;
+  }
+}
