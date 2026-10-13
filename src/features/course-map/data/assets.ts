@@ -1,5 +1,5 @@
 import { API_BASE_URL } from './client.ts'
-import { getMockAssetObjectUrl } from './mockCourseMapApi.ts'
+import { getMockAssetObjectUrl } from './mockAssetUrls.ts'
 
 const USE_MOCK = import.meta.env.VITE_USE_MOCK_API === 'true'
 

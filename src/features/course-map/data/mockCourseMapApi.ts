@@ -1,4 +1,5 @@
 import { ApiError } from './client.ts'
+import { assetObjectUrls } from './mockAssetUrls.ts'
 import {
   ASSET_LIMITS,
   ALLOWED_IMAGE_MIME,
@@ -467,7 +468,6 @@ interface MockAsset extends Asset {
 }
 
 let assets: MockAsset[] = []
-const assetObjectUrls = new Map<string, string>()
 
 const ASSET_PATH = /^\/assets\/([0-9a-f-]{36})$/i
 const assetIdFromUrl = (imageUrl: string) => ASSET_PATH.exec(imageUrl)?.[1] ?? null
@@ -1331,7 +1331,7 @@ const impl: CourseMapApi = {
       throw businessError(
         422,
         'asset_type_not_allowed',
-        'Formato de imagen no permitido (usa PNG, JPEG o WebP)'
+        'Formato de imagen no permitido (usa PNG, JPEG, WebP o AVIF)'
       )
     }
     validateAssetMetadata(title, credit)
@@ -1651,11 +1651,6 @@ const withSeedAndLatency = (api: CourseMapApi): CourseMapApi =>
   ) as unknown as CourseMapApi
 
 export const mockCourseMapApi: CourseMapApi = withSeedAndLatency(impl)
-
-// There's no backend to serve "/assets/{id}" from in mock mode, so
-// resolveImageUrl/resolveThumbUrl (data/assets.ts) look the blob URL up here.
-export const getMockAssetObjectUrl = (assetId: string): string | null =>
-  assetObjectUrls.get(assetId) ?? null
 
 // Dev-only: act as "another editor" so conflicts can be provoked from one tab.
 //   __rumbosMock.editBubbleElsewhere(mapId, bubbleId)  bumps that bubble's version and nudges it
