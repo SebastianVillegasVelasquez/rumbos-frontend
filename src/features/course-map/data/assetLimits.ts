@@ -7,7 +7,7 @@ export const ASSET_LIMITS: Record<AssetKind, { maxBytes: number; maxSide: number
   bubble: { maxBytes: 2 * 1024 * 1024, maxSide: 1024 },
 }
 
-export const ALLOWED_IMAGE_MIME = ['image/png', 'image/jpeg', 'image/webp'] as const
+export const ALLOWED_IMAGE_MIME = ['image/png', 'image/jpeg', 'image/webp', 'image/avif'] as const
 export const TITLE_MAX_LENGTH = 120
 export const CREDIT_MAX_LENGTH = 300
 
