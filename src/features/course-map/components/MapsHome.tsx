@@ -253,14 +253,6 @@ export const MapsHome = ({ onOpen, onOpenCourse }: MapsHomeProps) => {
           <EmptyState
             title={q ? es.home.searchEmpty.title : es.home.empty.title}
             description={q ? es.home.searchEmpty.description : es.home.empty.description}
-            action={
-              !q && (
-                <Button onClick={() => setCreateOpen(true)}>
-                  <Plus size={16} />
-                  {es.home.createMap}
-                </Button>
-              )
-            }
           />
         )}
 
