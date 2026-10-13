@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { Select } from '../../../components/ui/Select.tsx'
 import { X } from 'lucide-react'
 import { ChevronUp, ChevronDown, Play, RotateCcw, Zap } from 'lucide-react'
 import { Button, IconButton } from '../../../components/ui/Button.tsx'
@@ -33,6 +34,8 @@ interface AppearanceStudioProps {
   onClose: () => void
   onChangeBackground: () => void
 }
+
+const checkboxClass = 'h-5 w-5 shrink-0 accent-primary'
 
 const settingsEqual = (a: MapSettings, b: MapSettings) => JSON.stringify(a) === JSON.stringify(b)
 const rulesEqual = (a: SkinRule[], b: SkinRule[]) => JSON.stringify(a) === JSON.stringify(b)
@@ -88,33 +91,33 @@ export const AppearanceStudio = ({
   }
 
   return (
-    <div className="fixed inset-y-0 right-0 z-40 flex w-full max-w-sm flex-col border-l border-ink/10 bg-surface shadow-soft">
-      <div className="flex items-center justify-between border-b border-ink/10 px-4 py-3">
-        <h2 className="font-heading text-base font-semibold text-ink">{es.studio.title}</h2>
-        <div className="flex items-center gap-2">
+    <div className="fixed inset-y-0 right-0 z-40 flex w-full max-w-sm flex-col border-l-strong bg-surface">
+      <div className="flex items-center justify-between gap-2 border-b-soft px-4 py-3">
+        <h2 className="min-w-0 truncate font-heading text-base font-extrabold text-ink">
+          {es.studio.title}
+        </h2>
+        <div className="flex min-w-0 shrink-0 items-center gap-2">
           {isDirty && (
-            <span className="text-xs font-medium text-sun-dark">{es.studio.unsavedChanges}</span>
+            <span className="text-xs font-bold text-sun-dark">{es.studio.unsavedChanges}</span>
           )}
-          <IconButton
-            aria-label={es.app.close}
-            variant="ghost"
-            onClick={handleClose}
-            className="h-8 w-8 min-h-0 min-w-0"
-          >
-            <X size={16} />
+          <IconButton aria-label={es.app.close} variant="ghost" onClick={handleClose}>
+            <X size={18} strokeWidth={3} aria-hidden />
           </IconButton>
         </div>
       </div>
 
-      <div className="border-b border-ink/10 px-4 py-2">
-        <div className="flex flex-wrap gap-1">
+      <div className="border-b-soft px-4 py-2">
+        <div className="flex flex-wrap gap-1.5">
           {(['bubbles', 'map', 'ambient', 'sequence', 'animation'] as Tab[]).map((t) => (
             <button
               key={t}
               type="button"
               onClick={() => setTab(t)}
-              className={`rounded-pill px-3 py-1.5 text-xs font-semibold transition-colors ${
-                tab === t ? 'bg-teal-dark text-white' : 'text-ink-soft hover:bg-surface-muted'
+              aria-pressed={tab === t}
+              className={`min-h-[44px] flex-1 rounded-md px-3 text-xs transition-colors min-[400px]:flex-none ${
+                tab === t
+                  ? 'border-soft bg-primary font-extrabold text-white'
+                  : 'border-hair bg-surface font-bold text-ink-soft hover:bg-primary-tint hover:text-ink'
               }`}
             >
               {es.studio.tabs[t]}
@@ -154,7 +157,7 @@ export const AppearanceStudio = ({
       </div>
 
       {isDirty && (
-        <div className="flex justify-end gap-2 border-t border-ink/10 px-4 py-3">
+        <div className="border-t-soft flex flex-wrap justify-end gap-2 px-4 py-3">
           <Button size="sm" variant="secondary" onClick={() => setConfirmDiscard(true)}>
             {es.app.dismiss}
           </Button>
@@ -164,7 +167,9 @@ export const AppearanceStudio = ({
         </div>
       )}
       {updateAppearance.isError && (
-        <p className="px-4 pb-3 text-xs text-coral-dark">{es.studio.saveError}</p>
+        <p role="alert" className="px-4 pb-3 text-xs font-bold text-danger">
+          {es.studio.saveError}
+        </p>
       )}
 
       {tab === 'bubbles' && (
@@ -221,7 +226,7 @@ const MapTab = ({
   return (
     <div className="space-y-5">
       <fieldset className="space-y-1.5">
-        <legend className="text-xs font-semibold uppercase tracking-wide text-ink-soft">
+        <legend className="text-xs font-bold uppercase tracking-wide text-ink-soft">
           {es.studio.map.mode}
         </legend>
         <SegmentedControl
@@ -233,7 +238,7 @@ const MapTab = ({
             { value: 'guided', label: es.studio.map.modeGuided },
           ]}
         />
-        <p className="text-xs text-ink-soft">
+        <p className="text-xs font-semibold text-ink-soft">
           {settings.mode === 'guided'
             ? es.studio.map.modeGuidedHint
             : es.studio.map.modeExplorativeHint}
@@ -241,47 +246,50 @@ const MapTab = ({
       </fieldset>
 
       <label className="block space-y-1">
-        <span className="text-xs font-semibold uppercase tracking-wide text-ink-soft">
+        <span className="text-xs font-bold uppercase tracking-wide text-ink-soft">
           {es.studio.map.fit}
         </span>
-        <select
+        <Select
           value={settings.fit}
           onChange={(e) => onChange({ ...settings, fit: e.target.value as MapFit })}
-          className="w-full rounded-md border border-ink/10 px-2 py-1.5 text-sm"
         >
           {(Object.keys(es.studio.map.fitOptions) as MapFit[]).map((fit) => (
             <option key={fit} value={fit}>
               {es.studio.map.fitOptions[fit]}
             </option>
           ))}
-        </select>
+        </Select>
       </label>
 
       <Button size="sm" variant="secondary" onClick={handleCaptureView}>
         {es.studio.map.useCurrentView}
       </Button>
-      {viewCaptured && <p className="text-xs text-leaf-dark">{es.studio.map.viewCaptured}</p>}
+      {viewCaptured && (
+        <p role="status" className="text-xs font-bold text-leaf-dark">
+          {es.studio.map.viewCaptured}
+        </p>
+      )}
 
       <label className="block space-y-1">
-        <span className="text-xs font-semibold uppercase tracking-wide text-ink-soft">
+        <span className="text-xs font-bold uppercase tracking-wide text-ink-soft">
           {es.studio.map.intro}
         </span>
-        <select
+        <Select
           value={settings.intro}
           onChange={(e) => onChange({ ...settings, intro: e.target.value as MapIntro })}
-          className="w-full rounded-md border border-ink/10 px-2 py-1.5 text-sm"
         >
           <option value="none">{es.studio.map.introOptions.none}</option>
           <option value="flyin">{es.studio.map.introOptions.flyin}</option>
-        </select>
+        </Select>
       </label>
 
-      <div className="space-y-2 rounded-md border border-ink/10 p-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-ink-soft">
+      <div className="border-soft space-y-2 rounded-md bg-surface-muted p-3">
+        <p className="text-xs font-bold uppercase tracking-wide text-ink-soft">
           {es.studio.map.path}
         </p>
-        <label className="flex items-center gap-1.5 text-sm text-ink">
+        <label className="flex min-h-[44px] items-center gap-2 text-sm font-semibold text-ink">
           <input
+            className={checkboxClass}
             type="checkbox"
             checked={settings.path.visible}
             onChange={(e) =>
@@ -290,8 +298,9 @@ const MapTab = ({
           />
           {es.studio.map.pathVisible}
         </label>
-        <label className="flex items-center gap-1.5 text-sm text-ink">
+        <label className="flex min-h-[44px] items-center gap-2 text-sm font-semibold text-ink">
           <input
+            className={checkboxClass}
             type="checkbox"
             checked={settings.path.animated}
             onChange={(e) =>
@@ -301,8 +310,8 @@ const MapTab = ({
           {es.studio.map.pathAnimated}
         </label>
         <label className="block space-y-1">
-          <span className="text-xs text-ink-soft">{es.studio.map.pathStyle}</span>
-          <select
+          <span className="text-xs font-bold text-ink-soft">{es.studio.map.pathStyle}</span>
+          <Select
             value={settings.path.style}
             onChange={(e) =>
               onChange({
@@ -310,16 +319,16 @@ const MapTab = ({
                 path: { ...settings.path, style: e.target.value as PathStyle },
               })
             }
-            className="w-full rounded-md border border-ink/10 px-2 py-1.5 text-sm"
           >
             <option value="dashed">{es.studio.map.pathStyles.dashed}</option>
             <option value="dotted">{es.studio.map.pathStyles.dotted}</option>
             <option value="solid">{es.studio.map.pathStyles.solid}</option>
-          </select>
+          </Select>
         </label>
-        <label className="flex items-center gap-2 text-xs text-ink-soft">
+        <label className="flex min-h-[44px] flex-wrap items-center gap-2 text-xs font-bold text-ink-soft">
           {es.studio.map.pathColor}
           <input
+            className={checkboxClass}
             type="checkbox"
             checked={settings.path.color === null}
             onChange={(e) =>
@@ -337,21 +346,21 @@ const MapTab = ({
               onChange={(e) =>
                 onChange({ ...settings, path: { ...settings.path, color: e.target.value } })
               }
-              className="h-7 w-7 cursor-pointer rounded border border-ink/10"
+              className="border-soft h-11 w-11 cursor-pointer rounded-md bg-surface"
             />
           )}
         </label>
       </div>
 
       <div className="space-y-2">
-        <span className="text-xs font-semibold uppercase tracking-wide text-ink-soft">
+        <span className="text-xs font-bold uppercase tracking-wide text-ink-soft">
           {es.studio.map.background}
         </span>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           <img
             src={resolveThumbUrl(currentImageUrl)}
             alt={es.background.currentBackground}
-            className="h-14 w-20 rounded-md border border-ink/10 object-cover"
+            className="border-soft h-14 w-20 shrink-0 rounded-md object-cover"
           />
           <Button size="sm" variant="secondary" onClick={onChangeBackground}>
             {es.studio.map.changeBackground}
@@ -373,10 +382,10 @@ const AmbientTab = ({
 }) => (
   <div className="space-y-4">
     <label className="block space-y-1">
-      <span className="text-xs font-semibold uppercase tracking-wide text-ink-soft">
+      <span className="text-xs font-bold uppercase tracking-wide text-ink-soft">
         {es.studio.ambient.kind}
       </span>
-      <select
+      <Select
         value={settings.ambient.kind}
         onChange={(e) =>
           onChange({
@@ -384,18 +393,17 @@ const AmbientTab = ({
             ambient: { ...settings.ambient, kind: e.target.value as AmbientKind },
           })
         }
-        className="w-full rounded-md border border-ink/10 px-2 py-1.5 text-sm"
       >
         {AMBIENT_KINDS.map((kind) => (
           <option key={kind} value={kind}>
             {es.studio.ambient.kinds[kind]}
           </option>
         ))}
-      </select>
+      </Select>
     </label>
     {settings.ambient.kind !== 'none' && (
       <label className="block space-y-1">
-        <span className="text-xs font-semibold uppercase tracking-wide text-ink-soft">
+        <span className="text-xs font-bold uppercase tracking-wide text-ink-soft">
           {es.studio.ambient.intensity} ({Math.round(settings.ambient.intensity * 100)}%)
         </span>
         <input
@@ -409,7 +417,7 @@ const AmbientTab = ({
               ambient: { ...settings.ambient, intensity: Number(e.target.value) / 100 },
             })
           }
-          className="w-full"
+          className="h-11 w-full accent-primary"
         />
       </label>
     )}
@@ -429,9 +437,9 @@ const SequenceTab = ({
   const sorted = [...bubbles].sort((a, b) => a.sequence - b.sequence)
 
   if (mode !== 'guided')
-    return <p className="text-sm text-ink-soft">{es.studio.sequence.onlyGuided}</p>
+    return <p className="text-sm font-semibold text-ink-soft">{es.studio.sequence.onlyGuided}</p>
   if (sorted.length === 0)
-    return <p className="text-sm text-ink-soft">{es.studio.sequence.empty}</p>
+    return <p className="text-sm font-semibold text-ink-soft">{es.studio.sequence.empty}</p>
 
   const moveBy = (bubbleId: string, delta: number) => {
     const index = sorted.findIndex((b) => b.id === bubbleId)
@@ -444,34 +452,34 @@ const SequenceTab = ({
 
   return (
     <div className="space-y-2">
-      <p className="text-xs text-ink-soft">{es.studio.sequence.hint}</p>
+      <p className="text-xs font-semibold text-ink-soft">{es.studio.sequence.hint}</p>
       <ol className="space-y-1.5">
         {sorted.map((bubble, index) => (
           <li
             key={bubble.id}
-            className="flex items-center gap-2 rounded-md border border-ink/10 px-2.5 py-1.5 text-sm"
+            className="flex items-center gap-2 border-soft rounded-md bg-surface px-2.5 py-1.5 text-sm"
           >
-            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-pill bg-surface-muted text-xs font-bold text-ink-soft">
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-pill border-hair bg-surface-muted text-xs font-bold text-ink">
               {index + 1}
             </span>
-            <span className="flex-1 truncate text-ink">{bubble.activityId}</span>
+            <span className="min-w-0 flex-1 truncate font-semibold text-ink">
+              {bubble.activityId}
+            </span>
             <IconButton
               aria-label={es.studio.sequence.moveUp}
               variant="ghost"
               disabled={index === 0}
               onClick={() => moveBy(bubble.id, -1)}
-              className="h-7 w-7 min-h-0 min-w-0"
             >
-              <ChevronUp size={14} />
+              <ChevronUp size={18} strokeWidth={3} aria-hidden />
             </IconButton>
             <IconButton
               aria-label={es.studio.sequence.moveDown}
               variant="ghost"
               disabled={index === sorted.length - 1}
               onClick={() => moveBy(bubble.id, 1)}
-              className="h-7 w-7 min-h-0 min-w-0"
             >
-              <ChevronDown size={14} />
+              <ChevronDown size={18} strokeWidth={3} aria-hidden />
             </IconButton>
           </li>
         ))}
@@ -484,20 +492,16 @@ const AnimationTab = () => {
   const { setting, setSetting } = useAnimationQuality()
   return (
     <label className="block space-y-1">
-      <span className="text-xs font-semibold uppercase tracking-wide text-ink-soft">
+      <span className="text-xs font-bold uppercase tracking-wide text-ink-soft">
         {es.animationQuality.label}
       </span>
-      <select
-        value={setting}
-        onChange={(e) => setSetting(e.target.value as QualitySetting)}
-        className="w-full rounded-md border border-ink/10 px-2 py-1.5 text-sm"
-      >
+      <Select value={setting} onChange={(e) => setSetting(e.target.value as QualitySetting)}>
         {(['auto', 'high', 'medium', 'low', 'off'] as const).map((option) => (
           <option key={option} value={option}>
             {es.animationQuality.options[option]}
           </option>
         ))}
-      </select>
+      </Select>
     </label>
   )
 }
@@ -562,8 +566,8 @@ const ProgressSimulator = ({
   }
 
   return (
-    <div className="flex items-center gap-1.5 border-t border-ink/10 px-4 py-2.5">
-      <span className="mr-auto text-[11px] font-semibold uppercase tracking-wide text-ink-soft">
+    <div className="flex flex-wrap items-center border-t-soft gap-1.5 px-4 py-2.5">
+      <span className="mr-auto text-xs font-bold uppercase tracking-wide text-ink-soft">
         {es.studio.simulator.title}
       </span>
       <IconButton
@@ -571,27 +575,24 @@ const ProgressSimulator = ({
         variant="ghost"
         onClick={completeNext}
         disabled={isRunning}
-        className="h-7 w-7 min-h-0 min-w-0"
       >
-        <Play size={13} />
+        <Play size={16} strokeWidth={2.5} aria-hidden />
       </IconButton>
       <IconButton
         aria-label={es.studio.simulator.completeAll}
         variant="ghost"
         onClick={() => void completeAll()}
         disabled={isRunning}
-        className="h-7 w-7 min-h-0 min-w-0"
       >
-        <Zap size={13} />
+        <Zap size={16} strokeWidth={2.5} aria-hidden />
       </IconButton>
       <IconButton
         aria-label={es.studio.simulator.reset}
         variant="ghost"
         onClick={() => void reset()}
         disabled={isRunning}
-        className="h-7 w-7 min-h-0 min-w-0"
       >
-        <RotateCcw size={13} />
+        <RotateCcw size={16} strokeWidth={2.5} aria-hidden />
       </IconButton>
     </div>
   )
