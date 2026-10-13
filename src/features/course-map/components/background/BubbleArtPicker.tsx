@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { tabClass, tabListClass } from '../../../../components/ui/tabStyles.ts'
 import { Dialog } from '../../../../components/ui/Dialog.tsx'
 import { es } from '../../../../i18n/es.ts'
 import type { AssetCreateResult, AssetListItem } from '../../data/types.ts'
@@ -32,11 +33,7 @@ export const BubbleArtPicker = ({
   return (
     <Dialog open={open} onOpenChange={onOpenChange} size="lg" title={title}>
       <div className="space-y-4">
-        <div
-          role="tablist"
-          aria-label={es.background.tabs.label}
-          className="flex gap-1 border-b border-ink/10"
-        >
+        <div role="tablist" aria-label={es.background.tabs.label} className={tabListClass}>
           {(['library', 'upload'] as const).map((item) => (
             <button
               key={item}
@@ -44,11 +41,7 @@ export const BubbleArtPicker = ({
               role="tab"
               aria-selected={tab === item}
               onClick={() => setTab(item)}
-              className={`-mb-px border-b-2 px-3 py-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-dark ${
-                tab === item
-                  ? 'border-teal-dark text-teal-dark'
-                  : 'border-transparent text-ink-soft hover:text-ink'
-              }`}
+              className={tabClass(tab === item)}
             >
               {es.background.tabs[item]}
             </button>

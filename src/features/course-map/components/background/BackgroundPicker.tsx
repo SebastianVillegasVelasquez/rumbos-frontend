@@ -1,4 +1,6 @@
 import { useRef, useState, type KeyboardEvent } from 'react'
+import { tabClass, tabListClass } from '../../../../components/ui/tabStyles.ts'
+import { Check } from 'lucide-react'
 import { Button } from '../../../../components/ui/Button.tsx'
 import { Dialog } from '../../../../components/ui/Dialog.tsx'
 import { useToast } from '../../../../components/ui/toastContext.ts'
@@ -138,7 +140,7 @@ export const BackgroundPicker = ({
             notice={selection.notice}
           />
           {applyError && (
-            <p role="alert" className="text-sm text-coral-dark">
+            <p role="alert" className="text-sm font-bold text-danger">
               {applyError}
             </p>
           )}
@@ -170,7 +172,7 @@ export const BackgroundPicker = ({
             role="tablist"
             aria-label={es.background.tabs.label}
             onKeyDown={handleTabKeyDown}
-            className="flex gap-1 border-b border-ink/10"
+            className={tabListClass}
           >
             {tabs.map((item) => (
               <button
@@ -185,11 +187,7 @@ export const BackgroundPicker = ({
                 aria-controls={`background-panel-${item}`}
                 tabIndex={tab === item ? 0 : -1}
                 onClick={() => setTab(item)}
-                className={`-mb-px border-b-2 px-3 py-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-dark ${
-                  tab === item
-                    ? 'border-teal-dark text-teal-dark'
-                    : 'border-transparent text-ink-soft hover:text-ink'
-                }`}
+                className={tabClass(tab === item)}
               >
                 {es.background.tabs[item]}
               </button>
@@ -207,7 +205,9 @@ export const BackgroundPicker = ({
             {tab === 'upload' && <AssetUploader kind="background" onUploaded={handleUploaded} />}
             {tab === 'bundled' && (
               <div className="space-y-3">
-                <p className="text-xs text-sun-dark">{es.background.bundled.notice}</p>
+                <p className="text-xs font-semibold text-sun-dark">
+                  {es.background.bundled.notice}
+                </p>
                 <ul
                   aria-label={es.background.bundled.gridLabel}
                   className="grid grid-cols-2 gap-3 sm:grid-cols-3"
@@ -218,13 +218,23 @@ export const BackgroundPicker = ({
                         type="button"
                         onClick={() => choose(option.url, option.label)}
                         aria-pressed={currentImageUrl === option.url}
-                        className={`block w-full overflow-hidden rounded-lg border-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-dark ${
-                          currentImageUrl === option.url ? 'border-teal-dark' : 'border-ink/10'
+                        className={`border-soft block w-full overflow-hidden rounded-md text-left transition-colors ${
+                          currentImageUrl === option.url
+                            ? 'bg-primary-tint'
+                            : 'bg-surface hover:bg-primary-tint'
                         }`}
                       >
                         <img src={option.url} alt="" className="aspect-video w-full object-cover" />
-                        <span className="block truncate px-2 py-1.5 text-sm font-semibold text-ink">
-                          {option.label}
+                        <span className="flex items-center gap-1.5 px-2 py-1.5 text-sm font-bold text-ink">
+                          {currentImageUrl === option.url && (
+                            <Check
+                              size={16}
+                              strokeWidth={3}
+                              aria-hidden
+                              className="shrink-0 text-primary"
+                            />
+                          )}
+                          <span className="truncate">{option.label}</span>
                         </span>
                       </button>
                     </li>

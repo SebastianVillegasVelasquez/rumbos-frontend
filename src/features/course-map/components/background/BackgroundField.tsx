@@ -22,7 +22,7 @@ export const BackgroundField = ({ value, onChange }: BackgroundFieldProps) => {
 
   return (
     <div className="flex items-center gap-3">
-      <div className="flex h-14 w-20 shrink-0 items-center justify-center overflow-hidden rounded-md border border-ink/10 bg-surface-muted">
+      <div className="flex h-14 w-20 shrink-0 items-center justify-center overflow-hidden border-soft rounded-md bg-surface-muted">
         {value ? (
           <img
             src={resolveThumbUrl(value.imageUrl)}
@@ -30,11 +30,13 @@ export const BackgroundField = ({ value, onChange }: BackgroundFieldProps) => {
             className="h-full w-full object-cover"
           />
         ) : (
-          <ImageIcon size={20} aria-hidden className="text-ink-soft" />
+          <ImageIcon size={20} strokeWidth={2.5} aria-hidden className="text-ink-soft" />
         )}
       </div>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm text-ink">{value?.label ?? es.background.chooseLabel}</p>
+        <p className="truncate text-sm font-bold text-ink">
+          {value?.label ?? es.background.chooseLabel}
+        </p>
         <Button
           type="button"
           size="sm"

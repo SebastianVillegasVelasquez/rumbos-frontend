@@ -49,17 +49,22 @@ export const BackgroundPreview = ({
       {notice && (
         <p
           role="status"
-          className="rounded-md border border-teal-dark/20 bg-teal-tint px-3 py-2 text-sm text-teal-dark"
+          className="border-soft rounded-md bg-primary-tint px-3 py-2 text-sm font-bold text-primary"
         >
           {notice}
         </p>
       )}
 
-      <div className="h-[min(52vh,26rem)] w-full">
+      <div className="border-soft h-[min(52vh,26rem)] w-full overflow-hidden rounded-md">
         <Suspense
           fallback={
             <p className="flex items-center gap-2 text-sm text-ink-soft">
-              <Loader2 size={16} className="animate-spin" />
+              <Loader2
+                size={16}
+                strokeWidth={2.5}
+                aria-hidden
+                className="motion-safe:animate-spin"
+              />
               {es.background.preview.loading}
             </p>
           }
@@ -86,13 +91,13 @@ export const BackgroundPreview = ({
 
       <dl className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-ink-soft">
         <div className="flex gap-1.5">
-          <dt className="font-semibold">{es.background.preview.current}:</dt>
+          <dt className="font-bold">{es.background.preview.current}:</dt>
           <dd>
             {currentRatio !== null ? es.background.preview.ratio(formatRatio(currentRatio)) : '…'}
           </dd>
         </div>
         <div className="flex gap-1.5">
-          <dt className="font-semibold">{es.background.preview.next}:</dt>
+          <dt className="font-bold">{es.background.preview.next}:</dt>
           <dd>{nextRatio !== null ? es.background.preview.ratio(formatRatio(nextRatio)) : '…'}</dd>
         </div>
       </dl>
@@ -100,7 +105,7 @@ export const BackgroundPreview = ({
       {hasBubbles && currentRatio !== null && nextRatio !== null && (
         <p
           role={differs ? 'alert' : 'status'}
-          className={`rounded-md px-3 py-2 text-sm ${differs ? 'border border-sun/40 bg-sun-tint text-sun-dark' : 'bg-surface-muted text-ink-soft'}`}
+          className={`rounded-md px-3 py-2 text-sm ${differs ? 'border-soft bg-sun-tint font-bold text-sun-dark' : 'border-hair bg-surface-muted text-ink-soft'}`}
         >
           {differs ? es.background.preview.ratioDifferent : es.background.preview.ratioSame}
         </p>

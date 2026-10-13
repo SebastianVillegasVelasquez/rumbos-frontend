@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type DragEvent, type FormEvent } from 'react'
 import { ImagePlus, Loader2 } from 'lucide-react'
 import { Button } from '../../../../components/ui/Button.tsx'
+import { Input } from '../../../../components/ui/Input.tsx'
 import { es } from '../../../../i18n/es.ts'
 import {
   ASSET_LIMITS,
@@ -131,8 +132,8 @@ export const AssetUploader = ({ kind, onUploaded }: AssetUploaderProps) => {
         }}
         onDragLeave={() => setDragActive(false)}
         onDrop={handleDrop}
-        className={`flex min-h-40 flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-4 text-center transition-colors ${
-          dragActive ? 'border-teal-dark bg-teal-tint' : 'border-ink/15 bg-surface-muted'
+        className={`flex min-h-40 flex-col items-center justify-center gap-2 rounded-md border-2 border-dashed border-ink p-4 text-center transition-colors ${
+          dragActive ? 'bg-primary-tint' : 'bg-surface-muted'
         }`}
       >
         {previewUrl && file ? (
@@ -140,9 +141,9 @@ export const AssetUploader = ({ kind, onUploaded }: AssetUploaderProps) => {
             <img
               src={previewUrl}
               alt=""
-              className="max-h-40 max-w-full rounded-md object-contain"
+              className="border-soft max-h-40 max-w-full rounded-md object-contain"
             />
-            <p className="max-w-full truncate text-xs text-ink-soft">{file.name}</p>
+            <p className="max-w-full truncate text-xs font-semibold text-ink-soft">{file.name}</p>
             <Button
               type="button"
               size="sm"
@@ -155,14 +156,14 @@ export const AssetUploader = ({ kind, onUploaded }: AssetUploaderProps) => {
           </>
         ) : (
           <>
-            <ImagePlus size={28} aria-hidden className="text-ink-soft" />
-            <p className="text-sm text-ink-soft" aria-live="polite">
+            <ImagePlus size={28} strokeWidth={2.5} aria-hidden className="text-ink-soft" />
+            <p className="text-sm font-semibold text-ink-soft" aria-live="polite">
               {dragActive ? es.background.upload.dropActive : es.background.upload.drop}{' '}
               {!dragActive && (
                 <button
                   type="button"
                   onClick={() => inputRef.current?.click()}
-                  className="font-semibold text-teal-dark underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-dark"
+                  className="min-h-[44px] font-extrabold text-primary underline underline-offset-2 hover:text-ink"
                 >
                   {es.background.upload.browse}
                 </button>
@@ -191,39 +192,39 @@ export const AssetUploader = ({ kind, onUploaded }: AssetUploaderProps) => {
       </div>
 
       <label className="block space-y-1">
-        <span className="text-xs font-semibold uppercase tracking-wide text-ink-soft">
+        <span className="text-xs font-bold uppercase tracking-wide text-ink-soft">
           {es.background.upload.titleLabel}
         </span>
-        <input
+        <Input
           type="text"
+          density="compact"
           required
           maxLength={TITLE_MAX_LENGTH}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           placeholder={es.background.upload.titlePlaceholder}
-          className="w-full rounded-md border border-ink/10 px-3 py-2 text-sm focus:border-teal-dark focus:outline-none"
         />
       </label>
       <label className="block space-y-1">
-        <span className="text-xs font-semibold uppercase tracking-wide text-ink-soft">
+        <span className="text-xs font-bold uppercase tracking-wide text-ink-soft">
           {es.background.upload.creditLabel}
         </span>
-        <input
+        <Input
           type="text"
+          density="compact"
           maxLength={CREDIT_MAX_LENGTH}
           value={credit}
           onChange={(e) => setCredit(e.target.value)}
           placeholder={es.background.upload.creditPlaceholder}
           aria-describedby="asset-credit-hint"
-          className="w-full rounded-md border border-ink/10 px-3 py-2 text-sm focus:border-teal-dark focus:outline-none"
         />
-        <span id="asset-credit-hint" className="block text-xs text-sun-dark">
+        <span id="asset-credit-hint" className="block text-xs font-semibold text-sun-dark">
           {es.background.upload.creditHint}
         </span>
       </label>
 
       {errorMessage && (
-        <p role="alert" className="text-sm text-coral-dark">
+        <p role="alert" className="text-sm font-bold text-danger">
           {errorMessage}
         </p>
       )}
@@ -234,17 +235,24 @@ export const AssetUploader = ({ kind, onUploaded }: AssetUploaderProps) => {
             value={percent}
             max={100}
             aria-label={es.background.upload.progress(percent)}
-            className="h-2 w-full"
+            className="border-hair h-3 w-full overflow-hidden rounded-md accent-primary"
           />
-          <p className="text-xs text-ink-soft">{es.background.upload.progress(percent)}</p>
+          <p className="text-xs font-semibold text-ink-soft">
+            {es.background.upload.progress(percent)}
+          </p>
         </div>
       )}
 
-      <div className="flex justify-end">
+      <div className="flex flex-wrap justify-end">
         <Button type="submit" disabled={!file || !title.trim() || uploading}>
           {uploading ? (
             <>
-              <Loader2 size={15} className="animate-spin" />
+              <Loader2
+                size={16}
+                strokeWidth={2.5}
+                aria-hidden
+                className="motion-safe:animate-spin"
+              />
               {es.background.upload.uploading}
             </>
           ) : (

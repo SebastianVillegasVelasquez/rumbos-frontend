@@ -1,7 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { Loader2, Pencil, Search, Trash2 } from 'lucide-react'
+import { ImageOff, Loader2, Pencil, Search, Trash2 } from 'lucide-react'
 import { Badge } from '../../../../components/ui/Card.tsx'
 import { Button } from '../../../../components/ui/Button.tsx'
+import { Input } from '../../../../components/ui/Input.tsx'
 import { ConfirmDialog } from '../../../../components/ui/ConfirmDialog.tsx'
 import { useToast } from '../../../../components/ui/toastContext.ts'
 import { es } from '../../../../i18n/es.ts'
@@ -55,16 +56,18 @@ export const AssetLibrary = ({ kind, currentUrl, onSelect, selectLabel }: AssetL
         <label className="relative min-w-0 flex-1">
           <span className="sr-only">{es.background.library.searchLabel}</span>
           <Search
-            size={14}
+            size={16}
+            strokeWidth={2.5}
             aria-hidden
             className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-soft"
           />
-          <input
+          <Input
             type="search"
+            density="compact"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={es.background.library.searchPlaceholder}
-            className="w-full rounded-md border border-ink/10 py-2 pl-8 pr-3 text-sm focus:border-teal-dark focus:outline-none"
+            className="ps-9"
           />
         </label>
         <Button
@@ -79,15 +82,15 @@ export const AssetLibrary = ({ kind, currentUrl, onSelect, selectLabel }: AssetL
       </div>
 
       {query.isPending && (
-        <p className="flex items-center gap-2 text-sm text-ink-soft" role="status">
-          <Loader2 size={14} className="animate-spin" />
+        <p className="flex items-center gap-2 text-sm font-semibold text-ink-soft" role="status">
+          <Loader2 size={16} strokeWidth={2.5} aria-hidden className="motion-safe:animate-spin" />
           {es.background.library.loading}
         </p>
       )}
 
       {query.isError && (
         <div className="space-y-2" role="alert">
-          <p className="text-sm text-coral-dark">{es.background.library.loadError}</p>
+          <p className="text-sm font-bold text-danger">{es.background.library.loadError}</p>
           <Button size="sm" variant="secondary" onClick={() => void query.refetch()}>
             {es.background.library.retry}
           </Button>
@@ -95,7 +98,8 @@ export const AssetLibrary = ({ kind, currentUrl, onSelect, selectLabel }: AssetL
       )}
 
       {query.data && items.length === 0 && (
-        <p className="rounded-md border border-dashed border-ink/15 p-6 text-center text-sm text-ink-soft">
+        <p className="border-soft flex flex-col items-center gap-2 rounded-md bg-surface-muted p-6 text-center text-sm font-semibold text-ink-soft">
+          <ImageOff size={24} strokeWidth={2.5} aria-hidden />
           {debounced ? es.background.library.emptySearch : es.background.library.empty}
         </p>
       )}
@@ -132,7 +136,7 @@ export const AssetLibrary = ({ kind, currentUrl, onSelect, selectLabel }: AssetL
           >
             {es.background.library.previous}
           </Button>
-          <span className="text-xs text-ink-soft" aria-live="polite">
+          <span className="text-xs font-bold text-ink-soft" aria-live="polite">
             {es.background.library.page(page, pageCount)}
           </span>
           <Button
@@ -223,19 +227,19 @@ const AssetCard = ({
   }
 
   return (
-    <li className="flex flex-col overflow-hidden rounded-lg border border-ink/10 bg-surface">
+    <li className="border-soft flex flex-col overflow-hidden rounded-md bg-surface">
       <button
         type="button"
         onClick={onSelect}
         aria-label={`${selectLabel}: ${asset.title}`}
-        className="group block text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-teal-dark"
+        className="group block text-left"
       >
-        <div className="relative aspect-video w-full overflow-hidden bg-surface-muted">
+        <div className="border-b-soft relative aspect-video w-full overflow-hidden bg-surface-muted">
           <img
             src={thumbOf(asset)}
             alt=""
             loading="lazy"
-            className="h-full w-full object-cover transition-transform group-hover:scale-105"
+            className="h-full w-full object-cover motion-safe:transition-transform motion-safe:group-hover:scale-105"
           />
           {isCurrent && (
             <Badge tone="teal" className="absolute left-2 top-2">
@@ -248,37 +252,37 @@ const AssetCard = ({
         {editing ? (
           <form onSubmit={handleSave} className="space-y-2">
             <label className="block space-y-0.5">
-              <span className="text-[11px] font-semibold uppercase tracking-wide text-ink-soft">
+              <span className="text-xs font-bold uppercase tracking-wide text-ink-soft">
                 {es.background.manage.titleLabel}
               </span>
-              <input
+              <Input
                 type="text"
+                density="compact"
                 required
                 autoFocus
                 maxLength={TITLE_MAX_LENGTH}
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full rounded-md border border-ink/10 px-2 py-1.5 text-sm focus:border-teal-dark focus:outline-none"
               />
             </label>
             <label className="block space-y-0.5">
-              <span className="text-[11px] font-semibold uppercase tracking-wide text-ink-soft">
+              <span className="text-xs font-bold uppercase tracking-wide text-ink-soft">
                 {es.background.manage.creditLabel}
               </span>
-              <input
+              <Input
                 type="text"
+                density="compact"
                 maxLength={CREDIT_MAX_LENGTH}
                 value={credit}
                 onChange={(e) => setCredit(e.target.value)}
-                className="w-full rounded-md border border-ink/10 px-2 py-1.5 text-sm focus:border-teal-dark focus:outline-none"
               />
             </label>
             {patchAsset.isError && (
-              <p role="alert" className="text-xs text-coral-dark">
+              <p role="alert" className="text-xs font-bold text-danger">
                 {es.background.manage.saveError}
               </p>
             )}
-            <div className="flex justify-end gap-2">
+            <div className="flex flex-wrap justify-end gap-2">
               <Button type="button" size="sm" variant="secondary" onClick={() => setEditing(false)}>
                 {es.background.manage.cancel}
               </Button>
@@ -289,15 +293,15 @@ const AssetCard = ({
           </form>
         ) : (
           <>
-            <p className="truncate text-sm font-semibold text-ink" title={asset.title}>
+            <p className="truncate text-sm font-extrabold text-ink" title={asset.title}>
               {asset.title}
             </p>
             <p
-              className={`line-clamp-2 text-xs ${asset.credit ? 'text-ink-soft' : 'italic text-sun-dark'}`}
+              className={`line-clamp-2 text-xs ${asset.credit ? 'text-ink-soft' : 'font-semibold italic text-sun-dark'}`}
             >
               {asset.credit ?? es.background.library.noCredit}
             </p>
-            <p className="text-[11px] text-ink-soft">
+            <p className="text-xs text-ink-soft">
               {es.background.library.dimensions(asset.width, asset.height)}
             </p>
             <div className="mt-auto flex flex-wrap gap-1 pt-1">
@@ -315,26 +319,36 @@ const AssetCard = ({
         )}
 
         {managing && !editing && (
-          <div className="space-y-2 border-t border-ink/10 pt-2">
-            <div className="flex gap-2">
-              <Button type="button" size="sm" variant="secondary" onClick={startEditing}>
-                <Pencil size={13} />
+          <div className="border-t-soft space-y-2 pt-2">
+            <div className="flex flex-wrap gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="border-soft"
+                onClick={startEditing}
+              >
+                <Pencil size={16} strokeWidth={2.5} aria-hidden />
                 {es.background.manage.edit}
               </Button>
               <Button
                 type="button"
                 size="sm"
-                variant="secondary"
+                variant="ghost"
+                className="border-soft"
                 disabled={inUse || deleteAsset.isPending}
                 onClick={() => setConfirmDelete(true)}
                 aria-label={`${es.background.manage.delete}: ${asset.title}`}
               >
-                <Trash2 size={13} />
+                <Trash2 size={16} strokeWidth={2.5} aria-hidden />
                 {es.background.manage.delete}
               </Button>
             </div>
             {(inUse || deleteBlocked) && (
-              <p role={deleteBlocked ? 'alert' : undefined} className="text-xs text-sun-dark">
+              <p
+                role={deleteBlocked ? 'alert' : undefined}
+                className="text-xs font-semibold text-sun-dark"
+              >
                 {inUseMessage(deleteBlocked ?? asset.usage)}
               </p>
             )}
