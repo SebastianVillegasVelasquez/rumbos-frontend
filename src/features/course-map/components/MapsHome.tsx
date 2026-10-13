@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { MoreVertical, Pencil, Plus, Search, Trash2 } from 'lucide-react'
 import { Button, IconButton } from '../../../components/ui/Button.tsx'
-import { Card } from '../../../components/ui/Card.tsx'
+import { Badge, Card } from '../../../components/ui/Card.tsx'
 import { Dialog } from '../../../components/ui/Dialog.tsx'
+import { Input } from '../../../components/ui/Input.tsx'
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog.tsx'
 import { DropdownMenu } from '../../../components/ui/DropdownMenu.tsx'
 import { Skeleton, EmptyState } from '../../../components/ui/Skeleton.tsx'
@@ -58,25 +59,22 @@ const MapCard = ({
   onRename: (map: CourseMapSummary) => void
   onDelete: (map: CourseMapSummary) => void
 }) => (
-  <Card className="group relative overflow-hidden transition-shadow hover:shadow-[0_8px_24px_-8px_rgba(30,42,74,0.25)]">
+  <Card variant="item" className="group relative overflow-hidden">
     <button type="button" onClick={() => onOpen(map.id)} className="block w-full text-left">
-      <div className="relative h-32 w-full overflow-hidden bg-surface-muted">
+      <div className="border-b-soft h-32 w-full overflow-hidden bg-surface-muted">
         <img
           src={resolveThumbUrl(map.imageUrl)}
           alt=""
           loading="lazy"
-          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+          className="h-full w-full object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-ink/60 via-ink/0 to-transparent" />
-        <p className="absolute bottom-2 left-3 right-3 truncate font-heading text-base font-semibold text-white">
-          {map.title}
-        </p>
       </div>
-      <div className="space-y-1 p-3">
-        <p className="text-xs font-medium text-ink-soft">
+      <div className="space-y-1 p-4">
+        <p className="truncate font-heading text-lg font-extrabold text-ink">{map.title}</p>
+        <p className="text-xs font-semibold text-ink-soft">
           {es.home.card.course(map.moodleCourseId)}
         </p>
-        <div className="flex items-center justify-between text-xs text-slate-dark">
+        <div className="flex items-center justify-between text-xs font-semibold text-slate-dark">
           <span>{es.home.card.activities(map.bubbleCount)}</span>
           <span>{formatRelative(map.updatedAt)}</span>
         </div>
@@ -85,20 +83,20 @@ const MapCard = ({
     <div className="absolute right-2 top-2">
       <DropdownMenu
         trigger={
-          <IconButton
-            aria-label={map.title}
-            variant="secondary"
-            className="h-9 w-9 min-h-0 min-w-0 bg-surface/90"
-          >
-            <MoreVertical size={16} />
+          <IconButton aria-label={map.title} variant="secondary">
+            <MoreVertical size={18} strokeWidth={2.5} />
           </IconButton>
         }
         items={[
           { label: es.home.card.open, onSelect: () => onOpen(map.id) },
-          { label: es.home.card.rename, icon: <Pencil size={14} />, onSelect: () => onRename(map) },
+          {
+            label: es.home.card.rename,
+            icon: <Pencil size={16} strokeWidth={2.5} />,
+            onSelect: () => onRename(map),
+          },
           {
             label: es.home.card.delete,
-            icon: <Trash2 size={14} />,
+            icon: <Trash2 size={16} strokeWidth={2.5} />,
             onSelect: () => onDelete(map),
             destructive: true,
           },
@@ -120,33 +118,34 @@ const CourseCard = ({
   const cover = group.levels[0]
   const totalActivities = group.levels.reduce((sum, level) => sum + level.bubbleCount, 0)
   return (
-    <Card className="group relative overflow-hidden transition-shadow hover:shadow-[0_8px_24px_-8px_rgba(30,42,74,0.25)]">
+    <Card variant="item" className="group relative overflow-hidden">
       <button
         type="button"
         onClick={onOpen}
         aria-label={courseTitleFrom(group.levels)}
         className="block w-full text-left"
       >
-        <div className="relative h-32 w-full overflow-hidden bg-surface-muted">
+        <div className="border-b-soft relative h-32 w-full overflow-hidden bg-surface-muted">
           <img
             src={resolveThumbUrl(cover.imageUrl)}
             alt=""
             loading="lazy"
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+            className="h-full w-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-ink/60 via-ink/0 to-transparent" />
-          <span className="absolute right-2 top-2 rounded-pill bg-surface/90 px-2 py-0.5 text-xs font-semibold text-ink">
+          <Badge tone="sun" className="absolute right-2 top-2">
             {group.levels.length}
-          </span>
-          <p className="absolute bottom-2 left-3 right-3 truncate font-heading text-base font-semibold text-white">
+          </Badge>
+        </div>
+        <div className="space-y-1 p-4">
+          <p className="truncate font-heading text-lg font-extrabold text-ink">
             {courseTitleFrom(group.levels)}
           </p>
-        </div>
-        <div className="space-y-1 p-3">
-          <p className="text-xs font-medium text-ink-soft">
+          <p className="text-xs font-semibold text-ink-soft">
             {es.home.card.course(group.moodleCourseId)}
           </p>
-          <p className="text-xs text-slate-dark">{es.home.card.activities(totalActivities)}</p>
+          <p className="text-xs font-semibold text-slate-dark">
+            {es.home.card.activities(totalActivities)}
+          </p>
         </div>
       </button>
     </Card>
@@ -183,54 +182,68 @@ export const MapsHome = ({ onOpen, onOpenCourse }: MapsHomeProps) => {
   }, [items])
 
   return (
-    <div className="flex h-full flex-col overflow-y-auto p-6">
-      <div className="mx-auto w-full max-w-5xl space-y-6">
-        <div className="flex flex-wrap items-end justify-between gap-4">
-          <div>
-            <h1 className="font-heading text-2xl font-semibold text-ink">{es.home.title}</h1>
-            <p className="mt-1 text-sm text-ink-soft">{es.home.subtitle}</p>
+    <div className="flex h-full flex-col overflow-y-auto p-4 sm:p-6 lg:p-8">
+      <div className="mx-auto w-full max-w-5xl space-y-6 pb-2 sm:space-y-8">
+        <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+          <div className="min-w-0">
+            <h1 className="break-words font-heading text-3xl text-ink sm:text-4xl lg:text-5xl">
+              {es.home.title}
+            </h1>
+            <p className="mt-2 text-sm font-semibold text-ink-soft">{es.home.subtitle}</p>
           </div>
-          <Button onClick={() => setCreateOpen(true)}>
-            <Plus size={16} />
+          <Button className="w-full sm:w-auto" onClick={() => setCreateOpen(true)}>
+            <Plus size={18} strokeWidth={3} />
             {es.home.createMap}
           </Button>
         </div>
 
         {recent && (
-          <Card className="flex items-center gap-4 overflow-hidden p-4">
+          <Card
+            variant="item"
+            className="flex flex-wrap items-center gap-3 overflow-hidden p-4 sm:gap-4"
+          >
             <img
               src={resolveThumbUrl(recent.imageUrl)}
               alt=""
-              className="h-14 w-14 rounded-md object-cover"
+              className="border-hair h-14 w-14 rounded-md object-cover"
             />
-            <div className="flex-1">
-              <p className="text-xs font-semibold uppercase tracking-wide text-teal-dark">
+            <div className="min-w-0 flex-1 basis-40">
+              <p className="text-xs font-bold uppercase tracking-wide text-primary">
                 {es.home.continueWhereLeft}
               </p>
-              <p className="font-heading text-base font-semibold text-ink">{recent.title}</p>
+              <p className="truncate font-heading text-lg font-extrabold text-ink">
+                {recent.title}
+              </p>
             </div>
-            <Button variant="secondary" onClick={() => onOpen(recent.id)}>
+            <Button
+              variant="secondary"
+              className="w-full sm:w-auto"
+              onClick={() => onOpen(recent.id)}
+            >
               {es.home.card.open}
             </Button>
           </Card>
         )}
 
-        <div className="relative max-w-sm">
+        <div className="relative w-full sm:max-w-sm">
           <Search
-            size={16}
-            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-dark"
+            size={18}
+            strokeWidth={3}
+            aria-hidden="true"
+            className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink"
           />
-          <input
+          <Input
             type="search"
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             placeholder={es.home.searchPlaceholder}
-            className="h-11 w-full rounded-md border border-ink/10 bg-surface pl-9 pr-3 text-sm text-ink placeholder:text-slate-dark focus:border-teal-dark focus:outline-none"
+            aria-label={es.home.searchPlaceholder}
+            className="pl-10"
           />
         </div>
 
         {mapsQuery.isPending && (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
             {Array.from({ length: 6 }).map((_, i) => (
               <Skeleton key={i} className="h-44" />
             ))}
@@ -258,7 +271,7 @@ export const MapsHome = ({ onOpen, onOpenCourse }: MapsHomeProps) => {
 
         {items.length > 0 && (
           <>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
               {q
                 ? // Searching flattens: a result could be any
                   // level of any course, grouping would hide
@@ -380,42 +393,42 @@ const CreateMapDialog = ({
     <Dialog open={open} onOpenChange={handleOpenChange} title={es.home.create.title}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <label className="block space-y-1">
-          <span className="text-xs font-semibold uppercase tracking-wide text-ink-soft">
+          <span className="text-xs font-bold uppercase tracking-wide text-ink-soft">
             {es.home.create.titleLabel}
           </span>
-          <input
+          <Input
+            density="compact"
             type="text"
             required
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder={es.home.create.titlePlaceholder}
             maxLength={120}
-            className="w-full rounded-md border border-ink/10 px-3 py-2 text-sm focus:border-teal-dark focus:outline-none"
           />
         </label>
         <label className="block space-y-1">
-          <span className="text-xs font-semibold uppercase tracking-wide text-ink-soft">
+          <span className="text-xs font-bold uppercase tracking-wide text-ink-soft">
             {es.home.create.courseIdLabel}
           </span>
-          <input
+          <Input
+            density="compact"
             type="number"
             min={1}
             step={1}
             required
             value={courseId}
             onChange={(e) => setCourseId(e.target.value)}
-            className="w-full rounded-md border border-ink/10 px-3 py-2 text-sm focus:border-teal-dark focus:outline-none"
           />
         </label>
         <div className="space-y-1.5">
-          <span className="text-xs font-semibold uppercase tracking-wide text-ink-soft">
+          <span className="text-xs font-bold uppercase tracking-wide text-ink-soft">
             {es.home.create.backgroundLabel}
           </span>
           <BackgroundField value={background} onChange={setBackground} />
         </div>
 
         {errorKind === 'conflict' && (
-          <div className="space-y-2 rounded-md border border-sun/40 bg-sun-tint p-3 text-sm text-sun-dark">
+          <div className="border-soft space-y-2 rounded-md bg-sun-tint p-3 text-sm font-semibold text-sun-dark">
             <p>{es.home.create.conflict}</p>
             {conflictMapId && (
               <Button
@@ -430,17 +443,26 @@ const CreateMapDialog = ({
           </div>
         )}
         {errorKind === 'unreachable' && (
-          <p className="text-sm text-coral-dark">{es.home.create.unreachable}</p>
+          <p className="text-sm font-semibold text-danger">{es.home.create.unreachable}</p>
         )}
         {errorKind === 'generic' && (
-          <p className="text-sm text-coral-dark">{es.home.create.genericError}</p>
+          <p className="text-sm font-semibold text-danger">{es.home.create.genericError}</p>
         )}
 
-        <div className="flex justify-end gap-2 pt-1">
-          <Button type="button" variant="secondary" onClick={() => handleOpenChange(false)}>
+        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end sm:gap-2 pt-1">
+          <Button
+            type="button"
+            variant="secondary"
+            className="w-full sm:w-auto"
+            onClick={() => handleOpenChange(false)}
+          >
             {es.home.create.cancel}
           </Button>
-          <Button type="submit" disabled={createMap.isPending || !background}>
+          <Button
+            type="submit"
+            className="w-full sm:w-auto"
+            disabled={createMap.isPending || !background}
+          >
             {createMap.isPending ? es.home.create.submitting : es.home.create.submit}
           </Button>
         </div>
@@ -475,24 +497,29 @@ const RenameMapDialog = ({
     <Dialog open onOpenChange={onOpenChange} title={es.home.rename.title}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <label className="block space-y-1">
-          <span className="text-xs font-semibold uppercase tracking-wide text-ink-soft">
+          <span className="text-xs font-bold uppercase tracking-wide text-ink-soft">
             {es.home.rename.label}
           </span>
-          <input
+          <Input
+            density="compact"
             type="text"
             required
             autoFocus
             maxLength={120}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="w-full rounded-md border border-ink/10 px-3 py-2 text-sm focus:border-teal-dark focus:outline-none"
           />
         </label>
-        <div className="flex justify-end gap-2">
-          <Button type="button" variant="secondary" onClick={onOpenChange}>
+        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end sm:gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            className="w-full sm:w-auto"
+            onClick={onOpenChange}
+          >
             {es.home.rename.cancel}
           </Button>
-          <Button type="submit" disabled={updateMap.isPending}>
+          <Button type="submit" className="w-full sm:w-auto" disabled={updateMap.isPending}>
             {es.home.rename.submit}
           </Button>
         </div>
