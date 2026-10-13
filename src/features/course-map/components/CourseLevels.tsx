@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
 import { Loader2 } from 'lucide-react'
 import { LevelCarousel, LevelCarouselEmpty, type LevelItem } from './LevelCarousel.tsx'
+import { Input } from '../../../components/ui/Input.tsx'
 import { Button } from '../../../components/ui/Button.tsx'
 import { Dialog } from '../../../components/ui/Dialog.tsx'
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog.tsx'
@@ -52,7 +53,7 @@ export const CourseLevels = ({ moodleCourseId, viewMode, onOpenLevel }: CourseLe
   if (levelsQuery.isPending) {
     return (
       <div className="flex flex-1 items-center justify-center">
-        <Loader2 size={20} className="animate-spin text-ink-soft" />
+        <Loader2 size={24} strokeWidth={3} className="motion-safe:animate-spin text-ink-soft" />
       </div>
     )
   }
@@ -160,10 +161,11 @@ const CreateLevelDialog = ({
     <Dialog open={open} onOpenChange={handleOpenChange} title={es.levels.create.title}>
       <form onSubmit={handleSubmit} className="space-y-4">
         <label className="block space-y-1">
-          <span className="text-xs font-semibold uppercase tracking-wide text-ink-soft">
+          <span className="text-xs font-bold uppercase tracking-wide text-ink">
             {es.levels.create.titleLabel}
           </span>
-          <input
+          <Input
+            density="compact"
             type="text"
             required
             autoFocus
@@ -171,18 +173,17 @@ const CreateLevelDialog = ({
             onChange={(e) => setTitle(e.target.value)}
             placeholder={es.levels.create.titlePlaceholder}
             maxLength={120}
-            className="w-full rounded-md border border-ink/10 px-3 py-2 text-sm focus:border-teal-dark focus:outline-none"
           />
         </label>
         {sections.length > 0 && (
           <label className="block space-y-1">
-            <span className="text-xs font-semibold uppercase tracking-wide text-ink-soft">
+            <span className="text-xs font-bold uppercase tracking-wide text-ink">
               {es.levels.create.sectionLabel}
             </span>
             <select
               value={sectionId}
               onChange={(e) => setSectionId(e.target.value)}
-              className="w-full rounded-md border border-ink/10 px-3 py-2 text-sm focus:border-teal-dark focus:outline-none"
+              className="border-soft min-h-[44px] w-full rounded-md bg-surface px-3 text-sm font-semibold text-ink"
             >
               <option value="">{es.levels.create.sectionNone}</option>
               {sections.map((section) => (
@@ -194,27 +195,42 @@ const CreateLevelDialog = ({
           </label>
         )}
         <div className="space-y-1.5">
-          <span className="text-xs font-semibold uppercase tracking-wide text-ink-soft">
+          <span className="text-xs font-bold uppercase tracking-wide text-ink">
             {es.levels.create.backgroundLabel}
           </span>
           <BackgroundField value={background} onChange={setBackground} />
         </div>
 
         {errorKind === 'conflict' && (
-          <p className="text-sm text-coral-dark">{es.levels.create.conflict}</p>
+          <p role="alert" className="text-sm font-semibold text-danger">
+            {es.levels.create.conflict}
+          </p>
         )}
         {errorKind === 'unreachable' && (
-          <p className="text-sm text-coral-dark">{es.levels.create.unreachable}</p>
+          <p role="alert" className="text-sm font-semibold text-danger">
+            {es.levels.create.unreachable}
+          </p>
         )}
         {errorKind === 'generic' && (
-          <p className="text-sm text-coral-dark">{es.levels.create.genericError}</p>
+          <p role="alert" className="text-sm font-semibold text-danger">
+            {es.levels.create.genericError}
+          </p>
         )}
 
-        <div className="flex justify-end gap-2 pt-1">
-          <Button type="button" variant="secondary" onClick={() => handleOpenChange(false)}>
+        <div className="flex flex-col-reverse gap-3 pt-1 sm:flex-row sm:justify-end">
+          <Button
+            type="button"
+            variant="secondary"
+            className="w-full sm:w-auto"
+            onClick={() => handleOpenChange(false)}
+          >
             {es.levels.create.cancel}
           </Button>
-          <Button type="submit" disabled={createMap.isPending || !background}>
+          <Button
+            type="submit"
+            className="w-full sm:w-auto"
+            disabled={createMap.isPending || !background}
+          >
             {createMap.isPending ? es.levels.create.submitting : es.levels.create.submit}
           </Button>
         </div>
@@ -247,20 +263,25 @@ const RenameLevelDialog = ({
   return (
     <Dialog open onOpenChange={onOpenChange} title={es.levels.manage.rename}>
       <form onSubmit={handleSubmit} className="space-y-4">
-        <input
+        <Input
+          density="compact"
           type="text"
           required
           autoFocus
           maxLength={120}
           value={title}
           onChange={(e) => setTitle(e.target.value)}
-          className="w-full rounded-md border border-ink/10 px-3 py-2 text-sm focus:border-teal-dark focus:outline-none"
         />
-        <div className="flex justify-end gap-2">
-          <Button type="button" variant="secondary" onClick={onOpenChange}>
+        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+          <Button
+            type="button"
+            variant="secondary"
+            className="w-full sm:w-auto"
+            onClick={onOpenChange}
+          >
             {es.levels.create.cancel}
           </Button>
-          <Button type="submit" disabled={updateMap.isPending}>
+          <Button type="submit" className="w-full sm:w-auto" disabled={updateMap.isPending}>
             {es.levels.manage.rename}
           </Button>
         </div>

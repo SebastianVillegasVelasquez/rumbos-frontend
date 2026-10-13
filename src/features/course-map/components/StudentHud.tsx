@@ -29,20 +29,23 @@ export const StudentHud = ({ bubbles, activities, onContinue, onNextLevel }: Stu
     : undefined
 
   return (
-    <Card className="pointer-events-auto absolute left-1/2 top-3 z-10 w-[min(92vw,22rem)] -translate-x-1/2 space-y-2 p-3.5">
-      <p className="text-sm font-semibold text-ink">{es.hud.progress(completed, bubbles.length)}</p>
+    <Card
+      variant="item"
+      className="pointer-events-auto absolute left-1/2 top-2 z-10 w-[min(calc(100%-1rem),22rem)] -translate-x-1/2 space-y-1.5 p-2.5 hover:bg-surface sm:top-3 sm:space-y-2 sm:p-3.5"
+    >
+      <p className="text-sm font-bold text-ink">{es.hud.progress(completed, bubbles.length)}</p>
       <ProgressBar value={completed} max={bubbles.length} />
       {allComplete && onNextLevel ? (
         <Button size="sm" className="w-full" onClick={onNextLevel}>
-          {es.levels.goToNextLevel}
-          <ArrowRight size={14} />
+          <span className="min-w-0 truncate">{es.levels.goToNextLevel}</span>
+          <ArrowRight size={16} strokeWidth={3} className="shrink-0" />
         </Button>
       ) : (
         next &&
         nextActivity && (
           <Button size="sm" variant="secondary" className="w-full" onClick={() => onContinue(next)}>
-            {es.hud.continue(nextActivity.name)}
-            <ArrowRight size={14} />
+            <span className="min-w-0 truncate">{es.hud.continue(nextActivity.name)}</span>
+            <ArrowRight size={16} strokeWidth={3} className="shrink-0" />
           </Button>
         )
       )}

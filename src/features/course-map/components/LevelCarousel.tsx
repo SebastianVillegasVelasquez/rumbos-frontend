@@ -1,7 +1,7 @@
 import { useRef, useState, type KeyboardEvent, type MouseEvent } from 'react'
 import { ChevronUp, ChevronDown, MoreVertical, Pencil, Plus, Trash2 } from 'lucide-react'
 import { Card, Badge } from '../../../components/ui/Card.tsx'
-import { ProgressBar } from '../../../components/ui/Skeleton.tsx'
+import { ProgressBar, EmptyState } from '../../../components/ui/Skeleton.tsx'
 import { Button, IconButton } from '../../../components/ui/Button.tsx'
 import { DropdownMenu } from '../../../components/ui/DropdownMenu.tsx'
 import { resolveThumbUrl } from '../data/assets.ts'
@@ -54,7 +54,6 @@ export const LevelCarousel = ({
 }: LevelCarouselProps) => {
   const trackRef = useRef<HTMLDivElement>(null)
   const dragIdRef = useRef<string | null>(null)
-  const cover = levels[0] ? resolveThumbUrl(levels[0].imageUrl) : undefined
 
   const moveBy = (map: LevelItem, delta: number) => {
     const index = levels.findIndex((level) => level.id === map.id)
@@ -103,25 +102,14 @@ export const LevelCarousel = ({
   }
 
   return (
-    <div className="relative flex-1 overflow-hidden">
-      {cover && (
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 scale-110 bg-cover bg-center opacity-40 blur-2xl"
-          style={{ backgroundImage: `url(${cover})` }}
-        />
-      )}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 bg-gradient-to-b from-surface/10 via-surface/70 to-surface"
-      />
-      <div className="relative flex h-full flex-col justify-center gap-6 px-4 py-10 sm:px-10">
+    <div className="relative flex-1 overflow-y-auto overflow-x-hidden">
+      <div className="relative flex min-h-full flex-col justify-center gap-6 px-0 py-6 sm:py-10">
         <div
           ref={trackRef}
           role="list"
           aria-label={es.levels.backToLevels}
           onKeyDown={handleTrackKeyDown}
-          className="flex snap-x snap-mandatory gap-5 overflow-x-auto px-[10vw] pb-4 pt-2 sm:px-[15vw]"
+          className="flex snap-x snap-mandatory gap-5 overflow-x-auto scroll-px-[10vw] px-[10vw] pb-6 pr-[calc(10vw+12px)] pt-2 sm:scroll-px-[15vw] sm:px-[15vw]"
         >
           {levels.map((map, index) => (
             <LevelCard
@@ -144,10 +132,10 @@ export const LevelCarousel = ({
             <button
               type="button"
               onClick={onCreateLevel}
-              className="flex w-[min(80vw,19rem)] shrink-0 snap-center flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-ink/15 bg-surface/70 text-ink-soft transition-colors hover:border-teal-dark hover:text-teal-dark"
+              className="flex w-[min(80vw,19rem)] shrink-0 snap-center flex-col items-center justify-center gap-2 min-h-[16rem] rounded-lg border-soft border-dashed bg-surface text-ink-soft transition-colors hover:bg-primary-tint hover:text-ink"
             >
-              <Plus size={28} />
-              <span className="text-sm font-semibold">{es.levels.createLevel}</span>
+              <Plus size={28} strokeWidth={3} />
+              <span className="text-sm font-bold">{es.levels.createLevel}</span>
             </button>
           )}
         </div>
@@ -218,32 +206,28 @@ const LevelCard = ({
       className="group relative w-[min(80vw,19rem)] shrink-0 snap-center"
     >
       <Card className="overflow-hidden">
-        <button
-          type="button"
-          data-level-open
-          onClick={onOpen}
-          className="block w-full text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-dark"
-        >
-          <div className="relative h-40 w-full overflow-hidden bg-surface-muted">
+        <button type="button" data-level-open onClick={onOpen} className="block w-full text-left">
+          <div className="border-b-soft relative h-40 w-full overflow-hidden bg-surface-muted">
             <img
               src={resolveThumbUrl(map.imageUrl)}
               alt=""
               className="h-full w-full object-cover"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-ink/70 via-ink/10 to-transparent" />
-            <span className="absolute left-3 top-3 flex h-7 w-7 items-center justify-center rounded-pill bg-surface/90 text-xs font-bold text-ink">
+            <span className="border-soft absolute left-3 top-3 flex h-8 w-8 items-center justify-center rounded-pill bg-surface text-sm font-extrabold text-ink">
               {levelNumber}
             </span>
-            <Badge tone={badge.tone} className="absolute right-3 top-3">
-              {badge.label}
-            </Badge>
-            <p className="absolute bottom-3 left-3 right-3 truncate font-heading text-lg font-semibold text-white">
-              {map.title}
-            </p>
           </div>
         </button>
         <div className="space-y-2 p-3.5">
-          <div className="flex items-center justify-between text-xs text-slate-dark">
+          <div className="flex items-start justify-between gap-2">
+            <p className="min-w-0 truncate font-heading text-lg font-extrabold text-ink">
+              {map.title}
+            </p>
+            <Badge tone={badge.tone} className="shrink-0">
+              {badge.label}
+            </Badge>
+          </div>
+          <div className="flex items-center justify-between text-xs font-semibold text-slate-dark">
             <span>{es.home.card.activities(map.bubbleCount)}</span>
             <span>{es.levels.progress(map.completeCount, map.bubbleCount)}</span>
           </div>
@@ -254,33 +238,27 @@ const LevelCard = ({
         </div>
       </Card>
       {editable && (
-        <div className="absolute right-2 top-2 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+        <div className="absolute right-2 top-2 flex items-center gap-1 [@media(hover:hover)]:opacity-0 motion-safe:transition-opacity group-hover:opacity-100 focus-within:opacity-100">
           <IconButton
             aria-label={es.levels.manage.moveUp}
             variant="secondary"
             disabled={!canMoveUp}
             onClick={onMoveUp}
-            className="h-8 w-8 min-h-0 min-w-0 bg-surface/90"
           >
-            <ChevronUp size={15} />
+            <ChevronUp size={18} strokeWidth={2.5} />
           </IconButton>
           <IconButton
             aria-label={es.levels.manage.moveDown}
             variant="secondary"
             disabled={!canMoveDown}
             onClick={onMoveDown}
-            className="h-8 w-8 min-h-0 min-w-0 bg-surface/90"
           >
-            <ChevronDown size={15} />
+            <ChevronDown size={18} strokeWidth={2.5} />
           </IconButton>
           <DropdownMenu
             trigger={
-              <IconButton
-                aria-label={map.title}
-                variant="secondary"
-                className="h-8 w-8 min-h-0 min-w-0 bg-surface/90"
-              >
-                <MoreVertical size={15} />
+              <IconButton aria-label={map.title} variant="secondary">
+                <MoreVertical size={18} strokeWidth={2.5} />
               </IconButton>
             }
             items={[
@@ -288,7 +266,7 @@ const LevelCard = ({
                 ? [
                     {
                       label: es.levels.manage.rename,
-                      icon: <Pencil size={14} />,
+                      icon: <Pencil size={14} strokeWidth={2.5} />,
                       onSelect: onRename,
                     },
                   ]
@@ -297,7 +275,7 @@ const LevelCard = ({
                 ? [
                     {
                       label: es.levels.manage.delete,
-                      icon: <Trash2 size={14} />,
+                      icon: <Trash2 size={14} strokeWidth={2.5} />,
                       onSelect: onDelete,
                       destructive: true,
                     },
@@ -318,18 +296,20 @@ export const LevelCarouselEmpty = ({
   editable: boolean
   onCreateLevel?: () => void
 }) => (
-  <div className="flex flex-1 flex-col items-center justify-center gap-4 p-10 text-center">
-    <p className="font-heading text-xl font-semibold text-ink">
-      {editable ? es.levels.empty.editorTitle : es.levels.empty.studentTitle}
-    </p>
-    <p className="max-w-sm text-sm text-ink-soft">
-      {editable ? es.levels.empty.editorDescription : es.levels.empty.studentDescription}
-    </p>
-    {editable && onCreateLevel && (
-      <Button onClick={onCreateLevel}>
-        <Plus size={16} />
-        {es.levels.createLevel}
-      </Button>
-    )}
+  <div className="flex flex-1 items-center justify-center p-6">
+    <EmptyState
+      title={editable ? es.levels.empty.editorTitle : es.levels.empty.studentTitle}
+      description={
+        editable ? es.levels.empty.editorDescription : es.levels.empty.studentDescription
+      }
+      action={
+        editable && onCreateLevel ? (
+          <Button onClick={onCreateLevel}>
+            <Plus size={16} strokeWidth={3} />
+            {es.levels.createLevel}
+          </Button>
+        ) : undefined
+      }
+    />
   </div>
 )
