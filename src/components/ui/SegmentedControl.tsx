@@ -11,19 +11,24 @@ interface SegmentedControlProps<T extends string> {
   value: T
   onChange: (value: T) => void
   'aria-label': string
+  // Stretch to the container and share its width equally between options.
+  fullWidth?: boolean
 }
 
 export function SegmentedControl<T extends string>({
   options,
   value,
   onChange,
+  fullWidth = false,
   ...rest
 }: SegmentedControlProps<T>) {
   return (
     <div
       role="radiogroup"
       aria-label={rest['aria-label']}
-      className="inline-flex rounded-pill bg-surface-muted p-1"
+      className={`border-soft max-w-full gap-1 rounded-md bg-surface p-1 ${
+        fullWidth ? 'flex w-full' : 'inline-flex flex-wrap'
+      }`}
     >
       {options.map((option) => {
         const active = option.value === value
@@ -37,8 +42,12 @@ export function SegmentedControl<T extends string>({
             disabled={option.disabled}
             title={option.disabled ? option.hint : undefined}
             onClick={() => onChange(option.value)}
-            className={`min-h-[36px] rounded-pill px-3.5 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-dark ${
-              active ? 'bg-teal-dark text-white shadow-soft' : 'text-ink-soft hover:text-ink'
+            className={`min-h-[44px] rounded-md px-3 text-sm sm:px-3.5 font-bold transition-colors ${
+              fullWidth ? 'flex-1 px-2 text-xs leading-tight sm:text-sm' : ''
+            } ${
+              active
+                ? 'bg-primary text-white'
+                : 'text-ink-soft hover:bg-primary-tint hover:text-ink'
             } ${option.disabled ? 'cursor-not-allowed opacity-50 hover:text-ink-soft' : ''}`}
           >
             {option.label}
