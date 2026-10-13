@@ -65,13 +65,13 @@ export const HistoryDrawer = ({
       >
         {publications.isPending && (
           <p className="flex items-center gap-2 text-sm text-ink-soft" role="status">
-            <Loader2 size={15} className="animate-spin" />
+            <Loader2 size={16} strokeWidth={2.5} className="motion-safe:animate-spin" aria-hidden />
             {es.publication.dialog.loading}
           </p>
         )}
         {publications.isError && (
           <div className="space-y-2" role="alert">
-            <p className="text-sm text-coral-dark">{es.publication.history.loadError}</p>
+            <p className="text-sm font-semibold text-danger">{es.publication.history.loadError}</p>
             <Button size="sm" variant="secondary" onClick={() => void publications.refetch()}>
               {es.publication.dialog.retry}
             </Button>
@@ -85,10 +85,10 @@ export const HistoryDrawer = ({
             {publications.data.items.map((publication) => (
               <li
                 key={publication.number}
-                className="space-y-2 rounded-lg border border-ink/10 p-3"
+                className="space-y-2 rounded-md border-soft bg-surface p-3"
               >
                 <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="font-heading text-sm font-semibold text-ink">
+                  <p className="font-heading text-sm font-extrabold text-ink">
                     {es.publication.history.version(publication.number)}
                   </p>
                   {publication.number === currentNumber && (
@@ -102,7 +102,9 @@ export const HistoryDrawer = ({
                 <p className="truncate text-sm text-ink" title={publication.title}>
                   {publication.title}
                 </p>
-                <p className={`text-sm ${publication.note ? 'text-ink' : 'italic text-ink-soft'}`}>
+                <p
+                  className={`break-words text-sm ${publication.note ? 'text-ink' : 'italic text-ink-soft'}`}
+                >
                   {publication.note ?? es.publication.history.noNote}
                 </p>
                 <Button
@@ -113,7 +115,7 @@ export const HistoryDrawer = ({
                   onClick={() => setTarget(publication)}
                   aria-label={`${es.publication.history.restore}: ${es.publication.history.version(publication.number)}`}
                 >
-                  <RotateCcw size={13} />
+                  <RotateCcw size={14} strokeWidth={2.5} aria-hidden />
                   {es.publication.history.restore}
                 </Button>
               </li>

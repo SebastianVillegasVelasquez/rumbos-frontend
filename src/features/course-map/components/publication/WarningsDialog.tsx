@@ -18,11 +18,13 @@ export const WarningsDialog = ({ warnings, onClose }: WarningsDialogProps) => (
   >
     <ul className="list-inside list-disc space-y-1.5 text-sm text-ink">
       {warnings.map((warning) => (
-        <li key={warning.code + warning.message}>{warning.message}</li>
+        <li key={warning.code + warning.message} className="break-words">
+          {warning.message}
+        </li>
       ))}
     </ul>
-    <div className="mt-5 flex justify-end">
-      <Button type="button" onClick={onClose}>
+    <div className="mt-5 flex flex-col sm:flex-row sm:justify-end">
+      <Button type="button" className="w-full sm:w-auto" onClick={onClose}>
         {es.publication.warningsClose}
       </Button>
     </div>

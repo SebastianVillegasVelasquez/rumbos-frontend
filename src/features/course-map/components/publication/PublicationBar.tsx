@@ -59,40 +59,48 @@ export const PublicationBar = ({ courseMapId }: PublicationBarProps) => {
     <div
       role="toolbar"
       aria-label={es.publication.publish}
-      className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-ink/10 bg-surface-muted px-4 py-2 sm:px-6"
+      className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b-soft bg-surface-muted px-4 py-2 sm:px-6"
     >
       <PublicationChip status={status} number={state?.currentNumber ?? null} />
 
-      <div className="ml-auto flex flex-wrap items-center gap-2">
+      <div className="flex w-full flex-wrap items-center gap-3 sm:ml-auto sm:w-auto sm:gap-2">
         {discardDisabledReason && (
           <span id="discard-reason" className="hidden text-xs text-ink-soft lg:inline">
             {discardDisabledReason}
           </span>
         )}
-        <Button type="button" size="sm" variant="ghost" onClick={() => setHistoryOpen(true)}>
-          <History size={14} />
+        <Button
+          type="button"
+          size="sm"
+          variant="ghost"
+          className="flex-1 sm:flex-none"
+          onClick={() => setHistoryOpen(true)}
+        >
+          <History size={16} strokeWidth={2.5} aria-hidden />
           {es.publication.history.button}
         </Button>
         <Button
           type="button"
           size="sm"
           variant="secondary"
+          className="flex-1 sm:flex-none"
           disabled={!canDiscard || discard.isPending}
           title={discardDisabledReason ?? undefined}
           aria-describedby={discardDisabledReason ? 'discard-reason' : undefined}
           onClick={() => setDiscardOpen(true)}
         >
-          <Undo2 size={14} />
+          <Undo2 size={16} strokeWidth={2.5} aria-hidden />
           {es.publication.discard.button}
         </Button>
         <Button
           type="button"
           size="sm"
+          className="flex-1 sm:flex-none"
           disabled={!canPublish}
           title={!canPublish ? es.publication.publishDisabled : undefined}
           onClick={() => setPublishOpen(true)}
         >
-          <Rocket size={14} />
+          <Rocket size={16} strokeWidth={2.5} aria-hidden />
           {es.publication.publish}
         </Button>
       </div>

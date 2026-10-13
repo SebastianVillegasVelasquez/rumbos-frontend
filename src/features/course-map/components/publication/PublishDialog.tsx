@@ -2,6 +2,7 @@ import { useId, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Loader2 } from 'lucide-react'
 import { Button } from '../../../../components/ui/Button.tsx'
+import { Input } from '../../../../components/ui/Input.tsx'
 import { Dialog } from '../../../../components/ui/Dialog.tsx'
 import { useToast } from '../../../../components/ui/toastContext.ts'
 import { es } from '../../../../i18n/es.ts'
@@ -102,14 +103,14 @@ export const PublishDialog = ({ open, onOpenChange, courseMapId }: PublishDialog
       <div className="space-y-4">
         {reviewing && (
           <p className="flex items-center gap-2 text-sm text-ink-soft" role="status">
-            <Loader2 size={15} className="animate-spin" />
+            <Loader2 size={16} strokeWidth={2.5} className="motion-safe:animate-spin" aria-hidden />
             {es.publication.dialog.loading}
           </p>
         )}
 
         {reviewQuery.isError && !reviewing && (
           <div className="space-y-2" role="alert">
-            <p className="text-sm text-coral-dark">{es.publication.dialog.loadError}</p>
+            <p className="text-sm font-semibold text-danger">{es.publication.dialog.loadError}</p>
             <Button size="sm" variant="secondary" onClick={loadReview}>
               {es.publication.dialog.retry}
             </Button>
@@ -120,7 +121,7 @@ export const PublishDialog = ({ open, onOpenChange, courseMapId }: PublishDialog
           <section aria-labelledby="publish-changes-title" className="space-y-2">
             <h3
               id="publish-changes-title"
-              className="text-xs font-semibold uppercase tracking-wide text-ink-soft"
+              className="text-xs font-bold uppercase tracking-wide text-ink-soft"
             >
               {es.publication.dialog.changesTitle}
             </h3>
@@ -133,7 +134,9 @@ export const PublishDialog = ({ open, onOpenChange, courseMapId }: PublishDialog
             {sentences.length > 0 && (
               <ul className="list-inside list-disc space-y-1 text-sm text-ink">
                 {sentences.map((sentence) => (
-                  <li key={sentence}>{sentence}</li>
+                  <li key={sentence} className="break-words">
+                    {sentence}
+                  </li>
                 ))}
               </ul>
             )}
@@ -143,7 +146,7 @@ export const PublishDialog = ({ open, onOpenChange, courseMapId }: PublishDialog
         {message && (
           <p
             role="alert"
-            className="rounded-md border border-sun/40 bg-sun-tint px-3 py-2 text-sm text-sun-dark"
+            className="rounded-md border-soft bg-sun-tint px-3 py-2 text-sm font-semibold text-sun-dark"
           >
             {message}
           </p>
@@ -152,40 +155,48 @@ export const PublishDialog = ({ open, onOpenChange, courseMapId }: PublishDialog
         {problems.length > 0 && (
           <div
             role="alert"
-            className="space-y-1 rounded-md border border-coral-dark/30 bg-coral-tint px-3 py-2 text-sm text-coral-dark"
+            className="space-y-1 rounded-md border-soft bg-danger-tint px-3 py-2 text-sm text-danger"
           >
-            <p className="font-semibold">{es.publication.dialog.invalidTitle}</p>
+            <p className="font-bold">{es.publication.dialog.invalidTitle}</p>
             <ul className="list-inside list-disc">
               {problems.map((problem) => (
-                <li key={problem.code + problem.message}>{problem.message}</li>
+                <li key={problem.code + problem.message} className="break-words">
+                  {problem.message}
+                </li>
               ))}
             </ul>
           </div>
         )}
 
         <label className="block space-y-1">
-          <span className="text-xs font-semibold uppercase tracking-wide text-ink-soft">
+          <span className="text-xs font-bold uppercase tracking-wide text-ink-soft">
             {es.publication.dialog.noteLabel}
           </span>
-          <input
+          <Input
+            density="compact"
             type="text"
             value={note}
             maxLength={NOTE_MAX}
             onChange={(e) => setNote(e.target.value)}
             placeholder={es.publication.dialog.notePlaceholder}
-            className="w-full rounded-md border border-ink/10 px-3 py-2 text-sm focus:border-teal-dark focus:outline-none"
           />
           <span className="block text-right text-xs text-ink-soft" aria-live="off">
             {es.publication.dialog.noteCounter(note.length, NOTE_MAX)}
           </span>
         </label>
 
-        <div className="flex justify-end gap-2">
-          <Button type="button" variant="secondary" onClick={() => onOpenChange(false)}>
+        <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end sm:gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            className="w-full sm:w-auto"
+            onClick={() => onOpenChange(false)}
+          >
             {es.publication.dialog.cancel}
           </Button>
           <Button
             type="button"
+            className="w-full sm:w-auto"
             disabled={!state || reviewing || nothingToPublish || publish.isPending}
             onClick={handleSubmit}
           >

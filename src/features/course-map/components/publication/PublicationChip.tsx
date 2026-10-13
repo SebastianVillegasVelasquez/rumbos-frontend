@@ -25,7 +25,7 @@ export const PublicationChip = ({ status, number, className = '' }: PublicationC
   if (status === 'never_published') {
     return (
       <Badge tone="slate" role="status" aria-label={text.aria.never} className={className}>
-        <CircleDashed size={13} aria-hidden />
+        <CircleDashed size={14} strokeWidth={2.5} aria-hidden />
         {text.never}
       </Badge>
     )
@@ -38,14 +38,14 @@ export const PublicationChip = ({ status, number, className = '' }: PublicationC
         aria-label={text.aria.upToDate(number ?? 0)}
         className={className}
       >
-        <CheckCircle2 size={13} aria-hidden />
+        <CheckCircle2 size={14} strokeWidth={2.5} aria-hidden />
         {text.upToDate(number ?? 0)}
       </Badge>
     )
   }
   return (
     <Badge tone="sun" role="status" aria-label={text.aria.unpublished} className={className}>
-      <PencilLine size={13} aria-hidden />
+      <PencilLine size={14} strokeWidth={2.5} aria-hidden />
       {text.unpublished}
     </Badge>
   )
