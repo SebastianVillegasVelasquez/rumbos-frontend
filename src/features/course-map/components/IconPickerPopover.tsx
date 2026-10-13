@@ -1,10 +1,10 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { ExternalLink, Trash2 } from 'lucide-react'
+import { Button } from '../../../components/ui/Button.tsx'
 import { ICON_DATA_URIS_LIGHT, ICON_KEYS, ICON_LABELS, type IconKey } from '../icons.ts'
 import type { Activity, Availability, BubbleStatus, Skin } from '../data/types.ts'
 import { isSafeActivityUrl } from '../activityOpener.ts'
 import { es } from '../../../i18n/es.ts'
-import { Button } from '../../../components/ui/Button.tsx'
 import { Badge } from '../../../components/ui/Card.tsx'
 
 interface IconPickerPopoverProps {
@@ -77,18 +77,26 @@ export const IconPickerPopover = ({
       ref={popoverRef}
       role="menu"
       aria-label={es.bubble.demoStatusLabel}
-      className="absolute z-20 w-56 -translate-x-1/2 -translate-y-[calc(100%+16px)] space-y-3 rounded-lg border border-ink/10 bg-surface p-3 shadow-soft"
-      style={{ left: x, top: y }}
+      className="border-soft absolute z-20 max-h-[calc(100%-1rem)] w-56 max-w-[calc(100%-0.5rem)] [translate:-50%_max(calc(-100%_-_16px),calc(8px_-_var(--popover-y)))] space-y-3 overflow-y-auto rounded-lg bg-surface p-3 shadow-sm"
+      // Presentation clamp only: keep the popover inside the canvas box (x/y stay
+      // the bubble's content-space position).
+      style={
+        {
+          left: `clamp(7.25rem, ${x}px, calc(100% - 7.25rem))`,
+          top: y,
+          '--popover-y': `${y}px`,
+        } as CSSProperties
+      }
     >
       {availability === 'hidden' && (
-        <div className="space-y-1 rounded-md bg-sun-tint p-2">
+        <div className="border-hair space-y-1 rounded-md bg-sun-tint p-2">
           <Badge tone="sun">{es.sidebar.hiddenBadge}</Badge>
-          <p className="text-[11px] text-sun-dark">{es.bubble.hiddenHintEditor}</p>
+          <p className="text-xs font-semibold text-sun-dark">{es.bubble.hiddenHintEditor}</p>
         </div>
       )}
       {availability === 'missing' && (
-        <div className="space-y-1 rounded-md bg-coral-tint p-2">
-          <p className="text-[11px] font-medium text-coral-dark">{es.bubble.missingHintEditor}</p>
+        <div className="space-y-1 border-hair rounded-md bg-danger-tint p-2">
+          <p className="text-xs font-bold text-danger">{es.bubble.missingHintEditor}</p>
         </div>
       )}
       {resolvedActivity && isSafeActivityUrl(resolvedActivity.url) && (
@@ -96,9 +104,9 @@ export const IconPickerPopover = ({
           href={resolvedActivity.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="flex items-center gap-1 text-xs font-medium text-teal-dark hover:underline"
+          className="flex min-h-[44px] items-center gap-1.5 text-xs font-bold text-primary underline-offset-2 hover:underline"
         >
-          <ExternalLink size={12} />
+          <ExternalLink size={14} strokeWidth={2.5} aria-hidden />
           {es.bubble.openInMoodle}
         </a>
       )}
@@ -111,10 +119,10 @@ export const IconPickerPopover = ({
             aria-checked={currentIcon ? currentIcon === key : key === 'question'}
             title={ICON_LABELS[key]}
             onClick={() => onSelect(key)}
-            className={`flex h-9 w-9 items-center justify-center rounded-md border transition-colors hover:bg-teal-tint ${
+            className={`flex h-11 w-11 items-center justify-center rounded-md transition-colors ${
               (currentIcon ?? 'question') === key
-                ? 'border-teal-dark bg-teal-tint'
-                : 'border-ink/10'
+                ? 'border-strong bg-accent'
+                : 'border-hair bg-surface hover:bg-primary-tint'
             }`}
           >
             {ICON_DATA_URIS_LIGHT[key] ? (
@@ -132,13 +140,13 @@ export const IconPickerPopover = ({
 
       {skins && skins.length > 0 && onSkinSelect && (
         <label className="block space-y-1">
-          <span className="text-[10px] font-semibold uppercase tracking-wide text-ink-soft">
+          <span className="text-xs font-bold uppercase tracking-wide text-ink-soft">
             {es.studio.bubbles.applyToSelected}
           </span>
           <select
             value={currentSkinId ?? ''}
             onChange={(e) => onSkinSelect(e.target.value || null)}
-            className="w-full rounded-md border border-ink/10 px-2 py-1.5 text-xs"
+            className="border-soft min-h-[44px] w-full rounded-md bg-surface px-2 text-sm font-semibold text-ink"
           >
             <option value="">{es.studio.bubbles.clearOverride}</option>
             {skins.map((skin) => (
@@ -152,13 +160,13 @@ export const IconPickerPopover = ({
 
       {/* Demo only: real status will come from Moodle completion in a later phase. */}
       <label className="block space-y-1">
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-ink-soft">
+        <span className="text-xs font-bold uppercase tracking-wide text-ink-soft">
           {es.bubble.demoStatusLabel}
         </span>
         <select
           value={currentStatus}
           onChange={(e) => onStatusSelect(e.target.value as BubbleStatus)}
-          className="w-full rounded-md border border-ink/10 px-2 py-1.5 text-xs"
+          className="border-soft min-h-[44px] w-full rounded-md bg-surface px-2 text-sm font-semibold text-ink"
         >
           {STATUS_OPTIONS.map((option) => (
             <option key={option.value} value={option.value}>
@@ -169,13 +177,12 @@ export const IconPickerPopover = ({
       </label>
 
       <Button
-        type="button"
-        variant="danger"
-        size="sm"
+        dense
+        variant={isConfirmingDelete ? 'danger' : 'dangerGhost'}
         onClick={() => (isConfirmingDelete ? onDelete() : setIsConfirmingDelete(true))}
         className="w-full"
       >
-        <Trash2 size={14} />
+        <Trash2 size={16} strokeWidth={2.5} aria-hidden />
         {isConfirmingDelete ? es.bubble.confirmDelete : es.bubble.removeFromMap}
       </Button>
     </div>

@@ -1,8 +1,10 @@
 import { Suspense, lazy, useState } from 'react'
+import { Select } from '../../../components/ui/Select.tsx'
 import { Pencil, Plus, Trash2 } from 'lucide-react'
 import { SkinPreviewRow } from './SkinPreview.tsx'
 import { Button, IconButton } from '../../../components/ui/Button.tsx'
 import { Badge } from '../../../components/ui/Card.tsx'
+import { Input } from '../../../components/ui/Input.tsx'
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog.tsx'
 import { DropdownMenu } from '../../../components/ui/DropdownMenu.tsx'
 import { useCreateSkin, useDeleteSkin, useUpdateSkin } from '../data/queries.ts'
@@ -24,6 +26,9 @@ import type {
 const BubbleArtPicker = lazy(() =>
   import('./background/BubbleArtPicker.tsx').then((m) => ({ default: m.BubbleArtPicker }))
 )
+
+const colorClass = 'border-soft h-11 w-11 shrink-0 cursor-pointer rounded-md bg-surface'
+const checkboxClass = 'h-5 w-5 shrink-0 accent-primary'
 
 const MODNAMES = ['quiz', 'scorm', 'customcert', 'assign', 'resource', 'url'] as const
 
@@ -103,17 +108,17 @@ export const SkinStudio = ({
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-soft">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h3 className="text-xs font-bold uppercase tracking-wide text-ink-soft">
           {es.studio.bubbles.gallery}
         </h3>
-        <div className="flex gap-1.5">
+        <div className="flex flex-wrap gap-1.5">
           <Button size="sm" variant="secondary" onClick={() => setEditingSkin('new-procedural')}>
-            <Plus size={14} />
+            <Plus size={16} strokeWidth={3} aria-hidden />
             {es.studio.bubbles.newProcedural}
           </Button>
           <Button size="sm" variant="secondary" onClick={() => setEditingSkin('new-image')}>
-            <Plus size={14} />
+            <Plus size={16} strokeWidth={3} aria-hidden />
             {es.studio.bubbles.newImage}
           </Button>
         </div>
@@ -121,10 +126,12 @@ export const SkinStudio = ({
 
       <div className="space-y-3">
         {skins.map((skin) => (
-          <div key={skin.id} className="space-y-2 rounded-md border border-ink/10 p-3">
+          <div key={skin.id} className="border-soft space-y-2 rounded-md bg-surface p-3">
             <div className="flex items-start justify-between gap-2">
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-ink">{skin.name}</span>
+              <div className="flex min-w-0 flex-wrap items-center gap-2">
+                <span className="min-w-0 break-words text-sm font-extrabold text-ink">
+                  {skin.name}
+                </span>
                 {skin.builtin && <Badge tone="slate">{es.studio.bubbles.builtin}</Badge>}
                 {defaultSkinId === skin.id && (
                   <Badge tone="teal">{es.studio.bubbles.isDefault}</Badge>
@@ -132,18 +139,14 @@ export const SkinStudio = ({
               </div>
               <DropdownMenu
                 trigger={
-                  <IconButton
-                    aria-label={skin.name}
-                    variant="ghost"
-                    className="h-7 w-7 min-h-0 min-w-0"
-                  >
-                    <Pencil size={13} />
+                  <IconButton aria-label={skin.name} variant="ghost">
+                    <Pencil size={18} strokeWidth={2.5} aria-hidden />
                   </IconButton>
                 }
                 items={[
                   {
                     label: es.studio.bubbles.rename,
-                    icon: <Pencil size={14} />,
+                    icon: <Pencil size={16} strokeWidth={2.5} aria-hidden />,
                     onSelect: () => setEditingSkin(skin),
                   },
                   ...(skin.builtin
@@ -151,7 +154,7 @@ export const SkinStudio = ({
                     : [
                         {
                           label: es.studio.bubbles.delete,
-                          icon: <Trash2 size={14} />,
+                          icon: <Trash2 size={16} strokeWidth={2.5} aria-hidden />,
                           onSelect: () => setDeleteTarget(skin),
                           destructive: true,
                         },
@@ -176,26 +179,26 @@ export const SkinStudio = ({
         ))}
       </div>
 
-      <div className="space-y-2 rounded-md border border-ink/10 p-3">
-        <p className="text-xs font-semibold uppercase tracking-wide text-ink-soft">
+      <div className="border-soft space-y-2 rounded-md bg-surface-muted p-3">
+        <p className="text-xs font-bold uppercase tracking-wide text-ink-soft">
           {es.activityTypes.default}
         </p>
         <div className="flex flex-wrap items-center gap-2">
-          <select
+          <Select
             value={typeRuleModname}
             onChange={(e) => setTypeRuleModname(e.target.value)}
-            className="rounded-md border border-ink/10 px-2 py-1.5 text-xs"
+            className="min-w-[8rem] flex-1"
           >
             {MODNAMES.map((modname) => (
               <option key={modname} value={modname}>
                 {es.activityTypes[modname]}
               </option>
             ))}
-          </select>
-          <select
+          </Select>
+          <Select
             value={skinRules.find((rule) => rule.modname === typeRuleModname)?.skinId ?? ''}
             onChange={(e) => onSetTypeRule(typeRuleModname, e.target.value || null)}
-            className="flex-1 rounded-md border border-ink/10 px-2 py-1.5 text-xs"
+            className="min-w-[8rem] flex-1"
           >
             <option value="">{es.studio.bubbles.clearOverride}</option>
             {skins.map((skin) => (
@@ -203,7 +206,7 @@ export const SkinStudio = ({
                 {skin.name}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
       </div>
 
@@ -253,20 +256,20 @@ const SkinEditor = ({
   return (
     <div className="space-y-4">
       <label className="block space-y-1">
-        <span className="text-xs font-semibold uppercase tracking-wide text-ink-soft">
+        <span className="text-xs font-bold uppercase tracking-wide text-ink-soft">
           {es.studio.bubbles.name}
         </span>
-        <input
+        <Input
           type="text"
+          density="compact"
           value={name}
           onChange={(e) => setName(e.target.value)}
           maxLength={60}
-          className="w-full rounded-md border border-ink/10 px-3 py-2 text-sm focus:border-teal-dark focus:outline-none"
         />
       </label>
 
-      <div className="rounded-md border border-ink/10 p-3">
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink-soft">
+      <div className="border-soft rounded-md bg-surface-muted p-3">
+        <p className="mb-2 text-xs font-bold uppercase tracking-wide text-ink-soft">
           {es.studio.bubbles.preview}
         </p>
         <div className="overflow-x-auto">
@@ -280,7 +283,7 @@ const SkinEditor = ({
         <ImageFields config={config} onChange={setConfig} />
       )}
 
-      <div className="flex justify-end gap-2 pt-1">
+      <div className="flex flex-wrap justify-end gap-2 pt-1">
         <Button type="button" variant="secondary" onClick={onDone}>
           {es.levels.create.cancel}
         </Button>
@@ -307,25 +310,24 @@ const ProceduralFields = ({
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 min-[400px]:grid-cols-2">
         <label className="block space-y-1">
-          <span className="text-xs font-semibold uppercase tracking-wide text-ink-soft">
+          <span className="text-xs font-bold uppercase tracking-wide text-ink-soft">
             {es.studio.bubbles.shape}
           </span>
-          <select
+          <Select
             value={config.shape}
             onChange={(e) => onChange({ ...config, shape: e.target.value as SkinShape })}
-            className="w-full rounded-md border border-ink/10 px-2 py-1.5 text-sm"
           >
             {(Object.keys(es.studio.bubbles.shapes) as SkinShape[]).map((shape) => (
               <option key={shape} value={shape}>
                 {es.studio.bubbles.shapes[shape]}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
         <label className="block space-y-1">
-          <span className="text-xs font-semibold uppercase tracking-wide text-ink-soft">
+          <span className="text-xs font-bold uppercase tracking-wide text-ink-soft">
             {es.studio.bubbles.size} ({config.size}px)
           </span>
           <input
@@ -334,18 +336,18 @@ const ProceduralFields = ({
             max={160}
             value={config.size}
             onChange={(e) => onChange({ ...config, size: Number(e.target.value) })}
-            className="w-full"
+            className="h-11 w-full accent-primary"
           />
         </label>
       </div>
 
       <div className="space-y-2">
-        <span className="text-xs font-semibold uppercase tracking-wide text-ink-soft">
+        <span className="text-xs font-bold uppercase tracking-wide text-ink-soft">
           {es.studio.bubbles.palette}
         </span>
         {PALETTE_STATES.map((state) => (
-          <div key={state} className="flex items-center gap-2 text-xs">
-            <span className="w-20 shrink-0 text-ink-soft">
+          <div key={state} className="flex flex-wrap items-center gap-2 text-xs">
+            <span className="w-20 shrink-0 font-bold text-ink-soft">
               {es.studio.bubbles.paletteStates[state]}
             </span>
             {(['fill', 'accent', 'glow'] as const).map((channel) => (
@@ -362,7 +364,7 @@ const ProceduralFields = ({
                       },
                     })
                   }
-                  className="h-7 w-7 cursor-pointer rounded border border-ink/10"
+                  className={colorClass}
                   aria-label={`${es.studio.bubbles.paletteStates[state]} ${channel}`}
                 />
               </label>
@@ -371,12 +373,12 @@ const ProceduralFields = ({
         ))}
       </div>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 min-[400px]:grid-cols-2">
         <label className="block space-y-1">
-          <span className="text-xs font-semibold uppercase tracking-wide text-ink-soft">
+          <span className="text-xs font-bold uppercase tracking-wide text-ink-soft">
             {es.studio.bubbles.icon}
           </span>
-          <select
+          <Select
             value={config.icon.mode}
             onChange={(e) =>
               onChange({
@@ -384,19 +386,16 @@ const ProceduralFields = ({
                 icon: { ...config.icon, mode: e.target.value as ProceduralSkin['icon']['mode'] },
               })
             }
-            className="w-full rounded-md border border-ink/10 px-2 py-1.5 text-sm"
           >
             <option value="auto">{es.studio.bubbles.iconModes.auto}</option>
             <option value="preset">{es.studio.bubbles.iconModes.preset}</option>
             <option value="none">{es.studio.bubbles.iconModes.none}</option>
-          </select>
+          </Select>
         </label>
         {config.icon.mode === 'preset' && (
           <label className="block space-y-1">
-            <span className="text-xs font-semibold uppercase tracking-wide text-ink-soft">
-              &nbsp;
-            </span>
-            <select
+            <span className="text-xs font-bold uppercase tracking-wide text-ink-soft">&nbsp;</span>
+            <Select
               value={config.icon.preset ?? ''}
               onChange={(e) =>
                 onChange({
@@ -404,22 +403,21 @@ const ProceduralFields = ({
                   icon: { ...config.icon, preset: (e.target.value || null) as IconKey | null },
                 })
               }
-              className="w-full rounded-md border border-ink/10 px-2 py-1.5 text-sm"
             >
               {ICON_KEYS.map((key) => (
                 <option key={key} value={key}>
                   {ICON_LABELS[key]}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
         )}
         <label className="block space-y-1">
-          <span className="text-xs font-semibold uppercase tracking-wide text-ink-soft">
+          <span className="text-xs font-bold uppercase tracking-wide text-ink-soft">
             {es.studio.bubbles.iconColor}
           </span>
-          <div className="flex items-center gap-2">
-            <select
+          <div className="flex flex-wrap items-center gap-2">
+            <Select
               value={config.icon.color === 'auto' ? 'auto' : 'custom'}
               onChange={(e) =>
                 onChange({
@@ -427,11 +425,10 @@ const ProceduralFields = ({
                   icon: { ...config.icon, color: e.target.value === 'auto' ? 'auto' : '#FFFFFF' },
                 })
               }
-              className="rounded-md border border-ink/10 px-2 py-1.5 text-sm"
             >
               <option value="auto">{es.studio.bubbles.iconColorAuto}</option>
               <option value="custom">{es.studio.bubbles.iconColor}</option>
-            </select>
+            </Select>
             {config.icon.color !== 'auto' && (
               <input
                 type="color"
@@ -439,16 +436,16 @@ const ProceduralFields = ({
                 onChange={(e) =>
                   onChange({ ...config, icon: { ...config.icon, color: e.target.value } })
                 }
-                className="h-7 w-7 cursor-pointer rounded border border-ink/10"
+                className={colorClass}
               />
             )}
           </div>
         </label>
         <label className="block space-y-1">
-          <span className="text-xs font-semibold uppercase tracking-wide text-ink-soft">
+          <span className="text-xs font-bold uppercase tracking-wide text-ink-soft">
             {es.studio.bubbles.label}
           </span>
-          <select
+          <Select
             value={config.label.mode}
             onChange={(e) =>
               onChange({
@@ -456,24 +453,25 @@ const ProceduralFields = ({
                 label: { mode: e.target.value as ProceduralSkin['label']['mode'] },
               })
             }
-            className="w-full rounded-md border border-ink/10 px-2 py-1.5 text-sm"
           >
             <option value="hover">{es.studio.bubbles.labelModes.hover}</option>
             <option value="always">{es.studio.bubbles.labelModes.always}</option>
             <option value="never">{es.studio.bubbles.labelModes.never}</option>
-          </select>
+          </Select>
         </label>
       </div>
       {contrastWarning && (
-        <p className="text-xs text-sun-dark">{es.studio.bubbles.contrastWarning}</p>
+        <p role="alert" className="text-xs font-bold text-sun-dark">
+          {es.studio.bubbles.contrastWarning}
+        </p>
       )}
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 min-[400px]:grid-cols-2">
         <label className="block space-y-1">
-          <span className="text-xs font-semibold uppercase tracking-wide text-ink-soft">
+          <span className="text-xs font-bold uppercase tracking-wide text-ink-soft">
             {es.studio.bubbles.idleEffect}
           </span>
-          <select
+          <Select
             value={config.effects.idle}
             onChange={(e) =>
               onChange({
@@ -484,19 +482,18 @@ const ProceduralFields = ({
                 },
               })
             }
-            className="w-full rounded-md border border-ink/10 px-2 py-1.5 text-sm"
           >
             <option value="none">{es.studio.bubbles.idleEffects.none}</option>
             <option value="float">{es.studio.bubbles.idleEffects.float}</option>
             <option value="pulse">{es.studio.bubbles.idleEffects.pulse}</option>
             <option value="breathe">{es.studio.bubbles.idleEffects.breathe}</option>
-          </select>
+          </Select>
         </label>
         <label className="block space-y-1">
-          <span className="text-xs font-semibold uppercase tracking-wide text-ink-soft">
+          <span className="text-xs font-bold uppercase tracking-wide text-ink-soft">
             {es.studio.bubbles.completionEffect}
           </span>
-          <select
+          <Select
             value={config.effects.completion}
             onChange={(e) =>
               onChange({
@@ -507,15 +504,15 @@ const ProceduralFields = ({
                 },
               })
             }
-            className="w-full rounded-md border border-ink/10 px-2 py-1.5 text-sm"
           >
             <option value="none">{es.studio.bubbles.completionEffects.none}</option>
             <option value="ripple">{es.studio.bubbles.completionEffects.ripple}</option>
             <option value="burst">{es.studio.bubbles.completionEffects.burst}</option>
-          </select>
+          </Select>
         </label>
-        <label className="flex items-center gap-1.5 text-xs text-ink">
+        <label className="flex min-h-[44px] items-center gap-2 text-sm font-semibold text-ink">
           <input
+            className={checkboxClass}
             type="checkbox"
             checked={config.effects.ring}
             onChange={(e) =>
@@ -524,8 +521,9 @@ const ProceduralFields = ({
           />
           {es.studio.bubbles.ring}
         </label>
-        <label className="flex items-center gap-1.5 text-xs text-ink">
+        <label className="flex min-h-[44px] items-center gap-2 text-sm font-semibold text-ink">
           <input
+            className={checkboxClass}
             type="checkbox"
             checked={config.effects.glow}
             onChange={(e) =>
@@ -559,20 +557,20 @@ const ImageFields = ({
 
   return (
     <div className="space-y-4">
-      <p className="text-xs text-ink-soft">{es.studio.bubbles.imageUploadHint}</p>
+      <p className="text-xs font-semibold text-ink-soft">{es.studio.bubbles.imageUploadHint}</p>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         {IMAGE_STATE_KEYS.map((state) => {
           const assetId = config.states[state]
           return (
             <div key={state} className="space-y-1">
-              <span className="text-[11px] font-medium text-ink-soft">
+              <span className="text-xs font-bold text-ink-soft">
                 {es.studio.bubbles.imageStates[state]}
               </span>
               <button
                 type="button"
                 onClick={() => setPickingState(state)}
                 aria-label={`${es.studio.bubbles.pickImage}: ${es.studio.bubbles.imageStates[state]}`}
-                className="flex h-20 w-full items-center justify-center overflow-hidden rounded-md border-2 border-dashed border-ink/15 bg-surface-muted text-xs text-ink-soft hover:border-teal-dark"
+                className="flex h-20 w-full items-center justify-center overflow-hidden border-soft rounded-md bg-surface-muted text-ink-soft transition-colors hover:bg-primary-tint hover:text-ink"
               >
                 {assetId ? (
                   <img
@@ -581,7 +579,7 @@ const ImageFields = ({
                     className="h-full w-full object-contain"
                   />
                 ) : (
-                  '+'
+                  <Plus size={24} strokeWidth={3} aria-hidden />
                 )}
               </button>
             </div>
@@ -601,24 +599,23 @@ const ImageFields = ({
           />
         </Suspense>
       )}
-      <p className="text-xs text-ink-soft">{es.studio.bubbles.imageFallbackNote}</p>
+      <p className="text-xs font-semibold text-ink-soft">{es.studio.bubbles.imageFallbackNote}</p>
 
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 min-[400px]:grid-cols-2">
         <label className="block space-y-1">
-          <span className="text-xs font-semibold uppercase tracking-wide text-ink-soft">
+          <span className="text-xs font-bold uppercase tracking-wide text-ink-soft">
             {es.studio.bubbles.anchor}
           </span>
-          <select
+          <Select
             value={config.anchor}
             onChange={(e) => onChange({ ...config, anchor: e.target.value as ImageSkin['anchor'] })}
-            className="w-full rounded-md border border-ink/10 px-2 py-1.5 text-sm"
           >
             <option value="center">{es.studio.bubbles.anchors.center}</option>
             <option value="bottom">{es.studio.bubbles.anchors.bottom}</option>
-          </select>
+          </Select>
         </label>
         <label className="block space-y-1">
-          <span className="text-xs font-semibold uppercase tracking-wide text-ink-soft">
+          <span className="text-xs font-bold uppercase tracking-wide text-ink-soft">
             {es.studio.bubbles.size} ({config.size}px)
           </span>
           <input
@@ -627,7 +624,7 @@ const ImageFields = ({
             max={320}
             value={config.size}
             onChange={(e) => onChange({ ...config, size: Number(e.target.value) })}
-            className="w-full"
+            className="h-11 w-full accent-primary"
           />
         </label>
       </div>
