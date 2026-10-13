@@ -9,7 +9,8 @@ export const Tooltip = ({ content, children }: { content: ReactNode; children: R
     <RadixTooltip.Portal>
       <RadixTooltip.Content
         sideOffset={6}
-        className="z-50 max-w-xs rounded-md bg-ink px-3 py-1.5 text-xs font-medium text-white shadow-soft"
+        collisionPadding={12}
+        className="z-50 max-w-[min(20rem,calc(100vw-1.5rem))] border-hair rounded-md bg-ink px-3 py-1.5 text-xs font-semibold text-white"
       >
         {content}
         <RadixTooltip.Arrow className="fill-ink" />

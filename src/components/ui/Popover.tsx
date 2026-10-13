@@ -20,10 +20,11 @@ export const Popover = ({
       <RadixPopover.Content
         align={align}
         sideOffset={8}
-        className="z-50 rounded-lg bg-surface p-3 shadow-soft focus:outline-none"
+        collisionPadding={16}
+        className="z-50 max-w-[calc(100vw-2rem)] border-soft rounded-lg bg-surface p-3 shadow-sm focus:outline-none"
       >
         {children}
-        <RadixPopover.Arrow className="fill-surface" />
+        <RadixPopover.Arrow className="fill-ink" />
       </RadixPopover.Content>
     </RadixPopover.Portal>
   </RadixPopover.Root>

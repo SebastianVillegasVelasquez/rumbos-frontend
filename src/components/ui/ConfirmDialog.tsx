@@ -24,15 +24,15 @@ export const ConfirmDialog = ({
 }: ConfirmDialogProps) => (
   <RadixAlertDialog.Root open={open} onOpenChange={onOpenChange}>
     <RadixAlertDialog.Portal>
-      <RadixAlertDialog.Overlay className="fixed inset-0 z-40 bg-ink/40 backdrop-blur-sm" />
-      <RadixAlertDialog.Content className="fixed left-1/2 top-1/2 z-50 w-[min(90vw,28rem)] -translate-x-1/2 -translate-y-1/2 rounded-lg bg-surface p-6 shadow-soft focus:outline-none">
-        <RadixAlertDialog.Title className="font-heading text-lg font-semibold text-ink">
+      <RadixAlertDialog.Overlay className="fixed inset-0 z-40 bg-ink/50" />
+      <RadixAlertDialog.Content className="fixed left-1/2 top-1/2 z-50 max-h-[calc(100dvh-3rem)] w-[min(calc(100vw-2.5rem),28rem)] overflow-y-auto -translate-x-1/2 -translate-y-1/2 border-strong rounded-lg bg-surface p-4 sm:p-6 shadow-lg focus:outline-none">
+        <RadixAlertDialog.Title className="font-heading text-xl font-extrabold text-ink">
           {title}
         </RadixAlertDialog.Title>
         <RadixAlertDialog.Description className="mt-2 text-sm text-ink-soft">
           {description}
         </RadixAlertDialog.Description>
-        <div className="mt-6 flex justify-end gap-2">
+        <div className="mt-6 flex flex-wrap justify-end gap-2">
           <RadixAlertDialog.Cancel asChild>
             <Button variant="secondary">{cancelLabel}</Button>
           </RadixAlertDialog.Cancel>

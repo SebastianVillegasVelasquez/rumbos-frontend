@@ -26,22 +26,22 @@ export const ToastProvider = ({ children }: { children: ReactNode }) => {
   return (
     <ToastContext.Provider value={value}>
       {children}
-      <div className="fixed bottom-4 left-1/2 z-[60] flex w-[min(92vw,24rem)] -translate-x-1/2 flex-col gap-2">
+      <div className="pointer-events-none fixed bottom-4 left-1/2 z-[60] flex w-[min(calc(100vw-2rem),24rem)] -translate-x-1/2 flex-col gap-2">
         {toasts.map((toast) => (
           <div
             key={toast.id}
             role="status"
-            className={`flex items-center gap-2 rounded-md px-4 py-3 text-sm font-medium shadow-soft ${
+            className={`pointer-events-auto flex items-center gap-2 border-soft rounded-md px-4 py-3 text-sm font-semibold shadow-sm ${
               toast.tone === 'error'
-                ? 'bg-coral-tint text-coral-dark'
+                ? 'bg-danger-tint text-danger'
                 : toast.tone === 'success'
                   ? 'bg-leaf-tint text-leaf-dark'
                   : 'bg-ink text-white'
             }`}
           >
-            {toast.tone === 'error' && <AlertTriangle size={16} />}
-            {toast.tone === 'success' && <CheckCircle2 size={16} />}
-            <span className="flex-1">{toast.message}</span>
+            {toast.tone === 'error' && <AlertTriangle size={18} strokeWidth={2.5} />}
+            {toast.tone === 'success' && <CheckCircle2 size={18} strokeWidth={2.5} />}
+            <span className="min-w-0 flex-1 break-words">{toast.message}</span>
             {toast.action && (
               <button
                 type="button"
@@ -49,7 +49,7 @@ export const ToastProvider = ({ children }: { children: ReactNode }) => {
                   toast.action?.onClick()
                   dismiss(toast.id)
                 }}
-                className="rounded-md px-2 py-1 text-xs font-bold uppercase tracking-wide underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current"
+                className="min-h-[44px] rounded-md px-2 text-xs font-bold uppercase tracking-wide underline underline-offset-2"
               >
                 {toast.action.label}
               </button>
@@ -58,9 +58,9 @@ export const ToastProvider = ({ children }: { children: ReactNode }) => {
               type="button"
               aria-label="Cerrar"
               onClick={() => dismiss(toast.id)}
-              className="rounded-pill p-1 hover:bg-black/5"
+              className="inline-flex h-11 w-11 items-center justify-center rounded-md hover:bg-ink/10"
             >
-              <X size={14} />
+              <X size={16} strokeWidth={3} />
             </button>
           </div>
         ))}

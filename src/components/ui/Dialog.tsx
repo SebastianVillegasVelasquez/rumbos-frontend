@@ -23,15 +23,15 @@ export const Dialog = ({
 }: DialogProps) => (
   <RadixDialog.Root open={open} onOpenChange={onOpenChange}>
     <RadixDialog.Portal>
-      <RadixDialog.Overlay className="fixed inset-0 z-40 bg-ink/40 backdrop-blur-sm" />
+      <RadixDialog.Overlay className="fixed inset-0 z-40 bg-ink/50" />
       <RadixDialog.Content
-        className={`fixed left-1/2 top-1/2 z-50 max-h-[92vh] -translate-x-1/2 -translate-y-1/2 overflow-y-auto rounded-lg bg-surface p-4 shadow-soft focus:outline-none sm:p-6 ${
-          size === 'lg' ? 'w-[min(96vw,60rem)]' : 'w-[min(90vw,32rem)]'
+        className={`fixed left-1/2 top-1/2 z-50 max-h-[calc(100dvh-3rem)] -translate-x-1/2 -translate-y-1/2 overflow-y-auto border-strong rounded-lg bg-surface p-4 shadow-lg focus:outline-none sm:p-6 ${
+          size === 'lg' ? 'w-[min(calc(100vw-2.5rem),60rem)]' : 'w-[min(calc(100vw-2.5rem),32rem)]'
         }`}
       >
         <div className="mb-4 flex items-start justify-between gap-4">
-          <div>
-            <RadixDialog.Title className="font-heading text-lg font-semibold text-ink">
+          <div className="min-w-0">
+            <RadixDialog.Title className="font-heading text-xl font-extrabold text-ink">
               {title}
             </RadixDialog.Title>
             {description && (
@@ -42,13 +42,13 @@ export const Dialog = ({
           </div>
           <RadixDialog.Close
             aria-label="Cerrar"
-            className="rounded-pill p-1.5 text-ink-soft hover:bg-surface-muted hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal-dark"
+            className="border-soft inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-md bg-surface text-ink hover:bg-accent"
           >
-            <X size={18} />
+            <X size={20} strokeWidth={3} />
           </RadixDialog.Close>
         </div>
         {children}
-        {footer && <div className="mt-6 flex justify-end gap-2">{footer}</div>}
+        {footer && <div className="mt-6 flex flex-wrap justify-end gap-2">{footer}</div>}
       </RadixDialog.Content>
     </RadixDialog.Portal>
   </RadixDialog.Root>
