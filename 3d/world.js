@@ -1452,13 +1452,12 @@ canvas.addEventListener('pointerup', e => {
   if (!down || Math.hypot(e.clientX - down[0], e.clientY - down[1]) > 6) { down = null; return; }
   down = null; cast(e);
   const h = window.__pinsOn ? ray.intersectObjects(hitList, false)[0] : null;
-  if (h) { const n = hotspots.find(x => x.hit === h.object).n; if (window.__admin && window.__admin.open) window.__admin.select(n); openZone(n); return; }
+  if (h) { const n = hotspots.find(x => x.hit === h.object).n; openZone(n); return; }
   let p = null;
   const g = ray.intersectObjects([root.getObjectByName('terrain')].filter(Boolean), true)[0];
   if (g) p = g.point;
   else { const q = new V3(); if (ray.ray.intersectPlane(new THREE.Plane(new V3(0, 1, 0), 0), q)) { const e = Math.sqrt((q.x / 62) ** 2 + ((q.z - 3) / 52) ** 2); if (e < 1.6) { if (e > 1) { q.x /= e; q.z = 3 + (q.z - 3) / e; } p = q; } } }
   if (!p) return;
-  if (window.__admin && window.__admin.onMapClick(p)) return;
   let best = null, bd = Infinity; hotspots.forEach(hs => { const d = Math.hypot(hs.base.x - p.x, hs.base.z - p.z); if (d < bd) { bd = d; best = hs.n; } });
   if (best !== null && window.__pinsOn && bd < (zoneR[best] ?? 6) * 0.8) { openZone(best); return; }
   closePanel();
@@ -1467,162 +1466,6 @@ canvas.addEventListener('pointerup', e => {
 });
 canvas.addEventListener('pointermove', e => { cast(e); const h = window.__pinsOn ? ray.intersectObjects(hitList, false)[0] : null; hover = h ? hotspots.find(x => x.hit === h.object) : null; canvas.style.cursor = hover ? 'pointer' : (down ? 'grabbing' : 'grab'); });
 canvas.style.cursor = 'grab';
-// ================= Editable points (admin floating editor) =================
-{
-const PASS_HASH = 'REDACTED'; // SHA-256 of the admin password
-const DATA_URL = new URLSearchParams(location.search).get('datos') || 'puntos-region.json';
-const LS_DRAFT = 'roe_points_draft_v1', LS_CFG = 'roe_moodle_cfg_v1', LS_LANG = 'roe_lang';
-const SWATCH = ['#2D3172', '#2563A8', '#2C8C9C', '#2D6A4F', '#C9922A', '#97691A', '#C1440E', '#7A5A8C', '#1B1E4A', '#4A5568'];
-const L2 = v => ({ es: v || '', en: '' });
-const tx = v => v == null ? '' : typeof v === 'string' ? v : ((LANG === 'en' ? v.en : v.es) || v.es || v.en || '');
-const extraG = grp('hotspots_editables');
-const hitList = window.__hitList;
-let POINTS = order.map(n => { const i = INFO[n], hs = hotspots.find(x => x.n === n); return { n, x: +hs.base.x.toFixed(2), z: +hs.base.z.toFixed(2), color: zoneColor[n], short: L2(SHORT[n]), tag: L2(i.tag), sub: L2(i.sub), eb: L2(i.eb), t: L2(i.t), pl: L2(i.pl), d: L2(i.d), f: i.f.map(([k, v]) => ({ k: L2(k), v: L2(v) })), link: { url: '', label: L2('') }, img: '' }; });
-const ORIGINAL = JSON.stringify(POINTS);
-const UI = { es: { places: 'LUGARES', back: 'Ver toda la región', title: 'La Región de los Encuentros' }, en: { places: 'PLACES', back: 'See the whole region', title: 'The Region of Encounters' } };
-
-function setPos(hs, x, z) { const y = heightAt(x, z), wp = new V3(x, y, z); hs.g.parent.updateMatrixWorld(true); hs.g.position.copy(hs.g.parent.worldToLocal(wp.clone()));
-  hs.base.set(x, y, z); hs.liftY = y + hs.lift; hs.top.set(x, y + hs.lift + 1.2, z); hs.hit.position.set(x, y + hs.lift, z); hs.hit.updateMatrixWorld(); }
-function recolor(hs, c) { if (hs.color === c) return; hs.color = c; const id = String(hs.n).padStart(2, '0'); const pm = paintedPin(c);
-  ['trigger', 'tip'].forEach(k => { const o = hs.g.getObjectByName('hotspot_' + id + '_' + k); if (o) o.material = pm; }); hs.ring.material = brushRing(c); }
-function buildUI() {
-  labelsEl.innerHTML = ''; const itemsEl = document.getElementById('items'); itemsEl.innerHTML = '';
-  Object.keys(labels).forEach(k => delete labels[k]); Object.keys(items).forEach(k => delete items[k]);
-  order.forEach(n => { const c = zoneColor[n], info = INFO[n];
-    const l = document.createElement('div'); l.className = 'lbl'; l.tabIndex = 0; l.setAttribute('role', 'button'); l.setAttribute('aria-label', info.tag + '. ' + info.t);
-    const dot = document.createElement('i'); dot.style.background = c; const sp = document.createElement('span'), b = document.createElement('b'), sm = document.createElement('small'); b.textContent = info.tag; sm.textContent = info.sub; sp.append(b, sm); l.append(dot, sp);
-    l.onclick = () => openZone(n); l.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openZone(n); } };
-    labelsEl.appendChild(l); labels[n] = l;
-    const bt = document.createElement('button'); const d2 = document.createElement('i'); d2.style.background = c; const s2 = document.createElement('span'); s2.textContent = SHORT[n]; bt.append(d2, s2); bt.title = info.t; bt.onclick = () => openZone(n);
-    if (n === active) { bt.classList.add('on'); l.classList.add('on'); } itemsEl.appendChild(bt); items[n] = bt; });
-  const u = UI[LANG]; document.querySelector('.list .t').textContent = u.places; const bb = backBtn.lastChild; if (bb && bb.nodeType === 3) bb.textContent = u.back; document.querySelector('.hud h1').textContent = u.title;
-  if (typeof placeBack === 'function') placeBack();
-}
-function applyPoints() {
-  const keep = new Set(POINTS.map(p => p.n));
-  for (let i = hotspots.length - 1; i >= 0; i--) { const hs = hotspots[i]; if (!keep.has(hs.n)) { hs.g.removeFromParent(); hotspots.splice(i, 1); const k = hitList.indexOf(hs.hit); if (k >= 0) hitList.splice(k, 1); delete INFO[hs.n]; if (active === hs.n) closePanel(); } }
-  POINTS.forEach(p => { zoneColor[p.n] = p.color; let hs = hotspots.find(x => x.n === p.n);
-    if (!hs) { hotspot(p.n, extraG, p.x, p.z); hs = hotspots[hotspots.length - 1]; hitList.push(hs.hit); hs.pin.visible = hs.ring.visible = !!window.__pinsOn; if (zoneR[p.n] == null) zoneR[p.n] = 6; }
-    if (Math.abs(hs.base.x - p.x) > 1e-3 || Math.abs(hs.base.z - p.z) > 1e-3) setPos(hs, p.x, p.z);
-    recolor(hs, p.color);
-    SHORT[p.n] = tx(p.short) || tx(p.t);
-    INFO[p.n] = { tag: tx(p.tag), sub: tx(p.sub), eb: tx(p.eb), t: tx(p.t), pl: tx(p.pl), d: tx(p.d), f: p.f.map(r => [tx(r.k), tx(r.v)]).filter(r => r[0] || r[1]), link: { url: p.link.url, label: tx(p.link.label) }, img: p.img }; });
-  order = POINTS.map(p => p.n); buildUI();
-  if (active !== null && INFO[active]) { renderPanel(active); document.getElementById('p-bar').style.background = zoneColor[active]; }
-}
-function setLang(l) { LANG = l; localStorage.setItem(LS_LANG, l); document.getElementById('zlang').textContent = l.toUpperCase(); document.documentElement.lang = l; applyPoints(); }
-document.getElementById('zlang').onclick = () => setLang(LANG === 'es' ? 'en' : 'es');
-const valid = d => Array.isArray(d) && d.every(p => typeof p.n === 'number' && typeof p.x === 'number' && typeof p.z === 'number' && p.t);
-const normalize = d => d.map(p => ({ link: { url: '', label: L2('') }, img: '', f: [], short: L2(''), tag: L2(''), sub: L2(''), eb: L2(''), pl: L2(''), d: L2(''), ...p }));
-
-// ---- Moodle storage (Base de datos activity via web services) ----
-const cfg = () => { try { return JSON.parse(localStorage.getItem(LS_CFG)) || {}; } catch (e) { return {}; } };
-async function ws(c, fn, params) { const body = new URLSearchParams({ wstoken: c.token, wsfunction: fn, moodlewsrestformat: 'json', ...params });
-  const r = await fetch(c.site.replace(/\/$/, '') + '/webservice/rest/server.php', { method: 'POST', body }); const j = await r.json(); if (j && j.exception) throw new Error(j.message || j.errorcode); return j; }
-async function moodleField(c) { const j = await ws(c, 'mod_data_get_fields', { databaseid: c.db }); const f = (j.fields || []).find(x => x.name === (c.field || 'puntos_json')); if (!f) throw new Error('No existe el campo «' + (c.field || 'puntos_json') + '» en la base de datos'); return f.id; }
-async function moodleLoad(c) { const fid = await moodleField(c); const j = await ws(c, 'mod_data_get_entries', { databaseid: c.db, returncontents: 1, perpage: 1, sort: 0, order: 'DESC' });
-  const e = (j.entries || [])[0]; if (!e) return null; const ct = (e.contents || []).find(x => x.fieldid === fid); return ct ? { entryid: e.id, data: JSON.parse(ct.content) } : null; }
-async function moodleSave(c, data) { const fid = await moodleField(c), val = JSON.stringify(JSON.stringify(data)); let ent = null; try { ent = await moodleLoad(c); } catch (e) {}
-  if (ent) await ws(c, 'mod_data_update_entry', { entryid: ent.entryid, 'data[0][fieldid]': fid, 'data[0][name]': '', 'data[0][value]': val });
-  else await ws(c, 'mod_data_add_entry', { databaseid: c.db, 'data[0][fieldid]': fid, 'data[0][name]': '', 'data[0][value]': val }); }
-
-// ---- initial load for every visitor: Moodle (if configured) > published JSON > built-in
-(async () => { let src = null; const c = cfg();
-  if (c.site && c.token && c.db) { try { const r = await moodleLoad(c); if (r && valid(r.data)) { POINTS = normalize(r.data); src = 'moodle'; } } catch (e) { console.warn('Moodle:', e.message); } }
-  if (!src) { try { const r = await fetch(DATA_URL, { cache: 'no-store' }); if (r.ok) { const d = await r.json(); if (valid(d)) { POINTS = normalize(d); src = 'json'; } } } catch (e) {} }
-  const l = localStorage.getItem(LS_LANG); if (l === 'en' || l === 'es') LANG = l; document.getElementById('zlang').textContent = LANG.toUpperCase();
-  applyPoints(); window.__pointsSource = src || 'built-in'; })();
-
-// ---- admin editor
-let ed = { open: false, sel: null, elang: 'es', placing: false, dirty: false, drag: null };
-const $ = (t, a = {}, ...ch) => { const e = document.createElement(t); Object.entries(a).forEach(([k, v]) => { if (k === 'class') e.className = v; else if (k.startsWith('on')) e[k] = v; else if (k === 'text') e.textContent = v; else e.setAttribute(k, v); }); ch.forEach(c => c != null && e.append(c)); return e; };
-const ico = d => { const s = document.createElementNS('http://www.w3.org/2000/svg', 'svg'); s.setAttribute('width', 16); s.setAttribute('height', 16); s.setAttribute('viewBox', '0 0 24 24'); s.setAttribute('fill', 'none'); s.setAttribute('stroke', 'currentColor'); s.setAttribute('stroke-width', 2); s.setAttribute('stroke-linecap', 'round'); s.setAttribute('stroke-linejoin', 'round'); s.innerHTML = d; return s; };
-const I = { x: '<path d="M18 6 6 18M6 6l12 12"/>', up: '<path d="m18 15-6-6-6 6"/>', down: '<path d="m6 9 6 6 6-6"/>', plus: '<path d="M12 5v14M5 12h14"/>', trash: '<path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/>', save: '<path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><path d="M17 21v-8H7v8M7 3v5h8"/>', dl: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>', ul: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/>', move: '<path d="M5 9l-3 3 3 3M9 5l3-3 3 3M15 19l-3 3-3-3M19 9l3 3-3 3M2 12h20M12 2v20"/>' };
-
-const modal = $('div', { class: 'adm-modal', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Acceso de administrador' });
-const pw = $('input', { type: 'password', placeholder: 'Contraseña', autocomplete: 'current-password' }), pwErr = $('span', { class: 'adm-eb', style: 'color:#A3341C;display:none', text: 'Contraseña incorrecta' });
-const tryLogin = async () => { const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(pw.value)); const hx = [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, '0')).join(''); if (hx === PASS_HASH) { modal.classList.remove('open'); pw.value = ''; pwErr.style.display = 'none'; sessionStorage.setItem('roe_admin', '1'); openEditor(); } else { pwErr.style.display = ''; pw.select(); } };
-pw.onkeydown = e => { if (e.key === 'Enter') tryLogin(); if (e.key === 'Escape') modal.classList.remove('open'); };
-modal.append($('div', { class: 'adm-card' }, $('span', { class: 'adm-eb', text: 'ADMINISTRADOR' }), $('h3', { text: 'Edición de puntos sensibles' }), pw, pwErr, $('div', { style: 'display:flex;gap:8px;justify-content:flex-end' }, $('button', { class: 'btn', onclick: () => modal.classList.remove('open'), text: 'Cancelar' }), $('button', { class: 'btn pri', onclick: tryLogin, text: 'Entrar' }))));
-modal.onclick = e => { if (e.target === modal) modal.classList.remove('open'); };
-const box = $('aside', { class: 'adm', 'aria-label': 'Editor de puntos sensibles' });
-document.body.append(modal, box);
-document.getElementById('zadmin').onclick = () => { if (ed.open) { closeEditor(); return; } if (sessionStorage.getItem('roe_admin') === '1') openEditor(); else { modal.classList.add('open'); setTimeout(() => pw.focus(), 30); } };
-
-const status = (msg, kind = '') => { const s = box.querySelector('.ft .st'); if (s) { s.textContent = msg; s.className = 'st ' + kind; } };
-const commit = (structural = false) => { ed.dirty = true; localStorage.setItem(LS_DRAFT, JSON.stringify(POINTS)); applyPoints(); if (structural) render(); else renderList(); status('Cambios sin publicar · borrador guardado en este navegador', 'warn'); };
-let tmr = null; const commitSoon = () => { clearTimeout(tmr); tmr = setTimeout(() => commit(false), 220); };
-const P = () => POINTS.find(p => p.n === ed.sel);
-
-function openEditor() { ed.open = true; box.classList.add('open'); document.getElementById('zadmin').style.background = '#2D3172'; document.getElementById('zadmin').style.color = '#FFFFFF';
-  const dr = localStorage.getItem(LS_DRAFT); if (dr && dr !== JSON.stringify(POINTS)) { try { const d = JSON.parse(dr); if (valid(d)) { if (confirm('Hay un borrador sin publicar guardado en este navegador. ¿Desea cargarlo?')) { POINTS = normalize(d); applyPoints(); ed.dirty = true; } else localStorage.removeItem(LS_DRAFT); } } catch (e) {} }
-  if (!window.__pinsOn) document.getElementById('zpins').click();
-  if (ed.sel == null && POINTS[0]) ed.sel = POINTS[0].n; render(); if (ed.dirty) status('Borrador local cargado · sin publicar', 'warn'); }
-function closeEditor() { ed.open = false; ed.placing = false; document.body.classList.remove('placing'); box.classList.remove('open'); document.getElementById('zadmin').style.background = ''; document.getElementById('zadmin').style.color = ''; }
-function select(n) { ed.sel = n; render(); }
-
-function field(lbl, obj, key, multi = false) { const v = obj[key]; const inp = multi ? $('textarea', { rows: 4 }) : $('input', { type: 'text' }); inp.value = (v && v[ed.elang]) || '';
-  if (ed.elang === 'en' && v && v.es) inp.placeholder = v.es; inp.oninput = () => { obj[key] = { ...(obj[key] || L2('')), [ed.elang]: inp.value }; commitSoon(); }; return $('label', {}, lbl, inp); }
-function renderList() { const L = box.querySelector('.pts'); if (!L) return; L.innerHTML = '';
-  POINTS.forEach((p, i) => { const r = $('div', { class: 'pt' + (p.n === ed.sel ? ' sel' : ''), onclick: () => select(p.n) }, $('i', { style: 'background:' + p.color }), $('span', { text: tx(p.short) || tx(p.t) || 'Sin nombre' }),
-    $('button', { 'aria-label': 'Subir', title: 'Subir en la barra de lugares', onclick: e => { e.stopPropagation(); if (i > 0) { [POINTS[i - 1], POINTS[i]] = [POINTS[i], POINTS[i - 1]]; commit(); renderList(); } } }, ico(I.up)),
-    $('button', { 'aria-label': 'Bajar', title: 'Bajar en la barra de lugares', onclick: e => { e.stopPropagation(); if (i < POINTS.length - 1) { [POINTS[i + 1], POINTS[i]] = [POINTS[i], POINTS[i + 1]]; commit(); renderList(); } } }, ico(I.down))); L.append(r); }); }
-function render() {
-  box.innerHTML = '';
-  const seg = $('div', { class: 'seg', role: 'group', 'aria-label': 'Idioma de edición' }, ...['es', 'en'].map(l => $('button', { class: ed.elang === l ? 'on' : '', onclick: () => { ed.elang = l; if (LANG !== l) setLang(l); render(); }, text: l === 'es' ? 'Español' : 'English' })));
-  box.append($('div', { class: 'hd' }, $('div', { class: 'r' }, $('span', { class: 'adm-eb', text: 'EDICIÓN · ADMINISTRADOR' }), $('button', { class: 'btn', style: 'width:36px;padding:0', 'aria-label': 'Cerrar editor', onclick: closeEditor }, ico(I.x))), $('div', { class: 'r' }, $('h3', { text: 'Puntos sensibles' }), seg)));
-  const bd = $('div', { class: 'bd' }); box.append(bd);
-  const addB = $('button', { class: 'btn' + (ed.placing ? ' on' : ''), onclick: () => { ed.placing = !ed.placing; document.body.classList.toggle('placing', ed.placing); render(); } }, ico(I.plus), ed.placing ? 'Haga clic en el mapa…' : 'Agregar punto');
-  bd.append($('div', { class: 'sec' }, $('b', { text: 'LUGARES · ' + POINTS.length }), $('div', { class: 'pts' }), addB, $('p', { class: 'hint', text: 'El orden de esta lista es el orden de la barra de lugares. Para mover un punto, arrástrelo sobre el mapa.' })));
-  const p = P();
-  if (p) {
-    const sw = $('div', { class: 'sw' }, ...SWATCH.map(c => $('button', { class: p.color === c ? 'on' : '', style: 'background:' + c, 'aria-label': 'Color ' + c, onclick: () => { p.color = c; commit(true); } })));
-    const rows = $('div', { class: 'sec' }, $('b', { text: 'FILAS DE DETALLE' }));
-    p.f.forEach((r, i) => { const k = $('input', { type: 'text', placeholder: ed.elang === 'en' ? (r.k.es || 'Label') : 'Dato' }), v = $('input', { type: 'text', placeholder: ed.elang === 'en' ? (r.v.es || 'Value') : 'Valor' }); k.value = r.k[ed.elang] || ''; v.value = r.v[ed.elang] || '';
-      k.oninput = () => { r.k[ed.elang] = k.value; commitSoon(); }; v.oninput = () => { r.v[ed.elang] = v.value; commitSoon(); };
-      rows.append($('div', { class: 'fr' }, k, v, $('button', { 'aria-label': 'Quitar fila', title: 'Quitar fila', onclick: () => { p.f.splice(i, 1); commit(true); } }, ico(I.x)))); });
-    rows.append($('button', { class: 'btn', onclick: () => { p.f.push({ k: L2(''), v: L2('') }); commit(true); } }, ico(I.plus), 'Agregar fila'));
-    const url = $('input', { type: 'url', placeholder: 'https://su-moodle/mod/…/view.php?id=…' }); url.value = p.link.url; url.oninput = () => { p.link.url = url.value.trim(); commitSoon(); };
-    const ll = $('input', { type: 'text', placeholder: ed.elang === 'en' ? 'Open activity' : 'Ir a la actividad' }); ll.value = (p.link.label && p.link.label[ed.elang]) || ''; ll.oninput = () => { p.link.label = { ...(p.link.label || L2('')), [ed.elang]: ll.value }; commitSoon(); };
-    const fi = $('input', { type: 'file', accept: 'image/*', style: 'display:none' });
-    fi.onchange = async () => { const f = fi.files[0]; if (!f) return; const bm = await createImageBitmap(f), s = Math.min(1, 900 / Math.max(bm.width, bm.height)), c = document.createElement('canvas'); c.width = Math.round(bm.width * s); c.height = Math.round(bm.height * s); c.getContext('2d').drawImage(bm, 0, 0, c.width, c.height); p.img = c.toDataURL('image/webp', 0.8); commit(true); };
-    const iu = $('input', { type: 'url', placeholder: 'o pegue la URL de una imagen' }); iu.value = p.img && !p.img.startsWith('data:') ? p.img : ''; iu.onchange = () => { p.img = iu.value.trim(); commit(true); };
-    bd.append(
-      $('div', { class: 'sec' }, $('b', { text: 'UBICACIÓN Y COLOR' }), $('p', { class: 'hint' }, $('span', { text: 'Arrastre el pin sobre el terreno para moverlo. Posición: ' }), $('span', { class: 'st', text: 'X ' + p.x.toFixed(1) + ' · Z ' + p.z.toFixed(1) })), sw),
-      $('div', { class: 'sec' }, $('b', { text: 'ETIQUETA EN EL MAPA' }), field('Nombre en la barra de lugares', p, 'short'), field('Etiqueta del pin', p, 'tag'), field('Bajada del pin', p, 'sub')),
-      $('div', { class: 'sec' }, $('b', { text: 'VENTANA EMERGENTE' }), field('Antetítulo', p, 'eb'), field('Título', p, 't'), field('Subtítulo', p, 'pl'), field('Descripción', p, 'd', true)),
-      rows,
-      $('div', { class: 'sec' }, $('b', { text: 'ENLACE A MOODLE' }), $('label', {}, 'URL de la actividad', url), $('label', {}, 'Texto del botón', ll)),
-      $('div', { class: 'sec' }, $('b', { text: 'IMAGEN' }), p.img ? $('img', { class: 'imgp', src: p.img, alt: '' }) : null, $('div', { class: 'row2' }, $('button', { class: 'btn', onclick: () => fi.click() }, ico(I.ul), p.img ? 'Cambiar imagen' : 'Subir imagen'), p.img ? $('button', { class: 'btn dan', onclick: () => { p.img = ''; commit(true); } }, 'Quitar') : null), iu, fi),
-      $('div', { class: 'sec' }, $('button', { class: 'btn dan', onclick: () => { if (!confirm('¿Eliminar «' + (tx(p.t) || 'este punto') + '»?')) return; POINTS = POINTS.filter(q => q !== p); ed.sel = POINTS[0] ? POINTS[0].n : null; commit(true); } }, ico(I.trash), 'Eliminar este punto')));
-  }
-  const c = cfg(); const site = $('input', { type: 'url', placeholder: 'https://academia.ejemplo.co' }), tok = $('input', { type: 'password', placeholder: 'Token del servicio web' }), db = $('input', { type: 'text', placeholder: 'ID de la base de datos (databaseid)' }), fld = $('input', { type: 'text', placeholder: 'puntos_json' });
-  site.value = c.site || ''; tok.value = c.token || ''; db.value = c.db || ''; fld.value = c.field || '';
-  const saveCfg = () => localStorage.setItem(LS_CFG, JSON.stringify({ site: site.value.trim(), token: tok.value.trim(), db: db.value.trim(), field: fld.value.trim() || 'puntos_json' })); [site, tok, db, fld].forEach(i => i.onchange = saveCfg);
-  const imp = $('input', { type: 'file', accept: 'application/json,.json', style: 'display:none' });
-  imp.onchange = async () => { try { const d = JSON.parse(await imp.files[0].text()); if (!valid(d)) throw 0; POINTS = normalize(d); ed.sel = POINTS[0] ? POINTS[0].n : null; commit(true); status('Archivo cargado · sin publicar', 'warn'); } catch (e) { status('El archivo no tiene el formato de puntos', 'err'); } };
-  const ft = $('div', { class: 'ft' }, $('span', { class: 'st', text: ed.dirty ? 'Cambios sin publicar' : 'Sin cambios · fuente: ' + ({ moodle: 'Moodle', json: 'archivo publicado', 'built-in': 'versión original' }[window.__pointsSource] || 'original') }),
-    $('div', { class: 'row2' }, $('button', { class: 'btn pri', onclick: async () => { const c2 = cfg(); if (!(c2.site && c2.token && c2.db)) { status('Complete la conexión a Moodle', 'err'); { const dd = box.querySelector('details'); dd.open = true; box.querySelector('.bd').scrollTop = 1e6; } return; } status('Publicando en Moodle…'); try { await moodleSave(c2, POINTS); ed.dirty = false; localStorage.removeItem(LS_DRAFT); status('Publicado en Moodle', 'ok'); } catch (e) { status('Moodle: ' + e.message, 'err'); } } }, ico(I.save), 'Publicar en Moodle')),
-    $('div', { class: 'row2' }, $('button', { class: 'btn', onclick: () => { const a = $('a', { href: URL.createObjectURL(new Blob([JSON.stringify(POINTS, null, 2)], { type: 'application/json' })), download: 'puntos-region.json' }); a.click(); } }, ico(I.dl), 'Exportar JSON'), $('button', { class: 'btn', onclick: () => imp.click() }, ico(I.ul), 'Importar JSON')),
-    imp);
-  bd.append($('div', { class: 'sec' }, $('b', { text: 'PUBLICACIÓN' }), $('details', {}, $('summary', { text: 'Conexión a Moodle' }), $('p', { class: 'hint', text: 'Se guarda en una actividad Base de datos con un campo de área de texto. Requiere un token de servicio web con permisos mod_data.' }), $('label', {}, 'Sitio Moodle', site), $('label', {}, 'Token', tok), $('label', {}, 'ID de la base de datos', db), $('label', {}, 'Nombre del campo', fld)),
-    $('button', { class: 'btn dan', onclick: () => { if (!confirm('¿Volver a los 9 puntos originales? Se pierde el borrador.')) return; POINTS = JSON.parse(ORIGINAL); ed.sel = POINTS[0].n; localStorage.removeItem(LS_DRAFT); commit(true); } }, 'Restaurar puntos originales')));
-  box.append(ft); renderList();
-}
-
-// ---- dragging pins on the terrain + placing new points
-const terrain = root.getObjectByName('terrain');
-const groundAt = e => { cast(e); const g = terrain ? ray.intersectObject(terrain, true)[0] : null; if (g) return g.point; const q = new V3(); return ray.ray.intersectPlane(new THREE.Plane(new V3(0, 1, 0), 0), q) ? q : null; };
-canvas.addEventListener('pointerdown', e => { if (!ed.open || e.button !== 0) return; cast(e); const hHit = ray.intersectObjects(hitList, false)[0]; if (!hHit) return;
-  const hs = hotspots.find(x => x.hit === hHit.object); e.stopImmediatePropagation(); e.preventDefault(); controls.enabled = false; canvas.setPointerCapture(e.pointerId); ed.drag = { hs, moved: false }; if (ed.sel !== hs.n) select(hs.n); canvas.style.cursor = 'grabbing'; }, true);
-canvas.addEventListener('pointermove', e => { if (!ed.drag) return; e.stopImmediatePropagation(); const p = groundAt(e); if (!p) return; ed.drag.moved = true; setPos(ed.drag.hs, p.x, p.z); }, true);
-canvas.addEventListener('pointerup', e => { if (!ed.drag) return; e.stopImmediatePropagation(); const { hs, moved } = ed.drag; ed.drag = null; controls.enabled = true; canvas.style.cursor = 'grab';
-  const pt = POINTS.find(q => q.n === hs.n); if (moved && pt) { pt.x = +hs.base.x.toFixed(2); pt.z = +hs.base.z.toFixed(2); commit(true); } else openZone(hs.n); }, true);
-function onMapClick(p) { if (!ed.open || !ed.placing) return false; const n = Math.max(8, ...POINTS.map(q => q.n), ...hotspots.map(q => q.n)) + 1;
-  POINTS.push({ n, x: +p.x.toFixed(2), z: +p.z.toFixed(2), color: '#2563A8', short: L2('Nuevo lugar'), tag: L2('NUEVO LUGAR'), sub: L2(''), eb: L2(''), t: L2('Nuevo lugar'), pl: L2(''), d: L2(''), f: [], link: { url: '', label: L2('') }, img: '' });
-  ed.placing = false; document.body.classList.remove('placing'); ed.sel = n; commit(true); return true; }
-window.__admin = { get open() { return ed.open; }, select, onMapClick };
-}
 
 
 // ---------- illustrated Colombian resources placed in the places they belong ----------
