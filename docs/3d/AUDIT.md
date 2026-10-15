@@ -102,9 +102,104 @@ runtime images and `index.html` = v8 byte for byte **except line 1635**, where
 the `PASS_HASH` value is replaced with `'REDACTED'` so no credential material
 enters git history.
 
-## 8. Changes made beyond the brief
+## 8. Changes made to the world page, and why
 
-Recorded in the sections below as they are made (see the commit log of
-`feat/view3d`; each commit is one step).
+The diff against v8 is small in the world code itself (the ~1,500 lines of terrain,
+buildings, people, animals and vegetation are untouched). Beyond what the brief
+listed, these changes were needed:
 
-_(Filled in as the work progresses.)_
+1. **Script and CSS moved out of the HTML** into `3d/world.js` and `3d/world.css`
+   (the page then needs no inline script, which keeps the CSP simple). `3d/main.ts`
+   is the new entry (bridge, demo mode, WebGL check).
+2. **`three-d-stage.js` is a module**, importing `three` and `OrbitControls` from
+   npm; its toolbar, help note, OBJ/GLB exporters, `postMessage('*')` telemetry
+   and `preserveDrawingBuffer` were removed, and a failed boot only rejects
+   `stage.ready` (the page decides what to show).
+3. **v8 hid the pins, HUD, list and "Ver toda la región" button on startup**
+   (`setTimeout(() => pb.onclick(), 0)` toggled them off right after load, which
+   looks like a leftover from taking clean screenshots). They are visible now.
+4. **The detail panel** lost the course-specific "facts", the eyebrow line and the
+   "Unity: ... activador hotspot_NN_trigger" debug line, and its link
+   (`<a target="_blank">`) became an "Abrir" button that only sends a message.
+5. **Labels and list** show the place name plus the point's title (the activity
+   name, or the scene text); v8 showed fixed texts.
+6. **Pins are driven by data**: hotspots exist for the 9 zones, but only zones that
+   have a point are shown, coloured by state (`recolor` was re-implemented; it lived
+   in the removed admin block). Clicks on terrain only select live pins.
+7. **No `localStorage` at all**, including the language preference that v8 stored.
+8. **Reduced motion** skips the opening flight (held until the host says go),
+   makes camera moves instant and stops pin bobbing.
+9. **`rumbos:ready` means "the bridge is listening"**, sent before the world is
+   built; init and later messages queue until the world exists. Sending it after
+   the build would have made the 10 s handshake fail on a slow device.
+10. Built-in **English zone texts** were written for this integration (v8 had none).
+
+Outside the page:
+
+- `Dockerfile` copies `public/` and `3d/` (it only copied `src/` and `index.html`,
+  so neither the favicon nor the 3D page would have reached production).
+- `nginx/nginx.conf` serves `/3d/` with `X-Frame-Options: SAMEORIGIN` (the
+  server-wide `DENY` would block the app from framing its own page) and cache
+  headers. Not run against a real nginx here.
+- `?view=3d` collides in name with the existing `?view=published`; it was defined as
+  "published (student) view opened on 3D".
+- The mock answers 422 `validation_error` for an over-long title/description; the
+  contract does not name that code.
+- **Not changed:** the 2D view, publishing, history and concurrency code, other
+  than carrying `view3d` through them.
+
+## 9. Network and storage audit (final)
+
+Production build served by `vite preview`, `/3d/?demo=1`, measured with the
+Resource Timing API: **30 requests, all to the page's own origin** (7 JS, 1 CSS,
+5 fonts, 16 images). No request to unpkg, Google Fonts, a Moodle host or any
+third party. Static greps over `3d/` (final source) find **no** `innerHTML`,
+`outerHTML`, `insertAdjacent`, `eval`, `new Function`, `document.write`,
+`localStorage`, `sessionStorage`, `indexedDB`, cookies, `fetch`, `XMLHttpRequest`,
+`WebSocket`, `sendBeacon`, `window.open`, `target="_blank"`, token, password,
+or `http(s)://` string. The page's only `postMessage` is
+`hostWindow.postMessage(message, window.location.origin)` in `3d/main.ts`.
+The host side of the 3D view uses `localStorage` for exactly one thing: the
+remembered 2D/3D choice, wrapped in try/catch.
+
+## 10. Bundle impact
+
+Initial JavaScript the app loads for `index.html` (entry plus static preloads),
+HEAD before this work (`a08bd72`) vs this branch, same toolchain:
+
+|        | raw      | gzip     |
+| ------ | -------- | -------- |
+| before | 450.8 kB | 141.1 kB |
+| after  | 457.2 kB | 145.9 kB |
+
+The +6.4 kB (+4.8 kB gzip) is the 2D|3D control, the preference code, the view3d
+fields in the data layer and the new Spanish strings (one dictionary, so the
+studio's 3D strings ride in the entry chunk). **three is not in any host chunk.**
+Lazy chunks: `Map3DPanel` (iframe seam + bridge + list) 10.2 kB / 3.7 kB gzip,
+loaded only when 3D is shown; `AppearanceStudio` 27.0 → 35.4 kB (the 3D tab).
+The 3D page: entry 10.5 kB (2.8 kB `main` + shared `protocol`/scene JSON/helpers),
+plus the `world` chunk (three.js + the world) 971.5 kB / 272.8 kB gzip. Static
+files: textures 614 kB, postcards 360 kB, fonts 137 kB (all `.webp`/`.woff2`),
+~1.1 MB in total against the 5 MB the brief expected.
+
+## 11. What was verified, and what was not
+
+Verified in Chrome against the mock API (dev server and production build):
+`/3d/?demo=1` (all six pin states, labels, list, panel, intro); the full host chain
+(2D|3D control, themed iframe, states from `deriveVisualState`, focus from the
+list, pin click on a locked pin → host highlight and toast, "Abrir" from both the
+panel and the list reaching the same opener with `noopener,noreferrer`); the
+editor tab (disabled taken bubbles, auto-assign, save, "Vista 3D cambiada" in the
+publish dialog, preview of the draft); the handshake; the host error UI for
+`webgl_unavailable`; forged and malformed messages being ignored. Unit tests cover
+the guards, the adapter and the form model (49 tests in total).
+
+**Not verified:** a real backend (it was not running and has no `view3d` code yet);
+a real nginx (not installed); the 360/768/1280/1920 px layouts and visual quality
+(the automation tab was not painting reliably); WebGL actually disabled (only the
+host's reaction to the error message was exercised); a long 2D/3D switching run
+(iframe removal relies on `pagehide` → `dispose()`; a 10-cycle run could not
+finish because each world build monopolises the renderer in the throttled test
+tab); performance on a mid-range phone or tablet. In the throttled test tab the
+world took ~20 s to appear, which is not representative but means real load time
+must be measured on a device.
