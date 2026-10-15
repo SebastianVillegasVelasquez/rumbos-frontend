@@ -637,6 +637,12 @@ function AppShell() {
             getCurrentView={() => latestViewportRef.current}
             onClose={() => setIsAppearanceOpen(false)}
             onChangeBackground={() => setIsBackgroundPickerOpen(true)}
+            onPreview3d={() => {
+              // The draft as a student would see it, in 3D.
+              setIsAppearanceOpen(false)
+              setViewMode('preview')
+              changeMapView('3d')
+            }}
           />
         </Suspense>
       )}

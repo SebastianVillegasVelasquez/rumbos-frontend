@@ -20,6 +20,7 @@ import type {
   CourseMapDetail,
   CourseMapPatch,
   DraftReplaceResult,
+  View3d,
 } from './types.ts'
 
 // Every draft-content write goes through the map's FIFO queue (writeQueue.ts)
@@ -179,6 +180,25 @@ export const useUpdateAppearance = (courseMapId: string) => {
       if (context?.previous) queryClient.setQueryData(detailKey, context.previous)
       void queryClient.invalidateQueries({ queryKey: detailKey })
     },
+    onSuccess: () => invalidateListsAndState(queryClient, courseMapId),
+  })
+}
+
+// Guarded like the appearance write and queued with it ('map' target), so a
+// 412 goes through the same conflict dialog. null disables the 3D view.
+export const useUpdateView3d = (courseMapId: string) => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (input: View3d | null) =>
+      getWriteQueue(courseMapId).enqueue<CourseMapDetail>({
+        target: 'map',
+        run: async () => {
+          const revision = await currentMapRevision(queryClient, courseMapId)
+          const map = await courseMapApi.updateView3d(courseMapId, input, revision)
+          applyMapLevel(queryClient, courseMapId, map)
+          return map
+        },
+      }),
     onSuccess: () => invalidateListsAndState(queryClient, courseMapId),
   })
 }

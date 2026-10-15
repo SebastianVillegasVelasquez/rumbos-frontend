@@ -9,7 +9,7 @@ import {
 import { courseMapApi } from './index.ts'
 import { fetchDraftConsistently } from './draftCache.ts'
 import { getWriteQueue } from './writeQueues.ts'
-import { assetKeys, courseMapKeys, publishedKeys, retryTransient } from './queryKeys.ts'
+import { assetKeys, courseMapKeys, publishedKeys, retryTransient, view3dKeys } from './queryKeys.ts'
 import type {
   AssetCreate,
   AssetListParams,
@@ -192,6 +192,17 @@ export const useReorderBubbles = (courseMapId: string) => {
     },
   })
 }
+
+// The scenes the backend accepts (the editor intersects them with the ones the
+// frontend can draw).
+export const useView3dScenes = () =>
+  useQuery({
+    queryKey: view3dKeys.scenes(),
+    queryFn: () => courseMapApi.listView3dScenes(),
+    staleTime: 5 * 60_000,
+    retry: retryTransient,
+    select: (result) => result.items,
+  })
 
 export const useSkins = () =>
   useQuery({

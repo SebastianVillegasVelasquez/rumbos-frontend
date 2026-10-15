@@ -30,6 +30,10 @@ export const publishedKeys = {
     ['published', courseMapId, 'resolved', { includeHidden }] as const,
 }
 
+export const view3dKeys = {
+  scenes: () => ['view3d', 'scenes'] as const,
+}
+
 export const assetKeys = {
   all: () => ['assets'] as const,
   list: (params: AssetListParams) => ['assets', 'list', params] as const,

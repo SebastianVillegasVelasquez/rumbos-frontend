@@ -6,6 +6,7 @@ import { Button, IconButton } from '../../../components/ui/Button.tsx'
 import { SegmentedControl } from '../../../components/ui/SegmentedControl.tsx'
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog.tsx'
 import { SkinStudio } from './SkinStudio.tsx'
+import { View3dTab } from '../../view3d/editor/View3dTab.tsx'
 import { useAnimationQuality, type QualitySetting } from '../../../fx/quality.ts'
 import { useReorderBubbles } from '../data/queries.ts'
 import { useUpdateAppearance, useUpdateBubble } from '../data/draftMutations.ts'
@@ -25,7 +26,7 @@ import type {
   SkinRule,
 } from '../data/types.ts'
 
-type Tab = 'bubbles' | 'map' | 'ambient' | 'sequence' | 'animation'
+type Tab = 'bubbles' | 'map' | 'ambient' | 'sequence' | 'view3d' | 'animation'
 
 interface AppearanceStudioProps {
   courseMap: CourseMapRead
@@ -33,6 +34,8 @@ interface AppearanceStudioProps {
   getCurrentView: () => MapInitialView | null
   onClose: () => void
   onChangeBackground: () => void
+  // Opens the 3D view of the saved draft.
+  onPreview3d: () => void
 }
 
 const checkboxClass = 'h-5 w-5 shrink-0 accent-primary'
@@ -46,6 +49,7 @@ export const AppearanceStudio = ({
   getCurrentView,
   onClose,
   onChangeBackground,
+  onPreview3d,
 }: AppearanceStudioProps) => {
   const [tab, setTab] = useState<Tab>('bubbles')
   const [settings, setSettings] = useState<MapSettings>(courseMap.settings)
@@ -108,7 +112,7 @@ export const AppearanceStudio = ({
 
       <div className="border-b-soft px-4 py-2">
         <div className="flex flex-wrap gap-1.5">
-          {(['bubbles', 'map', 'ambient', 'sequence', 'animation'] as Tab[]).map((t) => (
+          {(['bubbles', 'map', 'ambient', 'sequence', 'view3d', 'animation'] as Tab[]).map((t) => (
             <button
               key={t}
               type="button"
@@ -153,6 +157,10 @@ export const AppearanceStudio = ({
             mode={settings.mode}
           />
         )}
+        {/* Kept mounted so unsaved 3D edits survive switching tabs. */}
+        <div hidden={tab !== 'view3d'}>
+          <View3dTab courseMap={courseMap} onPreview={onPreview3d} />
+        </div>
         {tab === 'animation' && <AnimationTab />}
       </div>
 
