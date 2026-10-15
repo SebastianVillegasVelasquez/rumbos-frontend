@@ -460,3 +460,20 @@ button:focus-visible,
 .ctl:hover {
   background: #ecedf8;
 }
+#fallback {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  text-align: center;
+  font-size: 16px;
+  line-height: 1.5;
+  background: #f5f2ee;
+  color: #1b1e4a;
+}
+#fallback[hidden] {
+  display: none;
+}
