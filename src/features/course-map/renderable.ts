@@ -5,6 +5,7 @@ import type {
   RenderableBubble,
   Skin,
   SkinRule,
+  View3d,
 } from './data/types.ts'
 
 // One normalized shape for everything that draws a map (canvas, FX engine,
@@ -20,6 +21,8 @@ export interface RenderableMap {
   settings: MapSettings
   defaultSkinId: string | null
   skinRules: SkinRule[]
+  // null: no 3D view, so no 2D/3D selector.
+  view3d: View3d | null
   // Skins to resolve against: the live /skins list for a draft, the frozen
   // copies stored in the snapshot for a publication.
   skins: Skin[]
@@ -37,6 +40,7 @@ export const draftToRenderable = (map: CourseMapRead, skins: Skin[]): Renderable
   settings: map.settings,
   defaultSkinId: map.defaultSkinId,
   skinRules: map.skinRules,
+  view3d: map.view3d,
   skins,
   bubbles: map.bubbles,
   source: 'draft',
@@ -52,6 +56,7 @@ export const publishedToRenderable = (map: PublishedMapRead): RenderableMap => (
   settings: map.settings,
   defaultSkinId: map.defaultSkinId,
   skinRules: map.skinRules,
+  view3d: map.view3d,
   skins: Object.entries(map.skins).map(([id, skin]) => ({
     id,
     name: skin.name,

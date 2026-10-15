@@ -11,6 +11,12 @@ import { PublicationBar } from './features/course-map/components/publication/Pub
 import { LazyBackgroundPicker } from './features/course-map/components/background/LazyBackgroundPicker.tsx'
 import { useChangeBackground } from './features/course-map/components/background/useChangeBackground.ts'
 import { rememberCourseMap } from './features/course-map/data/recentMaps.ts'
+import { MapViewToggle } from './features/view3d/MapViewToggle.tsx'
+import {
+  initialMapView,
+  rememberMapView,
+  type MapViewKind,
+} from './features/view3d/mapViewPreference.ts'
 import {
   ACTIVITY_OPEN_MODE,
   createActivityOpener,
@@ -61,13 +67,20 @@ type ViewMode = 'edit' | 'preview' | 'published'
 
 // A link with ?view=published opens the student experience directly. There is
 // no authentication yet, so this stands in for the student entry point.
-const initialViewMode = (): ViewMode =>
-  new URLSearchParams(window.location.search).get('view') === 'published' ? 'published' : 'edit'
+// ?view=3d is the same entry, opened on the 3D view.
+const initialViewMode = (): ViewMode => {
+  const view = new URLSearchParams(window.location.search).get('view')
+  return view === 'published' || view === '3d' ? 'published' : 'edit'
+}
 
 // Konva (and its React bindings) is only needed once a map is actually open,
 // so it's kept out of the "Mis mapas" home bundle.
 const MapCanvas = lazy(() =>
   import('./features/course-map/components/MapCanvas.tsx').then((m) => ({ default: m.MapCanvas }))
+)
+// The 3D view (an iframe plus its bridge) is only mounted while 3D is active.
+const Map3DPanel = lazy(() =>
+  import('./features/view3d/Map3DPanel.tsx').then((m) => ({ default: m.Map3DPanel }))
 )
 // Also Konva-heavy (skin previews render through the same BubbleVisual/Stage
 // machinery as the canvas), so it's lazy for the same reason.
@@ -97,6 +110,7 @@ function AppShell() {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
   const [isActivitiesOverviewOpen, setIsActivitiesOverviewOpen] = useState(false)
   const [focusBubbleId, setFocusBubbleId] = useState<string | null>(null)
+  const [mapView, setMapView] = useState<MapViewKind>(initialMapView)
   const [cachedNoticeDismissed, setCachedNoticeDismissed] = useState(false)
   const [isAppearanceOpen, setIsAppearanceOpen] = useState(false)
   const [isBackgroundPickerOpen, setIsBackgroundPickerOpen] = useState(false)
@@ -107,6 +121,11 @@ function AppShell() {
 
   const isEditor = viewMode === 'edit'
   const showPublished = viewMode === 'published'
+
+  const changeMapView = (next: MapViewKind) => {
+    setMapView(next)
+    rememberMapView(next)
+  }
 
   const courseMapId = route.name === 'map' ? route.mapId : null
   // Draft and published data use separate queries; only the one for the
@@ -247,6 +266,10 @@ function AppShell() {
     setIsActivitiesOverviewOpen(false)
     setFocusBubbleId(bubble.id)
   }
+
+  // 3D is for students and the editor's preview; editing stays on the 2D map.
+  const view3d = renderable?.view3d ?? null
+  const show3d = !isEditor && view3d !== null && mapView === '3d'
 
   const renderMapArea = () => {
     if (mapQuery.isPending) {
@@ -507,8 +530,13 @@ function AppShell() {
               </button>
             </div>
           )}
+          {!isEditor && renderable && view3d && (
+            <div className="mb-3 flex justify-end">
+              <MapViewToggle value={mapView} onChange={changeMapView} />
+            </div>
+          )}
           <div className="relative min-h-0 flex-1">
-            {!isEditor && renderable && (
+            {!isEditor && renderable && !show3d && (
               <StudentHud
                 bubbles={bubbles}
                 activities={activities}
@@ -518,7 +546,31 @@ function AppShell() {
                 }
               />
             )}
-            {renderMapArea()}
+            {show3d && renderable && view3d ? (
+              <Suspense
+                fallback={
+                  <p className="flex items-center gap-2 text-sm text-ink-soft">
+                    <Loader2 size={16} className="animate-spin" />
+                    {es.view3d.loading}
+                  </p>
+                }
+              >
+                <Map3DPanel
+                  map={renderable}
+                  view3d={view3d}
+                  resolved={resolvedQuery.data}
+                  isLoading={resolvedQuery.isPending}
+                  view="student"
+                  onOpenBubble={handleBubbleClick}
+                  getUnavailableReason={getUnavailableReason}
+                  focusBubbleId={focusBubbleId}
+                  onFocusHandled={() => setFocusBubbleId(null)}
+                  onBackTo2d={() => changeMapView('2d')}
+                />
+              </Suspense>
+            ) : (
+              renderMapArea()
+            )}
           </div>
         </main>
       </div>
