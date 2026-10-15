@@ -38,11 +38,102 @@ no router dependency:
 - `?map=<course-map-uuid>` — opens that level directly.
 - `?view=published` (optional, combinable) — opens straight into the student
   experience (published data) instead of the editor.
+- `?view=3d` — the student experience (published data) opened on the 3D view;
+  it only has an effect on a level whose map has a 3D view (see below).
 - `?course=<moodleCourseId>` — the course's levels: a single level opens
   directly, several show the level carousel (`&entry=1` forces the carousel
   even with a single level), and none shows an empty state (an editor gets a
   "crear el primer nivel" CTA; a student sees there's nothing yet). This is
   also the future entry point when launched from Moodle.
+
+## 3D view
+
+A level can have an optional **3D view**: a hand-authored three.js world,
+"La Región de los Encuentros", where each activity is a pin on a fixed zone.
+Students switch between **2D | 3D** (the control only appears when the map has
+a `view3d`; the last choice is remembered in `localStorage`, default 2D). In 3D
+the activity list stays on screen with every state and a way to fly the camera
+to a pin or open it, so the canvas is never the only way in. Editors configure
+it in **Apariencia → 3D** (enable, scene, which activity goes in which zone,
+optional text overrides, preview of the draft) and it is published and restored
+with the rest of the level (`view3dChanged` in the publish dialog).
+
+**Phase 1 (this): an isolated page in an iframe.** The world is a second Vite
+HTML entry served at `/3d/` (`3d/`, static images in `public/3d/`); the app
+embeds it with `Map3DView` and talks to it through a small `postMessage`
+protocol: see [`docs/3d/BRIDGE.md`](docs/3d/BRIDGE.md). What was found in the
+delivered folder and what was changed is in
+[`docs/3d/AUDIT.md`](docs/3d/AUDIT.md).
+
+- **Develop the world alone:** `pnpm dev`, open `http://localhost:5173/3d/?demo=1`
+  (add `&lang=en` for English). It shows the 9 built-in zones with demo states and
+  needs no host or backend.
+- **See it in the app without a backend:** `VITE_USE_MOCK_API=true pnpm dev`. The
+  mock's "Fundamentos de programación — Nivel 2" has a configured 3D view; the
+  other maps have none.
+- **Scenes and the "9 fixed zones" limitation.** A scene is hand-authored with an
+  exact number of zones (`region-encuentros`: 9, ids 0-8). It cannot adapt to an
+  arbitrary course: with more activities than zones the extra ones do not appear in
+  3D (the editor says so), with fewer the unused zones stay empty. The zone texts
+  (ES/EN) live in `3d/scenes/region-encuentros.json`, the single source of truth
+  read by the 3D page and by the editor; the frontend registry is
+  `src/scenes3d/registry.ts` and the backend lists the scenes it accepts at
+  `GET /view3d/scenes`. The editor only offers scenes present in both. The built-in
+  English texts were written for this integration (the delivered world had none)
+  and should be reviewed by someone who owns the content.
+- **Contract:** API contract v4 (`view3d` on the draft and published reads,
+  `PUT /course-maps/{id}/view3d`, `GET /view3d/scenes`); `src/features/course-map/data/types.ts`.
+- **Textures and sprites** (`public/3d/`) are AI-generated or AI-derived with no
+  recorded license: see section 6 of the audit before shipping.
+
+### Serving it: CSP and caching
+
+- The app frames only itself, so a Content-Security-Policy needs
+  `frame-src 'self'` (and `default-src 'self'`; there are no third-party
+  origins: no CDN, no web fonts, no analytics). The 3D page needs
+  `script-src 'self'`, `style-src 'self' 'unsafe-inline'` (a few inline `style`
+  attributes), `img-src 'self' data: blob:` (textures, postcards, procedural
+  canvases), `font-src 'self'`, and `connect-src 'self'`. Send
+  `frame-ancestors 'self'` with `/3d/`.
+- `X-Frame-Options: DENY` (already set by `nginx/nginx.conf`) would stop the app
+  from framing its own page, so `/3d/` is served with `SAMEORIGIN` while the rest
+  of the site stays `DENY`.
+- Recommended cache headers (already in `nginx/nginx.conf`, under `location ^~ /3d/`):
+
+  ```nginx
+  location ^~ /3d/ {
+      add_header X-Frame-Options "SAMEORIGIN" always;
+      add_header X-Content-Type-Options "nosniff" always;
+      add_header Referrer-Policy "no-referrer" always;
+      add_header Cache-Control "no-cache";          # /3d/ itself: always revalidate
+      try_files $uri $uri/ =404;
+
+      location ~* \.(?:webp|woff2)$ {               # stable names: 30 days, not immutable
+          add_header X-Frame-Options "SAMEORIGIN" always;
+          add_header X-Content-Type-Options "nosniff" always;
+          add_header Referrer-Policy "no-referrer" always;
+          add_header Cache-Control "public, max-age=2592000";
+          access_log off;
+      }
+  }
+  # The page's JS and CSS are hashed files under /assets/, served by the existing
+  # `location ^~ /assets/` (immutable, one year).
+  ```
+
+  (`add_header` inside a location replaces the server-level ones, hence the
+  repeated security headers.)
+
+### Phase 2 notes (not started)
+
+A native port (a TypeScript module drawing the world inside the app instead of an
+iframe) would replace: the iframe and `useView3dBridge`/`protocol.ts` (the
+message boundary), `3d/main.ts`, and the page's own HUD/panel/list/language UI
+(re-done with the app's `Dialog` and tokens). What stays: the `Map3DView` props
+(`scene`, `locale`, `points`, `onPinClick`, `onOpenActivity`, `focusPointId`,
+`theme`), `buildPoints3d` and its tests, `Map3DPanel` and the accessible list,
+the scene registry, the zone JSON, the editor tab, and the API contract. The
+world code (`3d/world.js`, ~2,100 lines of untyped procedural three.js with a
+`<three-d-stage>` shell) is the bulk of that work.
 
 ## Draft vs published
 
@@ -263,6 +354,13 @@ component) is ~417 KB (~128 KB gzipped) and never touches Konva. Run
 - `src/i18n/es.ts`: the single Spanish string dictionary; components import
   from it instead of hard-coding text.
 - `src/hooks/useRoute.ts`: the pushState/popstate routing hook.
+- `src/features/view3d/`: the host side of the 3D view (`Map3DView` iframe seam,
+  `useView3dBridge`, shared `protocol.ts`, `buildPoints3d`, the 2D|3D control,
+  the activity list) and `editor/` (the Apariencia → 3D tab and its pure form
+  model). `src/scenes3d/registry.ts` lists the scenes the frontend can draw.
+- `3d/`: the 3D page (a separate Vite entry served at `/3d/`): `main.ts` (bridge,
+  demo mode, WebGL fallback), `world.js` (the world), `three-d-stage.js` (the
+  WebGL shell), `scenes/*.json`. Static images and fonts: `public/3d/`.
 - `src/assets/backgrounds/`: the bundled background registry for the
   map-create dialog (alongside uploading your own background in the
   appearance studio).
