@@ -193,6 +193,27 @@ a:hover {
 .lbl.dim {
   opacity: 0.35;
 }
+/* pin states: the host decides, the page only styles them */
+.lbl.st-locked,
+.lbl.st-teaser {
+  filter: grayscale(0.6);
+}
+.lbl.st-missing,
+.list button.st-missing {
+  opacity: 0.5;
+  cursor: default;
+}
+.lbl small {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.list button span {
+  max-width: 18ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .list {
   position: fixed;
   left: 50%;
@@ -361,13 +382,6 @@ a:hover {
   font-family: 'IBM Plex Mono', monospace;
   text-align: right;
 }
-.panel .obj {
-  font-family: 'IBM Plex Mono', monospace;
-  font-size: 11px;
-  color: #7b8694;
-  padding-top: 6px;
-  border-top: 1px dashed #cdd3da;
-}
 .back {
   position: fixed;
   left: 50%;
@@ -416,7 +430,9 @@ button:focus-visible,
   border-radius: 8px;
   background: #2d3172;
   color: #fbf9f6;
-  text-decoration: none;
+  border: 0;
+  font-family: inherit;
+  cursor: pointer;
   font-size: 14px;
   font-weight: 600;
 }

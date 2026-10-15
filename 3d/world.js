@@ -1,4 +1,5 @@
 import './three-d-stage.js';
+import SCENE from './scenes/region-encuentros.json';
 const stage = document.querySelector('three-d-stage');
 const { THREE } = await stage.ready;
 const V2 = THREE.Vector2, V3 = THREE.Vector3;
@@ -1361,32 +1362,57 @@ function updateSun(t = performance.now() / 1000) { const u = 0.5 + 0.5 * Math.si
   const warm = 1 - Math.sin(u * Math.PI); SUN.key.color.setRGB(1, 0.95 - warm * 0.12, 0.88 - warm * 0.25); SUN.key.intensity = 1.1 + 0.3 * Math.sin(u * Math.PI); }
 camera.far = 1600; camera.near = 0.5; camera.updateProjectionMatrix();
 
-const INFO = {
-  0: { tag: 'EL CAMINO DEL ANFITRIÓN', sub: 'Sobre el programa', eb: 'PCTUR FASE I · COMPONENTE 4', t: 'El camino del anfitrión', pl: 'Piedra de bienvenida', d: 'Una serie de inglés para el turismo, contada en cuatro temporadas que comparten una misma región ficticia. Autogestionable en Moodle, sin tutor.', f: [['Temporadas', '4 · de A1 a B2'], ['Horas totales', '672 h'], ['Módulos', '16 · 4 por temporada'], ['Crédito', '48 h = 1 crédito'], ['Evaluación final', '80/100 para aprobar'], ['Certificado', 'Automático'], ['Anfitriones', 'Don Carlos · Mateo · Elena']] },
-  1: { tag: 'RIBERA · POSADA', sub: 'Llegada y hospitalidad', eb: 'TEMPORADA 1 · A1', t: 'El arribo y la bienvenida', pl: 'Ribera · Muelle · Posada', d: 'Punto de llegada por agua y umbral de hospitalidad. Reciba a sus primeros visitantes en inglés, del muelle a la posada.', f: [['Nivel', 'A1'], ['Horas', '105 h'], ['Evaluación', 'Cuestionario final · 80/100 · 3 intentos'], ['Anfitriones', 'Don Carlos · Elena'], ['Objeto Moodle', 'Curso']] },
-  2: { tag: 'SENDERO · MONTAÑA', sub: 'Recorrido y guianza', eb: 'TEMPORADA 2 · A2', t: 'La operación logística', pl: 'Sendero · Montaña · Bosque', d: 'El territorio para recorrer e interpretar. Planee la ruta, guíe al grupo y garantice su seguridad en campo.', f: [['Nivel', 'A2'], ['Horas', '128 h'], ['Evaluación', 'Cuestionario final · 80/100 · 3 intentos'], ['Anfitrión', 'Mateo'], ['Objeto Moodle', 'Curso']] },
-  3: { tag: 'MEMORIA', sub: 'Patrimonio y encuentro', eb: 'TEMPORADA 3 · B1', t: 'El corazón de la ruta', pl: 'Memoria · Patrimonio · Encuentro', d: 'Zona de relato y cuidado. Interprete el patrimonio de la región y aporte a una cultura de paz.', f: [['Nivel', 'B1'], ['Horas', '205 h'], ['Evaluación', 'Cuestionario final · 80/100 · 3 intentos'], ['Anfitriona', 'Elena'], ['Objeto Moodle', 'Curso']] },
-  4: { tag: 'COSTA', sub: 'Borde de agua y recepción', eb: 'TEMPORADA 4 · B2', t: 'La voz del destino', pl: 'Costa · Borde de agua', d: 'El horizonte abierto donde se recibe al visitante. Hable por el destino con seguridad y matices.', f: [['Nivel', 'B2'], ['Horas', '234 h'], ['Evaluación', 'Cuestionario final · 80/100 · 3 intentos'], ['Anfitriones', 'Don Carlos · Mateo · Elena'], ['Objeto Moodle', 'Curso']] },
-  5: { tag: 'PLAZA', sub: 'Encuentro y mercado', eb: 'CAMPAMENTO BASE', t: 'La Vitrina del Anfitrión', pl: 'Plaza · Mercado · Comunidad', d: 'El corazón del encuentro cotidiano. Publique las evidencias de cada temporada y vea el trabajo de sus compañeros.', f: [['Objeto Moodle', 'Base de datos · una por programa'], ['Acceso', 'Abierto · sin restricciones'], ['Sin conexión', 'Sí']] },
-  6: { tag: 'SERVICIO', sub: 'Información y atención', eb: 'PRÁCTICA LIBRE', t: 'El Laboratorio del Anfitrión', pl: 'Punto de servicio · Información', d: 'Práctica libre de habla, escucha y pronunciación, sin la presión de la evaluación.', f: [['Objeto Moodle', 'Sección del hub'], ['Acceso', 'Abierto · sin restricciones'], ['Sin conexión', 'Sí']] },
-  7: { tag: 'PUNTO DE DECISIÓN', sub: 'Brújula y rutas', eb: 'DÓNDE EMPEZAR', t: 'La brújula de ruta', pl: 'Punto de decisión · Brújula', d: 'Un cuestionario corto de ubicación. Recomienda por cuál temporada empezar; nunca bloquea ninguna.', f: [['Objeto Moodle', 'Cuestionario'], ['Peso en la nota', '0'], ['Bloquea acceso', 'No']] },
-  8: { tag: 'RUTAS DE LLEGADA', sub: 'Caminos y orientación', eb: 'GUÍA', t: 'Cómo se recorre la región', pl: 'Rutas de llegada', d: 'Cómo funciona la región, cómo se conectan las temporadas y cómo moverse entre ellas.', f: [['Objeto Moodle', 'Página'], ['Acceso', 'Abierto · sin restricciones']] },
+// ---------- points: what the host (or ?demo=1) gives us, laid over the scene's fixed zones ----------
+const ZONES = Object.fromEntries(SCENE.zones.map(z => [z.id, z]));
+const order = [0, 8, 7, 6, 5, 1, 2, 3, 4]; let LANG = 'es';
+const UI = {
+  es: { places: 'LUGARES', back: 'Ver toda la región', open: 'Abrir', state: 'Estado', lang: 'Cambiar idioma' },
+  en: { places: 'PLACES', back: 'See the whole region', open: 'Open', state: 'Status', lang: 'Change language' },
 };
-const objName = n => (root.children.find(c => c.name.startsWith(`zone_${String(n).padStart(2, '0')}_`)) || { name: `hotspot_${String(n).padStart(2, '0')}` }).name;
-let order = [0, 8, 7, 6, 5, 1, 2, 3, 4]; let LANG = 'es';
-const SHORT = { 0: 'Camino del anfitrión', 8: 'Rutas de llegada', 7: 'Punto de decisión', 6: 'Servicio', 5: 'Plaza', 1: 'Ribera · Posada', 2: 'Sendero · Montaña', 3: 'Memoria', 4: 'Costa' };
-const labelsEl = document.getElementById('labels'), listEl = document.getElementById('list'), panel = document.getElementById('panel'), backBtn = document.getElementById('back');
+const STATE_LABEL = {
+  es: { locked: 'Bloqueada', available: 'Disponible', next: 'Siguiente', complete: 'Completada', teaser: 'Próximamente', missing: 'No disponible' },
+  en: { locked: 'Locked', available: 'Available', next: 'Up next', complete: 'Completed', teaser: 'Coming soon', missing: 'Unavailable' },
+};
+const PIN_COLOR = { locked: '#8A94A6', teaser: '#8A94A6', missing: '#B9BFCA', complete: '#2F8F5B' }; // available/next keep the zone color
+const OPENABLE = new Set(['available', 'next', 'complete']);
+const L10 = v => (v && (v[LANG] || v.es)) || '';
+const points = new Map(), pointZone = new Map(); // zoneId -> Point3D, pointId -> zoneId
+const callbacks = { onPinClick: null, onOpenActivity: null };
+const stateOf = n => (points.get(n) || {}).state;
+const pinColor = n => PIN_COLOR[stateOf(n)] || zoneColor[n];
+const titleOf = n => { const p = points.get(n); return (p && p.title) || L10(ZONES[n].title); };
+const descOf = n => { const p = points.get(n); return (p && p.description) || L10(ZONES[n].description); };
+const $ = id => document.getElementById(id);
+const labelsEl = $('labels'), listEl = $('list'), panel = $('panel'), backBtn = $('back'), itemsEl = $('items');
 let active = null, zoomed = false;
 const labels = {}, items = {};
-order.forEach(n => {
-  const c = zoneColor[n], info = INFO[n];
-  const l = document.createElement('div'); l.className = 'lbl'; l.tabIndex = 0; l.setAttribute('role', 'button'); l.setAttribute('aria-label', `${info.tag}. ${info.t}`);
-  l.innerHTML = `<i style="background:${c}"></i><span><b>${info.tag}</b><small>${info.sub}</small></span>`;
-  l.onclick = () => openZone(n); l.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openZone(n); } };
-  labelsEl.appendChild(l); labels[n] = l;
-  const b = document.createElement('button'); b.innerHTML = `<i style="background:${c}"></i><span>${SHORT[n]}</span>`; b.title = info.t; b.onclick = () => openZone(n);
-  document.getElementById('items').appendChild(b); items[n] = b;
-});
+const pinMats = new Map(), ringMats = new Map();
+function recolor(hs, c) { if (hs.color === c) return; hs.color = c; const id = String(hs.n).padStart(2, '0');
+  if (!pinMats.has(c)) { pinMats.set(c, paintedPin(c)); ringMats.set(c, brushRing(c)); }
+  ['trigger', 'tip'].forEach(k => { const o = hs.g.getObjectByName('hotspot_' + id + '_' + k); if (o) o.material = pinMats.get(c); }); hs.ring.material = ringMats.get(c); }
+function applyPinVisibility() {
+  const on = window.__pinsOn !== false; hitList.length = 0;
+  hotspots.forEach(hs => { const has = points.has(hs.n), st = stateOf(hs.n);
+    hs.pin.visible = on && has; hs.ring.visible = on && has && (st === 'available' || st === 'next' || st === 'complete');
+    if (has) { recolor(hs, pinColor(hs.n)); if (st !== 'missing') hitList.push(hs.hit); } });
+}
+function rebuildUI() {
+  const u = UI[LANG];
+  labelsEl.replaceChildren(); itemsEl.replaceChildren();
+  Object.keys(labels).forEach(k => delete labels[k]); Object.keys(items).forEach(k => delete items[k]);
+  order.forEach(n => { if (!points.has(n)) return;
+    const z = ZONES[n], st = stateOf(n), c = pinColor(n), title = titleOf(n);
+    const l = document.createElement('div'); l.className = 'lbl st-' + st; l.tabIndex = 0; l.setAttribute('role', 'button'); l.setAttribute('aria-label', `${L10(z.tag)}. ${title}. ${STATE_LABEL[LANG][st]}`);
+    const dot = document.createElement('i'); dot.style.background = c; const sp = document.createElement('span'), b = document.createElement('b'), sm = document.createElement('small'); b.textContent = L10(z.tag); sm.textContent = title; sp.append(b, sm); l.append(dot, sp);
+    l.onclick = () => openZone(n); l.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openZone(n); } };
+    labelsEl.appendChild(l); labels[n] = l;
+    const bt = document.createElement('button'); bt.type = 'button'; bt.className = 'st-' + st; const d2 = document.createElement('i'); d2.style.background = c; const s2 = document.createElement('span'); s2.textContent = title; bt.append(d2, s2); bt.title = `${title} · ${STATE_LABEL[LANG][st]}`; bt.onclick = () => openZone(n);
+    if (n === active) { bt.classList.add('on'); l.classList.add('on'); } itemsEl.appendChild(bt); items[n] = bt; });
+  document.querySelector('.list .t').textContent = u.places; const bb = backBtn.lastChild; if (bb && bb.nodeType === 3) bb.textContent = u.back; document.querySelector('.hud h1').textContent = SCENE.title[LANG];
+  $('zlang').textContent = LANG.toUpperCase(); $('zlang').setAttribute('aria-label', u.lang); document.documentElement.lang = LANG;
+  if (active !== null) { if (points.has(active)) renderPanel(active); else closePanel(); }
+  applyPinVisibility(); if (typeof placeBack === 'function') placeBack();
+}
 
 let fly = null;
 function flyTo(target, dist, dur = 1200, opts = {}) {
@@ -1394,25 +1420,26 @@ function flyTo(target, dist, dur = 1200, opts = {}) {
   fly = { t0: performance.now(), dur, fromT: controls.target.clone(), toT: target.clone(), fromD: curDist, toD: dist, fromV: viewDir(), toV: opts.home ? VIEW.clone() : viewDir() };
 }
 function setZoomed(z) { if (zoomed === z) return; zoomed = z; backBtn.classList.toggle('show', z); }
-function renderPanel(n) { const info = INFO[n]; if (!info) return;
-  const im = document.getElementById('p-img'); if (info.img) { im.src = info.img; im.style.display = ''; } else { im.removeAttribute('src'); im.style.display = 'none'; }
-  const ln = document.getElementById('p-link'); if (info.link && info.link.url) { ln.href = info.link.url; ln.textContent = info.link.label || (LANG === 'en' ? 'Open activity' : 'Ir a la actividad'); ln.style.display = ''; } else ln.style.display = 'none';
-  document.getElementById('p-bar').style.background = zoneColor[n];
-  document.getElementById('p-eb').textContent = info.eb;
-  document.getElementById('p-t').textContent = info.t;
-  document.getElementById('p-pl').textContent = info.pl;
-  document.getElementById('p-d').textContent = info.d;
-  document.getElementById('p-f').innerHTML = ''; info.f.forEach(([k, v]) => { const r = document.createElement('div'); r.className = 'f'; const a = document.createElement('span'), b = document.createElement('span'); a.textContent = k; b.textContent = v; r.append(a, b); document.getElementById('p-f').appendChild(r); });
-  document.getElementById('p-o').textContent = `Unity: ${objName(n)} · activador hotspot_${String(n).padStart(2, '0')}_trigger`;
+function renderPanel(n) { const p = points.get(n), z = ZONES[n]; if (!p || !z) return;
+  const u = UI[LANG], im = $('p-img'); if (z.image) { im.src = z.image; im.style.display = ''; } else { im.removeAttribute('src'); im.style.display = 'none'; }
+  const cta = $('p-link'); cta.textContent = u.open; cta.style.display = OPENABLE.has(p.state) ? '' : 'none';
+  $('p-bar').style.background = pinColor(n);
+  $('p-eb').textContent = L10(z.tag);
+  $('p-t').textContent = titleOf(n);
+  $('p-pl').textContent = L10(z.place);
+  $('p-d').textContent = descOf(n);
+  const f = $('p-f'); f.replaceChildren(); const r = document.createElement('div'); r.className = 'f'; const a = document.createElement('span'), b = document.createElement('span'); a.textContent = u.state; b.textContent = STATE_LABEL[LANG][p.state]; r.append(a, b); f.appendChild(r);
 }
-function openZone(n) {
-  const hs = hotspots.find(h => h.n === n); if (!hs || !INFO[n]) return; active = n; renderPanel(n);
+function openZone(n, silent = false) {
+  const hs = hotspots.find(h => h.n === n); if (!hs || !points.has(n) || stateOf(n) === 'missing') return; active = n; renderPanel(n);
   panel.classList.add('open');
   Object.entries(labels).forEach(([k, el]) => el.classList.toggle('on', +k === n));
   Object.entries(items).forEach(([k, el]) => el.classList.toggle('on', +k === n));
   const vd = viewDir(); const right = new V3(vd.z, 0, -vd.x).normalize(); flyTo(hs.base.clone().add(new V3(0, 1, 0)).add(right.multiplyScalar(innerWidth > 900 ? 9 : 0)), 44); setZoomed(true);
+  if (!silent && callbacks.onPinClick) callbacks.onPinClick(points.get(n).id);
 }
 function closePanel() { active = null; panel.classList.remove('open'); Object.values(labels).forEach(el => el.classList.remove('on')); Object.values(items).forEach(el => el.classList.remove('on')); }
+$('p-link').onclick = () => { if (active !== null && OPENABLE.has(stateOf(active)) && callbacks.onOpenActivity) callbacks.onOpenActivity(points.get(active).id); };
 document.getElementById('p-x').onclick = closePanel;
 
 backBtn.onclick = () => { closePanel(); flyTo(HOME.target, HOME.dist, 1200, { home: true }); setZoomed(false); };
@@ -1438,13 +1465,13 @@ function introStep(now) { const I = window.__intro; if (!I) return;
 { const ib = document.getElementById('infoBtn'), ip = document.getElementById('infoPop'); ib.onclick = e => { e.stopPropagation(); const o = ip.classList.toggle('open'); ib.setAttribute('aria-expanded', o); ib.classList.add('seen'); }; addEventListener('keydown', e => { if (e.key === 'Escape') { ip.classList.remove('open'); ib.setAttribute('aria-expanded', false); } }); canvas.addEventListener('pointerdown', () => { ip.classList.remove('open'); ib.setAttribute('aria-expanded', false); }); }
 { const zoomBy = f => { fly = null; const off = camera.position.clone().sub(controls.target); const d = THREE.MathUtils.clamp(off.length() * f, controls.minDistance, controls.maxDistance); camera.position.copy(controls.target).addScaledVector(off.normalize(), d); controls.update(); };
   { const rb = document.getElementById('zrot'); let spin = false; rb.onclick = () => { spin = !spin; fly = null; controls.autoRotate = spin; controls.autoRotateSpeed = 0.6; rb.setAttribute('aria-pressed', spin); rb.style.background = spin ? '#2D3172' : 'rgba(255,255,255,.96)'; rb.style.color = spin ? '#FFFFFF' : '#1B1E4A'; }; controls.addEventListener('start', () => { if (spin) rb.onclick(); }); }
-  { const pb = document.getElementById('zpins'), sl = document.getElementById('zpinsSlash'); pb.onclick = () => { window.__pinsOn = !window.__pinsOn; const on = window.__pinsOn; hotspots.forEach(hs => { hs.pin.visible = on; hs.ring.visible = on; }); labelsEl.style.display = on ? '' : 'none'; [document.querySelector('.hud'), listEl, backBtn, document.getElementById('infoPop')].forEach(el => { if (el) el.style.visibility = on ? '' : 'hidden'; }); sl.style.display = on ? 'none' : ''; pb.setAttribute('aria-pressed', !on); pb.setAttribute('aria-label', on ? 'Ocultar puntos activos y textos' : 'Mostrar puntos activos y textos'); pb.title = pb.getAttribute('aria-label'); pb.style.background = on ? 'rgba(255,255,255,.96)' : '#2D3172'; pb.style.color = on ? '#1B1E4A' : '#FFFFFF'; if (!on) hover = null; }; window.__pinsOn = true; setTimeout(() => pb.onclick(), 0); }
+  { const pb = document.getElementById('zpins'), sl = document.getElementById('zpinsSlash'); pb.onclick = () => { window.__pinsOn = !window.__pinsOn; const on = window.__pinsOn; applyPinVisibility(); labelsEl.style.display = on ? '' : 'none'; [document.querySelector('.hud'), listEl, backBtn, document.getElementById('infoPop')].forEach(el => { if (el) el.style.visibility = on ? '' : 'hidden'; }); sl.style.display = on ? 'none' : ''; pb.setAttribute('aria-pressed', !on); pb.setAttribute('aria-label', on ? 'Ocultar puntos activos y textos' : 'Mostrar puntos activos y textos'); pb.title = pb.getAttribute('aria-label'); pb.style.background = on ? 'rgba(255,255,255,.96)' : '#2D3172'; pb.style.color = on ? '#1B1E4A' : '#FFFFFF'; if (!on) hover = null; }; window.__pinsOn = true; }
   document.getElementById('zin').onclick = () => zoomBy(0.75); document.getElementById('zout').onclick = () => zoomBy(1.33);
   ['zin', 'zout', 'zrot', 'zpins'].forEach(id => { const b = document.getElementById(id); b.onmouseenter = () => { if (b.getAttribute('aria-pressed') !== 'true') b.style.background = '#ECEDF8'; }; b.onmouseleave = () => { if (b.getAttribute('aria-pressed') !== 'true') b.style.background = 'rgba(255,255,255,.96)'; }; }); }
 const placeBack = () => { backBtn.style.bottom = (listEl.offsetHeight + 28) + 'px'; }; placeBack(); addEventListener('resize', placeBack);
 
 const ray = new THREE.Raycaster(), mouse = new V2();
-const hitList = hotspots.map(h => h.hit); window.__hitList = hitList;
+const hitList = []; hotspots.forEach(hs => { hs.pin.visible = hs.ring.visible = false; }); // pins appear once points arrive (see setPoints)
 function cast(e) { const r = canvas.getBoundingClientRect(); mouse.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1); ray.setFromCamera(mouse, camera); }
 let down = null, hover = null;
 canvas.addEventListener('pointerdown', e => { down = [e.clientX, e.clientY]; });
@@ -1458,7 +1485,7 @@ canvas.addEventListener('pointerup', e => {
   if (g) p = g.point;
   else { const q = new V3(); if (ray.ray.intersectPlane(new THREE.Plane(new V3(0, 1, 0), 0), q)) { const e = Math.sqrt((q.x / 62) ** 2 + ((q.z - 3) / 52) ** 2); if (e < 1.6) { if (e > 1) { q.x /= e; q.z = 3 + (q.z - 3) / e; } p = q; } } }
   if (!p) return;
-  let best = null, bd = Infinity; hotspots.forEach(hs => { const d = Math.hypot(hs.base.x - p.x, hs.base.z - p.z); if (d < bd) { bd = d; best = hs.n; } });
+  let best = null, bd = Infinity; hotspots.forEach(hs => { if (!points.has(hs.n) || stateOf(hs.n) === 'missing') return; const d = Math.hypot(hs.base.x - p.x, hs.base.z - p.z); if (d < bd) { bd = d; best = hs.n; } });
   if (best !== null && window.__pinsOn && bd < (zoneR[best] ?? 6) * 0.8) { openZone(best); return; }
   closePanel();
   const curDist = camera.position.distanceTo(controls.target);
@@ -1933,9 +1960,9 @@ function tick(now) {
     const bob = Math.sin(now / 700 + hs.n) * 0.25;
     hs.pin.position.y = hs.liftY - hs.base.y + bob;
     hs.pin.scale.setScalar(on ? 1.2 : 1);
-    hs.ring.scale.setScalar(1 + 0.12 * Math.sin(now / 450 + hs.n));
+    hs.ring.scale.setScalar(stateOf(hs.n) === 'next' ? 1.15 + 0.3 * Math.sin(now / 320 + hs.n) : 1 + 0.12 * Math.sin(now / 450 + hs.n));
     tmp.copy(hs.top).setY(hs.top.y + bob).project(camera);
-    const el = labels[hs.n];
+    const el = labels[hs.n]; if (!el) return;
     if (tmp.z > 1 || tmp.z < -1 || Math.abs(tmp.x) > 1.1 || Math.abs(tmp.y) > 1.1) { el.classList.add('hide'); return; }
     el.classList.remove('hide');
     el.classList.toggle('dim', active !== null && hs.n !== active);
@@ -1949,3 +1976,17 @@ function tick(now) {
   requestAnimationFrame(tick);
 }
 requestAnimationFrame(tick);
+
+// ================= Public API (used by main.ts; the page has no other data source) =================
+export function setCallbacks(cb) { callbacks.onPinClick = cb.onPinClick || null; callbacks.onOpenActivity = cb.onOpenActivity || null; }
+export function setPoints(list) {
+  points.clear(); pointZone.clear();
+  for (const p of list) { if (!ZONES[p.zoneId] || points.has(p.zoneId) || pointZone.has(p.id)) continue; points.set(p.zoneId, { ...p }); pointZone.set(p.id, p.zoneId); }
+  rebuildUI();
+}
+export function setStates(states) {
+  for (const p of points.values()) if (states[p.id]) p.state = states[p.id];
+  rebuildUI();
+}
+export function setLocale(locale) { LANG = locale === 'en' ? 'en' : 'es'; rebuildUI(); }
+export function focusPoint(pointId) { const n = pointZone.get(pointId); if (n !== undefined) openZone(n, true); }

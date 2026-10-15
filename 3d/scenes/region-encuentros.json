@@ -1,0 +1,115 @@
+{
+  "id": "region-encuentros",
+  "zoneCount": 9,
+  "title": { "es": "La Región de los Encuentros", "en": "The Region of Encounters" },
+  "zones": [
+    {
+      "id": 0,
+      "tag": { "es": "EL CAMINO DEL ANFITRIÓN", "en": "THE HOST'S PATH" },
+      "subtitle": { "es": "Sobre el programa", "en": "About the program" },
+      "title": { "es": "El camino del anfitrión", "en": "The host's path" },
+      "place": { "es": "Piedra de bienvenida", "en": "Welcome stone" },
+      "description": {
+        "es": "Una serie de inglés para el turismo, contada en cuatro temporadas que comparten una misma región ficticia. Autogestionable en Moodle, sin tutor.",
+        "en": "An English series for tourism, told in four seasons that share one fictional region. Self-paced on Moodle, no tutor needed."
+      },
+      "image": null
+    },
+    {
+      "id": 1,
+      "tag": { "es": "RIBERA · POSADA", "en": "RIVERBANK · INN" },
+      "subtitle": { "es": "Llegada y hospitalidad", "en": "Arrival and hospitality" },
+      "title": { "es": "El arribo y la bienvenida", "en": "Arrival and welcome" },
+      "place": { "es": "Ribera · Muelle · Posada", "en": "Riverbank · Dock · Inn" },
+      "description": {
+        "es": "Punto de llegada por agua y umbral de hospitalidad. Reciba a sus primeros visitantes en inglés, del muelle a la posada.",
+        "en": "The arrival point by water and the threshold of hospitality. Welcome your first visitors in English, from the dock to the inn."
+      },
+      "image": null
+    },
+    {
+      "id": 2,
+      "tag": { "es": "SENDERO · MONTAÑA", "en": "TRAIL · MOUNTAIN" },
+      "subtitle": { "es": "Recorrido y guianza", "en": "Routes and guiding" },
+      "title": { "es": "La operación logística", "en": "Logistics on the ground" },
+      "place": { "es": "Sendero · Montaña · Bosque", "en": "Trail · Mountain · Forest" },
+      "description": {
+        "es": "El territorio para recorrer e interpretar. Planee la ruta, guíe al grupo y garantice su seguridad en campo.",
+        "en": "Territory to explore and interpret. Plan the route, guide the group and keep everyone safe in the field."
+      },
+      "image": null
+    },
+    {
+      "id": 3,
+      "tag": { "es": "MEMORIA", "en": "MEMORY" },
+      "subtitle": { "es": "Patrimonio y encuentro", "en": "Heritage and encounter" },
+      "title": { "es": "El corazón de la ruta", "en": "The heart of the route" },
+      "place": { "es": "Memoria · Patrimonio · Encuentro", "en": "Memory · Heritage · Encounter" },
+      "description": {
+        "es": "Zona de relato y cuidado. Interprete el patrimonio de la región y aporte a una cultura de paz.",
+        "en": "A place for storytelling and care. Interpret the region's heritage and contribute to a culture of peace."
+      },
+      "image": null
+    },
+    {
+      "id": 4,
+      "tag": { "es": "COSTA", "en": "COAST" },
+      "subtitle": { "es": "Borde de agua y recepción", "en": "Waterfront and reception" },
+      "title": { "es": "La voz del destino", "en": "The voice of the destination" },
+      "place": { "es": "Costa · Borde de agua", "en": "Coast · Waterfront" },
+      "description": {
+        "es": "El horizonte abierto donde se recibe al visitante. Hable por el destino con seguridad y matices.",
+        "en": "The open horizon where visitors are received. Speak for the destination with confidence and nuance."
+      },
+      "image": null
+    },
+    {
+      "id": 5,
+      "tag": { "es": "PLAZA", "en": "SQUARE" },
+      "subtitle": { "es": "Encuentro y mercado", "en": "Meeting place and market" },
+      "title": { "es": "La Vitrina del Anfitrión", "en": "The Host's Showcase" },
+      "place": { "es": "Plaza · Mercado · Comunidad", "en": "Square · Market · Community" },
+      "description": {
+        "es": "El corazón del encuentro cotidiano. Publique las evidencias de cada temporada y vea el trabajo de sus compañeros.",
+        "en": "The heart of everyday encounters. Share your evidence from each season and see your classmates' work."
+      },
+      "image": null
+    },
+    {
+      "id": 6,
+      "tag": { "es": "SERVICIO", "en": "SERVICE" },
+      "subtitle": { "es": "Información y atención", "en": "Information and service" },
+      "title": { "es": "El Laboratorio del Anfitrión", "en": "The Host's Lab" },
+      "place": { "es": "Punto de servicio · Información", "en": "Service point · Information" },
+      "description": {
+        "es": "Práctica libre de habla, escucha y pronunciación, sin la presión de la evaluación.",
+        "en": "Free practice of speaking, listening and pronunciation, without the pressure of assessment."
+      },
+      "image": null
+    },
+    {
+      "id": 7,
+      "tag": { "es": "PUNTO DE DECISIÓN", "en": "DECISION POINT" },
+      "subtitle": { "es": "Brújula y rutas", "en": "Compass and routes" },
+      "title": { "es": "La brújula de ruta", "en": "The route compass" },
+      "place": { "es": "Punto de decisión · Brújula", "en": "Decision point · Compass" },
+      "description": {
+        "es": "Un cuestionario corto de ubicación. Recomienda por cuál temporada empezar; nunca bloquea ninguna.",
+        "en": "A short placement quiz. It recommends which season to start with; it never blocks any of them."
+      },
+      "image": null
+    },
+    {
+      "id": 8,
+      "tag": { "es": "RUTAS DE LLEGADA", "en": "ARRIVAL ROUTES" },
+      "subtitle": { "es": "Caminos y orientación", "en": "Roads and orientation" },
+      "title": { "es": "Cómo se recorre la región", "en": "How to travel the region" },
+      "place": { "es": "Rutas de llegada", "en": "Arrival routes" },
+      "description": {
+        "es": "Cómo funciona la región, cómo se conectan las temporadas y cómo moverse entre ellas.",
+        "en": "How the region works, how the seasons connect and how to move between them."
+      },
+      "image": null
+    }
+  ]
+}
