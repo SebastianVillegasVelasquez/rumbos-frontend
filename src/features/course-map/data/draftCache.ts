@@ -55,6 +55,7 @@ export const applyMapLevel = (queryClient: QueryClient, mapId: string, response:
           settings: response.settings,
           defaultSkinId: response.defaultSkinId,
           skinRules: response.skinRules,
+          view3d: response.view3d,
           revision: response.revision,
           updatedAt: response.updatedAt,
         }

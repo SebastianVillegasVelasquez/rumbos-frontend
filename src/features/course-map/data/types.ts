@@ -1,5 +1,6 @@
 // Mirrors the backend's camelCase JSON contract (app/schemas in rumbos-backend).
-// Contract v3: draft vs published, optimistic concurrency (revision/version +
+// Contract v4: an optional 3D view per map (scenes, zone bindings, view3d on the
+// draft and the published read). Contract v3: draft vs published, optimistic concurrency (revision/version +
 // If-Match), an asset library. Contract v2: several maps ("levels") per course, map settings/appearance,
 // procedural and image skins, and an asset store for backgrounds/bubble art.
 
@@ -94,6 +95,39 @@ export interface SkinRule {
   skinId: string
 }
 
+// ---- 3D view (contract v4) ---------------------------------------------------
+
+// A scene is a hand-authored 3D world with a fixed number of zones; the
+// backend lists the ones it accepts, the frontend registry the ones it can draw.
+export interface Scene3d {
+  id: string
+  zoneCount: number
+}
+
+export interface Scene3dListResult {
+  items: Scene3d[]
+}
+
+// Plain text per language; a missing language falls back to the scene's own
+// built-in text. Limits: TITLE3D_MAX_LENGTH / DESCRIPTION3D_MAX_LENGTH.
+export interface LocalizedText3d {
+  es?: string
+  en?: string
+}
+
+export interface View3dBinding {
+  // 0 <= zoneId < the scene's zoneCount; one bubble per zone and vice versa.
+  zoneId: number
+  bubbleId: string
+  title: LocalizedText3d | null
+  description: LocalizedText3d | null
+}
+
+export interface View3d {
+  scene: string
+  bindings: View3dBinding[]
+}
+
 export interface CourseMapRead {
   id: string
   title: string
@@ -104,6 +138,8 @@ export interface CourseMapRead {
   settings: MapSettings
   defaultSkinId: string | null
   skinRules: SkinRule[]
+  // null: the map has no 3D view (and students get no 2D/3D selector).
+  view3d: View3d | null
   bubbles: Bubble[]
   revision: number
   createdAt: string
@@ -382,6 +418,7 @@ export interface PublicationChanges {
   titleChanged: boolean
   settingsChanged: boolean
   skinsChanged: boolean
+  view3dChanged: boolean
   bubblesAdded: number
   bubblesRemoved: number
   bubblesMoved: number
@@ -477,6 +514,8 @@ export interface PublishedMapRead {
   settings: MapSettings
   defaultSkinId: string | null
   skinRules: SkinRule[]
+  // What students see in 3D; frozen at publish time like everything below.
+  view3d: View3d | null
   // Frozen copies taken at publish time.
   skins: Record<string, PublishedSkin>
   bubbles: PublishedBubble[]

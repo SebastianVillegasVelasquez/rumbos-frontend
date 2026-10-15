@@ -30,10 +30,12 @@ import type {
   ReorderCourseMapsInput,
   ReorderCourseMapsResult,
   ResolvedCourseMap,
+  Scene3dListResult,
   Skin,
   SkinCreate,
   SkinListResult,
   SkinPatch,
+  View3d,
 } from './types.ts'
 
 // The single seam between components and transport. Components use the query
@@ -56,6 +58,9 @@ export interface CourseMapApi {
     input: AppearanceUpdate,
     ifMatch: number
   ): Promise<CourseMapDetail>
+  // null disables the 3D view. Guarded like the appearance write.
+  updateView3d(courseMapId: string, input: View3d | null, ifMatch: number): Promise<CourseMapDetail>
+  listView3dScenes(): Promise<Scene3dListResult>
   getResolvedCourseMap(courseMapId: string, includeHidden: boolean): Promise<ResolvedCourseMap>
   getActivities(
     courseMapId: string,
@@ -130,6 +135,11 @@ export const realCourseMapApi: CourseMapApi = {
 
   updateAppearance: (courseMapId, input, ifMatch) =>
     apiRequest(`${base(courseMapId)}/appearance`, { method: 'PUT', body: input, ifMatch }),
+
+  updateView3d: (courseMapId, input, ifMatch) =>
+    apiRequest(`${base(courseMapId)}/view3d`, { method: 'PUT', body: input, ifMatch }),
+
+  listView3dScenes: () => apiRequest('/view3d/scenes'),
 
   getResolvedCourseMap: (courseMapId, includeHidden) =>
     apiRequest(`${base(courseMapId)}/resolved${buildQuery({ includeHidden })}`),

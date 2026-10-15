@@ -453,6 +453,7 @@ export const es = {
       title: 'Título cambiado',
       settings: 'Ajustes del mapa cambiados',
       skins: 'Estilos de burbuja cambiados',
+      view3d: 'Vista 3D cambiada',
       added: (n: number) => (n === 1 ? '1 burbuja añadida' : `${n} burbujas añadidas`),
       removed: (n: number) => (n === 1 ? '1 burbuja eliminada' : `${n} burbujas eliminadas`),
       moved: (n: number) => (n === 1 ? '1 burbuja movida' : `${n} burbujas movidas`),

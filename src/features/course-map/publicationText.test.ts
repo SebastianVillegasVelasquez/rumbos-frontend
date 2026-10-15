@@ -7,6 +7,7 @@ const none = {
   titleChanged: false,
   settingsChanged: false,
   skinsChanged: false,
+  view3dChanged: false,
   bubblesAdded: 0,
   bubblesRemoved: 0,
   bubblesMoved: 0,
@@ -23,6 +24,13 @@ describe('describeChanges', () => {
       describeChanges({ ...none, backgroundChanged: true, bubblesMoved: 3, bubblesAdded: 1 }),
       ['Fondo cambiado', '1 burbuja añadida', '3 burbujas movidas']
     )
+  })
+
+  it('lists a changed 3D view after the skins', () => {
+    assert.deepEqual(describeChanges({ ...none, skinsChanged: true, view3dChanged: true }), [
+      'Estilos de burbuja cambiados',
+      'Vista 3D cambiada',
+    ])
   })
 
   it('uses the singular for a single bubble', () => {

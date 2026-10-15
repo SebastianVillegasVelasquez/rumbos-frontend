@@ -8,6 +8,7 @@ import {
   checkDimensions,
 } from './assetLimits.ts'
 import { canonicalJson, sha256Hex } from './canonicalJson.ts'
+import { DESCRIPTION3D_MAX_LENGTH, TITLE3D_MAX_LENGTH } from './view3dLimits.ts'
 import { DEFAULT_BACKGROUND_URL } from '../../../assets/backgrounds/index.ts'
 import type { CourseMapApi } from './courseMapApi.ts'
 import type {
@@ -52,20 +53,25 @@ import type {
   ReorderCourseMapsResult,
   ResolvedBubble,
   ResolvedCourseMap,
+  Scene3d,
+  Scene3dListResult,
   Skin,
   SkinConfig,
   SkinCreate,
   SkinListResult,
   SkinPatch,
   SkinRule,
+  View3d,
+  View3dBinding,
   Warning,
 } from './types.ts'
 
 // In-memory stand-in for the backend, enabled with VITE_USE_MOCK_API=true so
-// demos run without a server. Mirrors contract v3: several maps ("levels") per
+// demos run without a server. Mirrors contract v4 (v3 plus the optional 3D view): several maps ("levels") per
 // Moodle course, settings/appearance, skins, an asset library, optimistic
 // concurrency (revision/version + If-Match with 428/412), draft vs published
-// with immutable snapshots, and the student-facing /published read API.
+// with immutable snapshots, the student-facing /published read API, and the
+// optional 3D view (scene registry, zone bindings, view3d on draft and published).
 //
 // Query-string switches for demoing states without a real backend:
 //   ?mockMoodle=down|hidden|missing|cached   outcome of /resolved
@@ -309,6 +315,10 @@ const defaultSettings = (mode: MapSettings['mode']): MapSettings => ({
   intro: 'none',
 })
 
+// The scenes this "backend" accepts. A scene is hand-authored with a fixed
+// number of zones, so the list is a registry, not something maps can extend.
+const SCENES: Scene3d[] = [{ id: 'region-encuentros', zoneCount: 9 }]
+
 // ---- Maps -------------------------------------------------------------------
 
 type SnapshotBubble = Pick<
@@ -326,6 +336,9 @@ interface Snapshot {
   skinRules: SkinRule[]
   skins: Record<string, PublishedSkin>
   bubbles: SnapshotBubble[]
+  // Omitted (not null) when the map has no 3D view, so snapshots taken before
+  // contract v4 keep hashing exactly as they did.
+  view3d?: View3d
 }
 
 interface MockPublication {
@@ -349,6 +362,7 @@ interface MockMap {
   settings: MapSettings
   defaultSkinId: string | null
   skinRules: SkinRule[]
+  view3d: View3d | null
   bubbles: Bubble[]
   revision: number
   publications: MockPublication[]
@@ -390,10 +404,22 @@ const seedMap = (
     moodleSectionId?: number | null
     position?: number
     mode?: MapSettings['mode']
+    // Bindings refer to bubbles by their index in `bubbleSpecs`.
+    view3d?: {
+      scene: string
+      bindings: ReadonlyArray<
+        Pick<View3dBinding, 'zoneId'> & {
+          bubbleIndex: number
+          title?: View3dBinding['title']
+          description?: View3dBinding['description']
+        }
+      >
+    }
   } = {}
 ): MockMap => {
   const timestamp = now()
   const id = newId()
+  const bubbles = bubbleSpecs.map((spec, index) => seedBubble(id, timestamp, index, spec))
   return {
     id,
     title,
@@ -404,11 +430,22 @@ const seedMap = (
     settings: defaultSettings(options.mode ?? 'explorative'),
     defaultSkinId: defaultSkinId(),
     skinRules: [],
+    view3d: options.view3d
+      ? {
+          scene: options.view3d.scene,
+          bindings: options.view3d.bindings.map((binding) => ({
+            zoneId: binding.zoneId,
+            bubbleId: bubbles[binding.bubbleIndex].id,
+            title: binding.title ?? null,
+            description: binding.description ?? null,
+          })),
+        }
+      : null,
     revision: 1,
     publications: [],
     createdAt: timestamp,
     updatedAt: timestamp,
-    bubbles: bubbleSpecs.map((spec, index) => seedBubble(id, timestamp, index, spec)),
+    bubbles,
   }
 }
 
@@ -436,7 +473,26 @@ const createInitialMaps = (): MockMap[] => [
       { activityId: 105, x: 0.62, y: 0.55, status: 'locked' },
       { activityId: 106, x: 0.85, y: 0.35, status: 'locked' },
     ],
-    { moodleSectionId: 2, position: 1, mode: 'guided' }
+    {
+      moodleSectionId: 2,
+      position: 1,
+      mode: 'guided',
+      // The one seeded map with a 3D view; every other map has none.
+      view3d: {
+        scene: 'region-encuentros',
+        bindings: [
+          { zoneId: 1, bubbleIndex: 0 },
+          {
+            zoneId: 2,
+            bubbleIndex: 1,
+            title: { es: 'Antes de salir', en: 'Before you set off' },
+            description: { es: 'Repasa lo esencial antes de seguir el camino.' },
+          },
+          { zoneId: 3, bubbleIndex: 2 },
+          { zoneId: 4, bubbleIndex: 3 },
+        ],
+      },
+    }
   ),
   seedMap(
     'Fundamentos de programación — Nivel 3',
@@ -549,6 +605,12 @@ const referencedSkinIds = (map: MockMap): string[] => {
   return [...ids].filter((id) => skins.some((skin) => skin.id === id)).sort()
 }
 
+// Binding order carries no meaning, so the canonical form sorts by zone.
+const canonicalView3d = (view3d: View3d): View3d => ({
+  scene: view3d.scene,
+  bindings: [...view3d.bindings].sort((a, b) => a.zoneId - b.zoneId),
+})
+
 const draftSnapshot = (map: MockMap): Snapshot => ({
   title: map.title,
   imageUrl: map.imageUrl,
@@ -572,6 +634,7 @@ const draftSnapshot = (map: MockMap): Snapshot => ({
       skinId,
       sequence,
     })),
+  ...(map.view3d ? { view3d: canonicalView3d(map.view3d) } : {}),
 })
 
 const hashSnapshot = (snapshot: Snapshot) => sha256Hex(canonicalJson(snapshot))
@@ -597,6 +660,7 @@ const diffSnapshots = (published: Snapshot, draft: Snapshot): PublicationChanges
       canonicalJson([published.settings, published.defaultSkinId, published.skinRules]) !==
       canonicalJson([draft.settings, draft.defaultSkinId, draft.skinRules]),
     skinsChanged: canonicalJson(published.skins) !== canonicalJson(draft.skins),
+    view3dChanged: canonicalJson(published.view3d ?? null) !== canonicalJson(draft.view3d ?? null),
     bubblesAdded: [...after.keys()].filter((id) => !before.has(id)).length,
     bubblesRemoved: [...before.keys()].filter((id) => !after.has(id)).length,
     bubblesMoved: moved,
@@ -714,6 +778,21 @@ const loadSnapshotIntoDraft = (map: MockMap, snapshot: Snapshot): DraftReplaceRe
     })
   }
 
+  // A scene the backend no longer knows cannot be shown: the view is dropped
+  // and reported. Bindings of bubbles that were skipped above go with them.
+  let view3d: View3d | null = snapshot.view3d ?? null
+  if (view3d && !SCENES.some((scene) => scene.id === view3d!.scene)) {
+    warnings.push({
+      code: 'scene_unknown',
+      message: `La escena 3D «${view3d.scene}» ya no existe; se desactivó la vista 3D.`,
+    })
+    view3d = null
+  }
+  if (view3d) {
+    const kept = new Set(bubbles.map((bubble) => bubble.id))
+    view3d = { ...view3d, bindings: view3d.bindings.filter((b) => kept.has(b.bubbleId)) }
+  }
+
   const updated = replaceMap({
     ...map,
     title: snapshot.title,
@@ -721,6 +800,7 @@ const loadSnapshotIntoDraft = (map: MockMap, snapshot: Snapshot): DraftReplaceRe
     settings: snapshot.settings,
     defaultSkinId: defaultSkin,
     skinRules,
+    view3d,
     bubbles,
     revision: map.revision + 1,
     updatedAt: timestamp,
@@ -754,6 +834,7 @@ const toRead = (map: MockMap): CourseMapRead => ({
   settings: map.settings,
   defaultSkinId: map.defaultSkinId,
   skinRules: map.skinRules,
+  view3d: map.view3d,
   bubbles: map.bubbles,
   revision: map.revision,
   createdAt: map.createdAt,
@@ -802,6 +883,7 @@ const toPublishedRead = (map: MockMap, publication: MockPublication): PublishedM
   settings: publication.snapshot.settings,
   defaultSkinId: publication.snapshot.defaultSkinId,
   skinRules: publication.snapshot.skinRules,
+  view3d: publication.snapshot.view3d ?? null,
   skins: publication.snapshot.skins,
   bubbles: publication.snapshot.bubbles.map((bubble) => ({
     ...bubble,
@@ -968,6 +1050,55 @@ const storeAsset = async (
 
 // ---- Implementation -------------------------------------------------------------
 
+// 422s of PUT /view3d, checked per binding in the order the contract lists them.
+const validateView3d = (map: MockMap, view3d: View3d) => {
+  const scene = SCENES.find((item) => item.id === view3d.scene)
+  if (!scene) {
+    throw businessError(422, 'scene_unknown', 'La escena 3D no existe', { scene: view3d.scene })
+  }
+  const bubbleIds = new Set(map.bubbles.map((bubble) => bubble.id))
+  const zones = new Set<number>()
+  const bubbles = new Set<string>()
+  for (const binding of view3d.bindings) {
+    if (
+      !Number.isInteger(binding.zoneId) ||
+      binding.zoneId < 0 ||
+      binding.zoneId >= scene.zoneCount
+    ) {
+      throw businessError(422, 'zone_out_of_range', 'La zona está fuera de la escena', {
+        zoneId: binding.zoneId,
+      })
+    }
+    if (zones.has(binding.zoneId)) {
+      throw businessError(422, 'duplicate_zone', 'Hay dos actividades en la misma zona', {
+        zoneId: binding.zoneId,
+      })
+    }
+    if (bubbles.has(binding.bubbleId)) {
+      throw businessError(422, 'duplicate_bubble', 'Una actividad está en dos zonas', {
+        bubbleId: binding.bubbleId,
+      })
+    }
+    if (!bubbleIds.has(binding.bubbleId)) {
+      throw businessError(422, 'bubble_not_in_map', 'La actividad no pertenece a este nivel', {
+        bubbleId: binding.bubbleId,
+      })
+    }
+    zones.add(binding.zoneId)
+    bubbles.add(binding.bubbleId)
+    for (const [text, max] of [
+      [binding.title, TITLE3D_MAX_LENGTH],
+      [binding.description, DESCRIPTION3D_MAX_LENGTH],
+    ] as const) {
+      for (const value of Object.values(text ?? {})) {
+        if (typeof value === 'string' && value.length > max) {
+          throw businessError(422, 'validation_error', `El texto admite hasta ${max} caracteres`)
+        }
+      }
+    }
+  }
+}
+
 const impl: CourseMapApi = {
   async listCourseMaps(params: CourseMapListParams): Promise<CourseMapListResult> {
     const limit = Math.min(params.limit ?? DEFAULT_LIMIT, MAX_LIMIT)
@@ -1106,6 +1237,23 @@ const impl: CourseMapApi = {
     )
   },
 
+  async updateView3d(
+    courseMapId: string,
+    input: View3d | null,
+    ifMatch: number
+  ): Promise<CourseMapRead> {
+    const map = requireMap(courseMapId)
+    checkIfMatch(ifMatch, map.revision, 'currentRevision')
+    if (input) validateView3d(map, input)
+    return toRead(
+      replaceMap({ ...map, view3d: input, revision: map.revision + 1, updatedAt: now() })
+    )
+  },
+
+  async listView3dScenes(): Promise<Scene3dListResult> {
+    return { items: SCENES.map((scene) => ({ ...scene })) }
+  },
+
   async getResolvedCourseMap(
     courseMapId: string,
     includeHidden: boolean
@@ -1217,8 +1365,13 @@ const impl: CourseMapApi = {
     const map = requireMap(courseMapId)
     const bubble = requireBubble(map, bubbleId)
     checkIfMatch(ifMatch, bubble.version, 'currentVersion')
+    // The server removes the bubble's 3D binding with it.
     replaceMap({
       ...map,
+      view3d: map.view3d && {
+        ...map.view3d,
+        bindings: map.view3d.bindings.filter((binding) => binding.bubbleId !== bubbleId),
+      },
       bubbles: map.bubbles.filter((item) => item.id !== bubbleId),
       updatedAt: now(),
     })

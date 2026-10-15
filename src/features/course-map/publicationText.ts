@@ -10,6 +10,7 @@ export const describeChanges = (changes: PublicationChanges): string[] => {
     changes.titleChanged ? text.title : null,
     changes.settingsChanged ? text.settings : null,
     changes.skinsChanged ? text.skins : null,
+    changes.view3dChanged ? text.view3d : null,
     changes.bubblesAdded > 0 ? text.added(changes.bubblesAdded) : null,
     changes.bubblesRemoved > 0 ? text.removed(changes.bubblesRemoved) : null,
     changes.bubblesMoved > 0 ? text.moved(changes.bubblesMoved) : null,
