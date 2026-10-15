@@ -1346,7 +1346,6 @@ controls.touches = { ONE: THREE.TOUCH.PAN, TWO: THREE.TOUCH.DOLLY_ROTATE };
 controls.keys = { LEFT: 'ArrowLeft', UP: 'ArrowUp', RIGHT: 'ArrowRight', BOTTOM: 'ArrowDown' }; controls.keyPanSpeed = 22; controls.listenToKeyEvents(window);
 controls.addEventListener('start', () => { fly = null; });
 const clampCam = () => { const t = controls.target; const e = Math.sqrt((t.x / (t.x > 0 ? 84 : 70)) ** 2 + ((t.z - 1) / (t.z < 0 ? 76 : 64)) ** 2); if (e > 1) { const nx = t.x / e, nz = 3 + (t.z - 3) / e; const dx = nx - t.x, dz = nz - t.z; t.x = nx; t.z = nz; camera.position.x += dx; camera.position.z += dz; } t.y = Math.max(0, Math.min(t.y, 6)); if (Math.abs(camera.position.distanceTo(t) - HOME.dist) > 20 || t.distanceTo(HOME.target) > 12) setZoomed(true); };
-try { const sr = stage.shadowRoot; sr.querySelector('.note').style.display = 'none'; stage._toolbar.style.display = 'none'; } catch (e) {}
 const VIEW = new V3(-0.35, 1.05, 1).normalize();
 const HOME = { target: new V3(2, 2, 12), dist: 150 };
 const viewDir = () => camera.position.clone().sub(controls.target).normalize();
