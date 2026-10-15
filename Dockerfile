@@ -13,6 +13,8 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
 
 COPY index.html vite.config.ts tsconfig.json tsconfig.app.json tsconfig.node.json tsconfig.test.json ./
 COPY ./src ./src/
+COPY ./public ./public/
+COPY ./3d ./3d/
 
 ARG VITE_API_BASE_URL
 ARG VITE_API_PROXY_TARGET

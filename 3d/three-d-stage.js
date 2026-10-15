@@ -64,6 +64,9 @@
  */
 /* END USAGE */
 
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
 (() => {
   const stylesheet = `
     :host {
@@ -206,10 +209,7 @@
     async _boot() {
       const bg = this.getAttribute('background');
       if (bg) this.style.setProperty('--stage-bg', bg);
-      const [THREE, controlsMod] = await Promise.all([
-        import('three'),
-        import('three/addons/controls/OrbitControls.js'),
-      ]);
+      const controlsMod = { OrbitControls };
       this._THREE = THREE;
       // preserveDrawingBuffer keeps the last frame readable after
       // compositing (toDataURL / drawImage) — it's what lets the
