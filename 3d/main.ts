@@ -6,6 +6,7 @@ import {
   PROTOCOL_VERSION,
   isHostMessage,
   type CssVars,
+  type HostMessage,
   type Locale3d,
   type PageMessage,
   type PinState,
@@ -98,64 +99,89 @@ const demoPoints = (): Point3D[] =>
     state: DEMO_STATES[zone.id] ?? 'available',
   }))
 
-async function boot() {
-  if (!webglAvailable()) return fail('webgl_unavailable', 'noWebgl')
+type World = typeof import('./world.js')
 
-  let world: typeof import('./world.js')
+// Loads the world (textures, the procedural build: several seconds on a slow
+// tablet). Resolves to null after reporting why it could not.
+async function loadWorld(): Promise<World | null> {
+  if (!webglAvailable()) {
+    fail('webgl_unavailable', 'noWebgl')
+    return null
+  }
+  let world: World
   try {
     world = await import('./world.js')
   } catch (error) {
     log('world failed to load', error)
-    return fail('load_failed', 'loadFailed')
+    fail('load_failed', 'loadFailed')
+    return null
   }
-
   // The host removes the iframe when leaving 3D; free the GL context explicitly.
   window.addEventListener('pagehide', () => world.dispose(), { once: true })
-
   world.setCallbacks({
     onPinClick: (pointId) => post({ type: 'rumbos:pin-click', v: PROTOCOL_VERSION, pointId }),
     onOpenActivity: (pointId) =>
       post({ type: 'rumbos:open-activity', v: PROTOCOL_VERSION, pointId }),
   })
+  return world
+}
+
+const apply = (world: World, message: HostMessage) => {
+  switch (message.type) {
+    case 'rumbos:init':
+      if (message.scene !== scene.id) return fail('scene_unknown', 'unknownScene')
+      locale = message.locale
+      applyTheme(message.theme.cssVars)
+      world.setReducedMotion(message.reducedMotion || prefersReducedMotion())
+      world.setLocale(message.locale)
+      world.setPoints(message.points)
+      world.releaseIntro()
+      break
+    case 'rumbos:states':
+      world.setStates(message.states)
+      break
+    case 'rumbos:locale':
+      locale = message.locale
+      world.setLocale(message.locale)
+      break
+    case 'rumbos:theme':
+      applyTheme(message.cssVars)
+      break
+    case 'rumbos:focus':
+      world.focusPoint(message.pointId)
+      break
+  }
+}
+
+function boot() {
+  const worldReady = loadWorld()
 
   if (demo) {
-    world.setReducedMotion(prefersReducedMotion())
-    world.setLocale(locale)
-    world.setPoints(demoPoints())
-    world.releaseIntro()
+    void worldReady.then((world) => {
+      if (!world) return
+      world.setReducedMotion(prefersReducedMotion())
+      world.setLocale(locale)
+      world.setPoints(demoPoints())
+      world.releaseIntro()
+    })
     return
   }
 
+  // Host messages are applied in arrival order once the world exists.
+  let queue: Promise<void> = Promise.resolve()
   window.addEventListener('message', (event: MessageEvent) => {
     if (event.origin !== hostOrigin || event.source !== hostWindow) return
     const message: unknown = event.data
     if (!isHostMessage(message)) return log('ignored malformed message', message)
-    switch (message.type) {
-      case 'rumbos:init':
-        if (message.scene !== scene.id) return fail('scene_unknown', 'unknownScene')
-        locale = message.locale
-        applyTheme(message.theme.cssVars)
-        world.setReducedMotion(message.reducedMotion || prefersReducedMotion())
-        world.setLocale(message.locale)
-        world.setPoints(message.points)
-        world.releaseIntro()
-        break
-      case 'rumbos:states':
-        world.setStates(message.states)
-        break
-      case 'rumbos:locale':
-        locale = message.locale
-        world.setLocale(message.locale)
-        break
-      case 'rumbos:theme':
-        applyTheme(message.cssVars)
-        break
-      case 'rumbos:focus':
-        world.focusPoint(message.pointId)
-        break
-    }
+    queue = queue.then(async () => {
+      const world = await worldReady
+      if (world) apply(world, message)
+    })
   })
+  // `ready` means "the bridge is listening", not "the world is built": the
+  // build can outlast the host's 10 s handshake on a slow device, and the page
+  // shows its own loading screen meanwhile. Failures follow as `error`.
   post({ type: 'rumbos:ready', v: PROTOCOL_VERSION })
 }
 
-void boot()
+boot()
