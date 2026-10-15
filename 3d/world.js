@@ -1364,7 +1364,7 @@ camera.far = 1600; camera.near = 0.5; camera.updateProjectionMatrix();
 
 // ---------- points: what the host (or ?demo=1) gives us, laid over the scene's fixed zones ----------
 const ZONES = Object.fromEntries(SCENE.zones.map(z => [z.id, z]));
-const order = [0, 8, 7, 6, 5, 1, 2, 3, 4]; let LANG = 'es';
+const order = [0, 8, 7, 6, 5, 1, 2, 3, 4]; let LANG = 'es', RM = false;
 const UI = {
   es: { places: 'LUGARES', back: 'Ver toda la región', open: 'Abrir', state: 'Estado', lang: 'Cambiar idioma' },
   en: { places: 'PLACES', back: 'See the whole region', open: 'Open', state: 'Status', lang: 'Change language' },
@@ -1415,7 +1415,7 @@ function rebuildUI() {
 }
 
 let fly = null;
-function flyTo(target, dist, dur = 1200, opts = {}) {
+function flyTo(target, dist, dur = 1200, opts = {}) { if (RM) dur = 1;
   const curDist = camera.position.distanceTo(controls.target);
   fly = { t0: performance.now(), dur, fromT: controls.target.clone(), toT: target.clone(), fromD: curDist, toD: dist, fromV: viewDir(), toV: opts.home ? VIEW.clone() : viewDir() };
 }
@@ -1447,13 +1447,13 @@ addEventListener('keydown', e => { if (e.key === 'Escape') backBtn.onclick(); })
 controls.addEventListener('change', () => { if (!fly && !window.__intro) clampCam(); });
 // opening drone flight: 6 s sweep around the territory, ending on the plaza view
 const INTRO_END = { pos: new V3(10, 13, 68), tgt: new V3(-10, 3, 28) };
-window.__intro = { t0: null, dur: 9000,
+window.__intro = { t0: null, dur: 9000, hold: true,
   P: [new V3(-25, 72, -100), new V3(60, 58, -50), new V3(62, 40, 40), new V3(48, 26, 78), INTRO_END.pos],
   T: [new V3(0, 0, -10), new V3(6, 0, -12), new V3(8, 1, 6), new V3(6, 1, 16), INTRO_END.tgt] };
 window.__introDef = { dur: window.__intro.dur, P: window.__intro.P, T: window.__intro.T };
 controls.addEventListener('start', () => { if (window.__intro) { window.__intro = null; setZoomed(true); } });
 window.__introSeek = k => { const P = window.__introDef; window.__intro = Object.assign({}, P, { t0: 0, last: 0, el: k * P.dur, frozen: true, frames: 99 }); };
-function introStep(now) { const I = window.__intro; if (!I) return;
+function introStep(now) { const I = window.__intro; if (!I || I.hold) return;
   const cr = (A, u) => { const n = A.length - 1, f = Math.min(0.99999, u) * n, i = Math.floor(f), t = f - i, p0 = A[Math.max(0, i - 1)], p1 = A[i], p2 = A[i + 1], p3 = A[Math.min(n, i + 2)], t2 = t * t, t3 = t2 * t; return new V3().addScaledVector(p0, -0.5 * t3 + t2 - 0.5 * t).addScaledVector(p1, 1.5 * t3 - 2.5 * t2 + 1).addScaledVector(p2, -1.5 * t3 + 2 * t2 + 0.5 * t).addScaledVector(p3, 0.5 * t3 - 0.5 * t2); };
   if (!I.tab) { const N = 400, L = [0]; let prev = cr(I.P, 0); for (let k = 1; k <= N; k++) { const p = cr(I.P, k / N); L.push(L[k - 1] + p.distanceTo(prev)); prev = p; } I.tab = L.map(v => v / L[N]); I.frames = 0; camera.position.copy(cr(I.P, 0)); controls.target.copy(cr(I.T, 0)); controls.update(); }
   if (I.t0 === null) { if (++I.frames < 20) return; I.t0 = now; I.last = now; }
@@ -1957,10 +1957,10 @@ function tick(now) {
   const w = innerWidth, h = innerHeight;
   hotspots.forEach(hs => {
     const on = hs.n === active || hover === hs;
-    const bob = Math.sin(now / 700 + hs.n) * 0.25;
+    const bob = RM ? 0 : Math.sin(now / 700 + hs.n) * 0.25;
     hs.pin.position.y = hs.liftY - hs.base.y + bob;
     hs.pin.scale.setScalar(on ? 1.2 : 1);
-    hs.ring.scale.setScalar(stateOf(hs.n) === 'next' ? 1.15 + 0.3 * Math.sin(now / 320 + hs.n) : 1 + 0.12 * Math.sin(now / 450 + hs.n));
+    hs.ring.scale.setScalar(RM ? 1 : stateOf(hs.n) === 'next' ? 1.15 + 0.3 * Math.sin(now / 320 + hs.n) : 1 + 0.12 * Math.sin(now / 450 + hs.n));
     tmp.copy(hs.top).setY(hs.top.y + bob).project(camera);
     const el = labels[hs.n]; if (!el) return;
     if (tmp.z > 1 || tmp.z < -1 || Math.abs(tmp.x) > 1.1 || Math.abs(tmp.y) > 1.1) { el.classList.add('hide'); return; }
@@ -1998,6 +1998,11 @@ export function setStates(states) {
 }
 export function setLocale(locale) { LANG = locale === 'en' ? 'en' : 'es'; rebuildUI(); }
 export function focusPoint(pointId) { const n = pointZone.get(pointId); if (n !== undefined) openZone(n, true); }
+export function setReducedMotion(on) { RM = !!on; }
+export function releaseIntro() {
+  const I = window.__intro; if (!I) return;
+  if (RM) { window.__intro = null; camera.position.copy(INTRO_END.pos); controls.target.copy(INTRO_END.tgt); controls.update(); setZoomed(true); } else I.hold = false;
+}
 export function dispose() {
   if (disposed) return; disposed = true;
   cancelAnimationFrame(rafId); document.removeEventListener('visibilitychange', onVisibility);
