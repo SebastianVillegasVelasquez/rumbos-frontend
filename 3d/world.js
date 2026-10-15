@@ -1973,9 +1973,17 @@ function tick(now) {
     const a = vis[j], b = vis[i];
     if (Math.abs(a.x - b.x) < (a.w + b.w) / 2 + 4 && Math.abs(a.y - b.y) < b.h + 4) { b.y = a.y + b.h + 4; b.el.style.top = b.y + 'px'; }
   }
-  requestAnimationFrame(tick);
+  rafId = requestAnimationFrame(tick);
 }
-requestAnimationFrame(tick);
+// ---------- lifecycle: stop drawing while hidden, free the GL context on dispose ----------
+let rafId = 0, disposed = false;
+function onVisibility() {
+  if (disposed) return;
+  if (document.hidden) { cancelAnimationFrame(rafId); stage._renderer.setAnimationLoop(null); }
+  else { stage._renderer.setAnimationLoop(stage._loop); rafId = requestAnimationFrame(tick); }
+}
+document.addEventListener('visibilitychange', onVisibility);
+if (!document.hidden) rafId = requestAnimationFrame(tick);
 
 // ================= Public API (used by main.ts; the page has no other data source) =================
 export function setCallbacks(cb) { callbacks.onPinClick = cb.onPinClick || null; callbacks.onOpenActivity = cb.onOpenActivity || null; }
@@ -1990,3 +1998,10 @@ export function setStates(states) {
 }
 export function setLocale(locale) { LANG = locale === 'en' ? 'en' : 'es'; rebuildUI(); }
 export function focusPoint(pointId) { const n = pointZone.get(pointId); if (n !== undefined) openZone(n, true); }
+export function dispose() {
+  if (disposed) return; disposed = true;
+  cancelAnimationFrame(rafId); document.removeEventListener('visibilitychange', onVisibility);
+  const r = stage._renderer; r.setAnimationLoop(null); if (stage._ro) stage._ro.disconnect(); stage._controls.dispose();
+  stage._scene.traverse(o => { if (o.geometry) o.geometry.dispose(); [].concat(o.material || []).forEach(m => { for (const v of Object.values(m)) if (v && v.isTexture) v.dispose(); m.dispose(); }); });
+  r.dispose(); r.forceContextLoss();
+}
