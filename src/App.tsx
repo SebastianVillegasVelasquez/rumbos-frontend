@@ -1,5 +1,5 @@
-import { Suspense, lazy, useEffect, useMemo, useRef, useState } from 'react'
-import { ChevronLeft, ChevronRight, List, Loader2, RefreshCw, X } from 'lucide-react'
+import { Suspense, lazy, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { ChevronDown, ChevronLeft, ChevronRight, List, Loader2, RefreshCw } from 'lucide-react'
 import { ActivitySidebar } from './features/course-map/components/ActivitySidebar.tsx'
 import { ActivityModal } from './features/course-map/components/ActivityModal.tsx'
 import { ActivitiesOverviewModal } from './features/course-map/components/ActivitiesOverviewModal.tsx'
@@ -54,6 +54,7 @@ import type {
 import { useRoute } from './hooks/useRoute.ts'
 import { Wordmark } from './components/Logo.tsx'
 import { Button, IconButton } from './components/ui/Button.tsx'
+import { Popover } from './components/ui/Popover.tsx'
 import { SegmentedControl } from './components/ui/SegmentedControl.tsx'
 import { ToastProvider } from './components/ui/Toast.tsx'
 import { useToast } from './components/ui/toastContext.ts'
@@ -107,7 +108,7 @@ function AppShell() {
   const [route, navigate] = useRoute()
   const [viewMode, setViewMode] = useState<ViewMode>(initialViewMode)
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null)
-  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false)
+  const [isActivitiesMenuOpen, setIsActivitiesMenuOpen] = useState(false)
   const [isActivitiesOverviewOpen, setIsActivitiesOverviewOpen] = useState(false)
   const [focusBubbleId, setFocusBubbleId] = useState<string | null>(null)
   const [mapView, setMapView] = useState<MapViewKind>(initialMapView)
@@ -453,40 +454,55 @@ function AppShell() {
         isSaving={isEditor ? isSaving : undefined}
         onActivitiesOverview={() => setIsActivitiesOverviewOpen(true)}
         onAppearance={isEditor ? () => setIsAppearanceOpen(true) : undefined}
+        publicationBar={
+          isEditor && courseMapId ? <PublicationBar courseMapId={courseMapId} /> : null
+        }
+        activitiesMenu={
+          isEditor ? (
+            <Popover
+              open={isActivitiesMenuOpen}
+              onOpenChange={setIsActivitiesMenuOpen}
+              align="end"
+              trigger={
+                <Button variant="surface" size="sm">
+                  <List size={16} strokeWidth={2.5} aria-hidden />
+                  {es.app.activities}
+                  {unplacedCount > 0 && (
+                    <span className="flex h-5 min-w-5 items-center justify-center rounded-md bg-primary px-1 text-xs font-bold text-white">
+                      {unplacedCount}
+                    </span>
+                  )}
+                  <ChevronDown
+                    size={16}
+                    strokeWidth={3}
+                    aria-hidden
+                    className={`motion-safe:transition-transform ${isActivitiesMenuOpen ? 'rotate-180' : ''}`}
+                  />
+                </Button>
+              }
+            >
+              <ActivitySidebar
+                {...sidebarProps}
+                className="flex max-h-[70dvh] w-[min(20rem,calc(100vw-4rem))] flex-col"
+              />
+            </Popover>
+          ) : null
+        }
+        viewToggle={
+          !isEditor && renderable && view3d ? (
+            <MapViewToggle value={mapView} onChange={changeMapView} />
+          ) : null
+        }
+        statusNote={
+          viewMode === 'preview'
+            ? es.viewMode.previewBanner
+            : showPublished && renderable
+              ? es.viewMode.publishedBanner
+              : undefined
+        }
       />
-      {isEditor && courseMapId && <PublicationBar courseMapId={courseMapId} />}
-      {viewMode === 'preview' && (
-        <p
-          role="status"
-          className="border-b-soft bg-sun-tint px-4 py-2 text-sm font-semibold text-sun-dark sm:px-6"
-        >
-          {es.viewMode.previewBanner}
-        </p>
-      )}
-      {showPublished && renderable && (
-        <p
-          role="status"
-          className="border-b-soft bg-leaf-tint px-4 py-2 text-sm font-semibold text-leaf-dark sm:px-6"
-        >
-          {es.viewMode.publishedBanner}
-        </p>
-      )}
-      {isEditor && neverPublished && (
-        <p
-          role="status"
-          className="border-b-soft bg-sun-tint px-4 py-2 text-sm font-semibold text-sun-dark sm:px-6"
-        >
-          {es.publication.neverPublishedBanner}
-        </p>
-      )}
       <div className="flex flex-1 overflow-hidden">
-        {isEditor && (
-          <ActivitySidebar
-            {...sidebarProps}
-            className="border-r-soft hidden w-64 shrink-0 flex-col bg-surface p-4 md:flex"
-          />
-        )}
-        <main className="flex min-h-0 flex-1 flex-col overflow-hidden p-6">
+        <main className="flex min-h-0 flex-1 flex-col overflow-hidden p-1 sm:p-1.5">
           {moodleStatus === 'unavailable' && (
             <div
               role="alert"
@@ -530,11 +546,6 @@ function AppShell() {
               </button>
             </div>
           )}
-          {!isEditor && renderable && view3d && (
-            <div className="mb-3 flex justify-end">
-              <MapViewToggle value={mapView} onChange={changeMapView} />
-            </div>
-          )}
           <div className="relative min-h-0 flex-1">
             {!isEditor && renderable && !show3d && (
               <StudentHud
@@ -574,47 +585,6 @@ function AppShell() {
           </div>
         </main>
       </div>
-
-      {isEditor && (
-        <button
-          type="button"
-          onClick={() => setIsMobileSidebarOpen(true)}
-          className="border-strong fixed bottom-6 left-4 z-30 flex min-h-[44px] items-center gap-2 rounded-md bg-primary px-5 py-3 text-sm font-bold text-white shadow-md md:hidden"
-        >
-          <List size={18} strokeWidth={2.5} />
-          {es.app.activities}
-          {unplacedCount > 0 && (
-            <span className="flex h-6 min-w-6 items-center justify-center rounded-md bg-surface px-1 text-xs font-bold text-primary">
-              {unplacedCount}
-            </span>
-          )}
-        </button>
-      )}
-
-      {isEditor && isMobileSidebarOpen && (
-        <div
-          role="presentation"
-          className="fixed inset-0 z-40 flex items-end bg-ink/50 md:hidden"
-          onClick={() => setIsMobileSidebarOpen(false)}
-        >
-          <div
-            className="border-strong flex max-h-[75dvh] w-full flex-col rounded-t-lg border-b-0 bg-surface"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="mx-auto mt-2 h-1.5 w-10 shrink-0 rounded-pill bg-ink" />
-            <div className="flex shrink-0 justify-end px-4 pt-2">
-              <IconButton
-                aria-label={es.app.close}
-                variant="ghost"
-                onClick={() => setIsMobileSidebarOpen(false)}
-              >
-                <X size={20} strokeWidth={3} />
-              </IconButton>
-            </div>
-            <ActivitySidebar {...sidebarProps} className="flex min-h-0 flex-1 flex-col p-4 pt-0" />
-          </div>
-        </div>
-      )}
 
       <ActivityModal activity={selectedActivity} onClose={() => setSelectedActivity(null)} />
 
@@ -674,6 +644,10 @@ const AppHeader = ({
   isSaving,
   onActivitiesOverview,
   onAppearance,
+  publicationBar,
+  activitiesMenu,
+  viewToggle,
+  statusNote,
 }: {
   onHome: () => void
   mapTitle?: string
@@ -687,10 +661,14 @@ const AppHeader = ({
   isSaving?: boolean
   onActivitiesOverview?: () => void
   onAppearance?: () => void
+  publicationBar?: ReactNode
+  activitiesMenu?: ReactNode
+  viewToggle?: ReactNode
+  statusNote?: string
 }) => {
   return (
-    <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2 border-b-strong bg-accent px-3 py-2 sm:px-6 sm:py-3">
-      <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
+    <header className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b-strong bg-accent px-2 py-1 sm:px-3">
+      <div className="flex min-w-0 items-center gap-2">
         <button
           type="button"
           onClick={onHome}
@@ -731,44 +709,37 @@ const AppHeader = ({
             </IconButton>
           </div>
         )}
-        {isSaving !== undefined && (
-          <span className="ml-auto shrink-0 text-xs font-bold text-ink lg:hidden">
-            {isSaving ? es.app.saving : es.app.saved}
-          </span>
-        )}
       </div>
-      <div className="flex w-full flex-wrap items-center justify-end gap-x-2 gap-y-2 lg:w-auto lg:gap-3">
+      <div className="ml-auto flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
+        {statusNote && (
+          // For assistive tech; the segmented control shows the mode.
+          <span role="status" className="sr-only">
+            {statusNote}
+          </span>
+        )}
         {isSaving !== undefined && (
-          <span className="hidden text-xs font-bold text-ink lg:inline">
+          <span className="text-xs font-bold text-ink">
             {isSaving ? es.app.saving : es.app.saved}
           </span>
         )}
+        {publicationBar}
+        {activitiesMenu}
         {onAppearance && (
-          <Button
-            variant="surface"
-            size="sm"
-            onClick={onAppearance}
-            className="flex-1 sm:flex-none"
-          >
+          <Button variant="surface" size="sm" onClick={onAppearance}>
             {es.studio.open}
           </Button>
         )}
         {onActivitiesOverview && (
-          <Button
-            variant="surface"
-            size="sm"
-            onClick={onActivitiesOverview}
-            className="flex-1 sm:flex-none"
-          >
+          <Button variant="surface" size="sm" onClick={onActivitiesOverview}>
             {es.app.activitiesOverview}
           </Button>
         )}
+        {viewToggle}
         {viewMode && onViewModeChange && (
           // TEMPORARY: a view toggle stands in for real editor/student
           // roles until authentication exists.
           <SegmentedControl
             aria-label={es.viewMode.label}
-            fullWidth
             value={viewMode}
             onChange={onViewModeChange}
             options={[
