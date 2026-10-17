@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
-import { Loader2 } from 'lucide-react'
+import { ChevronDown, ListChecks, Loader2 } from 'lucide-react'
+import { Popover } from '../../components/ui/Popover.tsx'
 import { useToast } from '../../components/ui/toastContext.ts'
 import { es } from '../../i18n/es.ts'
 import type { RenderableMap } from '../course-map/renderable.ts'
@@ -48,6 +49,7 @@ export const Map3DPanel = ({
   const toast = useToast()
   const [highlightedId, setHighlightedId] = useState<string | null>(null)
   const [listFocusId, setListFocusId] = useState<string | null>(null)
+  const [listOpen, setListOpen] = useState(false)
 
   const points = useMemo(
     () => buildPoints3d(map, view3d, resolved, locale, view),
@@ -92,34 +94,56 @@ export const Map3DPanel = ({
   const requestedFocus = points.some((point) => point.id === focusBubbleId) ? focusBubbleId : null
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-3 lg:flex-row">
-      <div className="min-h-[360px] flex-1">
-        <Map3DView
-          scene={view3d.scene}
-          locale={locale}
-          points={points}
-          title={es.view3d.iframeTitle(map.title)}
-          onPinClick={handlePinClick}
-          onOpenActivity={handleOpen}
-          focusPointId={listFocusId ?? requestedFocus}
-          onFocusHandled={() => {
-            setListFocusId(null)
-            onFocusHandled()
-          }}
-          onBackTo2d={onBackTo2d}
-        />
-      </div>
-      <div className="max-h-[40vh] w-full overflow-y-auto lg:max-h-none lg:w-80 lg:shrink-0">
-        <Map3DActivityList
-          scene={view3d.scene}
-          points={points}
-          highlightedId={highlightedId}
-          onFocus={(pointId) => {
-            setHighlightedId(pointId)
-            setListFocusId(pointId)
-          }}
-          onOpen={handleOpen}
-        />
+    <div className="relative h-full min-h-[360px]">
+      <Map3DView
+        scene={view3d.scene}
+        locale={locale}
+        points={points}
+        title={es.view3d.iframeTitle(map.title)}
+        onPinClick={handlePinClick}
+        onOpenActivity={handleOpen}
+        focusPointId={listFocusId ?? requestedFocus}
+        onFocusHandled={() => {
+          setListFocusId(null)
+          onFocusHandled()
+        }}
+        onBackTo2d={onBackTo2d}
+      />
+      {/* The accessible twin of the canvas, folded away so the world gets the space. */}
+      <div className="absolute bottom-2 left-2 z-10">
+        <Popover
+          open={listOpen}
+          onOpenChange={setListOpen}
+          align="start"
+          trigger={
+            <button
+              type="button"
+              className="border-strong inline-flex min-h-[44px] items-center gap-2 rounded-md bg-surface px-3 text-sm font-bold text-ink shadow-md hover:bg-primary-tint"
+            >
+              <ListChecks size={16} strokeWidth={2.5} aria-hidden />
+              {es.app.activities}
+              <ChevronDown
+                size={16}
+                strokeWidth={3}
+                aria-hidden
+                className={`motion-safe:transition-transform ${listOpen ? '' : 'rotate-180'}`}
+              />
+            </button>
+          }
+        >
+          <div className="max-h-[60dvh] w-[min(22rem,calc(100vw-4rem))] overflow-y-auto">
+            <Map3DActivityList
+              scene={view3d.scene}
+              points={points}
+              highlightedId={highlightedId}
+              onFocus={(pointId) => {
+                setHighlightedId(pointId)
+                setListFocusId(pointId)
+              }}
+              onOpen={handleOpen}
+            />
+          </div>
+        </Popover>
       </div>
     </div>
   )
