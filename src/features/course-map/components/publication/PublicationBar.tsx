@@ -21,7 +21,7 @@ interface PublicationBarProps {
   courseMapId: string
 }
 
-// Editor-only strip under the header: the status chip plus Publicar, Historial
+// Editor-only controls inline in the header: the status chip plus Publicar, Historial
 // and Descartar cambios.
 export const PublicationBar = ({ courseMapId }: PublicationBarProps) => {
   const toast = useToast()
@@ -59,23 +59,17 @@ export const PublicationBar = ({ courseMapId }: PublicationBarProps) => {
     <div
       role="toolbar"
       aria-label={es.publication.publish}
-      className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b-soft bg-surface-muted px-4 py-2 sm:px-6"
+      className="flex flex-wrap items-center gap-x-2 gap-y-1"
     >
       <PublicationChip status={status} number={state?.currentNumber ?? null} />
 
-      <div className="flex w-full flex-wrap items-center gap-3 sm:ml-auto sm:w-auto sm:gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         {discardDisabledReason && (
-          <span id="discard-reason" className="hidden text-xs text-ink-soft lg:inline">
+          <span id="discard-reason" className="sr-only">
             {discardDisabledReason}
           </span>
         )}
-        <Button
-          type="button"
-          size="sm"
-          variant="ghost"
-          className="flex-1 sm:flex-none"
-          onClick={() => setHistoryOpen(true)}
-        >
+        <Button type="button" size="sm" variant="ghost" onClick={() => setHistoryOpen(true)}>
           <History size={16} strokeWidth={2.5} aria-hidden />
           {es.publication.history.button}
         </Button>
@@ -83,7 +77,6 @@ export const PublicationBar = ({ courseMapId }: PublicationBarProps) => {
           type="button"
           size="sm"
           variant="secondary"
-          className="flex-1 sm:flex-none"
           disabled={!canDiscard || discard.isPending}
           title={discardDisabledReason ?? undefined}
           aria-describedby={discardDisabledReason ? 'discard-reason' : undefined}
@@ -95,7 +88,6 @@ export const PublicationBar = ({ courseMapId }: PublicationBarProps) => {
         <Button
           type="button"
           size="sm"
-          className="flex-1 sm:flex-none"
           disabled={!canPublish}
           title={!canPublish ? es.publication.publishDisabled : undefined}
           onClick={() => setPublishOpen(true)}
