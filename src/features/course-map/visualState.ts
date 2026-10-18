@@ -33,6 +33,8 @@ export function deriveVisualState(input: DeriveVisualStateInput): VisualState {
   if (availability === 'missing') return 'missing'
   if (availability === 'hidden' && view === 'student') return 'teaser'
   if (availability === 'unknown') return 'unknown'
+  // A Moodle access restriction keeps the activity shut whatever its progress.
+  if (availability === 'restricted') return 'locked'
 
   if (status === 'complete') return 'complete'
   if (status === 'in_progress') return 'inProgress'

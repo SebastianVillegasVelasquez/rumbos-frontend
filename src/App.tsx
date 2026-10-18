@@ -51,6 +51,7 @@ import type {
 } from './features/course-map/data/types.ts'
 import { useBackendMoodleState } from './features/course-map/moodle/backendMoodleState.ts'
 import { MoodleStateContext } from './features/course-map/moodle/moodleState.ts'
+import { useEmbed } from './features/embed/EmbedContext.ts'
 import { useRoute } from './hooks/useRoute.ts'
 import { Wordmark } from './components/Logo.tsx'
 import { Button, IconButton } from './components/ui/Button.tsx'
@@ -112,6 +113,7 @@ function AppShell() {
   const [route, navigate] = useRoute()
   // The Moodle data source: the backend here, the embed host under /embed.
   const useMoodleState = use(MoodleStateContext) ?? useBackendMoodleState
+  const embed = useEmbed()
   const [viewMode, setViewMode] = useState<ViewMode>(initialViewMode)
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null)
   const [isActivitiesMenuOpen, setIsActivitiesMenuOpen] = useState(false)
@@ -260,7 +262,11 @@ function AppShell() {
     if (resolved.availability === 'hidden') return es.bubble.hiddenTooltipStudent
     if (resolved.availability === 'missing') return es.bubble.unavailable
     if (resolved.availability === 'unknown') return null
-    if (resolved.activity && !isSafeActivityUrl(resolved.activity.url)) return es.bubble.cannotOpen
+    if (resolved.availability === 'restricted')
+      return resolved.activity?.availabilityInfo?.trim() || es.bubble.restricted
+    // Embedded, the host opens activities by cmid; there is no URL to check.
+    if (!embed && resolved.activity && !isSafeActivityUrl(resolved.activity.url))
+      return es.bubble.cannotOpen
     return null
   }
 

@@ -199,6 +199,7 @@ export const es = {
     loadingActivity: 'Cargando actividad…',
     activitiesUnavailable: 'Las actividades no están disponibles en este momento.',
     cannotOpen: 'Esta actividad no se puede abrir.',
+    restricted: 'Esta actividad aún no está disponible para ti.',
   },
   activityTypes: {
     quiz: 'Cuestionario',

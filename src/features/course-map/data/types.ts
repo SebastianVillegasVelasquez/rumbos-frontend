@@ -180,7 +180,9 @@ export interface ReorderCourseMapsResult {
 
 export type MoodleStatus = 'live' | 'cached' | 'unavailable'
 
-export type Availability = 'available' | 'hidden' | 'missing' | 'unknown'
+// 'restricted' (embed mode only): the activity exists and the user can see it,
+// but a Moodle access restriction currently keeps them out.
+export type Availability = 'available' | 'hidden' | 'restricted' | 'missing' | 'unknown'
 
 export interface ResolvedBubble {
   bubbleId: string
@@ -206,6 +208,9 @@ export interface Activity {
   placed: boolean
   bubbleId: string | null
   placedInMapId: string | null
+  // Embed mode, restricted activities: why the user cannot open it yet. Plain
+  // text from Moodle, shown as a tooltip.
+  availabilityInfo?: string | null
 }
 
 export interface CourseMapCreate {
