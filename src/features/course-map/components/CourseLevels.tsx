@@ -19,6 +19,8 @@ import {
 } from '../data/queries.ts'
 import { useUpdateCourseMap } from '../data/draftMutations.ts'
 import type { CourseMapSummary } from '../data/types.ts'
+import { useEmbed } from '../../embed/EmbedContext.ts'
+import { useHostState } from '../../embed/hostState.ts'
 
 interface CourseLevelsProps {
   moodleCourseId: number
@@ -79,13 +81,15 @@ export const CourseLevels = ({ moodleCourseId, viewMode, onOpenLevel }: CourseLe
           onReorder={(mapIds) => reorderLevels.mutate({ moodleCourseId, mapIds })}
         />
       )}
-      <CreateLevelDialog
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        moodleCourseId={moodleCourseId}
-        existingLevelId={levels[0]?.id ?? null}
-        onCreated={onOpenLevel}
-      />
+      {editable && (
+        <CreateLevelDialog
+          open={createOpen}
+          onOpenChange={setCreateOpen}
+          moodleCourseId={moodleCourseId}
+          existingLevelId={levels[0]?.id ?? null}
+          onCreated={onOpenLevel}
+        />
+      )}
       <RenameLevelDialog
         key={renameTarget?.id ?? 'none'}
         map={renameTarget}
@@ -122,13 +126,17 @@ const CreateLevelDialog = ({
   // Sections come from any existing level's activity list (modname/section
   // data is shared across the whole course, not per-level) - unavailable
   // for a brand-new course's first level, where the picker is just hidden.
-  const activitiesQuery = useActivities(existingLevelId, true, false)
+  // Embedded, the host's course state names the sections instead.
+  const embed = useEmbed()
+  const hostState = useHostState()
+  const activitiesQuery = useActivities(embed ? null : existingLevelId, true, false)
   const sections = useMemo(() => {
+    if (embed) return (hostState?.sections ?? []).map(({ id, name }) => ({ id, name }))
     const seen = new Map<number, string>()
     for (const activity of activitiesQuery.data ?? [])
       seen.set(activity.sectionId, activity.sectionName)
     return Array.from(seen.entries()).map(([id, name]) => ({ id, name }))
-  }, [activitiesQuery.data])
+  }, [embed, hostState, activitiesQuery.data])
 
   const handleOpenChange = (next: boolean) => {
     if (!next) {

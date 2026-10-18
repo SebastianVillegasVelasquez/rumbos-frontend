@@ -12,6 +12,7 @@ import { useReorderBubbles } from '../data/queries.ts'
 import { useUpdateAppearance, useUpdateBubble } from '../data/draftMutations.ts'
 import { resolveThumbUrl } from '../data/assets.ts'
 import { es } from '../../../i18n/es.ts'
+import { useEmbed } from '../../embed/EmbedContext.ts'
 import type {
   AmbientKind,
   Bubble,
@@ -51,6 +52,8 @@ export const AppearanceStudio = ({
   onChangeBackground,
   onPreview3d,
 }: AppearanceStudioProps) => {
+  // Embedded, progress comes from Moodle: the demo simulator would only fight it.
+  const embed = useEmbed()
   const [tab, setTab] = useState<Tab>('bubbles')
   const [settings, setSettings] = useState<MapSettings>(courseMap.settings)
   const [defaultSkinId, setDefaultSkinId] = useState(courseMap.defaultSkinId)
@@ -180,7 +183,7 @@ export const AppearanceStudio = ({
         </p>
       )}
 
-      {tab === 'bubbles' && (
+      {tab === 'bubbles' && !embed && (
         <ProgressSimulator
           courseMapId={courseMap.id}
           bubbles={courseMap.bubbles}

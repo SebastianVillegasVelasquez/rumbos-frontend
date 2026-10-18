@@ -6,6 +6,7 @@ import type { Activity, Availability, BubbleStatus, Skin } from '../data/types.t
 import { isSafeActivityUrl } from '../activityOpener.ts'
 import { es } from '../../../i18n/es.ts'
 import { Badge } from '../../../components/ui/Card.tsx'
+import { useEmbed } from '../../embed/EmbedContext.ts'
 
 interface IconPickerPopoverProps {
   x: number // content-space pixels (design-space * current scale)
@@ -52,6 +53,7 @@ export const IconPickerPopover = ({
   currentSkinId,
   onSkinSelect,
 }: IconPickerPopoverProps) => {
+  const embed = useEmbed()
   const popoverRef = useRef<HTMLDivElement>(null)
   const [isConfirmingDelete, setIsConfirmingDelete] = useState(false)
 
@@ -98,6 +100,16 @@ export const IconPickerPopover = ({
         <div className="space-y-1 border-hair rounded-md bg-danger-tint p-2">
           <p className="text-xs font-bold text-danger">{es.bubble.missingHintEditor}</p>
         </div>
+      )}
+      {embed && resolvedActivity && (
+        <button
+          type="button"
+          onClick={() => embed.openActivity(resolvedActivity.activityId)}
+          className="flex min-h-[44px] items-center gap-1.5 text-xs font-bold text-primary underline-offset-2 hover:underline"
+        >
+          <ExternalLink size={14} strokeWidth={2.5} aria-hidden />
+          {es.bubble.openInMoodle}
+        </button>
       )}
       {resolvedActivity && isSafeActivityUrl(resolvedActivity.url) && (
         <a
@@ -158,23 +170,25 @@ export const IconPickerPopover = ({
         </label>
       )}
 
-      {/* Demo only: real status will come from Moodle completion in a later phase. */}
-      <label className="block space-y-1">
-        <span className="text-xs font-bold uppercase tracking-wide text-ink-soft">
-          {es.bubble.demoStatusLabel}
-        </span>
-        <select
-          value={currentStatus}
-          onChange={(e) => onStatusSelect(e.target.value as BubbleStatus)}
-          className="border-soft min-h-[44px] w-full rounded-md bg-surface px-2 text-sm font-semibold text-ink"
-        >
-          {STATUS_OPTIONS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
-            </option>
-          ))}
-        </select>
-      </label>
+      {/* Demo only. Embedded, progress comes from Moodle completion instead. */}
+      {!embed && (
+        <label className="block space-y-1">
+          <span className="text-xs font-bold uppercase tracking-wide text-ink-soft">
+            {es.bubble.demoStatusLabel}
+          </span>
+          <select
+            value={currentStatus}
+            onChange={(e) => onStatusSelect(e.target.value as BubbleStatus)}
+            className="border-soft min-h-[44px] w-full rounded-md bg-surface px-2 text-sm font-semibold text-ink"
+          >
+            {STATUS_OPTIONS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
 
       <Button
         dense

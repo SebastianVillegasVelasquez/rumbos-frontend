@@ -204,10 +204,12 @@ export const useView3dScenes = () =>
     select: (result) => result.items,
   })
 
-export const useSkins = () =>
+// `enabled` is off for embedded students, who may only read published data.
+export const useSkins = (enabled = true) =>
   useQuery({
     queryKey: courseMapKeys.skins(),
     queryFn: () => courseMapApi.listSkins(),
+    enabled,
     retry: retryTransient,
   })
 

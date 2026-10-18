@@ -52,7 +52,7 @@ import type {
 import { useBackendMoodleState } from './features/course-map/moodle/backendMoodleState.ts'
 import { MoodleStateContext } from './features/course-map/moodle/moodleState.ts'
 import { useEmbed } from './features/embed/EmbedContext.ts'
-import { useRoute } from './hooks/useRoute.ts'
+import { useRoute, type Route } from './hooks/useRoute.ts'
 import { Wordmark } from './components/Logo.tsx'
 import { Button, IconButton } from './components/ui/Button.tsx'
 import { Popover } from './components/ui/Popover.tsx'
@@ -108,13 +108,23 @@ function App() {
   )
 }
 
-function AppShell() {
+export function AppShell() {
   const toast = useToast()
-  const [route, navigate] = useRoute()
+  // Under /embed the course is fixed by the token, the route lives in memory
+  // (a guest must not push history entries onto the host page) and the
+  // person's role decides the view: students only ever see the published map.
+  const embed = useEmbed()
+  const fixedHome = useMemo<Route | undefined>(
+    () =>
+      embed ? { name: 'course', moodleCourseId: embed.courseId, forceEntry: false } : undefined,
+    [embed]
+  )
+  const [route, navigate] = useRoute(fixedHome)
   // The Moodle data source: the backend here, the embed host under /embed.
   const useMoodleState = use(MoodleStateContext) ?? useBackendMoodleState
-  const embed = useEmbed()
-  const [viewMode, setViewMode] = useState<ViewMode>(initialViewMode)
+  const [viewMode, setViewMode] = useState<ViewMode>(() =>
+    embed ? (embed.role === 'student' ? 'published' : 'edit') : initialViewMode()
+  )
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null)
   const [isActivitiesMenuOpen, setIsActivitiesMenuOpen] = useState(false)
   const [isActivitiesOverviewOpen, setIsActivitiesOverviewOpen] = useState(false)
@@ -150,7 +160,9 @@ function AppShell() {
   const updateBubble = useUpdateBubble(courseMapId ?? '')
   const deleteBubble = useDeleteBubble(courseMapId ?? '')
   const pendingActivityIds = usePendingActivityIds(courseMapId ?? '')
-  const skinsQuery = useSkins()
+  // Embedded students may only read published data, whose skins are frozen
+  // into the snapshot.
+  const skinsQuery = useSkins(embed?.role !== 'student')
   const changeBackground = useChangeBackground(courseMapId ?? '')
 
   // The one shape the canvas, HUD and skin resolution consume, whichever
@@ -191,8 +203,8 @@ function AppShell() {
       : null
 
   useEffect(() => {
-    if (draftQuery.data) rememberCourseMap(draftQuery.data)
-  }, [draftQuery.data])
+    if (draftQuery.data && !embed) rememberCourseMap(draftQuery.data)
+  }, [draftQuery.data, embed])
 
   useEffect(() => {
     document.title = renderable
@@ -237,9 +249,13 @@ function AppShell() {
     deleteBubble.reset()
   }
 
+  // Embedded, the host opens the activity: only its cmid is sent, never a URL.
   const openActivity = useMemo(
-    () => createActivityOpener(ACTIVITY_OPEN_MODE, setSelectedActivity),
-    []
+    () =>
+      embed
+        ? (activity: Activity) => embed.openActivity(activity.activityId)
+        : createActivityOpener(ACTIVITY_OPEN_MODE, setSelectedActivity),
+    [embed]
   )
 
   const handleBubbleClick = (bubble: Bubble) => {
@@ -408,6 +424,12 @@ function AppShell() {
     sectionFilter: renderable?.moodleSectionId ?? null,
   }
 
+  // Embedded students have no mode switch: they only ever see the published map.
+  const headerViewMode = embed?.role === 'student' ? undefined : viewMode
+  // Embedded, "home" is the course's level picker; with a single level there is
+  // nowhere to go back to.
+  const goHome = embed && siblingLevels.length <= 1 ? undefined : () => navigate({ name: 'home' })
+
   // "Publicado" needs something published; the level's own state says so.
   const neverPublished = publicationState.data?.status === 'never_published'
 
@@ -430,7 +452,7 @@ function AppShell() {
       <div className="flex h-screen flex-col">
         <AppHeader
           onHome={() => navigate({ name: 'home' })}
-          viewMode={viewMode}
+          viewMode={headerViewMode}
           onViewModeChange={setViewMode}
         />
         <CourseLevels
@@ -454,13 +476,13 @@ function AppShell() {
   return (
     <div className="flex h-screen flex-col">
       <AppHeader
-        onHome={() => navigate({ name: 'home' })}
+        onHome={goHome}
         mapTitle={breadcrumb}
         prevLevelTitle={prevLevel?.title}
         nextLevelTitle={nextLevel?.title}
         onPrevLevel={prevLevel ? () => navigate({ name: 'map', mapId: prevLevel.id }) : undefined}
         onNextLevel={nextLevel ? () => navigate({ name: 'map', mapId: nextLevel.id }) : undefined}
-        viewMode={viewMode}
+        viewMode={headerViewMode}
         onViewModeChange={setViewMode}
         publishedDisabled={neverPublished}
         isSaving={isEditor ? isSaving : undefined}
@@ -661,7 +683,7 @@ const AppHeader = ({
   viewToggle,
   statusNote,
 }: {
-  onHome: () => void
+  onHome?: () => void
   mapTitle?: string
   prevLevelTitle?: string
   nextLevelTitle?: string
@@ -681,14 +703,20 @@ const AppHeader = ({
   return (
     <header className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b-strong bg-accent px-2 py-1 sm:px-3">
       <div className="flex min-w-0 items-center gap-2">
-        <button
-          type="button"
-          onClick={onHome}
-          aria-label={es.app.wordmark}
-          className="inline-flex min-h-[44px] shrink-0 items-center rounded-md"
-        >
-          <Wordmark collapsible={Boolean(mapTitle)} />
-        </button>
+        {onHome ? (
+          <button
+            type="button"
+            onClick={onHome}
+            aria-label={es.app.wordmark}
+            className="inline-flex min-h-[44px] shrink-0 items-center rounded-md"
+          >
+            <Wordmark collapsible={Boolean(mapTitle)} />
+          </button>
+        ) : (
+          <span className="inline-flex min-h-[44px] shrink-0 items-center">
+            <Wordmark collapsible={Boolean(mapTitle)} />
+          </span>
+        )}
         {mapTitle && (
           <>
             <span className="shrink-0 text-ink">/</span>
