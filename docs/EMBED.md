@@ -191,6 +191,19 @@ endpoints 501, replayed assertions 401).
   becomes "Salir de pantalla completa".
 - The 3D view is a nested iframe with its own touch handling (unchanged).
 
-## Testing by hand
+## Testing by hand (needs real devices)
 
-See the "When done" report of the embed work; the short list is in the README.
+Automated and mock-host checks cover the protocol, derivation and access matrix.
+These need a human on real hardware, inside a real Moodle page:
+
+- Real phones (iOS Safari, Android Chrome): one-finger scroll over the map with
+  the touch guard on, "Mover el mapa" / "Seguir con la página", pinch-zoom,
+  tapping bubbles, the on-screen keyboard (editor dialogs), rotating the phone.
+- The iframe inside the real plugin page at `80dvh`: no horizontal page scroll,
+  header wraps cleanly from 360 px to tablet width.
+- "Pantalla completa" on iOS Safari (the host must expand the iframe itself) and
+  coming back; the 3D view's own touch behavior inside the iframe.
+- The real `frame-ancestors` header from the deployed container, including `/3d/`
+  under a cross-origin Moodle page, and the real CORS / `Authorization` header.
+- The real assertion (RS256), `hostOrigin` registration and token expiry against the
+  real backend; completion changes made in Moodle showing up on return.

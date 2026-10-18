@@ -145,6 +145,18 @@ const ConnectedEmbed = ({ hostOrigin }: { hostOrigin: string }) => {
     )
   }
 
+  // The map goes away with the session: nothing it could still send would be
+  // accepted, and a clear message beats a map that silently stops saving.
+  if (phase.name === 'expired') {
+    return (
+      <EmbedMessage
+        title={es.embed.expiredTitle}
+        hint={es.embed.expiredHint}
+        action={{ label: es.embed.reload, onClick: () => window.location.reload() }}
+      />
+    )
+  }
+
   if (!context) {
     return (
       <div className="flex h-dvh items-center justify-center">
@@ -164,15 +176,6 @@ const ConnectedEmbed = ({ hostOrigin }: { hostOrigin: string }) => {
           <WriteSyncHost />
         </ToastProvider>
       </MoodleStateContext>
-      {phase.name === 'expired' && (
-        <div className="fixed inset-0 z-[70] bg-ink/50">
-          <EmbedMessage
-            title={es.embed.expiredTitle}
-            hint={es.embed.expiredHint}
-            action={{ label: es.embed.reload, onClick: () => window.location.reload() }}
-          />
-        </div>
-      )}
     </EmbedContext>
   )
 }
