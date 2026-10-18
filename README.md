@@ -46,6 +46,20 @@ no router dependency:
   "crear el primer nivel" CTA; a student sees there's nothing yet). This is
   also the future entry point when launched from Moodle.
 
+## Embed mode (Moodle course format)
+
+`/embed?host=<hostOrigin>` is the app as a guest in a Moodle iframe: identity from a
+launch assertion exchanged for an in-memory bearer token, Moodle data (availability,
+restrictions, completion) from the plugin over `postMessage`, a fixed course, no
+standalone navigation, and role-based UI (students only see the published map).
+Standalone mode is unchanged and does not load any of it (the embed code is a lazy
+chunk). The message protocol, the status-derivation table, the CSP /
+`frame-ancestors` setup, the mock host and the mobile behavior are in
+[`docs/EMBED.md`](docs/EMBED.md).
+
+Try it without a backend or Moodle: `VITE_USE_MOCK_API=true pnpm dev`, then open
+`http://127.0.0.1:5173/mock-host/`.
+
 ## 3D view
 
 A level can have an optional **3D view**: a hand-authored three.js world,
