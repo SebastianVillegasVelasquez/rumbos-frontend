@@ -45,6 +45,10 @@ export interface MapCanvasProps {
   backgroundUrl: string
   bubbles: RenderableBubble[]
   editable: boolean
+  // Inside someone else's page (embed): on touch screens one finger scrolls
+  // the page until the person opts in to moving the map, and a visible button
+  // gives the page back. Without it the canvas would trap every swipe.
+  touchGuard?: boolean
   // Overrides the generic default with the level title and progress
   // (built by the caller, which knows both).
   ariaLabel?: string

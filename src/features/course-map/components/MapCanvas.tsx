@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import Konva from 'konva'
 import { Stage, Layer, Image as KonvaImage, Line, Circle } from 'react-konva'
 import useImage from 'use-image'
-import { Minus, Plus, Scan } from 'lucide-react'
+import { Hand, Minus, Plus, Scan, X } from 'lucide-react'
 import {
   DEFAULT_DESIGN_HEIGHT,
   DESIGN_WIDTH,
@@ -81,6 +81,7 @@ export const MapCanvas = ({
   backgroundUrl,
   bubbles,
   editable,
+  touchGuard = false,
   ariaLabel,
   fit = 'fit-width',
   mapMode = 'explorative',
@@ -104,6 +105,14 @@ export const MapCanvas = ({
   onFocusHandled,
   onViewportChange,
 }: MapCanvasProps) => {
+  // Embedded on a touch screen the page keeps one-finger scrolling until the
+  // person opts in to moving the map (see touchGuard).
+  const [isCoarsePointer] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches
+  )
+  const [isMapGrabbed, setIsMapGrabbed] = useState(false)
+  const guardsTouch = touchGuard && isCoarsePointer
+  const yieldsToPage = guardsTouch && !isMapGrabbed
   const containerRef = useRef<HTMLDivElement>(null)
   const stageRef = useRef<Konva.Stage | null>(null)
   const [viewport, setViewport] = useState({ x: 0, y: 0, scale: 1, zoomFactor: 1 })
@@ -500,7 +509,7 @@ export const MapCanvas = ({
       panRef.current = null
       return
     }
-    if (e.evt.touches.length !== 1 || !isBackgroundTarget(e.target)) return
+    if (yieldsToPage || e.evt.touches.length !== 1 || !isBackgroundTarget(e.target)) return
     beginPan(e.evt.touches[0].clientX, e.evt.touches[0].clientY)
   }
 
@@ -604,13 +613,35 @@ export const MapCanvas = ({
 
   return (
     <div className="relative h-full w-full">
+      {guardsTouch && (
+        <button
+          type="button"
+          onClick={() => setIsMapGrabbed((grabbed) => !grabbed)}
+          aria-pressed={isMapGrabbed}
+          title={es.embed.moveMapHint}
+          className="border-strong absolute bottom-2 left-2 z-10 inline-flex min-h-[44px] items-center gap-2 rounded-md bg-surface px-3 text-sm font-bold text-ink shadow-md"
+        >
+          {isMapGrabbed ? (
+            <X size={16} strokeWidth={2.5} aria-hidden />
+          ) : (
+            <Hand size={16} strokeWidth={2.5} aria-hidden />
+          )}
+          {isMapGrabbed ? es.embed.leaveMap : es.embed.moveMap}
+        </button>
+      )}
       <div
         ref={containerRef}
         role="img"
         aria-label={ariaLabel ?? es.canvas.ariaLabel}
         tabIndex={0}
         className="relative h-full w-full overflow-hidden rounded-lg border border-ink/10 bg-surface-muted outline-none focus-visible:ring-2 focus-visible:ring-teal-dark [&::-webkit-scrollbar]:hidden"
-        style={{ touchAction: 'none', overscrollBehavior: 'contain', scrollbarWidth: 'none' }}
+        style={{
+          // Only this viewport traps touches, and only while the map is in use.
+          // Yielding to the page still lets two fingers pinch-zoom the map.
+          touchAction: yieldsToPage ? 'pan-x pan-y' : 'none',
+          overscrollBehavior: 'contain',
+          scrollbarWidth: 'none',
+        }}
         onDragOver={handleDragOver}
         onDrop={handleDrop}
       >

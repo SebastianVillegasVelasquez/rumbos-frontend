@@ -1,5 +1,14 @@
 import { Suspense, lazy, use, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
-import { ChevronDown, ChevronLeft, ChevronRight, List, Loader2, RefreshCw } from 'lucide-react'
+import {
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  List,
+  Loader2,
+  Maximize2,
+  Minimize2,
+  RefreshCw,
+} from 'lucide-react'
 import { ActivitySidebar } from './features/course-map/components/ActivitySidebar.tsx'
 import { ActivityModal } from './features/course-map/components/ActivityModal.tsx'
 import { ActivitiesOverviewModal } from './features/course-map/components/ActivitiesOverviewModal.tsx'
@@ -125,6 +134,24 @@ export function AppShell() {
   const [viewMode, setViewMode] = useState<ViewMode>(() =>
     embed ? (embed.role === 'student' ? 'published' : 'edit') : initialViewMode()
   )
+  // The iframe's height is the host's call (80dvh on phones, the whole screen
+  // in fullscreen): size to the viewport it actually has.
+  const shellHeight = embed ? 'h-dvh' : 'h-screen'
+  const [isFullscreen, setIsFullscreen] = useState(false)
+  const toggleFullscreen = () => {
+    embed?.requestFullscreen(!isFullscreen)
+    setIsFullscreen(!isFullscreen)
+  }
+  const fullscreenControl = embed ? (
+    <Button variant="surface" size="sm" onClick={toggleFullscreen} aria-pressed={isFullscreen}>
+      {isFullscreen ? (
+        <Minimize2 size={16} strokeWidth={2.5} aria-hidden />
+      ) : (
+        <Maximize2 size={16} strokeWidth={2.5} aria-hidden />
+      )}
+      {isFullscreen ? es.embed.exitFullscreen : es.embed.fullscreen}
+    </Button>
+  ) : null
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null)
   const [isActivitiesMenuOpen, setIsActivitiesMenuOpen] = useState(false)
   const [isActivitiesOverviewOpen, setIsActivitiesOverviewOpen] = useState(false)
@@ -364,6 +391,7 @@ export function AppShell() {
           )}
           bubbles={bubbles}
           editable={isEditor}
+          touchGuard={Boolean(embed)}
           fit={renderable.settings.fit}
           mapMode={renderable.settings.mode}
           initialView={renderable.settings.initialView}
@@ -435,7 +463,7 @@ export function AppShell() {
 
   if (route.name === 'home') {
     return (
-      <div className="flex h-screen flex-col">
+      <div className={`flex ${shellHeight} flex-col`}>
         <AppHeader onHome={() => navigate({ name: 'home' })} />
         <MapsHome
           onOpen={(id) => navigate({ name: 'map', mapId: id })}
@@ -449,11 +477,12 @@ export function AppShell() {
 
   if (route.name === 'course') {
     return (
-      <div className="flex h-screen flex-col">
+      <div className={`flex ${shellHeight} flex-col`}>
         <AppHeader
           onHome={() => navigate({ name: 'home' })}
           viewMode={headerViewMode}
           onViewModeChange={setViewMode}
+          fullscreenControl={fullscreenControl}
         />
         <CourseLevels
           moodleCourseId={route.moodleCourseId}
@@ -474,7 +503,7 @@ export function AppShell() {
       : renderable?.title
 
   return (
-    <div className="flex h-screen flex-col">
+    <div className={`flex ${shellHeight} flex-col`}>
       <AppHeader
         onHome={goHome}
         mapTitle={breadcrumb}
@@ -484,6 +513,7 @@ export function AppShell() {
         onNextLevel={nextLevel ? () => navigate({ name: 'map', mapId: nextLevel.id }) : undefined}
         viewMode={headerViewMode}
         onViewModeChange={setViewMode}
+        fullscreenControl={fullscreenControl}
         publishedDisabled={neverPublished}
         isSaving={isEditor ? isSaving : undefined}
         onActivitiesOverview={() => setIsActivitiesOverviewOpen(true)}
@@ -681,6 +711,7 @@ const AppHeader = ({
   publicationBar,
   activitiesMenu,
   viewToggle,
+  fullscreenControl,
   statusNote,
 }: {
   onHome?: () => void
@@ -698,6 +729,7 @@ const AppHeader = ({
   publicationBar?: ReactNode
   activitiesMenu?: ReactNode
   viewToggle?: ReactNode
+  fullscreenControl?: ReactNode
   statusNote?: string
 }) => {
   return (
@@ -775,6 +807,7 @@ const AppHeader = ({
           </Button>
         )}
         {viewToggle}
+        {fullscreenControl}
         {viewMode && onViewModeChange && (
           // TEMPORARY: a view toggle stands in for real editor/student
           // roles until authentication exists.
