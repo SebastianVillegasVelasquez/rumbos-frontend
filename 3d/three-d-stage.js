@@ -85,6 +85,10 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
       renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
       renderer.shadowMap.enabled = true;
       renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+      // The shadow map is re-rendered every other frame: the sun crawls and
+      // figures move slowly, so 30 Hz shadows are indistinguishable while the
+      // shadow pass (a full scene draw) costs half as much.
+      renderer.shadowMap.autoUpdate = false;
       this._renderer = renderer;
       this.shadowRoot.insertBefore(renderer.domElement, this._err);
 
@@ -139,8 +143,10 @@ import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
       };
       fit();
       this._ro = new ResizeObserver(fit);
+      let frame = 0;
       this._loop = () => {
         controls.update();
+        renderer.shadowMap.needsUpdate = (frame++ & 1) === 0;
         renderer.render(scene, camera);
       };
       // Detached while three.js was fetching? Stay idle — the
