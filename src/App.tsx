@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { Suspense, lazy, use, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { ChevronDown, ChevronLeft, ChevronRight, List, Loader2, RefreshCw } from 'lucide-react'
 import { ActivitySidebar } from './features/course-map/components/ActivitySidebar.tsx'
 import { ActivityModal } from './features/course-map/components/ActivityModal.tsx'
@@ -23,7 +23,6 @@ import {
   isSafeActivityUrl,
 } from './features/course-map/activityOpener.ts'
 import {
-  useActivities,
   useCourseMap,
   useCourseMapsByCourse,
   useCreateBubble,
@@ -31,8 +30,6 @@ import {
   usePublicationState,
   usePublishedCourseMap,
   usePublishedMapsByCourse,
-  usePublishedResolvedCourseMap,
-  useResolvedCourseMap,
   useSkins,
 } from './features/course-map/data/queries.ts'
 import { useDeleteBubble, useUpdateBubble } from './features/course-map/data/draftMutations.ts'
@@ -48,9 +45,12 @@ import { draftToRenderable, publishedToRenderable } from './features/course-map/
 import type {
   Activity,
   MapInitialView,
+  RenderableBubble,
   RenderableBubble as Bubble,
   ResolvedBubble,
 } from './features/course-map/data/types.ts'
+import { useBackendMoodleState } from './features/course-map/moodle/backendMoodleState.ts'
+import { MoodleStateContext } from './features/course-map/moodle/moodleState.ts'
 import { useRoute } from './hooks/useRoute.ts'
 import { Wordmark } from './components/Logo.tsx'
 import { Button, IconButton } from './components/ui/Button.tsx'
@@ -93,6 +93,10 @@ const AppearanceStudio = lazy(() =>
 
 document.title = `${es.app.wordmark} — ${es.home.title}`
 
+// A stable empty list, so a map that is still loading does not look new on
+// every render.
+const NO_BUBBLES: RenderableBubble[] = []
+
 function App() {
   return (
     <ToastProvider>
@@ -106,6 +110,8 @@ function App() {
 function AppShell() {
   const toast = useToast()
   const [route, navigate] = useRoute()
+  // The Moodle data source: the backend here, the embed host under /embed.
+  const useMoodleState = use(MoodleStateContext) ?? useBackendMoodleState
   const [viewMode, setViewMode] = useState<ViewMode>(initialViewMode)
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null)
   const [isActivitiesMenuOpen, setIsActivitiesMenuOpen] = useState(false)
@@ -137,14 +143,6 @@ function AppShell() {
   const draftQuery = useCourseMap(draftId)
   const publishedQuery = usePublishedCourseMap(publishedId)
   const mapQuery = showPublished ? publishedQuery : draftQuery
-  // Always unfiltered: besides the sidebar, this also backs icon/modname
-  // lookups for every bubble on the map, which can come from any section.
-  // onlySection is applied client-side, just for the sidebar's own list -
-  // see ActivitySidebar's sectionFilter prop.
-  const activitiesQuery = useActivities(draftId, isEditor, false)
-  const draftResolved = useResolvedCourseMap(draftId, isEditor)
-  const publishedResolved = usePublishedResolvedCourseMap(publishedId, false)
-  const resolvedQuery = showPublished ? publishedResolved : draftResolved
   const publicationState = usePublicationState(draftId)
   const createBubble = useCreateBubble(courseMapId ?? '')
   const updateBubble = useUpdateBubble(courseMapId ?? '')
@@ -155,16 +153,30 @@ function AppShell() {
 
   // The one shape the canvas, HUD and skin resolution consume, whichever
   // side it came from.
-  const renderable = useMemo(() => {
+  const storedRenderable = useMemo(() => {
     if (showPublished)
       return publishedQuery.data ? publishedToRenderable(publishedQuery.data) : null
     return draftQuery.data ? draftToRenderable(draftQuery.data, skinsQuery.data?.items ?? []) : null
   }, [showPublished, publishedQuery.data, draftQuery.data, skinsQuery.data])
+  const moodleCourseId = storedRenderable?.moodleCourseId ?? null
+
+  const moodle = useMoodleState({
+    draftId,
+    publishedId,
+    showPublished,
+    isEditor,
+    moodleCourseId,
+    bubbles: storedRenderable?.bubbles ?? NO_BUBBLES,
+  })
+  // The map with each bubble's status as the Moodle source reports it.
+  const renderable = useMemo(
+    () => (storedRenderable ? { ...storedRenderable, bubbles: moodle.bubbles } : null),
+    [storedRenderable, moodle.bubbles]
+  )
 
   // Siblings of the currently-open level, for the breadcrumb and prev/next
   // navigation - only meaningful once we know which course this map
   // belongs to, so it's fetched off the map query, not the route.
-  const moodleCourseId = renderable?.moodleCourseId ?? null
   const draftSiblingsQuery = useCourseMapsByCourse(showPublished ? null : moodleCourseId)
   const publishedSiblingsQuery = usePublishedMapsByCourse(showPublished ? moodleCourseId : null)
   const siblingsData = showPublished ? publishedSiblingsQuery.data : draftSiblingsQuery.data
@@ -186,22 +198,16 @@ function AppShell() {
       : `${es.app.wordmark} — ${es.home.title}`
   }, [renderable])
 
-  const resolvedBubbles = resolvedQuery.data?.bubbles
-  // The published API has no activities endpoint: students get each
-  // activity through /resolved instead.
-  const activities = useMemo(() => {
-    if (showPublished)
-      return (resolvedBubbles ?? []).flatMap((rb) => (rb.activity ? [rb.activity] : []))
-    return activitiesQuery.data ?? []
-  }, [showPublished, resolvedBubbles, activitiesQuery.data])
-  const bubbles = useMemo(() => renderable?.bubbles ?? [], [renderable])
+  const resolvedBubbles = moodle.resolved?.bubbles
+  const activities = moodle.activities
+  const bubbles = useMemo(() => renderable?.bubbles ?? NO_BUBBLES, [renderable])
   const unplacedCount = activities.filter((activity) => !activity.placed).length
 
   const resolvedByBubbleId = useMemo(
     () => new Map<string, ResolvedBubble>((resolvedBubbles ?? []).map((rb) => [rb.bubbleId, rb])),
     [resolvedBubbles]
   )
-  const moodleStatus = resolvedQuery.data?.moodleStatus ?? null
+  const moodleStatus = moodle.resolved?.moodleStatus ?? null
 
   const isSaving = updateBubble.isPending || createBubble.isPending || deleteBubble.isPending
 
@@ -247,8 +253,8 @@ function AppShell() {
   // list" heuristic with the precise available/hidden/missing/unknown states
   // from the backend.
   const getUnavailableReason = (bubble: Bubble): string | null => {
-    if (resolvedQuery.isPending) return es.bubble.loadingActivity
-    if (resolvedQuery.isError) return es.bubble.activitiesUnavailable
+    if (moodle.resolvedPending) return es.bubble.loadingActivity
+    if (moodle.resolvedError) return es.bubble.activitiesUnavailable
     const resolved = resolvedByBubbleId.get(bubble.id)
     if (!resolved) return null
     if (resolved.availability === 'hidden') return es.bubble.hiddenTooltipStudent
@@ -388,9 +394,9 @@ function AppShell() {
   const sidebarProps = {
     activities,
     pendingActivityIds,
-    isLoading: activitiesQuery.isPending,
-    error: activitiesQuery.isError,
-    onRetry: () => void activitiesQuery.refetch(),
+    isLoading: moodle.activitiesPending,
+    error: moodle.activitiesError,
+    onRetry: moodle.refetchActivities,
     currentCourseMapId: courseMapId ?? undefined,
     levelTitleById,
     sectionFilter: renderable?.moodleSectionId ?? null,
@@ -511,7 +517,7 @@ function AppShell() {
               <span>{es.moodleBanner.unavailable}</span>
               <button
                 type="button"
-                onClick={() => void resolvedQuery.refetch()}
+                onClick={moodle.refetchResolved}
                 className="flex min-h-[44px] shrink-0 items-center gap-1 font-bold underline-offset-2 hover:underline"
               >
                 <RefreshCw size={16} strokeWidth={2.5} />
@@ -569,8 +575,8 @@ function AppShell() {
                 <Map3DPanel
                   map={renderable}
                   view3d={view3d}
-                  resolved={resolvedQuery.data}
-                  isLoading={resolvedQuery.isPending}
+                  resolved={moodle.resolved}
+                  isLoading={moodle.resolvedPending}
                   view="student"
                   onOpenBubble={handleBubbleClick}
                   getUnavailableReason={getUnavailableReason}
