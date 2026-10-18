@@ -1943,6 +1943,14 @@ function adaptQuality(now) { if (QUAL.done) return; if (!QUAL.t0) { QUAL.t0 = no
     if (fps < 40) { stage._renderer.setPixelRatio(1); } if (fps < 28) { window.__noInk = true; stage._key.shadow.mapSize.set(1024, 1024); if (stage._key.shadow.map) { stage._key.shadow.map.dispose(); stage._key.shadow.map = null; } } if (fps < 18) { stage._renderer.shadowMap.enabled = false; stage._scene.traverse(o => { if (o.material && o.material.needsUpdate !== undefined) o.material.needsUpdate = true; }); } } }
 { const ld = document.getElementById('loading'); if (ld) { ld.style.opacity = '0'; setTimeout(() => ld.remove(), 450); } }
 const tmp = new V3();
+// Label boxes only change with text or fonts, so measuring them every frame (a
+// forced layout right after writing their positions) is wasted; refresh twice a second.
+const labelSizes = new WeakMap();
+function labelSize(el, now) {
+  let sz = labelSizes.get(el);
+  if (!sz || now - sz.at > 500) { sz = { w: el.offsetWidth, h: el.offsetHeight, at: now }; labelSizes.set(el, sz); }
+  return sz;
+}
 function tick(now) {
   introStep(now);
   if (fly) {
@@ -1968,7 +1976,7 @@ function tick(now) {
     el.classList.toggle('dim', active !== null && hs.n !== active);
     el.style.left = `${(tmp.x * 0.5 + 0.5) * w}px`; el.style.top = `${(-tmp.y * 0.5 + 0.5) * h}px`;
   });
-  const vis = Object.values(labels).filter(el => !el.classList.contains('hide')).map(el => ({ el, x: parseFloat(el.style.left), y: parseFloat(el.style.top), w: el.offsetWidth, h: el.offsetHeight })).sort((a, b) => a.y - b.y);
+  const vis = Object.values(labels).filter(el => !el.classList.contains('hide')).map(el => { const sz = labelSize(el, now); return { el, x: parseFloat(el.style.left), y: parseFloat(el.style.top), w: sz.w, h: sz.h }; }).sort((a, b) => a.y - b.y);
   for (let i = 0; i < vis.length; i++) for (let j = 0; j < i; j++) {
     const a = vis[j], b = vis[i];
     if (Math.abs(a.x - b.x) < (a.w + b.w) / 2 + 4 && Math.abs(a.y - b.y) < b.h + 4) { b.y = a.y + b.h + 4; b.el.style.top = b.y + 'px'; }
