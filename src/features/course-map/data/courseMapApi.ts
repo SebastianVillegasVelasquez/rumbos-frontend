@@ -18,6 +18,7 @@ import type {
   CourseMapPatch,
   CourseMapSummary,
   DraftReplaceResult,
+  LaunchResult,
   PublicationListResult,
   PublicationState,
   PublicationSummary,
@@ -41,6 +42,9 @@ import type {
 // The single seam between components and transport. Components use the query
 // hooks in queries.ts, which call this; nothing else talks to the network.
 export interface CourseMapApi {
+  // Embed mode: exchanges the host's launch assertion for a bearer token. The
+  // only call made without one.
+  launch(assertion: string): Promise<LaunchResult>
   listCourseMaps(params: CourseMapListParams): Promise<CourseMapListResult>
   createCourseMap(input: CourseMapCreate): Promise<CourseMapSummary>
   getCourseMap(courseMapId: string): Promise<CourseMapDetail>
@@ -117,6 +121,9 @@ const buildQuery = (params: Record<string, string | number | boolean | undefined
 }
 
 export const realCourseMapApi: CourseMapApi = {
+  launch: (assertion) =>
+    apiRequest('/auth/launch', { method: 'POST', body: { assertion }, auth: false }),
+
   listCourseMaps: (params) =>
     apiRequest(
       `/course-maps${buildQuery(params as Record<string, string | number | boolean | undefined>)}`

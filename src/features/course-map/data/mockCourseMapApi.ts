@@ -1,4 +1,5 @@
 import { ApiError } from './client.ts'
+import { mockLaunch, withMockAuth } from './mockAuth.ts'
 import { assetObjectUrls } from './mockAssetUrls.ts'
 import {
   ASSET_LIMITS,
@@ -1100,6 +1101,10 @@ const validateView3d = (map: MockMap, view3d: View3d) => {
 }
 
 const impl: CourseMapApi = {
+  async launch(assertion: string) {
+    return mockLaunch(assertion)
+  },
+
   async listCourseMaps(params: CourseMapListParams): Promise<CourseMapListResult> {
     const limit = Math.min(params.limit ?? DEFAULT_LIMIT, MAX_LIMIT)
     const offset = params.offset ?? 0
@@ -1803,7 +1808,12 @@ const withSeedAndLatency = (api: CourseMapApi): CourseMapApi =>
     ])
   ) as unknown as CourseMapApi
 
-export const mockCourseMapApi: CourseMapApi = withSeedAndLatency(impl)
+export const mockCourseMapApi: CourseMapApi = withMockAuth(
+  withSeedAndLatency(impl),
+  (courseMapId) => {
+    return maps.find((map) => map.id === courseMapId)?.moodleCourseId ?? null
+  }
+)
 
 // Dev-only: act as "another editor" so conflicts can be provoked from one tab.
 //   __rumbosMock.editBubbleElsewhere(mapId, bubbleId)  bumps that bubble's version and nudges it

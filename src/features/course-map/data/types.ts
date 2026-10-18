@@ -523,6 +523,20 @@ export interface PublishedMapRead {
   publishedAt: string
 }
 
+// ---- Auth (embed mode) --------------------------------------------------------
+
+export type AuthRole = 'editor' | 'student'
+
+// POST /auth/launch. The access token is kept in memory only.
+export interface LaunchResult {
+  accessToken: string
+  tokenType: 'Bearer'
+  expiresIn: number
+  role: AuthRole
+  courseId: number
+  hostOrigin: string
+}
+
 // ---- Errors -----------------------------------------------------------------
 
 // Business errors use `detail = { code, message, ...extras }`.
