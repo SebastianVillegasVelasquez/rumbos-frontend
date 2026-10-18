@@ -24,28 +24,41 @@ const parseRoute = (): Route => {
 
 // A tiny history.pushState/popstate wrapper — no router dependency. Browser
 // back/forward works because navigation always goes through pushState here.
-export const useRoute = () => {
-  const [route, setRoute] = useState<Route>(parseRoute)
+//
+// With `fixedHome` the route lives in memory instead and never touches the URL
+// or the session history (the embedded app is a guest: it must not add entries
+// to the host page's history). "home" then means that fixed route, so the
+// cross-course "Mis mapas" page cannot be reached.
+export const useRoute = (fixedHome?: Route) => {
+  const [route, setRoute] = useState<Route>(() => fixedHome ?? parseRoute())
 
   useEffect(() => {
+    if (fixedHome) return
     const onPopState = () => setRoute(parseRoute())
     window.addEventListener('popstate', onPopState)
     return () => window.removeEventListener('popstate', onPopState)
-  }, [])
+  }, [fixedHome])
 
-  const navigate = useCallback((next: Route) => {
-    const url = new URL(window.location.href)
-    const view = url.searchParams.get('view')
-    url.search = ''
-    if (view) url.searchParams.set('view', view)
-    if (next.name === 'map') url.searchParams.set('map', next.mapId)
-    else if (next.name === 'course') {
-      url.searchParams.set('course', String(next.moodleCourseId))
-      if (next.forceEntry) url.searchParams.set('entry', '1')
-    }
-    window.history.pushState(null, '', url)
-    setRoute(next)
-  }, [])
+  const navigate = useCallback(
+    (next: Route) => {
+      if (fixedHome) {
+        setRoute(next.name === 'home' ? fixedHome : next)
+        return
+      }
+      const url = new URL(window.location.href)
+      const view = url.searchParams.get('view')
+      url.search = ''
+      if (view) url.searchParams.set('view', view)
+      if (next.name === 'map') url.searchParams.set('map', next.mapId)
+      else if (next.name === 'course') {
+        url.searchParams.set('course', String(next.moodleCourseId))
+        if (next.forceEntry) url.searchParams.set('entry', '1')
+      }
+      window.history.pushState(null, '', url)
+      setRoute(next)
+    },
+    [fixedHome]
+  )
 
   return [route, navigate] as const
 }

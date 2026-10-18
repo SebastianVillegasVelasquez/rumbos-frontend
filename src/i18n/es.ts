@@ -479,6 +479,26 @@ export const es = {
     levelUnavailable: 'Este nivel aún no está disponible.',
     levelUnavailableHint: 'Tu docente todavía no lo ha publicado.',
   },
+  embed: {
+    connecting: 'Conectando con tu curso…',
+    failureTitle: 'No pudimos abrir el mapa del curso',
+    failureHint:
+      'Puedes seguir con el contenido normal del curso. Si el problema continúa, avisa a tu docente.',
+    reasons: {
+      not_embedded: 'Esta página se abre dentro de tu curso en Moodle.',
+      invalid_host: 'Esta página se abre dentro de tu curso en Moodle.',
+      handshake_timeout: 'Tu curso no respondió a tiempo.',
+      launch_invalid: 'No pudimos verificar tu sesión.',
+      tenant_disabled: 'El mapa interactivo no está habilitado en este sitio.',
+      origin_mismatch: 'Este mapa no puede abrirse desde esta página.',
+      course_mismatch: 'Este mapa no corresponde a tu curso.',
+      backend_unreachable: 'No pudimos conectar con el servidor del mapa.',
+      session_expired: 'Tu sesión expiró.',
+    },
+    expiredTitle: 'Tu sesión expiró. Recarga la página.',
+    expiredHint: 'Tu avance en el curso no se perdió.',
+    reload: 'Recargar la página',
+  },
   publication: {
     chip: {
       never: 'Sin publicar',
