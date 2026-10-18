@@ -35,7 +35,14 @@ FROM nginxinc/nginx-unprivileged:1.26-alpine-slim AS runner
 
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-COPY ./nginx/nginx.conf /etc/nginx/conf.d/default.conf
+# A template: the image's entrypoint substitutes ${EMBED_FRAME_ANCESTORS} (and
+# only the variables that are set) when the container starts.
+COPY ./nginx/nginx.conf /etc/nginx/templates/default.conf.template
+
+# Origins allowed to frame /embed and /3d/: the registered Moodle sites, for
+# example "https://moodle.example.edu https://campus.example.org". Framing by
+# anyone else is refused.
+ENV EMBED_FRAME_ANCESTORS="'self'"
 
 USER nginx
 
