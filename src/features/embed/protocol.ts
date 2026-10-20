@@ -80,7 +80,14 @@ export interface HostLaunchMessage {
   assertion: string
 }
 
-export type HostMessage = HostInitMessage | HostStateMessage | HostLaunchMessage
+export interface HostFullscreenMessage {
+  type: 'rumbos:host-fullscreen'
+  v: 1
+  on: boolean
+}
+
+export type HostMessage =
+  HostInitMessage | HostStateMessage | HostLaunchMessage | HostFullscreenMessage
 
 // Why the app gave up. The plugin uses it to fall back to the standard course
 // content, so a student is never left on a dead page.
@@ -282,6 +289,10 @@ export const parseHostMessage = (data: unknown): HostMessage | null => {
       const assertion = parseAssertion(data.assertion)
       return assertion ? { type: 'rumbos:host-launch', v: 1, assertion } : null
     }
+    case 'rumbos:host-fullscreen':
+      return typeof data.on === 'boolean'
+        ? { type: 'rumbos:host-fullscreen', v: 1, on: data.on }
+        : null
     default:
       return null
   }

@@ -2,6 +2,7 @@ import { courseMapApi } from '../course-map/data/index.ts'
 import { ApiError, setAuthHooks } from '../course-map/data/client.ts'
 import type { AuthRole, LaunchResult } from '../course-map/data/types.ts'
 import type { HostBridge } from './hostBridge.ts'
+import { setHostFullscreen } from './hostFullscreen.ts'
 import { setHostState } from './hostState.ts'
 import { hostOriginMatches, parseLaunchResult } from './launch.ts'
 import { startReadyRetry } from './readyRetry.ts'
@@ -162,6 +163,10 @@ export const createEmbedSession = (bridge: HostBridge): EmbedSession => {
         // Only the course this session was launched for.
         if (identity && message.state.courseId === identity.courseId) setHostState(message.state)
         return
+      case 'rumbos:host-fullscreen':
+        // The host's word on whether the iframe is expanded; once launched.
+        if (identity) setHostFullscreen(message.on)
+        return
       case 'rumbos:host-launch':
         // Only an answer to our own request-launch counts.
         if (relaunchWaiter) {
@@ -194,6 +199,7 @@ export const createEmbedSession = (bridge: HostBridge): EmbedSession => {
         relaunchWaiter = null
         clearAuth()
         setHostState(null)
+        setHostFullscreen(false)
         initHandled = false
         identity = null
         phase = { name: 'connecting' }
