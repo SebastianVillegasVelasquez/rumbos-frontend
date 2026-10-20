@@ -61,6 +61,7 @@ import type {
 import { useBackendMoodleState } from './features/course-map/moodle/backendMoodleState.ts'
 import { MoodleStateContext } from './features/course-map/moodle/moodleState.ts'
 import { useEmbed } from './features/embed/EmbedContext.ts'
+import { setHostFullscreen, useHostFullscreen } from './features/embed/hostFullscreen.ts'
 import { useRoute, type Route } from './hooks/useRoute.ts'
 import { Wordmark } from './components/Logo.tsx'
 import { Button, IconButton } from './components/ui/Button.tsx'
@@ -137,10 +138,10 @@ export function AppShell() {
   // The iframe's height is the host's call (80dvh on phones, the whole screen
   // in fullscreen): size to the viewport it actually has.
   const shellHeight = embed ? 'h-dvh' : 'h-screen'
-  const [isFullscreen, setIsFullscreen] = useState(false)
+  const isFullscreen = useHostFullscreen()
   const toggleFullscreen = () => {
     embed?.requestFullscreen(!isFullscreen)
-    setIsFullscreen(!isFullscreen)
+    setHostFullscreen(!isFullscreen)
   }
   const fullscreenControl = embed ? (
     <Button variant="surface" size="sm" onClick={toggleFullscreen} aria-pressed={isFullscreen}>

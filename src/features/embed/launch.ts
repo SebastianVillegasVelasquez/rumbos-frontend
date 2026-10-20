@@ -1,5 +1,5 @@
 import type { AuthRole, LaunchResult } from '../course-map/data/types.ts'
-import { parseHostOrigin } from './hostOrigin.ts'
+import { normalizeOrigin } from './hostOrigin.ts'
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -27,4 +27,4 @@ export const parseLaunchResult = (value: unknown): LaunchResult | null => {
 
 // The tenant's registered host must be the page that actually embeds us.
 export const hostOriginMatches = (reported: string, expected: string) =>
-  parseHostOrigin(reported) === expected
+  normalizeOrigin(reported) === expected

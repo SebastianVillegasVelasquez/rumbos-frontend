@@ -1,5 +1,5 @@
 import { parseHostOrigin } from './hostOrigin.ts'
-import { parseHostMessage, type AppMessage, type HostMessage } from './protocol.ts'
+import { parseHostMessage, toWireMessage, type AppMessage, type HostMessage } from './protocol.ts'
 
 export { parseHostOrigin }
 
@@ -33,7 +33,7 @@ export const createHostBridge = (hostOrigin: string): HostBridge => {
     hostOrigin,
     send: (message) => {
       if (window.parent === window) return
-      window.parent.postMessage(message, hostOrigin)
+      window.parent.postMessage(toWireMessage(message), hostOrigin)
     },
     subscribe: (listener) => {
       if (listeners.size === 0) window.addEventListener('message', onMessage)

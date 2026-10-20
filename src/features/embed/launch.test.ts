@@ -33,19 +33,34 @@ describe('parseLaunchResult', () => {
 })
 
 describe('parseHostOrigin', () => {
-  it('normalizes a plain http(s) origin', () => {
+  it('accepts an exact https origin', () => {
     assert.equal(parseHostOrigin('https://moodle.example'), 'https://moodle.example')
-    assert.equal(parseHostOrigin('https://moodle.example/some/path?x=1'), 'https://moodle.example')
-    assert.equal(parseHostOrigin('http://localhost:8080'), 'http://localhost:8080')
+    assert.equal(parseHostOrigin('https://moodle.example:8443'), 'https://moodle.example:8443')
   })
 
-  it('rejects missing, opaque and credentialed hosts', () => {
+  it('rejects anything that is more than the origin', () => {
+    assert.equal(parseHostOrigin('https://moodle.example/'), null)
+    assert.equal(parseHostOrigin('https://moodle.example/some/path'), null)
+    assert.equal(parseHostOrigin('https://moodle.example?x=1'), null)
+    assert.equal(parseHostOrigin('https://moodle.example#frag'), null)
+    assert.equal(parseHostOrigin('https://user:pw@moodle.example'), null)
+  })
+
+  it('rejects missing, malformed and non-http schemes', () => {
     assert.equal(parseHostOrigin(null), null)
     assert.equal(parseHostOrigin(''), null)
     assert.equal(parseHostOrigin('javascript:alert(1)'), null)
     assert.equal(parseHostOrigin('data:text/html,x'), null)
-    assert.equal(parseHostOrigin('https://user:pw@moodle.example'), null)
     assert.equal(parseHostOrigin('not a url'), null)
+  })
+
+  it('rejects http unless it is localhost in a development build', () => {
+    assert.equal(parseHostOrigin('http://moodle.example'), null)
+    assert.equal(parseHostOrigin('http://moodle.example', true), null)
+    assert.equal(parseHostOrigin('http://localhost:5173'), null)
+    assert.equal(parseHostOrigin('http://localhost:5173', true), 'http://localhost:5173')
+    assert.equal(parseHostOrigin('http://127.0.0.1:5173', true), 'http://127.0.0.1:5173')
+    assert.equal(parseHostOrigin('http://localhost.evil.example', true), null)
   })
 })
 

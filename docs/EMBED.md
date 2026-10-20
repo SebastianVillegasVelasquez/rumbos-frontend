@@ -160,6 +160,21 @@ Also required: the backend's CORS must allow the app origin with the
 `Authorization` header, and the plugin's page must not set a `Permissions-Policy`
 that blocks `fullscreen` for the iframe (`allow="fullscreen"`).
 
+## Build stamp
+
+`index.html` carries `<meta name="rumbos-build" content="<short commit>@<build time>">`,
+and embed mode prints it once in the console (`[rumbos-embed] build ...`). To see whether
+`/embed` and `/` come from the same build:
+
+```
+curl -s https://HOST/embed | grep rumbos-build
+curl -s https://HOST/      | grep rumbos-build
+```
+
+The Docker build has no `.git`, so pass the commit in:
+`RUMBOS_BUILD_COMMIT=$(git rev-parse --short HEAD) docker compose build`
+(`unknown` if unset; a local `pnpm build` reads git itself).
+
 ## Mock host (development)
 
 `mock-host/` is a dev page that plays the plugin. Not part of the production build.

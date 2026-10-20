@@ -483,6 +483,7 @@ export const es = {
   embed: {
     connecting: 'Conectando con tu curso…',
     failureTitle: 'No pudimos abrir el mapa del curso',
+    crashedTitle: 'Algo salió mal en el mapa del curso',
     failureHint:
       'Puedes seguir con el contenido normal del curso. Si el problema continúa, avisa a tu docente.',
     reasons: {

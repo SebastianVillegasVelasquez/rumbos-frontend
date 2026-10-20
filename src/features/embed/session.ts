@@ -2,8 +2,10 @@ import { courseMapApi } from '../course-map/data/index.ts'
 import { ApiError, setAuthHooks } from '../course-map/data/client.ts'
 import type { AuthRole, LaunchResult } from '../course-map/data/types.ts'
 import type { HostBridge } from './hostBridge.ts'
+import { setHostFullscreen } from './hostFullscreen.ts'
 import { setHostState } from './hostState.ts'
 import { hostOriginMatches, parseLaunchResult } from './launch.ts'
+import { startReadyRetry } from './readyRetry.ts'
 import type { EmbedErrorCode, HostInitMessage, HostMessage } from './protocol.ts'
 
 export type EmbedPhase =
@@ -52,6 +54,7 @@ export const createEmbedSession = (bridge: HostBridge): EmbedSession => {
   let identity: { role: AuthRole; courseId: number } | null = null
   let initHandled = false
   let handshakeTimer: ReturnType<typeof setTimeout> | undefined
+  let stopReadyRetry: (() => void) | undefined
   let relaunchWaiter: ((assertion: string | null) => void) | null = null
   let refreshInFlight: Promise<boolean> | null = null
 
@@ -66,6 +69,7 @@ export const createEmbedSession = (bridge: HostBridge): EmbedSession => {
   }
 
   const failHandshake = (code: EmbedErrorCode) => {
+    stopReadyRetry?.()
     clearAuth()
     setPhase({ name: 'failed', code })
     bridge.send({ type: 'rumbos:error', v: 1, code })
@@ -92,6 +96,7 @@ export const createEmbedSession = (bridge: HostBridge): EmbedSession => {
     if (initHandled) return
     initHandled = true
     clearTimeout(handshakeTimer)
+    stopReadyRetry?.()
     try {
       const result = await exchange(message.assertion)
       if (result.courseId !== message.courseId) throw new LaunchFailure('course_mismatch')
@@ -158,6 +163,10 @@ export const createEmbedSession = (bridge: HostBridge): EmbedSession => {
         // Only the course this session was launched for.
         if (identity && message.state.courseId === identity.courseId) setHostState(message.state)
         return
+      case 'rumbos:host-fullscreen':
+        // The host's word on whether the iframe is expanded; once launched.
+        if (identity) setHostFullscreen(message.on)
+        return
       case 'rumbos:host-launch':
         // Only an answer to our own request-launch counts.
         if (relaunchWaiter) {
@@ -180,14 +189,17 @@ export const createEmbedSession = (bridge: HostBridge): EmbedSession => {
       handshakeTimer = setTimeout(() => {
         if (!initHandled) failHandshake('handshake_timeout')
       }, HANDSHAKE_TIMEOUT_MS)
-      bridge.send({ type: 'rumbos:embed-ready', v: 1 })
+      // Listener first (above), then announce; repeated until the host answers.
+      stopReadyRetry = startReadyRetry(() => bridge.send({ type: 'rumbos:embed-ready', v: 1 }))
       return () => {
         unsubscribe()
         clearTimeout(handshakeTimer)
+        stopReadyRetry?.()
         relaunchWaiter?.(null)
         relaunchWaiter = null
         clearAuth()
         setHostState(null)
+        setHostFullscreen(false)
         initHandled = false
         identity = null
         phase = { name: 'connecting' }
