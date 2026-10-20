@@ -8,6 +8,7 @@ import { es } from '../../i18n/es.ts'
 import { WriteSyncHost } from '../course-map/components/WriteSyncHost.tsx'
 import { ApiError } from '../course-map/data/client.ts'
 import { MoodleStateContext } from '../course-map/moodle/moodleState.ts'
+import { EmbedErrorBoundary } from './EmbedErrorBoundary.tsx'
 import { EmbedContext, type EmbedContextValue } from './EmbedContext.ts'
 import {
   createHostBridge,
@@ -83,8 +84,7 @@ const EmbedMessage = ({
 
 const reasonFor = (code: EmbedErrorCode) => es.embed.reasons[code]
 
-const ConnectedEmbed = ({ hostOrigin }: { hostOrigin: string }) => {
-  const bridge = useMemo(() => createHostBridge(hostOrigin), [hostOrigin])
+const EmbedSessionView = ({ hostOrigin, bridge }: { hostOrigin: string; bridge: HostBridge }) => {
   const session = useMemo(() => createEmbedSession(bridge), [bridge])
   useEffect(() => session.start(), [session])
   useEffect(() => {
@@ -177,6 +177,15 @@ const ConnectedEmbed = ({ hostOrigin }: { hostOrigin: string }) => {
         </ToastProvider>
       </MoodleStateContext>
     </EmbedContext>
+  )
+}
+
+const ConnectedEmbed = ({ hostOrigin }: { hostOrigin: string }) => {
+  const bridge = useMemo(() => createHostBridge(hostOrigin), [hostOrigin])
+  return (
+    <EmbedErrorBoundary bridge={bridge}>
+      <EmbedSessionView hostOrigin={hostOrigin} bridge={bridge} />
+    </EmbedErrorBoundary>
   )
 }
 
