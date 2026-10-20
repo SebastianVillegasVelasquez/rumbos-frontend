@@ -189,10 +189,20 @@ const ConnectedEmbed = ({ hostOrigin }: { hostOrigin: string }) => {
   )
 }
 
+// Printed once per page load so a console screenshot says which build runs.
+let buildLogged = false
+const logBuildOnce = () => {
+  if (buildLogged) return
+  buildLogged = true
+  const stamp = document.querySelector('meta[name="rumbos-build"]')?.getAttribute('content')
+  console.info(`[rumbos-embed] build ${stamp ?? 'unknown'}`)
+}
+
 // The /embed route: the app as a guest inside a Moodle page. It talks to the
 // host only through the origin-pinned bridge and gets its identity from a
 // token the backend issues for the host's launch assertion.
 const EmbedRoot = () => {
+  logBuildOnce()
   const hostOrigin = useMemo(
     () =>
       parseHostOrigin(new URLSearchParams(window.location.search).get('host'), import.meta.env.DEV),
