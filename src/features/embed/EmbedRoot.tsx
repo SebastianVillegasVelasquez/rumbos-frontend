@@ -185,7 +185,8 @@ const ConnectedEmbed = ({ hostOrigin }: { hostOrigin: string }) => {
 // token the backend issues for the host's launch assertion.
 const EmbedRoot = () => {
   const hostOrigin = useMemo(
-    () => parseHostOrigin(new URLSearchParams(window.location.search).get('host')),
+    () =>
+      parseHostOrigin(new URLSearchParams(window.location.search).get('host'), import.meta.env.DEV),
     []
   )
 
