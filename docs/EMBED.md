@@ -29,7 +29,11 @@ call `GET /published/**` of their own course; editors may also use the draft
 endpoints; another course's resources answer 404. In plugin mode
 `/course-maps/{id}/activities`, `/course-maps/{id}/resolved` and
 `/published/course-maps/{id}/resolved` answer `501 moodle_source_not_provided`:
-the host provides that data instead (the app never calls them in embed mode).
+the host provides that data instead. The app never calls them in embed mode: all
+Moodle data goes through the `MoodleStateProvider` (the host-based one here), and
+the data layer rejects those three calls locally, without a request. Reaching one
+is a programming error: it is logged in development, shows "Esta función no está
+disponible en este modo." and is never reported to the host.
 
 ### Messages
 
@@ -37,22 +41,54 @@ Always `v: 1`. The iframe URL is `{APP_URL}/embed?host={hostOrigin}`. **No secre
 in URLs.** Both sides verify `event.origin` **and** `event.source`, and always pass
 an explicit `targetOrigin` (never `"*"`).
 
-| Direction  | Message                                                                  | Meaning                                                   |
-| ---------- | ------------------------------------------------------------------------ | --------------------------------------------------------- |
-| app → host | `{ type: "rumbos:embed-ready" }`                                         | The iframe loaded; send me the init.                      |
-| host → app | `{ type: "rumbos:host-init", mode, locale, courseId, assertion, state }` | Start the session.                                        |
-| app → host | `{ type: "rumbos:request-state" }`                                       | Please send a fresh `CourseState`.                        |
-| host → app | `{ type: "rumbos:host-state", state }`                                   | The current user's `CourseState`.                         |
-| app → host | `{ type: "rumbos:request-launch" }`                                      | The token expired; send a new assertion.                  |
-| host → app | `{ type: "rumbos:host-launch", assertion }`                              | A fresh assertion (only accepted after a request-launch). |
-| app → host | `{ type: "rumbos:open-activity", cmid }`                                 | Open this activity. The host looks the URL up itself.     |
-| app → host | `{ type: "rumbos:request-fullscreen", on }`                              | Expand / restore the iframe.                              |
-| app → host | `{ type: "rumbos:error", code }`                                         | The app gave up; fall back to the standard course page.   |
+| Direction  | Message                                                                  | Meaning                                                    |
+| ---------- | ------------------------------------------------------------------------ | ---------------------------------------------------------- |
+| app → host | `{ type: "rumbos:embed-ready" }`                                         | The iframe loaded; send me the init.                       |
+| host → app | `{ type: "rumbos:host-init", mode, locale, courseId, assertion, state }` | Start the session.                                         |
+| app → host | `{ type: "rumbos:request-state" }`                                       | Please send a fresh `CourseState`.                         |
+| host → app | `{ type: "rumbos:host-state", state }`                                   | The current user's `CourseState`.                          |
+| app → host | `{ type: "rumbos:request-launch" }`                                      | The token expired; send a new assertion.                   |
+| host → app | `{ type: "rumbos:host-launch", assertion }`                              | A fresh assertion (only accepted after a request-launch).  |
+| app → host | `{ type: "rumbos:open-activity", cmid }`                                 | Open this activity. The host looks the URL up itself.      |
+| app → host | `{ type: "rumbos:request-fullscreen", on }`                              | Expand / restore the iframe.                               |
+| app → host | `{ type: "rumbos:error", code }`                                         | The app gave up; fall back to the standard course page.    |
+| host → app | `{ type: "rumbos:host-overlay", open }` (v5.3)                           | An activity popup opened/closed above the app (see below). |
 
 `rumbos:error` codes: `not_embedded`, `invalid_host`, `handshake_timeout`,
 `launch_invalid`, `tenant_disabled`, `origin_mismatch`, `course_mismatch`,
 `backend_unreachable`, `session_expired`. The plugin should treat any of them as
 "show the normal Moodle course content".
+
+Only **handshake, launch (token exchange), token refresh, protocol and crash**
+failures send `rumbos:error`; a failure of any other feature (a panel, a list, a
+save) is handled inside the app with a friendly message and the map keeps working:
+
+| Failure                                                           | Reports to the host? |
+| ----------------------------------------------------------------- | -------------------- |
+| Handshake (no/invalid `host-init`, timeout, bad origin or course) | yes                  |
+| Protocol mismatch                                                 | yes                  |
+| Initial `POST /auth/launch` fails                                 | yes                  |
+| Token expired and cannot be refreshed                             | yes                  |
+| Crash caught by the error boundary (`app_crashed`)                | yes                  |
+| Any 4xx/5xx or network error on a feature                         | no (local message)   |
+| `501 moodle_source_not_provided` (a bug in embed mode)            | no (log in dev)      |
+
+The wire codes (v5.1) are unchanged. The policy lives in `features/embed/escalation.ts`.
+
+### Mode and overlays (v5.3)
+
+`host-init.mode` is `"editor"` if and only if the user has the edit capability **and**
+Moodle's editing mode is on; otherwise `"student"`, even for a user whose assertion
+role is `editor`. The assertion role stays capability-based and is what the backend
+authorizes; the **UI mode is the host's**. In `"student"` mode the app renders no
+editor UI (appearance studio, saving, saved versions, progress simulator) and uses the
+saved map. If nothing is saved and the role is `editor`, it says "Aún no hay un mapa
+guardado. Activa la edición del curso para configurarlo."
+
+`rumbos:host-overlay { open }`: sent when the host opens or closes an overlay (an activity
+popup) above the app. While open, the app pauses its animation loops (ambient particles,
+path travelers, camera smoothing) and starts no new transitions. After closing, the host
+sends `host-state`; completion changes in it play as live effects, not as a first load.
 
 ```ts
 CourseState = { schemaVersion: 1, courseId, generatedAt,
@@ -194,7 +230,7 @@ VITE_USE_MOCK_API=true pnpm dev
 
 Using `127.0.0.1` for the host and `localhost` for the app makes them genuinely
 different origins, so the origin checks are exercised. It provides: student/editor
-roles, a per-activity table (availability: available / restricted / hidden /
+roles, an "editing on" switch (host-init `mode`), "Overlay open" / "Overlay close + state", a per-activity table (availability: available / restricted / hidden /
 unavailable / missing, restriction text, completion) that pushes a new state on
 every change, token TTL, "Expire token", "Host disappears", a wrong `?host=`, a
 tenant the backend rejects or that reports another host, malformed and unsolicited
