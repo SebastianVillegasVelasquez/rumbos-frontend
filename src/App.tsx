@@ -669,6 +669,7 @@ export function AppShell() {
           <AppearanceStudio
             courseMap={draftQuery.data}
             skins={skinsQuery.data?.items ?? []}
+            activities={activities}
             getCurrentView={() => latestViewportRef.current}
             onClose={() => setIsAppearanceOpen(false)}
             onChangeBackground={() => setIsBackgroundPickerOpen(true)}

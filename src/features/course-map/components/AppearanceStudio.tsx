@@ -14,6 +14,7 @@ import { resolveThumbUrl } from '../data/assets.ts'
 import { es } from '../../../i18n/es.ts'
 import { useEmbed } from '../../embed/EmbedContext.ts'
 import type {
+  Activity,
   AmbientKind,
   Bubble,
   CourseMapRead,
@@ -32,6 +33,8 @@ type Tab = 'bubbles' | 'map' | 'ambient' | 'sequence' | 'view3d' | 'animation'
 interface AppearanceStudioProps {
   courseMap: CourseMapRead
   skins: Skin[]
+  // From the app's Moodle source; used to name the bubbles in the 3D tab.
+  activities: Activity[]
   getCurrentView: () => MapInitialView | null
   onClose: () => void
   onChangeBackground: () => void
@@ -47,6 +50,7 @@ const rulesEqual = (a: SkinRule[], b: SkinRule[]) => JSON.stringify(a) === JSON.
 export const AppearanceStudio = ({
   courseMap,
   skins,
+  activities,
   getCurrentView,
   onClose,
   onChangeBackground,
@@ -162,7 +166,7 @@ export const AppearanceStudio = ({
         )}
         {/* Kept mounted so unsaved 3D edits survive switching tabs. */}
         <div hidden={tab !== 'view3d'}>
-          <View3dTab courseMap={courseMap} onPreview={onPreview3d} />
+          <View3dTab courseMap={courseMap} activities={activities} onPreview={onPreview3d} />
         </div>
         {tab === 'animation' && <AnimationTab />}
       </div>

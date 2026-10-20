@@ -6,8 +6,8 @@ import { es } from '../../../i18n/es.ts'
 import { getScene3d } from '../../../scenes3d/registry.ts'
 import { ApiError } from '../../course-map/data/client.ts'
 import { useUpdateView3d } from '../../course-map/data/draftMutations.ts'
-import { useActivities, useView3dScenes } from '../../course-map/data/queries.ts'
-import type { CourseMapRead } from '../../course-map/data/types.ts'
+import { useView3dScenes } from '../../course-map/data/queries.ts'
+import type { Activity, CourseMapRead } from '../../course-map/data/types.ts'
 import { DESCRIPTION3D_MAX_LENGTH, TITLE3D_MAX_LENGTH } from '../../course-map/data/view3dLimits.ts'
 import { isWriteDiscarded } from '../../course-map/data/writeQueue.ts'
 import {
@@ -31,6 +31,9 @@ const areaClass =
 
 interface View3dTabProps {
   courseMap: CourseMapRead
+  // The course's activities as the app's Moodle source reports them (the backend
+  // standalone, the host embedded): only their names are read, for the zone list.
+  activities: Activity[]
   // Opens the 3D view of the saved draft (the studio closes itself).
   onPreview: () => void
 }
@@ -47,9 +50,8 @@ const errorMessage = (error: unknown): string | null => {
 // The editor side of the 3D view: enable it, pick the scene, say which
 // activity goes in which zone and, optionally, override the texts. Saved with
 // PUT /view3d through the map's guarded write queue.
-export const View3dTab = ({ courseMap, onPreview }: View3dTabProps) => {
+export const View3dTab = ({ courseMap, activities, onPreview }: View3dTabProps) => {
   const scenesQuery = useView3dScenes()
-  const activitiesQuery = useActivities(courseMap.id, true, false)
   const update = useUpdateView3d(courseMap.id)
 
   // Backend scenes the frontend can also draw.
@@ -96,9 +98,8 @@ export const View3dTab = ({ courseMap, onPreview }: View3dTabProps) => {
   const effective: View3dForm = { ...form, scene: sceneId }
 
   const activityNames = useMemo(
-    () =>
-      new Map((activitiesQuery.data ?? []).map((activity) => [activity.activityId, activity.name])),
-    [activitiesQuery.data]
+    () => new Map(activities.map((activity) => [activity.activityId, activity.name])),
+    [activities]
   )
   const bubbles = useMemo(
     () => [...courseMap.bubbles].sort((a, b) => a.sequence - b.sequence),

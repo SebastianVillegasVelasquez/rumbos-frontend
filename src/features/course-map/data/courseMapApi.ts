@@ -1,4 +1,5 @@
-import { apiRequest, apiUpload } from './client.ts'
+import { guardMoodleBackendCall } from './moodleGuard.ts'
+import { ApiError, apiRequest, apiUpload, hasAuthHooks } from './client.ts'
 import type {
   Activity,
   AppearanceUpdate,
@@ -120,6 +121,16 @@ const buildQuery = (params: Record<string, string | number | boolean | undefined
   return query ? `?${query}` : ''
 }
 
+// Embedded, Moodle data comes from the host (see moodleGuard.ts). The error is an
+// ApiError so callers and the policy see the 501 the backend would have sent.
+export const moodleFromBackend = <T>(request: () => Promise<T>): Promise<T> =>
+  guardMoodleBackendCall(hasAuthHooks(), request, (error) => {
+    if (import.meta.env.DEV) {
+      console.error('[rumbos] a Moodle-backed endpoint was called in embed mode (a bug)')
+    }
+    return new ApiError(error.status, error.body)
+  })
+
 export const realCourseMapApi: CourseMapApi = {
   launch: (assertion) =>
     apiRequest('/auth/launch', { method: 'POST', body: { assertion }, auth: false }),
@@ -149,10 +160,14 @@ export const realCourseMapApi: CourseMapApi = {
   listView3dScenes: () => apiRequest('/view3d/scenes'),
 
   getResolvedCourseMap: (courseMapId, includeHidden) =>
-    apiRequest(`${base(courseMapId)}/resolved${buildQuery({ includeHidden })}`),
+    moodleFromBackend(() =>
+      apiRequest(`${base(courseMapId)}/resolved${buildQuery({ includeHidden })}`)
+    ),
 
   getActivities: (courseMapId, includeHidden, onlySection) =>
-    apiRequest(`${base(courseMapId)}/activities${buildQuery({ includeHidden, onlySection })}`),
+    moodleFromBackend(() =>
+      apiRequest(`${base(courseMapId)}/activities${buildQuery({ includeHidden, onlySection })}`)
+    ),
 
   createBubble: (courseMapId, input) =>
     apiRequest(`${base(courseMapId)}/bubbles`, { method: 'POST', body: input }),
@@ -229,7 +244,9 @@ export const realCourseMapApi: CourseMapApi = {
     apiRequest(`/published/course-maps/${encodeURIComponent(courseMapId)}`),
 
   getPublishedResolvedCourseMap: (courseMapId, includeHidden) =>
-    apiRequest(
-      `/published/course-maps/${encodeURIComponent(courseMapId)}/resolved${buildQuery({ includeHidden })}`
+    moodleFromBackend(() =>
+      apiRequest(
+        `/published/course-maps/${encodeURIComponent(courseMapId)}/resolved${buildQuery({ includeHidden })}`
+      )
     ),
 }
