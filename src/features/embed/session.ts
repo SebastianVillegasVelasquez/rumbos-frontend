@@ -6,6 +6,7 @@ import { setHostFullscreen } from './hostFullscreen.ts'
 import { setHostState } from './hostState.ts'
 import { hostOriginMatches, parseLaunchResult } from './launch.ts'
 import { describeHttpFailure, REASONS } from './errorReason.ts'
+import { reportToHost, type FailureKind } from './escalation.ts'
 import { startReadyRetry } from './readyRetry.ts'
 import type { EmbedErrorCode, HostInitMessage, HostMessage } from './protocol.ts'
 
@@ -76,17 +77,17 @@ export const createEmbedSession = (bridge: HostBridge): EmbedSession => {
     setAuthHooks(null)
   }
 
-  const failHandshake = (code: EmbedErrorCode, reason: string) => {
+  const failHandshake = (kind: FailureKind, code: EmbedErrorCode, reason: string) => {
     stopReadyRetry?.()
     clearAuth()
     setPhase({ name: 'failed', code })
-    bridge.send({ type: 'rumbos:error', v: 1, code, detail: reason })
+    reportToHost(bridge, kind, code, reason)
   }
 
   const expire = (reason: string) => {
     clearAuth()
     setPhase({ name: 'expired' })
-    bridge.send({ type: 'rumbos:error', v: 1, code: 'session_expired', detail: reason })
+    reportToHost(bridge, 'token_refresh', 'session_expired', reason)
   }
 
   const exchange = async (assertion: string): Promise<LaunchResult> => {
@@ -116,7 +117,7 @@ export const createEmbedSession = (bridge: HostBridge): EmbedSession => {
       setPhase({ name: 'ready', role: result.role, courseId: result.courseId })
     } catch (error) {
       const failure = failureFor(error)
-      failHandshake(failure.code, failure.reason)
+      failHandshake('launch', failure.code, failure.reason)
     }
   }
 
@@ -197,7 +198,7 @@ export const createEmbedSession = (bridge: HostBridge): EmbedSession => {
     start: () => {
       const unsubscribe = bridge.subscribe(onMessage)
       handshakeTimer = setTimeout(() => {
-        if (!initHandled) failHandshake('handshake_timeout', REASONS.handshakeTimeout)
+        if (!initHandled) failHandshake('handshake', 'handshake_timeout', REASONS.handshakeTimeout)
       }, HANDSHAKE_TIMEOUT_MS)
       // Listener first (above), then announce; repeated until the host answers.
       stopReadyRetry = startReadyRetry(() => bridge.send({ type: 'rumbos:embed-ready', v: 1 }))

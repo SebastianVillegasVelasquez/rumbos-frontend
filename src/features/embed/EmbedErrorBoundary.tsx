@@ -1,5 +1,6 @@
 import { Component, type ReactNode } from 'react'
 import { es } from '../../i18n/es.ts'
+import { reportToHost } from './escalation.ts'
 import type { HostBridge } from './hostBridge.ts'
 
 // A render crash anywhere in the embedded tree must not leave a blank iframe:
@@ -18,12 +19,7 @@ export class EmbedErrorBoundary extends Component<
 
   componentDidCatch(error: unknown) {
     const name = error instanceof Error ? error.name : 'Error'
-    this.props.bridge.send({
-      type: 'rumbos:error',
-      v: 1,
-      code: 'app_crashed',
-      detail: `Unhandled ${name} while rendering`,
-    })
+    reportToHost(this.props.bridge, 'crash', 'app_crashed', `Unhandled ${name} while rendering`)
   }
 
   render() {

@@ -480,6 +480,17 @@ export const es = {
     levelUnavailable: 'Este nivel aún no está disponible.',
     levelUnavailableHint: 'Tu docente todavía no lo ha publicado.',
   },
+  // A feature that failed while the rest of the app keeps working (embed mode).
+  localErrors: {
+    notAvailableInMode: 'Esta función no está disponible en este modo.',
+    unreachable: 'No pudimos conectar con el servidor. Revisa tu conexión e inténtalo de nuevo.',
+    forbidden: 'No tienes permiso para hacer esto.',
+    notFound: 'No encontramos lo que buscabas. Puede que ya no exista.',
+    conflict: 'Otra persona cambió esto mientras trabajabas. Vuelve a intentarlo.',
+    tooMany: 'Demasiados intentos seguidos. Espera un momento e inténtalo de nuevo.',
+    server: 'El servidor tuvo un problema. Inténtalo de nuevo en un momento.',
+    generic: 'No se pudo completar la acción. Inténtalo de nuevo.',
+  },
   embed: {
     connecting: 'Conectando con tu curso…',
     failureTitle: 'No pudimos abrir el mapa del curso',

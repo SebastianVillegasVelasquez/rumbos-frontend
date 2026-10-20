@@ -1,13 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
 import { Loader2 } from 'lucide-react'
 import { AppShell } from '../../App.tsx'
 import { Button } from '../../components/ui/Button.tsx'
 import { ToastProvider } from '../../components/ui/Toast.tsx'
 import { es } from '../../i18n/es.ts'
 import { WriteSyncHost } from '../course-map/components/WriteSyncHost.tsx'
-import { ApiError } from '../course-map/data/client.ts'
 import { MoodleStateContext } from '../course-map/moodle/moodleState.ts'
+import { EmbedErrorToasts } from './EmbedErrorToasts.tsx'
 import { EmbedErrorBoundary } from './EmbedErrorBoundary.tsx'
 import { EmbedContext, type EmbedContextValue } from './EmbedContext.ts'
 import {
@@ -16,7 +15,6 @@ import {
   parseHostOrigin,
   type HostBridge,
 } from './hostBridge.ts'
-import { describeHttpFailure } from './errorReason.ts'
 import { useHostMoodleState } from './hostMoodleState.ts'
 import type { EmbedErrorCode } from './protocol.ts'
 import { createEmbedSession, type EmbedPhase } from './session.ts'
@@ -102,26 +100,6 @@ const EmbedSessionView = ({ hostOrigin, bridge }: { hostOrigin: string; bridge: 
   }, [hostOrigin])
   const phase: EmbedPhase = useSyncExternalStore(session.subscribe, session.getPhase)
 
-  // Never strand a student: if the backend cannot be reached (a query failed
-  // for good with no response or a 5xx), tell the host once so the plugin can
-  // fall back to the standard course content. The in-app message stays too.
-  const queryClient = useQueryClient()
-  useEffect(() => {
-    let told = false
-    return queryClient.getQueryCache().subscribe((event) => {
-      if (told || event.type !== 'updated' || event.action.type !== 'error') return
-      const error = event.action.error
-      if (error instanceof ApiError && (error.status === 0 || error.status >= 500)) {
-        told = true
-        bridge.send({
-          type: 'rumbos:error',
-          v: 1,
-          code: 'backend_unreachable',
-          detail: describeHttpFailure(error.status, error.detail.code),
-        })
-      }
-    })
-  }, [queryClient, bridge])
   const ready = phase.name === 'ready'
   const requestState = useHostStateRefresh(bridge, ready)
 
@@ -178,6 +156,7 @@ const EmbedSessionView = ({ hostOrigin, bridge }: { hostOrigin: string; bridge: 
     <EmbedContext value={context}>
       <MoodleStateContext value={useHostMoodleState}>
         <ToastProvider>
+          <EmbedErrorToasts />
           <AppShell />
           <WriteSyncHost />
         </ToastProvider>
