@@ -4,6 +4,7 @@ import type { AuthRole, LaunchResult } from '../course-map/data/types.ts'
 import type { HostBridge } from './hostBridge.ts'
 import { setHostState } from './hostState.ts'
 import { hostOriginMatches, parseLaunchResult } from './launch.ts'
+import { startReadyRetry } from './readyRetry.ts'
 import type { EmbedErrorCode, HostInitMessage, HostMessage } from './protocol.ts'
 
 export type EmbedPhase =
@@ -52,6 +53,7 @@ export const createEmbedSession = (bridge: HostBridge): EmbedSession => {
   let identity: { role: AuthRole; courseId: number } | null = null
   let initHandled = false
   let handshakeTimer: ReturnType<typeof setTimeout> | undefined
+  let stopReadyRetry: (() => void) | undefined
   let relaunchWaiter: ((assertion: string | null) => void) | null = null
   let refreshInFlight: Promise<boolean> | null = null
 
@@ -66,6 +68,7 @@ export const createEmbedSession = (bridge: HostBridge): EmbedSession => {
   }
 
   const failHandshake = (code: EmbedErrorCode) => {
+    stopReadyRetry?.()
     clearAuth()
     setPhase({ name: 'failed', code })
     bridge.send({ type: 'rumbos:error', v: 1, code })
@@ -92,6 +95,7 @@ export const createEmbedSession = (bridge: HostBridge): EmbedSession => {
     if (initHandled) return
     initHandled = true
     clearTimeout(handshakeTimer)
+    stopReadyRetry?.()
     try {
       const result = await exchange(message.assertion)
       if (result.courseId !== message.courseId) throw new LaunchFailure('course_mismatch')
@@ -180,10 +184,12 @@ export const createEmbedSession = (bridge: HostBridge): EmbedSession => {
       handshakeTimer = setTimeout(() => {
         if (!initHandled) failHandshake('handshake_timeout')
       }, HANDSHAKE_TIMEOUT_MS)
-      bridge.send({ type: 'rumbos:embed-ready', v: 1 })
+      // Listener first (above), then announce; repeated until the host answers.
+      stopReadyRetry = startReadyRetry(() => bridge.send({ type: 'rumbos:embed-ready', v: 1 }))
       return () => {
         unsubscribe()
         clearTimeout(handshakeTimer)
+        stopReadyRetry?.()
         relaunchWaiter?.(null)
         relaunchWaiter = null
         clearAuth()
