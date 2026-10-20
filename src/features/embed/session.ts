@@ -5,6 +5,7 @@ import type { HostBridge } from './hostBridge.ts'
 import { setHostFullscreen } from './hostFullscreen.ts'
 import { setHostState } from './hostState.ts'
 import { hostOriginMatches, parseLaunchResult } from './launch.ts'
+import { describeHttpFailure, REASONS } from './errorReason.ts'
 import { startReadyRetry } from './readyRetry.ts'
 import type { EmbedErrorCode, HostInitMessage, HostMessage } from './protocol.ts'
 
@@ -28,20 +29,27 @@ export const RELAUNCH_TIMEOUT_MS = 10_000
 
 class LaunchFailure extends Error {
   readonly code: EmbedErrorCode
-  constructor(code: EmbedErrorCode) {
+  readonly reason: string
+  constructor(code: EmbedErrorCode, reason: string) {
     super(code)
     this.code = code
+    this.reason = reason
   }
 }
 
-// What went wrong in POST /auth/launch, as the code the host should hear.
-const failureCodeFor = (error: unknown): EmbedErrorCode => {
-  if (error instanceof LaunchFailure) return error.code
+// What went wrong in POST /auth/launch, as the code the host should hear and
+// a secret-free reason for its detail.
+const failureFor = (error: unknown): { code: EmbedErrorCode; reason: string } => {
+  if (error instanceof LaunchFailure) return { code: error.code, reason: error.reason }
   if (error instanceof ApiError) {
-    if (error.status === 0 || error.status >= 500) return 'backend_unreachable'
-    if (error.status === 403 && error.detail.code === 'tenant_disabled') return 'tenant_disabled'
+    const reason = describeHttpFailure(error.status, error.detail.code)
+    if (error.status === 0 || error.status >= 500) return { code: 'backend_unreachable', reason }
+    if (error.status === 403 && error.detail.code === 'tenant_disabled') {
+      return { code: 'tenant_disabled', reason }
+    }
+    return { code: 'launch_invalid', reason }
   }
-  return 'launch_invalid'
+  return { code: 'launch_invalid', reason: REASONS.unexpected }
 }
 
 // Owns the conversation with the host and the access token. The token lives in
@@ -68,26 +76,26 @@ export const createEmbedSession = (bridge: HostBridge): EmbedSession => {
     setAuthHooks(null)
   }
 
-  const failHandshake = (code: EmbedErrorCode) => {
+  const failHandshake = (code: EmbedErrorCode, reason: string) => {
     stopReadyRetry?.()
     clearAuth()
     setPhase({ name: 'failed', code })
-    bridge.send({ type: 'rumbos:error', v: 1, code })
+    bridge.send({ type: 'rumbos:error', v: 1, code, detail: reason })
   }
 
-  const expire = () => {
+  const expire = (reason: string) => {
     clearAuth()
     setPhase({ name: 'expired' })
-    bridge.send({ type: 'rumbos:error', v: 1, code: 'session_expired' })
+    bridge.send({ type: 'rumbos:error', v: 1, code: 'session_expired', detail: reason })
   }
 
   const exchange = async (assertion: string): Promise<LaunchResult> => {
     const result = parseLaunchResult(await courseMapApi.launch(assertion))
-    if (!result) throw new LaunchFailure('launch_invalid')
+    if (!result) throw new LaunchFailure('launch_invalid', REASONS.malformedLaunch)
     // The backend names the one origin allowed to embed this tenant; it must be
     // the page that actually embeds us.
     if (!hostOriginMatches(result.hostOrigin, bridge.hostOrigin)) {
-      throw new LaunchFailure('origin_mismatch')
+      throw new LaunchFailure('origin_mismatch', REASONS.hostOriginMismatch)
     }
     return result
   }
@@ -99,14 +107,16 @@ export const createEmbedSession = (bridge: HostBridge): EmbedSession => {
     stopReadyRetry?.()
     try {
       const result = await exchange(message.assertion)
-      if (result.courseId !== message.courseId) throw new LaunchFailure('course_mismatch')
+      if (result.courseId !== message.courseId)
+        throw new LaunchFailure('course_mismatch', REASONS.courseMismatch)
       token = result.accessToken
       identity = { role: result.role, courseId: result.courseId }
       setAuthHooks({ getToken: () => token, refresh })
       setHostState(message.state)
       setPhase({ name: 'ready', role: result.role, courseId: result.courseId })
     } catch (error) {
-      failHandshake(failureCodeFor(error))
+      const failure = failureFor(error)
+      failHandshake(failure.code, failure.reason)
     }
   }
 
@@ -128,20 +138,20 @@ export const createEmbedSession = (bridge: HostBridge): EmbedSession => {
   const doRefresh = async (): Promise<boolean> => {
     const assertion = await requestAssertion()
     if (assertion === null) {
-      expire()
+      expire(REASONS.hostSilent)
       return false
     }
     try {
       const result = await exchange(assertion)
       // A different person or course than before is not a refresh.
       if (!identity || result.role !== identity.role || result.courseId !== identity.courseId) {
-        expire()
+        expire(REASONS.identityChanged)
         return false
       }
       token = result.accessToken
       return true
-    } catch {
-      expire()
+    } catch (error) {
+      expire(failureFor(error).reason)
       return false
     }
   }
@@ -187,7 +197,7 @@ export const createEmbedSession = (bridge: HostBridge): EmbedSession => {
     start: () => {
       const unsubscribe = bridge.subscribe(onMessage)
       handshakeTimer = setTimeout(() => {
-        if (!initHandled) failHandshake('handshake_timeout')
+        if (!initHandled) failHandshake('handshake_timeout', REASONS.handshakeTimeout)
       }, HANDSHAKE_TIMEOUT_MS)
       // Listener first (above), then announce; repeated until the host answers.
       stopReadyRetry = startReadyRetry(() => bridge.send({ type: 'rumbos:embed-ready', v: 1 }))

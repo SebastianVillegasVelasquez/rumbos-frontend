@@ -172,8 +172,16 @@ curl -s https://HOST/      | grep rumbos-build
 ```
 
 The Docker build has no `.git`, so pass the commit in:
-`RUMBOS_BUILD_COMMIT=$(git rev-parse --short HEAD) docker compose build`
-(`unknown` if unset; a local `pnpm build` reads git itself).
+
+```
+RUMBOS_BUILD_COMMIT=$(git rev-parse --short HEAD) docker compose build
+# or, to build and start in one go:
+RUMBOS_BUILD_COMMIT=$(git rev-parse --short HEAD) docker compose up -d --build
+```
+
+Without the variable the stamp says `unknown` (compose falls back to it). In PowerShell:
+`$env:RUMBOS_BUILD_COMMIT = (git rev-parse --short HEAD); docker compose build`. A local
+`pnpm build` reads git itself. Check the result with `curl -s https://HOST/embed | grep rumbos-build`.
 
 ## Mock host (development)
 

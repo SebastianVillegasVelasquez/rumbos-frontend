@@ -16,6 +16,7 @@ import {
   parseHostOrigin,
   type HostBridge,
 } from './hostBridge.ts'
+import { describeHttpFailure } from './errorReason.ts'
 import { useHostMoodleState } from './hostMoodleState.ts'
 import type { EmbedErrorCode } from './protocol.ts'
 import { createEmbedSession, type EmbedPhase } from './session.ts'
@@ -112,7 +113,12 @@ const EmbedSessionView = ({ hostOrigin, bridge }: { hostOrigin: string; bridge: 
       const error = event.action.error
       if (error instanceof ApiError && (error.status === 0 || error.status >= 500)) {
         told = true
-        bridge.send({ type: 'rumbos:error', v: 1, code: 'backend_unreachable' })
+        bridge.send({
+          type: 'rumbos:error',
+          v: 1,
+          code: 'backend_unreachable',
+          detail: describeHttpFailure(error.status, error.detail.code),
+        })
       }
     })
   }, [queryClient, bridge])
