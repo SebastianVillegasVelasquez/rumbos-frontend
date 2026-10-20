@@ -73,8 +73,9 @@ import { es } from './i18n/es.ts'
 import { FpsMeter } from './fx/FpsMeter.tsx'
 import { isFpsDebugEnabled } from './fx/debug.ts'
 
-// Edición: the draft, editable. Vista previa: the draft shown as a student
-// would see it. Publicado: the published version, exactly what students get.
+// Edición: the draft, editable. Vista previa (sin guardar): the draft shown as a
+// student would see it. Guardado: the saved (published) version, exactly what
+// students get.
 type ViewMode = 'edit' | 'preview' | 'published'
 
 // A link with ?view=published opens the student experience directly. There is
@@ -459,7 +460,7 @@ export function AppShell() {
   // nowhere to go back to.
   const goHome = embed && siblingLevels.length <= 1 ? undefined : () => navigate({ name: 'home' })
 
-  // "Publicado" needs something published; the level's own state says so.
+  // "Guardado" needs a saved version; the level's own state says so.
   const neverPublished = publicationState.data?.status === 'never_published'
 
   if (route.name === 'home') {
@@ -568,6 +569,11 @@ export function AppShell() {
       />
       <div className="flex flex-1 overflow-hidden">
         <main className="flex min-h-0 flex-1 flex-col overflow-hidden p-1 sm:p-1.5">
+          {isEditor && (
+            <p className="px-1 pb-1 text-xs font-semibold text-ink-soft">
+              {es.publication.autosaveHint}
+            </p>
+          )}
           {moodleStatus === 'unavailable' && (
             <div
               role="alert"

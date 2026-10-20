@@ -21,8 +21,8 @@ interface PublicationBarProps {
   courseMapId: string
 }
 
-// Editor-only controls inline in the header: the status chip plus Publicar, Historial
-// and Descartar cambios.
+// Editor-only controls inline in the header: the status chip plus Guardar, Versiones guardadas
+// and Descartar cambios sin guardar.
 export const PublicationBar = ({ courseMapId }: PublicationBarProps) => {
   const toast = useToast()
   const stateQuery = usePublicationState(courseMapId)

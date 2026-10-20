@@ -69,8 +69,8 @@ a `view3d`; the last choice is remembered in `localStorage`, default 2D). In 3D
 the activity list stays on screen with every state and a way to fly the camera
 to a pin or open it, so the canvas is never the only way in. Editors configure
 it in **Apariencia → 3D** (enable, scene, which activity goes in which zone,
-optional text overrides, preview of the draft) and it is published and restored
-with the rest of the level (`view3dChanged` in the publish dialog).
+optional text overrides, preview of the unsaved draft) and it is saved and restored
+with the rest of the level (`view3dChanged` in the save dialog).
 
 **Phase 1 (this): an isolated page in an iframe.** The world is a second Vite
 HTML entry served at `/3d/` (`3d/`, static images in `public/3d/`); the app
@@ -158,16 +158,19 @@ even while someone is editing.
   Publishing (`POST /course-maps/{id}/publish`) stores an immutable snapshot;
   students read `/published/course-maps/...`. Bubble `status` and level
   `position` are always live and belong to neither the draft nor a snapshot.
-- The map header shows a status chip (_Sin publicar_ / _Publicado · versión N_ /
-  _Cambios sin publicar_), refreshed after every batch of successful writes,
-  publish, discard and restore.
-- **Publicar** reviews the changes (_Fondo cambiado_, _3 burbujas movidas_…) and
-  sends the `draftHash` it showed, so a draft that changed during the review is
-  rejected and re-reviewed instead of published unseen.
-- **Descartar cambios** returns the draft to the published version;
-  **Historial** lists the versions and **Restaurar en el borrador** loads one
-  into the draft (it never publishes). Anything the server had to adjust (for
-  example a deleted skin) is shown as a warning.
+- The UI calls publishing **Guardar** (API routes and code identifiers keep the
+  `publish` names). The map header shows a status chip (_Sin guardar_ /
+  _Guardado · versión N_ / _Cambios sin guardar_), refreshed after every batch of
+  successful writes, save, discard and restore. A discreet hint says that changes
+  are kept automatically and students do not see them until **Guardar**.
+- **Guardar** opens _Guardar cambios_: "Los estudiantes verán esta versión", the
+  changes (_Fondo cambiado_, _3 burbujas movidas_…) and an optional note. It sends
+  the `draftHash` it showed, so a draft that changed during the review is rejected
+  and re-reviewed instead of saved unseen.
+- **Descartar cambios sin guardar** returns the draft to the saved version;
+  **Versiones guardadas** lists the versions and **Restaurar esta versión** loads
+  one into the draft (it stays unsaved until you save). Anything the server had to
+  adjust (for example a deleted skin) is shown as a warning.
 - View modes: **Edición** (draft, editable), **Vista previa (borrador)** (the
   draft as a student would see it) and **Publicado** (read-only, exactly what
   students see; disabled until the level has been published). `?view=published`

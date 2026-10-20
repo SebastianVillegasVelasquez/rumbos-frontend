@@ -11,7 +11,7 @@ interface PublicationChipProps {
 
 const text = es.publication.chip
 
-// "Sin publicar" / "Publicado · versión N" / "Cambios sin publicar". The label
+// "Sin guardar" / "Guardado · versión N" / "Cambios sin guardar". The label
 // is plain text (not colour alone) and the status role gives screen readers a
 // full sentence.
 export const PublicationChip = ({ status, number, className = '' }: PublicationChipProps) => {

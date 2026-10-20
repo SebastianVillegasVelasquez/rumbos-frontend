@@ -4,7 +4,7 @@ import type { AssetUsage } from '../../data/types.ts'
 
 const manage = es.background.manage
 
-// "2 mapas y 1 publicación", "1 mapa, 1 estilo de burbuja y 3 publicaciones".
+// "2 mapas y 1 versión guardada", "1 mapa, 1 estilo de burbuja y 3 versiones guardadas".
 export const describeUsage = (usage: AssetUsage): string => {
   const parts = [
     usage.maps > 0 ? manage.usageMaps(usage.maps) : null,

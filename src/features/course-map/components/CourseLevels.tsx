@@ -24,7 +24,7 @@ import { useHostState } from '../../embed/hostState.ts'
 
 interface CourseLevelsProps {
   moodleCourseId: number
-  // Edición and Vista previa list the draft levels; Publicado lists only what
+  // Edición and Vista previa list the draft levels; Guardado lists only what
   // students can see.
   viewMode: 'edit' | 'preview' | 'published'
   onOpenLevel: (courseMapId: string) => void
