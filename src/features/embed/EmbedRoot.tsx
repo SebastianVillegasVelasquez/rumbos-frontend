@@ -105,18 +105,21 @@ const EmbedSessionView = ({ hostOrigin, bridge }: { hostOrigin: string; bridge: 
 
   const role = phase.name === 'ready' ? phase.role : null
   const courseId = phase.name === 'ready' ? phase.courseId : null
+  // The host's mode never grants more than the token's role does.
+  const mode = phase.name === 'ready' && phase.role === 'editor' ? phase.mode : 'student'
   const context = useMemo<EmbedContextValue | null>(
     () =>
       role && courseId
         ? {
             role,
+            mode,
             courseId,
             openActivity: (cmid) => bridge.send({ type: 'rumbos:open-activity', v: 1, cmid }),
             requestState,
             requestFullscreen: (on) => bridge.send({ type: 'rumbos:request-fullscreen', v: 1, on }),
           }
         : null,
-    [role, courseId, bridge, requestState]
+    [role, mode, courseId, bridge, requestState]
   )
 
   if (phase.name === 'failed') {

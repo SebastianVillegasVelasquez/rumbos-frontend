@@ -8,11 +8,14 @@ import { hostOriginMatches, parseLaunchResult } from './launch.ts'
 import { describeHttpFailure, REASONS } from './errorReason.ts'
 import { reportToHost, type FailureKind } from './escalation.ts'
 import { startReadyRetry } from './readyRetry.ts'
-import type { EmbedErrorCode, HostInitMessage, HostMessage } from './protocol.ts'
+import { setHostOverlayOpen } from './hostOverlay.ts'
+import type { EmbedErrorCode, HostInitMessage, HostMessage, HostMode } from './protocol.ts'
 
 export type EmbedPhase =
   | { name: 'connecting' }
-  | { name: 'ready'; role: AuthRole; courseId: number }
+  // `mode` is the host's word on whether the UI is the editor's; the role (from
+  // the token) is what the backend authorizes.
+  | { name: 'ready'; role: AuthRole; courseId: number; mode: HostMode }
   // The handshake failed: the host has been told, the student sees a message.
   | { name: 'failed'; code: EmbedErrorCode }
   // The token ran out and the host did not (or could not) issue a new one.
@@ -114,7 +117,7 @@ export const createEmbedSession = (bridge: HostBridge): EmbedSession => {
       identity = { role: result.role, courseId: result.courseId }
       setAuthHooks({ getToken: () => token, refresh })
       setHostState(message.state)
-      setPhase({ name: 'ready', role: result.role, courseId: result.courseId })
+      setPhase({ name: 'ready', role: result.role, courseId: result.courseId, mode: message.mode })
     } catch (error) {
       const failure = failureFor(error)
       failHandshake('launch', failure.code, failure.reason)
@@ -178,6 +181,10 @@ export const createEmbedSession = (bridge: HostBridge): EmbedSession => {
         // The host's word on whether the iframe is expanded; once launched.
         if (identity) setHostFullscreen(message.on)
         return
+      case 'rumbos:host-overlay':
+        // Like the other host state messages, only once launched.
+        if (identity) setHostOverlayOpen(message.open)
+        return
       case 'rumbos:host-launch':
         // Only an answer to our own request-launch counts.
         if (relaunchWaiter) {
@@ -211,6 +218,7 @@ export const createEmbedSession = (bridge: HostBridge): EmbedSession => {
         clearAuth()
         setHostState(null)
         setHostFullscreen(false)
+        setHostOverlayOpen(false)
         initHandled = false
         identity = null
         phase = { name: 'connecting' }

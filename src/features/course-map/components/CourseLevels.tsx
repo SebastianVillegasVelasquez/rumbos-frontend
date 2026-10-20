@@ -31,6 +31,7 @@ interface CourseLevelsProps {
 }
 
 export const CourseLevels = ({ moodleCourseId, viewMode, onOpenLevel }: CourseLevelsProps) => {
+  const embed = useEmbed()
   const editable = viewMode === 'edit'
   const showPublished = viewMode === 'published'
   const draftQuery = useCourseMapsByCourse(showPublished ? null : moodleCourseId)
@@ -65,7 +66,11 @@ export const CourseLevels = ({ moodleCourseId, viewMode, onOpenLevel }: CourseLe
   return (
     <>
       {levels.length === 0 ? (
-        <LevelCarouselEmpty editable={editable} onCreateLevel={() => setCreateOpen(true)} />
+        <LevelCarouselEmpty
+          editable={editable}
+          needsEditing={embed?.role === 'editor' && embed.mode === 'student'}
+          onCreateLevel={() => setCreateOpen(true)}
+        />
       ) : (
         <LevelCarousel
           levels={levels}

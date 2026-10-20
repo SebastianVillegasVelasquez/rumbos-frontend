@@ -86,8 +86,20 @@ export interface HostFullscreenMessage {
   on: boolean
 }
 
+// Contract v5.3: the host opened or closed an overlay (an activity popup) above
+// the app. After it closes the host sends a fresh host-state.
+export interface HostOverlayMessage {
+  type: 'rumbos:host-overlay'
+  v: 1
+  open: boolean
+}
+
 export type HostMessage =
-  HostInitMessage | HostStateMessage | HostLaunchMessage | HostFullscreenMessage
+  | HostInitMessage
+  | HostStateMessage
+  | HostLaunchMessage
+  | HostFullscreenMessage
+  | HostOverlayMessage
 
 // Why the app gave up. The plugin uses it to fall back to the standard course
 // content, so a student is never left on a dead page.
@@ -292,6 +304,10 @@ export const parseHostMessage = (data: unknown): HostMessage | null => {
     case 'rumbos:host-fullscreen':
       return typeof data.on === 'boolean'
         ? { type: 'rumbos:host-fullscreen', v: 1, on: data.on }
+        : null
+    case 'rumbos:host-overlay':
+      return typeof data.open === 'boolean'
+        ? { type: 'rumbos:host-overlay', v: 1, open: data.open }
         : null
     default:
       return null

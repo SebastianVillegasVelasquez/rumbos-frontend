@@ -45,6 +45,8 @@ const config = {
   role: 'student' as 'student' | 'editor',
   courseId: 1,
   autoPush: true,
+  // Moodle's editing mode; an editor gets host-init mode "editor" only while it is on.
+  editing: true,
   tokenTtl: 900,
   tenantDisabled: false,
   wrongTenantHost: false,
@@ -160,7 +162,7 @@ window.addEventListener('message', (event) => {
       send({
         type: 'rumbos:host-init',
         v: 1,
-        mode: config.role,
+        mode: config.role === 'editor' && config.editing ? 'editor' : 'student',
         locale: 'es',
         courseId: config.courseId,
         assertion: assertion(),
@@ -268,6 +270,13 @@ const buildControls = () => {
       })
     ),
     labelled(
+      'editing on',
+      checkbox(config.editing, (value) => {
+        config.editing = value
+        mountFrame()
+      })
+    ),
+    labelled(
       'course',
       Object.assign(document.createElement('input'), {
         type: 'number',
@@ -367,7 +376,14 @@ const buildControls = () => {
     }),
     button('Unsolicited host-launch', () =>
       send({ type: 'rumbos:host-launch', v: 1, assertion: assertion() })
-    )
+    ),
+    // An activity popup above the app: the app pauses; on close the host sends
+    // the refreshed state (change a completion first to see the live effects).
+    button('Overlay open', () => send({ type: 'rumbos:host-overlay', v: 1, open: true })),
+    button('Overlay close + state', () => {
+      send({ type: 'rumbos:host-overlay', v: 1, open: false })
+      pushState()
+    })
   )
 
   const table = document.createElement('table')

@@ -1,3 +1,4 @@
+import { useHostOverlayOpen } from '../../embed/hostOverlay.ts'
 import { useEffect, useRef, useState } from 'react'
 import { Circle, Group, Image as KonvaImage, Line, RegularPolygon, Rect, Text } from 'react-konva'
 import Konva from 'konva'
@@ -145,23 +146,28 @@ const BubbleVisual = ({
     (visualState === 'available' || visualState === 'next' || visualState === 'inProgress')
   const { tier } = useAnimationQuality()
   const animationsOff = tier === 'off'
+  const overlayOpen = useHostOverlayOpen()
   const tweenDuration = (seconds: number) => (animationsOff ? 0 : seconds)
 
   // Cosmetic-only feedback: briefly pulse when a bubble transitions to
   // "complete". Driven purely by the resolved visual state - no new data,
   // and only on an observed live change (never on first mount, since the
   // ref starts equal to the initial visualState).
+  // While a host overlay is open nothing new starts; the refs are left alone, so
+  // a change that arrived meanwhile is seen as live (not first load) on close.
   useEffect(() => {
+    if (overlayOpen) return
     if (prevVisualStateRef.current !== 'complete' && visualState === 'complete' && !animationsOff)
       setIsPulsing(true)
     prevVisualStateRef.current = visualState
-  }, [visualState, animationsOff])
+  }, [visualState, animationsOff, overlayOpen])
 
   useEffect(() => {
+    if (overlayOpen) return
     if (pulseKey !== undefined && pulseKey !== prevPulseKeyRef.current && !animationsOff)
       setIsPulsing(true)
     prevPulseKeyRef.current = pulseKey
-  }, [pulseKey, animationsOff])
+  }, [pulseKey, animationsOff, overlayOpen])
 
   const idleEffect =
     animationsOff || tier === 'low'

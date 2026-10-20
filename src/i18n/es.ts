@@ -508,6 +508,7 @@ export const es = {
       backend_unreachable: 'No pudimos conectar con el servidor del mapa.',
       session_expired: 'Tu sesión expiró.',
     },
+    noSavedMap: 'Aún no hay un mapa guardado. Activa la edición del curso para configurarlo.',
     expiredTitle: 'Tu sesión expiró. Recarga la página.',
     expiredHint: 'Tu avance en el curso no se perdió.',
     reload: 'Recargar la página',

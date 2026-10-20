@@ -1,9 +1,14 @@
 import { createContext, useContext } from 'react'
 import type { AuthRole } from '../course-map/data/types.ts'
+import type { HostMode } from './protocol.ts'
 
 // Present only under the /embed route; null means the standalone app.
 export interface EmbedContextValue {
   role: AuthRole
+  // The mode of the UI, decided by the host: "editor" only for a user whose role
+  // is editor while Moodle's editing mode is on (host-init.mode). Otherwise the
+  // app renders what students see, even for an editor.
+  mode: HostMode
   courseId: number
   // Tell the host to open an activity. Only the cmid travels: the host looks
   // the URL up in its own state, the app never builds or sends one.

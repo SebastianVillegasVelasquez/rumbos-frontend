@@ -291,16 +291,29 @@ const LevelCard = ({
 
 export const LevelCarouselEmpty = ({
   editable,
+  needsEditing = false,
   onCreateLevel,
 }: {
   editable: boolean
+  // An editor whose host is in student mode: nothing is saved yet and editing is off.
+  needsEditing?: boolean
   onCreateLevel?: () => void
 }) => (
   <div className="flex flex-1 items-center justify-center p-6">
     <EmptyState
-      title={editable ? es.levels.empty.editorTitle : es.levels.empty.studentTitle}
+      title={
+        needsEditing
+          ? es.embed.noSavedMap
+          : editable
+            ? es.levels.empty.editorTitle
+            : es.levels.empty.studentTitle
+      }
       description={
-        editable ? es.levels.empty.editorDescription : es.levels.empty.studentDescription
+        needsEditing
+          ? undefined
+          : editable
+            ? es.levels.empty.editorDescription
+            : es.levels.empty.studentDescription
       }
       action={
         editable && onCreateLevel ? (

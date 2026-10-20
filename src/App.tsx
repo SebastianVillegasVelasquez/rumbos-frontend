@@ -133,9 +133,13 @@ export function AppShell() {
   const [route, navigate] = useRoute(fixedHome)
   // The Moodle data source: the backend here, the embed host under /embed.
   const useMoodleState = use(MoodleStateContext) ?? useBackendMoodleState
-  const [viewMode, setViewMode] = useState<ViewMode>(() =>
-    embed ? (embed.role === 'student' ? 'published' : 'edit') : initialViewMode()
+  // Embedded, the host decides whether this is the editor's UI (embed.mode): in
+  // student mode the app shows the saved map and no editor UI, even to an editor.
+  const hostStudentMode = embed?.mode === 'student'
+  const [chosenViewMode, setViewMode] = useState<ViewMode>(() =>
+    embed ? (embed.mode === 'editor' ? 'edit' : 'published') : initialViewMode()
   )
+  const viewMode: ViewMode = hostStudentMode ? 'published' : chosenViewMode
   // The iframe's height is the host's call (80dvh on phones, the whole screen
   // in fullscreen): size to the viewport it actually has.
   const shellHeight = embed ? 'h-dvh' : 'h-screen'
@@ -191,7 +195,7 @@ export function AppShell() {
   const pendingActivityIds = usePendingActivityIds(courseMapId ?? '')
   // Embedded students may only read published data, whose skins are frozen
   // into the snapshot.
-  const skinsQuery = useSkins(embed?.role !== 'student')
+  const skinsQuery = useSkins(!hostStudentMode)
   const changeBackground = useChangeBackground(courseMapId ?? '')
 
   // The one shape the canvas, HUD and skin resolution consume, whichever
@@ -342,13 +346,17 @@ export function AppShell() {
     if (mapQuery.isError || !renderable) {
       const status = mapQuery.error instanceof ApiError ? mapQuery.error.status : null
       if (showPublished && status === 404) {
-        // A link to a level that was never published (404 not_published).
+        // A link to a level that was never saved (404 not_published). An editor
+        // seen in student mode is told how to set it up.
+        const editorNeedsEditing = embed?.role === 'editor'
         return (
           <div className="space-y-3" role="status">
             <p className="font-heading text-lg font-semibold text-ink">
-              {es.student.levelUnavailable}
+              {editorNeedsEditing ? es.embed.noSavedMap : es.student.levelUnavailable}
             </p>
-            <p className="text-sm text-ink-soft">{es.student.levelUnavailableHint}</p>
+            {!editorNeedsEditing && (
+              <p className="text-sm text-ink-soft">{es.student.levelUnavailableHint}</p>
+            )}
             <Button variant="secondary" onClick={() => navigate({ name: 'home' })}>
               {es.app.backToHome}
             </Button>
@@ -454,8 +462,8 @@ export function AppShell() {
     sectionFilter: renderable?.moodleSectionId ?? null,
   }
 
-  // Embedded students have no mode switch: they only ever see the published map.
-  const headerViewMode = embed?.role === 'student' ? undefined : viewMode
+  // Embedded in student mode there is no mode switch: only the saved map is shown.
+  const headerViewMode = hostStudentMode ? undefined : viewMode
   // Embedded, "home" is the course's level picker; with a single level there is
   // nowhere to go back to.
   const goHome = embed && siblingLevels.length <= 1 ? undefined : () => navigate({ name: 'home' })

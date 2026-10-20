@@ -1,5 +1,6 @@
 import Konva from 'konva'
 import { qualityStore } from '../../../fx/quality.ts'
+import { isHostOverlayOpen, subscribeHostOverlay } from '../../embed/hostOverlay.ts'
 
 export interface TickFrame {
   time: number
@@ -20,6 +21,13 @@ class SharedTicker {
   private callbacks = new Set<TickCallback>()
   private anim: Konva.Animation | null = null
   private hidden = typeof document !== 'undefined' && document.hidden
+  // A host overlay (an activity popup) is open above the app: stand still. The
+  // callbacks stay subscribed, so everything resumes where it was on close.
+  private covered = isHostOverlayOpen()
+
+  private get idle() {
+    return this.hidden || this.covered
+  }
 
   private ensureAnim(stage: Konva.Stage) {
     if (this.anim) return
@@ -32,16 +40,24 @@ class SharedTicker {
     if (typeof document !== 'undefined') {
       document.addEventListener('visibilitychange', () => {
         this.hidden = document.hidden
-        if (this.hidden) this.anim?.stop()
-        else if (this.callbacks.size > 0) this.anim?.start()
+        this.sync()
       })
     }
+    subscribeHostOverlay(() => {
+      this.covered = isHostOverlayOpen()
+      this.sync()
+    })
+  }
+
+  private sync() {
+    if (this.idle) this.anim?.stop()
+    else if (this.callbacks.size > 0 && !this.anim?.isRunning()) this.anim?.start()
   }
 
   subscribe(stage: Konva.Stage, callback: TickCallback): () => void {
     this.ensureAnim(stage)
     this.callbacks.add(callback)
-    if (!this.hidden && !this.anim!.isRunning()) this.anim!.start()
+    if (!this.idle && !this.anim!.isRunning()) this.anim!.start()
     return () => {
       this.callbacks.delete(callback)
       if (this.callbacks.size === 0) this.anim?.stop()

@@ -1,3 +1,4 @@
+import { useHostOverlayOpen } from '../../embed/hostOverlay.ts'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Konva from 'konva'
 import { Stage, Layer, Image as KonvaImage, Line, Circle } from 'react-konva'
@@ -179,6 +180,7 @@ export const MapCanvas = ({
   const [showLevelComplete, setShowLevelComplete] = useState(false)
   const burstLayerRef = useRef<Konva.Layer>(null)
   const wasAllCompleteRef = useRef<boolean | null>(null)
+  const overlayOpen = useHostOverlayOpen()
 
   // Stable for the component's lifetime (see useViewportController), so it
   // can be used directly in effects/handlers without a ref indirection.
@@ -266,7 +268,9 @@ export const MapCanvas = ({
   // and shows a brief banner plus a one-shot particle burst sized by
   // quality tier.
   useEffect(() => {
-    if (bubbles.length === 0) return
+    // Nothing starts under a host overlay; on close this runs again and the
+    // transition is seen as live (the ref still holds the earlier value).
+    if (overlayOpen || bubbles.length === 0) return
     const allComplete = bubbles.every((bubble) => bubble.status === 'complete')
     const wasAllComplete = wasAllCompleteRef.current
     wasAllCompleteRef.current = allComplete
@@ -315,7 +319,7 @@ export const MapCanvas = ({
 
     return () => window.clearTimeout(hideTimeout)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bubbles, tier])
+  }, [bubbles, tier, overlayOpen])
 
   // Connector path ("camino") animation: a slow "energy flow" dash offset
   // on the whole path (faster/brighter on completed segments, via the
