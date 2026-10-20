@@ -95,13 +95,55 @@ export type EmbedErrorCode =
   | 'backend_unreachable'
   | 'session_expired'
 
+// The only codes the plugin understands on the wire (contract v5.1). The
+// internal EmbedErrorCode set is finer-grained and drives the in-app messages;
+// toWireErrorCode is the single place that maps one onto the other.
+export type WireErrorCode =
+  'launch_failed' | 'token_refresh_failed' | 'app_crashed' | 'protocol_unsupported'
+
+export type ReportedErrorCode = EmbedErrorCode | WireErrorCode
+
+export const MAX_ERROR_DETAIL_LENGTH = 200
+
+const WIRE_ERROR_CODES: readonly string[] = [
+  'launch_failed',
+  'token_refresh_failed',
+  'app_crashed',
+  'protocol_unsupported',
+]
+
+// not_embedded, invalid_host, handshake_timeout, launch_invalid, tenant_disabled,
+// origin_mismatch, course_mismatch, backend_unreachable -> launch_failed
+// session_expired                                        -> token_refresh_failed
+// the four wire codes                                    -> themselves
+// anything else (unknown)                                -> launch_failed
+export const toWireErrorCode = (code: string): WireErrorCode => {
+  if (WIRE_ERROR_CODES.includes(code)) return code as WireErrorCode
+  if (code === 'session_expired') return 'token_refresh_failed'
+  return 'launch_failed'
+}
+
 export type AppMessage =
   | { type: 'rumbos:embed-ready'; v: 1 }
   | { type: 'rumbos:request-state'; v: 1 }
   | { type: 'rumbos:request-launch'; v: 1 }
   | { type: 'rumbos:open-activity'; v: 1; cmid: number }
   | { type: 'rumbos:request-fullscreen'; v: 1; on: boolean }
-  | { type: 'rumbos:error'; v: 1; code: EmbedErrorCode }
+  | { type: 'rumbos:error'; v: 1; code: ReportedErrorCode; detail?: string }
+
+// What actually crosses the boundary: error codes are mapped to the wire set
+// and the detail is cut to plain text of at most 200 characters.
+export const toWireMessage = (message: AppMessage): unknown => {
+  if (message.type !== 'rumbos:error') return message
+  const wire: { type: 'rumbos:error'; v: 1; code: WireErrorCode; detail?: string } = {
+    type: 'rumbos:error',
+    v: 1,
+    code: toWireErrorCode(message.code),
+  }
+  const detail = cleanText(message.detail, MAX_ERROR_DETAIL_LENGTH)
+  if (detail) wire.detail = detail
+  return wire
+}
 
 // ---- Guards -------------------------------------------------------------------------
 
