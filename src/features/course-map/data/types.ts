@@ -93,6 +93,30 @@ export interface MapSettings {
     intensity: number
   }
   intro: MapIntro
+  // Background music. Absent or null: none.
+  audio?: MapAudio | null
+}
+
+export interface MapAudio {
+  assetId: string
+  // 0..1, the volume the viewer starts with (default 0.4).
+  volume: number
+  loop: boolean
+  // Start by itself after the viewer's first tap or key press (default false).
+  startAfterInteraction: boolean
+}
+
+export const DEFAULT_MAP_AUDIO = {
+  volume: 0.4,
+  loop: true,
+  startAfterInteraction: false,
+} as const
+
+// Read-only on CourseMapRead and PublishedMapRead: what to show as credit.
+export interface AudioInfo {
+  title: string
+  credit: string
+  durationSeconds: number
 }
 
 export interface SkinRule {
@@ -145,6 +169,7 @@ export interface CourseMapRead {
   skinRules: SkinRule[]
   // null: the map has no 3D view (and students get no 2D/3D selector).
   view3d: View3d | null
+  audioInfo?: AudioInfo | null
   bubbles: Bubble[]
   revision: number
   createdAt: string
@@ -354,7 +379,17 @@ export interface SkinListResult {
 
 // ---- Assets -----------------------------------------------------------------
 
-export type AssetKind = 'background' | 'bubble'
+export type ImageAssetKind = 'background' | 'bubble'
+
+// Contract: audio assets (background music). Their `url` is "/assets/{id}" and
+// supports HTTP Range requests (iOS Safari will not play audio without them).
+export type AssetKind = ImageAssetKind | 'audio'
+
+export type AudioMime = 'audio/mpeg' | 'audio/mp4'
+
+// "library" is curated by OBJ Digital and global; "tenant" is what this site's
+// editors uploaded.
+export type AssetScope = 'library' | 'tenant'
 
 export interface Asset {
   id: string
@@ -365,6 +400,8 @@ export interface Asset {
   bytes: number
   url: string
   thumbUrl: string | null
+  // Audio only.
+  durationSeconds?: number | null
   title: string
   credit: string | null
   originalFilename: string | null
@@ -383,6 +420,7 @@ export interface AssetListItem extends Asset {
 
 export interface AssetListParams {
   kind?: AssetKind
+  scope?: AssetScope
   q?: string
   limit?: number
   offset?: number
@@ -400,6 +438,10 @@ export interface AssetCreate {
   kind: AssetKind
   title?: string
   credit?: string
+  // Audio only. The editor must tick the rights declaration; it is sent as
+  // rightsDeclared="true".
+  license?: string
+  rightsDeclared?: boolean
   // Upload progress as a 0..1 fraction (real client only).
   onProgress?: (fraction: number) => void
 }
@@ -429,6 +471,8 @@ export interface PublicationChanges {
   settingsChanged: boolean
   skinsChanged: boolean
   view3dChanged: boolean
+  // Absent on a backend that predates audio.
+  audioChanged?: boolean
   bubblesAdded: number
   bubblesRemoved: number
   bubblesMoved: number
@@ -526,6 +570,7 @@ export interface PublishedMapRead {
   skinRules: SkinRule[]
   // What students see in 3D; frozen at publish time like everything below.
   view3d: View3d | null
+  audioInfo?: AudioInfo | null
   // Frozen copies taken at publish time.
   skins: Record<string, PublishedSkin>
   bubbles: PublishedBubble[]

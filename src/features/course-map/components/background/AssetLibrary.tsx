@@ -9,14 +9,14 @@ import { es } from '../../../../i18n/es.ts'
 import { resolveImageUrl } from '../../data/assets.ts'
 import { CREDIT_MAX_LENGTH, TITLE_MAX_LENGTH, isAssetInUse } from '../../data/assetLimits.ts'
 import { useAssets, useDeleteAsset, usePatchAsset } from '../../data/queries.ts'
-import type { AssetKind, AssetListItem, AssetUsage } from '../../data/types.ts'
+import type { AssetListItem, AssetUsage, ImageAssetKind } from '../../data/types.ts'
 import { inUseMessage, usageFromConflict } from './assetMessages.ts'
 
 const PAGE_SIZE = 12
 const SEARCH_DEBOUNCE_MS = 300
 
 interface AssetLibraryProps {
-  kind: AssetKind
+  kind: ImageAssetKind
   // Library images that are already in use at the call site get a badge.
   currentUrl?: string | null
   onSelect: (asset: AssetListItem) => void

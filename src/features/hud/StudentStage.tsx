@@ -41,6 +41,8 @@ interface StudentStageProps {
   view: { value: MapViewKind; onChange: (view: MapViewKind) => void } | null
   // Camera buttons; absent in 3D, which has its own.
   zoom: { zoomIn: () => void; zoomOut: () => void; recenter: () => void } | null
+  // The music control (lazy-loaded), when the map has music.
+  audio: ReactNode | null
   // Absent while the host owns fullscreen (its exit control is in the corner).
   onEnterFullscreen: (() => void) | null
   continueAction: ContinueAction
@@ -68,6 +70,7 @@ export const StudentStage = ({
   onToggleQuests,
   view,
   zoom,
+  audio,
   onEnterFullscreen,
   continueAction,
   exitPreview,
@@ -89,7 +92,8 @@ export const StudentStage = ({
     }
   }, [])
 
-  const clusterButtons = (zoom ? 3 : 0) + (view ? 1 : 0) + (onEnterFullscreen ? 1 : 0)
+  const clusterButtons =
+    (zoom ? 3 : 0) + (view ? 1 : 0) + (audio ? 1 : 0) + (onEnterFullscreen ? 1 : 0)
   const metrics = hudMetrics({
     width,
     height,
@@ -269,6 +273,7 @@ export const StudentStage = ({
             )}
           </IconButton>
         )}
+        {audio}
         {onEnterFullscreen && (
           <IconButton
             variant="surface"

@@ -63,6 +63,8 @@ import { courseTitleFrom } from './features/course-map/courseTitle.ts'
 import { progressCounts } from './features/course-map/progress.ts'
 import { useResume } from './features/hud/useResume.ts'
 import { readResume } from './features/hud/resume.ts'
+import { LazyAudioControl } from './features/audio/LazyAudioControl.tsx'
+import type { AudioTrack } from './features/audio/audioSession.ts'
 import { QuestLog } from './features/quests/QuestLog.tsx'
 import { buildQuestEntries } from './features/quests/questEntries.ts'
 import { readQuestsOpen, rememberQuestsOpen } from './features/quests/questsPreference.ts'
@@ -466,6 +468,33 @@ export function AppShell() {
                 },
               }
           : { kind: 'none' }
+  // The level's background music, if any. Memoized by what defines the track so
+  // the same track stays one track across re-renders and levels.
+  const audio = renderable?.audio ?? null
+  const audioTrack = useMemo<AudioTrack | null>(
+    () =>
+      audio
+        ? {
+            assetId: audio.settings.assetId,
+            url: resolveImageUrl(`/assets/${audio.settings.assetId}`),
+            loop: audio.settings.loop,
+            volume: audio.settings.volume,
+            startAfterInteraction: audio.settings.startAfterInteraction,
+            title: audio.info.title,
+            credit: audio.info.credit,
+          }
+        : null,
+    // The track is defined by these values, not by the object that carries them.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      audio?.settings.assetId,
+      audio?.settings.loop,
+      audio?.settings.volume,
+      audio?.settings.startAfterInteraction,
+      audio?.info.title,
+      audio?.info.credit,
+    ]
+  )
   const resumeCourseId = renderable?.moodleCourseId ?? null
   const resumeMapId = renderable?.id ?? null
   useResume({
@@ -899,6 +928,7 @@ export function AppShell() {
                         recenter: () => mapControlsRef.current?.recenter(),
                       }
                 }
+                audio={audioTrack ? <LazyAudioControl track={audioTrack} /> : null}
                 onEnterFullscreen={
                   embed && !isFullscreen ? () => embed.requestFullscreen(true) : null
                 }

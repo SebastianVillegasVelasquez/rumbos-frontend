@@ -6,6 +6,7 @@ import type {
   Skin,
   SkinRule,
   View3d,
+  AudioInfo,
 } from './data/types.ts'
 
 // One normalized shape for everything that draws a map (canvas, FX engine,
@@ -23,6 +24,9 @@ export interface RenderableMap {
   skinRules: SkinRule[]
   // null: no 3D view, so no 2D/3D selector.
   view3d: View3d | null
+  // Background music: the editor's settings and the credit to show. Null when
+  // the map has none (or the credit is missing, so it cannot be credited).
+  audio: { settings: NonNullable<MapSettings['audio']>; info: AudioInfo } | null
   // Skins to resolve against: the live /skins list for a draft, the frozen
   // copies stored in the snapshot for a publication.
   skins: Skin[]
@@ -30,6 +34,11 @@ export interface RenderableMap {
   source: 'draft' | 'published'
   publicationNumber: number | null
 }
+
+const audioOf = (
+  settings: MapSettings,
+  info: AudioInfo | null | undefined
+): RenderableMap['audio'] => (settings.audio && info ? { settings: settings.audio, info } : null)
 
 export const draftToRenderable = (map: CourseMapRead, skins: Skin[]): RenderableMap => ({
   id: map.id,
@@ -41,6 +50,7 @@ export const draftToRenderable = (map: CourseMapRead, skins: Skin[]): Renderable
   defaultSkinId: map.defaultSkinId,
   skinRules: map.skinRules,
   view3d: map.view3d,
+  audio: audioOf(map.settings, map.audioInfo),
   skins,
   bubbles: map.bubbles,
   source: 'draft',
@@ -57,6 +67,7 @@ export const publishedToRenderable = (map: PublishedMapRead): RenderableMap => (
   defaultSkinId: map.defaultSkinId,
   skinRules: map.skinRules,
   view3d: map.view3d,
+  audio: audioOf(map.settings, map.audioInfo),
   skins: Object.entries(map.skins).map(([id, skin]) => ({
     id,
     name: skin.name,

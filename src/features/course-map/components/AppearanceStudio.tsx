@@ -6,9 +6,11 @@ import { Button, IconButton } from '../../../components/ui/Button.tsx'
 import { SegmentedControl } from '../../../components/ui/SegmentedControl.tsx'
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog.tsx'
 import { SkinStudio } from './SkinStudio.tsx'
+import { AUDIO_LIBRARY_PARAMS } from '../../audio/editor/audioErrors.ts'
+import { MusicTab } from '../../audio/editor/MusicTab.tsx'
 import { View3dTab } from '../../view3d/editor/View3dTab.tsx'
 import { useAnimationQuality, type QualitySetting } from '../../../fx/quality.ts'
-import { useReorderBubbles } from '../data/queries.ts'
+import { useAssets, useReorderBubbles } from '../data/queries.ts'
 import { useUpdateAppearance, useUpdateBubble } from '../data/draftMutations.ts'
 import { resolveThumbUrl } from '../data/assets.ts'
 import { es } from '../../../i18n/es.ts'
@@ -28,7 +30,7 @@ import type {
   SkinRule,
 } from '../data/types.ts'
 
-type Tab = 'bubbles' | 'map' | 'ambient' | 'sequence' | 'view3d' | 'animation'
+type Tab = 'bubbles' | 'map' | 'ambient' | 'sequence' | 'view3d' | 'animation' | 'music'
 
 interface AppearanceStudioProps {
   courseMap: CourseMapRead
@@ -64,6 +66,9 @@ export const AppearanceStudio = ({
   const [skinRules, setSkinRules] = useState<SkinRule[]>(courseMap.skinRules)
   const [confirmDiscard, setConfirmDiscard] = useState(false)
   const updateAppearance = useUpdateAppearance(courseMap.id)
+  // A backend that predates audio answers the library listing with an error:
+  // the Música tab then does not exist.
+  const audioSupported = !useAssets(AUDIO_LIBRARY_PARAMS).isError
 
   // Re-sync the draft whenever a fresh save lands (new updatedAt), but
   // never while the panel is mid-edit otherwise - it would stomp on
@@ -119,21 +124,23 @@ export const AppearanceStudio = ({
 
       <div className="border-b-soft px-4 py-2">
         <div className="flex flex-wrap gap-1.5">
-          {(['bubbles', 'map', 'ambient', 'sequence', 'view3d', 'animation'] as Tab[]).map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setTab(t)}
-              aria-pressed={tab === t}
-              className={`min-h-[44px] flex-1 rounded-md px-3 text-xs transition-colors min-[400px]:flex-none ${
-                tab === t
-                  ? 'border-soft bg-primary font-extrabold text-white'
-                  : 'border-hair bg-surface font-bold text-ink-soft hover:bg-primary-tint hover:text-ink'
-              }`}
-            >
-              {es.studio.tabs[t]}
-            </button>
-          ))}
+          {(['bubbles', 'map', 'ambient', 'sequence', 'view3d', 'animation', 'music'] as Tab[])
+            .filter((t) => t !== 'music' || audioSupported)
+            .map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setTab(t)}
+                aria-pressed={tab === t}
+                className={`min-h-[44px] flex-1 rounded-md px-3 text-xs transition-colors min-[400px]:flex-none ${
+                  tab === t
+                    ? 'border-soft bg-primary font-extrabold text-white'
+                    : 'border-hair bg-surface font-bold text-ink-soft hover:bg-primary-tint hover:text-ink'
+                }`}
+              >
+                {es.studio.tabs[t]}
+              </button>
+            ))}
         </div>
       </div>
 
@@ -169,6 +176,9 @@ export const AppearanceStudio = ({
           <View3dTab courseMap={courseMap} activities={activities} onPreview={onPreview3d} />
         </div>
         {tab === 'animation' && <AnimationTab />}
+        {tab === 'music' && audioSupported && (
+          <MusicTab settings={settings} onChange={setSettings} />
+        )}
       </div>
 
       {isDirty && (

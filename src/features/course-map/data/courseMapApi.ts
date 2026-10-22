@@ -202,12 +202,14 @@ export const realCourseMapApi: CourseMapApi = {
       `/assets${buildQuery(params as Record<string, string | number | boolean | undefined>)}`
     ),
 
-  createAsset: async ({ file, kind, title, credit, onProgress }) => {
+  createAsset: async ({ file, kind, title, credit, license, rightsDeclared, onProgress }) => {
     const form = new FormData()
     form.set('file', file)
     form.set('kind', kind)
     if (title) form.set('title', title)
     if (credit) form.set('credit', credit)
+    if (license) form.set('license', license)
+    if (rightsDeclared) form.set('rightsDeclared', 'true')
     const { data, status } = await apiUpload<Asset>('/assets', form, onProgress)
     return { asset: data, created: status !== 200 }
   },

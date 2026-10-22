@@ -13,15 +13,15 @@ import {
   type UploadCheckError,
 } from '../../data/assetLimits.ts'
 import { useCreateAsset } from '../../data/queries.ts'
-import type { AssetCreateResult, AssetKind } from '../../data/types.ts'
+import type { AssetCreateResult, ImageAssetKind } from '../../data/types.ts'
 import { uploadErrorMessage } from './assetMessages.ts'
 
 interface AssetUploaderProps {
-  kind: AssetKind
+  kind: ImageAssetKind
   onUploaded: (result: AssetCreateResult) => void
 }
 
-const checkErrorMessage = (error: UploadCheckError, kind: AssetKind) => {
+const checkErrorMessage = (error: UploadCheckError, kind: ImageAssetKind) => {
   const messages = es.background.upload.errors
   const limits = ASSET_LIMITS[kind]
   if (error === 'tooLarge') return messages.tooLarge(Math.round(limits.maxBytes / (1024 * 1024)))

@@ -1,8 +1,8 @@
-import type { AssetKind, AssetUsage } from './types.ts'
+import type { AssetUsage, ImageAssetKind } from './types.ts'
 
 // Upload limits from the API contract. The client checks them first so people
 // get an instant, specific message instead of waiting for a 413/422.
-export const ASSET_LIMITS: Record<AssetKind, { maxBytes: number; maxSide: number }> = {
+export const ASSET_LIMITS: Record<ImageAssetKind, { maxBytes: number; maxSide: number }> = {
   background: { maxBytes: 8 * 1024 * 1024, maxSide: 8192 },
   bubble: { maxBytes: 2 * 1024 * 1024, maxSide: 1024 },
 }
@@ -15,7 +15,7 @@ export type UploadCheckError = 'notImage' | 'tooLarge' | 'tooBig'
 
 export const checkFileBasics = (
   file: { type: string; size: number },
-  kind: AssetKind
+  kind: ImageAssetKind
 ): UploadCheckError | null => {
   if (!(ALLOWED_IMAGE_MIME as readonly string[]).includes(file.type)) return 'notImage'
   if (file.size > ASSET_LIMITS[kind].maxBytes) return 'tooLarge'
@@ -25,7 +25,7 @@ export const checkFileBasics = (
 export const checkDimensions = (
   width: number,
   height: number,
-  kind: AssetKind
+  kind: ImageAssetKind
 ): UploadCheckError | null =>
   width > ASSET_LIMITS[kind].maxSide || height > ASSET_LIMITS[kind].maxSide ? 'tooBig' : null
 

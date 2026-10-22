@@ -205,3 +205,44 @@ alternative. Newest last.
   it wears a leaf badge and its accessible name says so; that is the indicator.
 - **The switch shows the effective state** ("on" when auto-detected), so one tap
   turns an automatic saver off.
+
+## Music (UNVERIFIED against a real backend)
+
+Built against the contract and the mock only. Not yet exercised: HTTP Range
+requests (iOS Safari needs them), the 422/413/503 mappings against real
+responses, real MP3/M4A decoding, `audioInfo` and `audioChanged` as the backend
+actually sends them, and anything on a real phone. Treat as unverified.
+
+- **Feature detection.** The Música tab exists only if the library listing
+  (`GET /assets?kind=audio&scope=library`) succeeds; any error, including a 404
+  from a backend that predates audio, hides the tab. For students the control
+  appears only when the map has `settings.audio` and the server returned
+  `audioInfo` (no credit, no control).
+- **Uploads are discovered by failing.** There is no capability endpoint, so the
+  "Subir propio" tab is there until an upload answers 503
+  `audio_uploads_disabled`; then it is replaced by the explanation and does not
+  come back during that session.
+- **Playback rule** (pure, tested): never before a gesture; autostart after the
+  first gesture only if the editor enabled it, the viewer has not switched it
+  off and data saver is off; the viewer's button always wins; pause under a host
+  overlay and while the tab is hidden; resume only what was playing.
+- **A gesture earlier in the session counts.** A tap in the level picker already
+  unlocked audio, so autostart applies as soon as a track with the option
+  appears. Alternative: wait for a tap on the map; rejected as pointless friction.
+- **The viewer's "off" persists; "on" does not autostart next time** unless the
+  editor's option is set. The spec ties autostart to the editor's flag and the
+  viewer not having muted, and nothing else.
+- **The music is one module-level session**, so it survives the 2D/3D switch and
+  levels sharing a track. Leaving the stage (the level picker) pauses it without
+  forgetting.
+- **Fades are 400 ms**, done on `element.volume`. iOS Safari ignores
+  programmatic volume, so there the fade (and the volume slider) do nothing;
+  start, stop and mute still work. Needs a real iPhone to confirm.
+- **`preload="none"`, and the source is assigned only at the first play.**
+- **Volume:** the viewer's own volume wins over the map's default once set.
+- **The mock plays generated sine tones** (WAV blobs); `?mockAudio=off` makes the
+  endpoints 404 and `?mockAudio=uploads-off` makes uploads answer 503.
+- **Bug found while verifying:** the draft cache merged saves field by field and
+  dropped `audioInfo`, so a saved track never reached the preview. Fixed.
+- **Bundle:** the player, session and fades are a lazy chunk (about 2.5 KB gz).
+  The editor strings and tab cost about 3 KB in the initial bundle.
