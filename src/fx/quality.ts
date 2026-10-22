@@ -1,5 +1,6 @@
 import { useEffect, useReducer } from 'react'
 import { QUALITY_AUTO_FRAME_BUDGET_MS, QUALITY_AUTO_SAMPLE_MS } from './constants.ts'
+import { dataSaverStore } from './dataSaverStore.ts'
 
 export type QualityTier = 'high' | 'medium' | 'low' | 'off'
 export type QualitySetting = 'auto' | QualityTier
@@ -7,6 +8,10 @@ export type QualitySetting = 'auto' | QualityTier
 const STORAGE_KEY = 'rumbos:animation-quality'
 const TIERS: QualityTier[] = ['high', 'medium', 'low', 'off']
 const SETTINGS: QualitySetting[] = ['auto', ...TIERS]
+
+// "high" and "medium" become "low"; "low" and "off" stay.
+const capAtLow = (tier: QualityTier): QualityTier =>
+  TIERS.indexOf(tier) < TIERS.indexOf('low') ? 'low' : tier
 
 const prefersReducedMotion = () =>
   typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -33,11 +38,15 @@ class QualityStore {
     } catch {
       // Storage unavailable (private mode, blocked, etc) - fall back to "auto".
     }
+    // Turning the data saver on or off changes the effective tier.
+    dataSaverStore.subscribe(() => this.emit())
   }
 
   getTier(): QualityTier {
     if (prefersReducedMotion()) return 'off'
-    return this.setting === 'auto' ? this.autoTier : this.setting
+    const tier = this.setting === 'auto' ? this.autoTier : this.setting
+    // Data saver never runs the heavier tiers, whatever the setting says.
+    return dataSaverStore.isActive() ? capAtLow(tier) : tier
   }
 
   getSetting(): QualitySetting {

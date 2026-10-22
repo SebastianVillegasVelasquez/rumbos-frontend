@@ -23,6 +23,7 @@ import type { RenderableBubble as BubbleModel, MapFit, MapSettings } from '../da
 import { es } from '../../../i18n/es.ts'
 import { IconButton } from '../../../components/ui/Button.tsx'
 import { useAnimationQuality } from '../../../fx/quality.ts'
+import { useDataSaver } from '../../../fx/dataSaverStore.ts'
 import { AmbientLayer } from '../../../fx/AmbientLayer.tsx'
 import { isSegmentComplete, travelerTargetT } from '../../../fx/path.ts'
 import { pointAtT } from '../../../fx/math/pointAtT.ts'
@@ -157,6 +158,8 @@ export const MapCanvas = ({
     [bubbles, getAvailability, view]
   )
   const { tier } = useAnimationQuality()
+  // Data saver: no ambient particles.
+  const { active: dataSaver } = useDataSaver()
 
   // Sequence order (not raw API order) is what the connector path and the
   // traveler dot follow.
@@ -705,7 +708,7 @@ export const MapCanvas = ({
             />
           </Layer>
           <AmbientLayer
-            kind={ambient.kind}
+            kind={dataSaver ? 'none' : ambient.kind}
             intensity={ambient.intensity}
             designSize={designSize}
             tier={tier}

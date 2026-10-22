@@ -184,3 +184,24 @@ alternative. Newest last.
   the level is guided and has a visible untracked activity, in or out of the
   embed (the standalone app never marks an activity untracked, so it stays quiet
   there). Missing activities are not counted.
+
+## Data saver
+
+- **Automatic on Save-Data or an effective type of slow-2g or 2g.** 3g counts as
+  fast enough. A browser that reports no connection (Safari, Firefox) is treated
+  as not slow: the manual switch is the only way there.
+- **A manual choice beats detection both ways** ("Activado" and "Desactivado"),
+  with "Volver a automático" to hand control back. It is remembered per viewer.
+- **Effects:** the animation tier is capped at "low" (a user setting of "high"
+  or "medium" is held down while it is on); no ambient particles; a remembered
+  3D choice is set aside at start (an explicit `?view=3d` link or the toggle
+  still opens 3D); the audio code reads the same flag to skip preloading.
+- **Smaller images: not done, on purpose.** The only variant the backend
+  exposes is `/assets/{id}/thumb`, a list thumbnail, not a map-sized rendition;
+  using it as the map background would blur the map. The level picker already
+  uses thumbs. This needs a backend variant (a width parameter) to do properly.
+- **The settings button is a third icon in the top-left group** (always icon-only)
+  because the brief's corner cluster has no settings slot. When the saver is on
+  it wears a leaf badge and its accessible name says so; that is the indicator.
+- **The switch shows the effective state** ("on" when auto-detected), so one tap
+  turns an automatic saver off.

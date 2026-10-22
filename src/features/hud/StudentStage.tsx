@@ -18,6 +18,7 @@ import type { ProgressCounts } from '../course-map/progress.ts'
 import type { MapViewKind } from '../view3d/mapViewPreference.ts'
 import { GAP, GUTTER, TOUCH_TARGET, hudMetrics, type HudMetrics } from './metrics.ts'
 import { CoachMarks } from './CoachMarks.tsx'
+import { SettingsPopover } from './SettingsPopover.tsx'
 import { PANEL_WIDTH, QUESTS_BUTTON_ID, QUEST_LOG_ID } from '../quests/QuestLog.tsx'
 import { useIdleDim } from './useIdleDim.ts'
 import { useStageSize } from './useStageSize.ts'
@@ -185,6 +186,7 @@ export const StudentStage = ({
           <ListChecks size={18} strokeWidth={2.5} aria-hidden />
           <span className={labelClass}>{es.hud.quests}</span>
         </Button>
+        <SettingsPopover />
       </div>
 
       {chip}
@@ -199,8 +201,7 @@ export const StudentStage = ({
           style={{
             ...coveredStyle,
             left: panelOffset || inset('left'),
-            top: '50%',
-            transform: 'translateY(-50%)',
+            top: metrics.rects.pill?.y,
             maxWidth: metrics.pillMaxWidth,
           }}
           onClick={exitPreview.onExit}

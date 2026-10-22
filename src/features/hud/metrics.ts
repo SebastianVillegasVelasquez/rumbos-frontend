@@ -103,14 +103,16 @@ export const hudMetrics = (input: HudInput): HudMetrics => {
   const continueIconOnly = rawContinue < MIN_CONTINUE_WIDTH
   const continueMaxWidth = Math.max(TOUCH_TARGET, rawContinue)
 
-  const topLeftButtons = hasLevelsButton ? 2 : 1
+  // Niveles (optional), Misiones and Ajustes. Ajustes is always icon-only.
+  const topLeftButtons = (hasLevelsButton ? 1 : 0) + 2
   const topLeft: Rect = topLeftColumn
     ? { x: GUTTER, y: GUTTER, w: TOUCH_TARGET, h: stack(topLeftButtons) }
     : topLeftLabels
       ? {
           x: GUTTER,
           y: GUTTER,
-          w: topLeftButtons * LABELED_BUTTON_WIDTH + (topLeftButtons - 1) * GAP,
+          w:
+            (topLeftButtons - 1) * LABELED_BUTTON_WIDTH + TOUCH_TARGET + (topLeftButtons - 1) * GAP,
           h: TOUCH_TARGET,
         }
       : { x: GUTTER, y: GUTTER, w: stack(topLeftButtons), h: TOUCH_TARGET }
@@ -145,7 +147,13 @@ export const hudMetrics = (input: HudInput): HudMetrics => {
       topLeft,
       chip,
       pill: hasPreviewPill
-        ? { x: GUTTER, y: height / 2 - TOUCH_TARGET / 2, w: pillMaxWidth, h: TOUCH_TARGET }
+        ? {
+            x: GUTTER,
+            // Centered, but never up into the stack of buttons at the top left.
+            y: Math.max(height / 2 - TOUCH_TARGET / 2, topLeft.y + topLeft.h + GAP),
+            w: pillMaxWidth,
+            h: TOUCH_TARGET,
+          }
         : null,
       cluster: {
         x: width - GUTTER - clusterWidth,

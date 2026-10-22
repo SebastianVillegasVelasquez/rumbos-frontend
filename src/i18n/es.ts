@@ -237,6 +237,15 @@ export const es = {
       off: 'Sin animaciones',
     },
   },
+  settings: {
+    title: 'Ajustes',
+    open: 'Ajustes',
+    openActive: 'Ajustes (ahorro de datos activado)',
+    dataSaver: 'Ahorro de datos',
+    dataSaverHint: 'Usa menos datos: menos animaciones, sin 3D automático ni música precargada.',
+    dataSaverAuto: 'Se activó solo por tu conexión.',
+    backToAuto: 'Volver a automático',
+  },
   completion: {
     untracked: 'Sin finalización configurada',
     configure: 'Configurar en Moodle',

@@ -98,6 +98,7 @@ import { SegmentedControl } from './components/ui/SegmentedControl.tsx'
 import { ToastProvider } from './components/ui/Toast.tsx'
 import { useToast } from './components/ui/toastContext.ts'
 import { es } from './i18n/es.ts'
+import { isDataSaverActive } from './fx/dataSaverStore.ts'
 import { FpsMeter } from './fx/FpsMeter.tsx'
 import { isFpsDebugEnabled } from './fx/debug.ts'
 
@@ -209,7 +210,13 @@ export function AppShell() {
   const toggleQuests = () => setQuests(!questsOpen)
   const closeQuests = () => setQuests(false)
   const [focusBubbleId, setFocusBubbleId] = useState<string | null>(null)
-  const [mapView, setMapView] = useState<MapViewKind>(initialMapView)
+  // Data saver does not start the 3D world by itself: a remembered 3D choice is
+  // set aside (an explicit ?view=3d link or the toggle still work).
+  const [mapView, setMapView] = useState<MapViewKind>(() =>
+    isDataSaverActive() && !new URLSearchParams(window.location.search).has('view')
+      ? '2d'
+      : initialMapView()
+  )
   const [cachedNoticeDismissed, setCachedNoticeDismissed] = useState(false)
   const [isAppearanceOpen, setIsAppearanceOpen] = useState(false)
   const [isBackgroundPickerOpen, setIsBackgroundPickerOpen] = useState(false)
