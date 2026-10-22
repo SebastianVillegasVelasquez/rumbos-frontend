@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState, type ReactNode } from 'react'
 import { AlertTriangle, CheckCircle2, X } from 'lucide-react'
+import { LiveRegion } from './LiveRegion.tsx'
 import { ToastContext, type ToastItem, type ToastOptions } from './toastContext.ts'
 
 let nextId = 1
@@ -14,7 +15,10 @@ export const ToastProvider = ({ children }: { children: ReactNode }) => {
   const show = useCallback(
     (message: string, tone: ToastItem['tone'] = 'info', options: ToastOptions = {}) => {
       const id = nextId++
-      setToasts((current) => [...current, { id, message, tone, action: options.action }])
+      setToasts((current) => [
+        ...current,
+        { id, message, tone, action: options.action, silent: options.silent },
+      ])
       setTimeout(() => dismiss(id), options.durationMs ?? 5000)
       return id
     },
@@ -26,11 +30,13 @@ export const ToastProvider = ({ children }: { children: ReactNode }) => {
   return (
     <ToastContext.Provider value={value}>
       {children}
+      <LiveRegion />
       <div className="pointer-events-none fixed bottom-4 left-1/2 z-[60] flex w-[min(calc(100vw-2rem),24rem)] -translate-x-1/2 flex-col gap-2">
         {toasts.map((toast) => (
           <div
             key={toast.id}
-            role="status"
+            role={toast.silent ? undefined : 'status'}
+            aria-hidden={toast.silent ? true : undefined}
             className={`pointer-events-auto flex items-center gap-2 border-soft rounded-md px-4 py-3 text-sm font-semibold shadow-sm ${
               toast.tone === 'error'
                 ? 'bg-danger-tint text-danger'

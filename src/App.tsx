@@ -51,6 +51,7 @@ import {
 import { resolveImageUrl } from './features/course-map/data/assets.ts'
 import { courseTitleFrom } from './features/course-map/courseTitle.ts'
 import { progressCounts } from './features/course-map/progress.ts'
+import { useCompletionNotices } from './features/course-map/useCompletionNotices.ts'
 import { draftToRenderable, publishedToRenderable } from './features/course-map/renderable.ts'
 import type {
   Activity,
@@ -322,6 +323,14 @@ export function AppShell() {
 
   const getAvailabilityForBubble = (bubble: Bubble) =>
     resolvedByBubbleId.get(bubble.id)?.availability
+  useCompletionNotices({
+    levelKey: courseMapId,
+    ready: !moodle.resolvedPending && !moodle.resolvedError,
+    bubbles,
+    // A teaser has no activity behind it, so its name is never spoken.
+    nameOf: (bubble) => resolvedByBubbleId.get(bubble.id)?.activity?.name ?? null,
+    enabled: !isEditor,
+  })
   const progress = progressCounts(
     bubbles,
     getAvailabilityForBubble,

@@ -34,3 +34,23 @@ alternative. Newest last.
 - **`main` was not pushed from here.** A push to `main` runs the workflow that
   builds and publishes the `latest` image. The feature branch was already on
   `origin/main`; the two hygiene commits stay local until pushed deliberately.
+
+## Progress
+
+- **"Untracked" is a visual state of its own.** Completion `none` shows as an
+  open bubble that never pulses as "next" and has no completion effect, and is
+  excluded from counts. Alternative: reuse "available"; rejected so the HUD,
+  Misiones and the editor warnings can tell the two apart.
+- **What counts toward progress.** Tracked activities the viewer can see.
+  Excluded: untracked ones, activities that no longer exist, and, for students,
+  "Próximamente" teasers (their completion is unknown and a permanently hidden
+  one would keep a finished level at 9/10). Restricted and unverifiable
+  activities stay in. Alternative: count teasers; rejected for the reason above.
+- **Guided "next" ignores what the student cannot see.** A hidden activity at a
+  lower sequence no longer blocks the sequence for ever.
+- **Completion notices are per level.** Only activities on the open level are
+  announced (a completion elsewhere is not news about this map), and never a
+  hidden one (its name must not leak). The toast is silent to assistive
+  technology because the live region already speaks the same text.
+- **Baseline.** The first state after the level's Moodle data is ready, and the
+  first state after switching level, set the baseline; nothing is announced.

@@ -237,6 +237,9 @@ export const es = {
       off: 'Sin animaciones',
     },
   },
+  progress: {
+    completed: (name: string) => `Completaste: ${name}`,
+  },
   hud: {
     progress: (done: number, total: number) => `${done} de ${total} actividades completadas`,
     continue: (name: string) => `Continuar: ${name}`,

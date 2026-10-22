@@ -5,12 +5,15 @@ export interface ToastItem {
   message: string
   tone: 'info' | 'error' | 'success'
   action?: ToastOptions['action']
+  silent?: boolean
 }
 
 export interface ToastOptions {
   // A single follow-up button, e.g. "Deshacer".
   action?: { label: string; onClick: () => void }
   durationMs?: number
+  // Already announced to screen readers some other way: hide it from them.
+  silent?: boolean
 }
 
 export interface ToastContextValue {
