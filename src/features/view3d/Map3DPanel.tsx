@@ -28,6 +28,8 @@ interface Map3DPanelProps {
   focusBubbleId: string | null
   onFocusHandled: () => void
   onBackTo2d: () => void
+  // False when the student HUD offers the activity list itself (Misiones).
+  showActivityList?: boolean
 }
 
 // The 3D view of a level: the world plus the accessible list next to it. It
@@ -45,6 +47,7 @@ export const Map3DPanel = ({
   focusBubbleId,
   onFocusHandled,
   onBackTo2d,
+  showActivityList = true,
 }: Map3DPanelProps) => {
   const toast = useToast()
   const [highlightedId, setHighlightedId] = useState<string | null>(null)
@@ -109,42 +112,46 @@ export const Map3DPanel = ({
         }}
         onBackTo2d={onBackTo2d}
       />
-      {/* The accessible twin of the canvas, folded away so the world gets the space. */}
-      <div className="absolute bottom-2 left-2 z-10">
-        <Popover
-          open={listOpen}
-          onOpenChange={setListOpen}
-          align="start"
-          trigger={
-            <button
-              type="button"
-              className="border-strong inline-flex min-h-[44px] items-center gap-2 rounded-md bg-surface px-3 text-sm font-bold text-ink shadow-md hover:bg-primary-tint"
+      {showActivityList && (
+        <>
+          {/* The accessible twin of the canvas, folded away so the world gets the space. */}
+          <div className="absolute bottom-2 left-2 z-10">
+            <Popover
+              open={listOpen}
+              onOpenChange={setListOpen}
+              align="start"
+              trigger={
+                <button
+                  type="button"
+                  className="border-strong inline-flex min-h-[44px] items-center gap-2 rounded-md bg-surface px-3 text-sm font-bold text-ink shadow-md hover:bg-primary-tint"
+                >
+                  <ListChecks size={16} strokeWidth={2.5} aria-hidden />
+                  {es.app.activities}
+                  <ChevronDown
+                    size={16}
+                    strokeWidth={3}
+                    aria-hidden
+                    className={`motion-safe:transition-transform ${listOpen ? '' : 'rotate-180'}`}
+                  />
+                </button>
+              }
             >
-              <ListChecks size={16} strokeWidth={2.5} aria-hidden />
-              {es.app.activities}
-              <ChevronDown
-                size={16}
-                strokeWidth={3}
-                aria-hidden
-                className={`motion-safe:transition-transform ${listOpen ? '' : 'rotate-180'}`}
-              />
-            </button>
-          }
-        >
-          <div className="max-h-[60dvh] w-[min(22rem,calc(100vw-4rem))] overflow-y-auto">
-            <Map3DActivityList
-              scene={view3d.scene}
-              points={points}
-              highlightedId={highlightedId}
-              onFocus={(pointId) => {
-                setHighlightedId(pointId)
-                setListFocusId(pointId)
-              }}
-              onOpen={handleOpen}
-            />
+              <div className="max-h-[60dvh] w-[min(22rem,calc(100vw-4rem))] overflow-y-auto">
+                <Map3DActivityList
+                  scene={view3d.scene}
+                  points={points}
+                  highlightedId={highlightedId}
+                  onFocus={(pointId) => {
+                    setHighlightedId(pointId)
+                    setListFocusId(pointId)
+                  }}
+                  onOpen={handleOpen}
+                />
+              </div>
+            </Popover>
           </div>
-        </Popover>
-      </div>
+        </>
+      )}
     </div>
   )
 }

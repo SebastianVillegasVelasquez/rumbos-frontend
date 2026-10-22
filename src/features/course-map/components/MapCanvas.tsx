@@ -1,5 +1,5 @@
 import { useHostOverlayOpen } from '../../embed/hostOverlay.ts'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react'
 import Konva from 'konva'
 import { Stage, Layer, Image as KonvaImage, Line, Circle } from 'react-konva'
 import useImage from 'use-image'
@@ -106,6 +106,9 @@ export const MapCanvas = ({
   focusBubbleId,
   onFocusHandled,
   onViewportChange,
+  controlsRef,
+  hideControls = false,
+  compactGuard = false,
 }: MapCanvasProps) => {
   // Embedded on a touch screen the page keeps one-finger scrolling until the
   // person opts in to moving the map (see touchGuard).
@@ -628,6 +631,12 @@ export const MapCanvas = ({
 
   const handleZoomReset = () => controller.resetView()
 
+  useImperativeHandle(controlsRef, () => ({
+    zoomIn: () => handleZoomButton(ZOOM_STEP),
+    zoomOut: () => handleZoomButton(1 / ZOOM_STEP),
+    recenter: handleZoomReset,
+  }))
+
   return (
     <div className="relative h-full w-full">
       {guardsTouch && (
@@ -636,14 +645,16 @@ export const MapCanvas = ({
           onClick={() => setIsMapGrabbed((grabbed) => !grabbed)}
           aria-pressed={isMapGrabbed}
           title={es.embed.moveMapHint}
-          className="border-strong absolute bottom-2 left-2 z-10 inline-flex min-h-[44px] items-center gap-2 rounded-md bg-surface px-3 text-sm font-bold text-ink shadow-md"
+          className="hud-dimmable border-strong absolute bottom-[max(0.5rem,env(safe-area-inset-bottom))] left-[max(0.5rem,env(safe-area-inset-left))] z-10 inline-flex min-h-[44px] min-w-[44px] items-center justify-center gap-2 rounded-md bg-surface px-3 text-sm font-bold text-ink shadow-md"
         >
           {isMapGrabbed ? (
             <X size={16} strokeWidth={2.5} aria-hidden />
           ) : (
             <Hand size={16} strokeWidth={2.5} aria-hidden />
           )}
-          {isMapGrabbed ? es.embed.leaveMap : es.embed.moveMap}
+          <span className={compactGuard ? 'sr-only' : undefined}>
+            {isMapGrabbed ? es.embed.leaveMap : es.embed.moveMap}
+          </span>
         </button>
       )}
       <div
@@ -772,7 +783,7 @@ export const MapCanvas = ({
         {showLevelComplete && (
           <div
             role="status"
-            className="border-strong pointer-events-none absolute left-1/2 top-6 z-30 -translate-x-1/2 rounded-md bg-leaf-dark px-5 py-2.5 text-sm font-bold text-white shadow-sm"
+            className="border-strong pointer-events-none absolute left-1/2 top-16 z-30 -translate-x-1/2 rounded-md bg-leaf-dark px-5 py-2.5 text-sm font-bold text-white shadow-sm"
           >
             {es.canvas.levelComplete}
           </div>
@@ -826,36 +837,38 @@ export const MapCanvas = ({
           />
         )}
       </div>
-      <div className="border-soft pointer-events-none absolute bottom-3 right-3 flex items-center gap-1 rounded-md bg-surface p-1">
-        <IconButton
-          onClick={() => handleZoomButton(1 / ZOOM_STEP)}
-          aria-label={es.canvas.zoomOut}
-          variant="ghost"
-          className="pointer-events-auto"
-        >
-          <Minus size={18} strokeWidth={3} />
-        </IconButton>
-        <span className="pointer-events-auto min-w-[3rem] text-center text-xs font-bold text-ink">
-          {Math.round(zoomFactor * 100)}%
-        </span>
-        <IconButton
-          onClick={() => handleZoomButton(ZOOM_STEP)}
-          aria-label={es.canvas.zoomIn}
-          variant="ghost"
-          className="pointer-events-auto"
-        >
-          <Plus size={18} strokeWidth={3} />
-        </IconButton>
-        <IconButton
-          onClick={handleZoomReset}
-          aria-label={es.canvas.fitToScreen}
-          title={es.canvas.fitToScreen}
-          variant="ghost"
-          className="pointer-events-auto"
-        >
-          <Scan size={18} strokeWidth={2.5} />
-        </IconButton>
-      </div>
+      {!hideControls && (
+        <div className="border-soft pointer-events-none absolute bottom-3 right-3 flex items-center gap-1 rounded-md bg-surface p-1">
+          <IconButton
+            onClick={() => handleZoomButton(1 / ZOOM_STEP)}
+            aria-label={es.canvas.zoomOut}
+            variant="ghost"
+            className="pointer-events-auto"
+          >
+            <Minus size={18} strokeWidth={3} />
+          </IconButton>
+          <span className="pointer-events-auto min-w-[3rem] text-center text-xs font-bold text-ink">
+            {Math.round(zoomFactor * 100)}%
+          </span>
+          <IconButton
+            onClick={() => handleZoomButton(ZOOM_STEP)}
+            aria-label={es.canvas.zoomIn}
+            variant="ghost"
+            className="pointer-events-auto"
+          >
+            <Plus size={18} strokeWidth={3} />
+          </IconButton>
+          <IconButton
+            onClick={handleZoomReset}
+            aria-label={es.canvas.fitToScreen}
+            title={es.canvas.fitToScreen}
+            variant="ghost"
+            className="pointer-events-auto"
+          >
+            <Scan size={18} strokeWidth={2.5} />
+          </IconButton>
+        </div>
+      )}
     </div>
   )
 }

@@ -13,13 +13,13 @@ import { ActivityModal } from './features/course-map/components/ActivityModal.ts
 import { ActivitiesOverviewModal } from './features/course-map/components/ActivitiesOverviewModal.tsx'
 import { MapsHome } from './features/course-map/components/MapsHome.tsx'
 import { CourseLevels } from './features/course-map/components/CourseLevels.tsx'
-import { StudentHud } from './features/course-map/components/StudentHud.tsx'
+import { StudentStage, type ContinueAction } from './features/hud/StudentStage.tsx'
+import { StudentLevelsChrome } from './features/hud/StudentLevelsChrome.tsx'
 import { WriteSyncHost } from './features/course-map/components/WriteSyncHost.tsx'
 import { PublicationBar } from './features/course-map/components/publication/PublicationBar.tsx'
 import { LazyBackgroundPicker } from './features/course-map/components/background/LazyBackgroundPicker.tsx'
 import { useChangeBackground } from './features/course-map/components/background/useChangeBackground.ts'
 import { rememberCourseMap } from './features/course-map/data/recentMaps.ts'
-import { MapViewToggle } from './features/view3d/MapViewToggle.tsx'
 import {
   initialMapView,
   rememberMapView,
@@ -50,8 +50,10 @@ import {
 import { resolveImageUrl } from './features/course-map/data/assets.ts'
 import { courseTitleFrom } from './features/course-map/courseTitle.ts'
 import { progressCounts } from './features/course-map/progress.ts'
+import { continueTarget } from './features/course-map/continueTarget.ts'
 import { useCompletionNotices } from './features/course-map/useCompletionNotices.ts'
 import { draftToRenderable, publishedToRenderable } from './features/course-map/renderable.ts'
+import type { MapCanvasControls } from './features/course-map/types/course-props.types.ts'
 import type {
   Activity,
   MapInitialView,
@@ -155,6 +157,15 @@ export function AppShell() {
         {es.embed.fullscreen}
       </Button>
     ) : null
+  // An editor looking at the student view needs a way back to editing now that
+  // the header is gone. Never offered to students.
+  const exitPreview =
+    !hostStudentMode && viewMode !== 'edit'
+      ? {
+          label: viewMode === 'preview' ? es.hud.previewExit : es.hud.publishedExit,
+          onExit: () => setViewMode('edit'),
+        }
+      : null
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null)
   const [isActivitiesMenuOpen, setIsActivitiesMenuOpen] = useState(false)
   const [isActivitiesOverviewOpen, setIsActivitiesOverviewOpen] = useState(false)
@@ -169,6 +180,9 @@ export function AppShell() {
   const latestViewportRef = useRef<MapInitialView | null>(null)
 
   const isEditor = viewMode === 'edit'
+  // Students and the editor's previews get the immersive stage, no header.
+  const immersive = !isEditor
+  const mapControlsRef = useRef<MapCanvasControls>(null)
   const showPublished = viewMode === 'published'
 
   const changeMapView = (next: MapViewKind) => {
@@ -331,6 +345,25 @@ export function AppShell() {
     getAvailabilityForBubble,
     isEditor ? 'editor' : 'student'
   )
+  const mapMode = renderable?.settings.mode ?? 'explorative'
+  const nextTarget = immersive
+    ? continueTarget(bubbles, mapMode, getAvailabilityForBubble, 'student')
+    : null
+  const nextTargetName = nextTarget
+    ? activities.find((a) => a.activityId === nextTarget.activityId)?.name
+    : undefined
+  const continueAction: ContinueAction =
+    progress.allComplete && nextLevel
+      ? { kind: 'next-level', onClick: () => navigate({ name: 'map', mapId: nextLevel.id }) }
+      : progress.allComplete
+        ? { kind: 'done' }
+        : nextTarget && nextTargetName
+          ? {
+              kind: 'continue',
+              label: es.hud.continue(nextTargetName),
+              onClick: () => setFocusBubbleId(nextTarget.id),
+            }
+          : { kind: 'none' }
   const getModname = (bubble: { activityId: number }) =>
     activities.find((a) => a.activityId === bubble.activityId)?.modname
 
@@ -343,7 +376,7 @@ export function AppShell() {
   const view3d = renderable?.view3d ?? null
   const show3d = !isEditor && view3d !== null && mapView === '3d'
 
-  const renderMapArea = () => {
+  const renderMapArea = (layout?: { guardCompact: boolean }) => {
     if (mapQuery.isPending) {
       return (
         <p className="flex items-center gap-2 text-sm text-ink-soft">
@@ -416,6 +449,9 @@ export function AppShell() {
           bubbles={bubbles}
           editable={isEditor}
           touchGuard={Boolean(embed)}
+          controlsRef={mapControlsRef}
+          hideControls={immersive}
+          compactGuard={layout?.guardCompact}
           fit={renderable.settings.fit}
           mapMode={renderable.settings.mode}
           initialView={renderable.settings.initialView}
@@ -460,6 +496,32 @@ export function AppShell() {
     )
   }
 
+  const render3d = (view3dConfig: NonNullable<typeof view3d>) =>
+    renderable && (
+      <Suspense
+        fallback={
+          <p className="flex items-center gap-2 text-sm text-ink-soft">
+            <Loader2 size={16} className="animate-spin" />
+            {es.view3d.loading}
+          </p>
+        }
+      >
+        <Map3DPanel
+          map={renderable}
+          view3d={view3dConfig}
+          resolved={moodle.resolved}
+          isLoading={moodle.resolvedPending}
+          view="student"
+          onOpenBubble={handleBubbleClick}
+          getUnavailableReason={getUnavailableReason}
+          focusBubbleId={focusBubbleId}
+          onFocusHandled={() => setFocusBubbleId(null)}
+          onBackTo2d={() => changeMapView('2d')}
+          showActivityList={!immersive}
+        />
+      </Suspense>
+    )
+
   const levelTitleById = useMemo(
     () => new Map(siblingLevels.map((level) => [level.id, level.title])),
     [siblingLevels]
@@ -501,14 +563,21 @@ export function AppShell() {
 
   if (route.name === 'course') {
     return (
-      <div className={`flex ${shellHeight} flex-col`}>
-        <AppHeader
-          onHome={() => navigate({ name: 'home' })}
-          viewMode={headerViewMode}
-          onViewModeChange={setViewMode}
-          fullscreenControl={fullscreenControl}
-          reserveCorner={isFullscreen}
-        />
+      <div className={`relative flex ${shellHeight} flex-col`}>
+        {immersive ? (
+          <StudentLevelsChrome
+            exitPreview={exitPreview}
+            onEnterFullscreen={embed && !isFullscreen ? () => embed.requestFullscreen(true) : null}
+          />
+        ) : (
+          <AppHeader
+            onHome={() => navigate({ name: 'home' })}
+            viewMode={headerViewMode}
+            onViewModeChange={setViewMode}
+            fullscreenControl={fullscreenControl}
+            reserveCorner={isFullscreen}
+          />
+        )}
         <CourseLevels
           moodleCourseId={route.moodleCourseId}
           viewMode={viewMode}
@@ -529,69 +598,61 @@ export function AppShell() {
 
   return (
     <div className={`flex ${shellHeight} flex-col`}>
-      <AppHeader
-        onHome={goHome}
-        mapTitle={breadcrumb}
-        prevLevelTitle={prevLevel?.title}
-        nextLevelTitle={nextLevel?.title}
-        onPrevLevel={prevLevel ? () => navigate({ name: 'map', mapId: prevLevel.id }) : undefined}
-        onNextLevel={nextLevel ? () => navigate({ name: 'map', mapId: nextLevel.id }) : undefined}
-        viewMode={headerViewMode}
-        onViewModeChange={setViewMode}
-        fullscreenControl={fullscreenControl}
-        publishedDisabled={neverPublished}
-        isSaving={isEditor ? isSaving : undefined}
-        onActivitiesOverview={() => setIsActivitiesOverviewOpen(true)}
-        onAppearance={isEditor ? () => setIsAppearanceOpen(true) : undefined}
-        publicationBar={
-          isEditor && courseMapId ? <PublicationBar courseMapId={courseMapId} /> : null
-        }
-        activitiesMenu={
-          isEditor ? (
-            <Popover
-              open={isActivitiesMenuOpen}
-              onOpenChange={setIsActivitiesMenuOpen}
-              align="end"
-              trigger={
-                <Button variant="surface" size="sm">
-                  <List size={16} strokeWidth={2.5} aria-hidden />
-                  {es.app.activities}
-                  {unplacedCount > 0 && (
-                    <span className="flex h-5 min-w-5 items-center justify-center rounded-md bg-primary px-1 text-xs font-bold text-white">
-                      {unplacedCount}
-                    </span>
-                  )}
-                  <ChevronDown
-                    size={16}
-                    strokeWidth={3}
-                    aria-hidden
-                    className={`motion-safe:transition-transform ${isActivitiesMenuOpen ? 'rotate-180' : ''}`}
-                  />
-                </Button>
-              }
-            >
-              <ActivitySidebar
-                {...sidebarProps}
-                className="flex max-h-[70dvh] w-[min(20rem,calc(100vw-4rem))] flex-col"
-              />
-            </Popover>
-          ) : null
-        }
-        viewToggle={
-          !isEditor && renderable && view3d ? (
-            <MapViewToggle value={mapView} onChange={changeMapView} />
-          ) : null
-        }
-        statusNote={
-          viewMode === 'preview'
-            ? es.viewMode.previewBanner
-            : showPublished && renderable
-              ? es.viewMode.publishedBanner
-              : undefined
-        }
-      />
+      {!immersive && (
+        <AppHeader
+          onHome={goHome}
+          mapTitle={breadcrumb}
+          prevLevelTitle={prevLevel?.title}
+          nextLevelTitle={nextLevel?.title}
+          onPrevLevel={prevLevel ? () => navigate({ name: 'map', mapId: prevLevel.id }) : undefined}
+          onNextLevel={nextLevel ? () => navigate({ name: 'map', mapId: nextLevel.id }) : undefined}
+          viewMode={headerViewMode}
+          onViewModeChange={setViewMode}
+          fullscreenControl={fullscreenControl}
+          publishedDisabled={neverPublished}
+          isSaving={isEditor ? isSaving : undefined}
+          onActivitiesOverview={() => setIsActivitiesOverviewOpen(true)}
+          onAppearance={isEditor ? () => setIsAppearanceOpen(true) : undefined}
+          publicationBar={
+            isEditor && courseMapId ? <PublicationBar courseMapId={courseMapId} /> : null
+          }
+          activitiesMenu={
+            isEditor ? (
+              <Popover
+                open={isActivitiesMenuOpen}
+                onOpenChange={setIsActivitiesMenuOpen}
+                align="end"
+                trigger={
+                  <Button variant="surface" size="sm">
+                    <List size={16} strokeWidth={2.5} aria-hidden />
+                    {es.app.activities}
+                    {unplacedCount > 0 && (
+                      <span className="flex h-5 min-w-5 items-center justify-center rounded-md bg-primary px-1 text-xs font-bold text-white">
+                        {unplacedCount}
+                      </span>
+                    )}
+                    <ChevronDown
+                      size={16}
+                      strokeWidth={3}
+                      aria-hidden
+                      className={`motion-safe:transition-transform ${isActivitiesMenuOpen ? 'rotate-180' : ''}`}
+                    />
+                  </Button>
+                }
+              >
+                <ActivitySidebar
+                  {...sidebarProps}
+                  className="flex max-h-[70dvh] w-[min(20rem,calc(100vw-4rem))] flex-col"
+                />
+              </Popover>
+            ) : null
+          }
+        />
+      )}
       <div className="flex flex-1 overflow-hidden">
-        <main className="flex min-h-0 flex-1 flex-col overflow-hidden p-1 sm:p-1.5">
+        <main
+          className={`flex min-h-0 flex-1 flex-col overflow-hidden ${immersive ? '' : 'p-1 sm:p-1.5'}`}
+        >
           {isEditor && (
             <p className="px-1 pb-1 text-xs font-semibold text-ink-soft">
               {es.publication.autosaveHint}
@@ -641,39 +702,41 @@ export function AppShell() {
             </div>
           )}
           <div className="relative min-h-0 flex-1">
-            {!isEditor && renderable && !show3d && (
-              <StudentHud
-                bubbles={bubbles}
+            {immersive && renderable ? (
+              <StudentStage
+                levelTitle={renderable.title}
+                levelPosition={
+                  siblingLevels.length > 1 && currentLevelIndex !== -1
+                    ? { index: currentLevelIndex + 1, count: siblingLevels.length }
+                    : null
+                }
                 progress={progress}
-                activities={activities}
-                onContinue={(bubble) => setFocusBubbleId(bubble.id)}
-                onNextLevel={
-                  nextLevel ? () => navigate({ name: 'map', mapId: nextLevel.id }) : undefined
+                onOpenLevels={
+                  siblingLevels.length > 1 ? () => navigate({ name: 'home' }) : undefined
                 }
-              />
-            )}
-            {show3d && renderable && view3d ? (
-              <Suspense
-                fallback={
-                  <p className="flex items-center gap-2 text-sm text-ink-soft">
-                    <Loader2 size={16} className="animate-spin" />
-                    {es.view3d.loading}
-                  </p>
+                onOpenQuests={() => setIsActivitiesOverviewOpen(true)}
+                view={view3d ? { value: show3d ? '3d' : '2d', onChange: changeMapView } : null}
+                zoom={
+                  show3d
+                    ? null
+                    : {
+                        zoomIn: () => mapControlsRef.current?.zoomIn(),
+                        zoomOut: () => mapControlsRef.current?.zoomOut(),
+                        recenter: () => mapControlsRef.current?.recenter(),
+                      }
                 }
+                onEnterFullscreen={
+                  embed && !isFullscreen ? () => embed.requestFullscreen(true) : null
+                }
+                continueAction={continueAction}
+                exitPreview={exitPreview}
+                hold={isActivitiesOverviewOpen}
+                embedded={Boolean(embed)}
               >
-                <Map3DPanel
-                  map={renderable}
-                  view3d={view3d}
-                  resolved={moodle.resolved}
-                  isLoading={moodle.resolvedPending}
-                  view="student"
-                  onOpenBubble={handleBubbleClick}
-                  getUnavailableReason={getUnavailableReason}
-                  focusBubbleId={focusBubbleId}
-                  onFocusHandled={() => setFocusBubbleId(null)}
-                  onBackTo2d={() => changeMapView('2d')}
-                />
-              </Suspense>
+                {(layout) => (show3d && view3d ? render3d(view3d) : renderMapArea(layout))}
+              </StudentStage>
+            ) : show3d && renderable && view3d ? (
+              render3d(view3d)
             ) : (
               renderMapArea()
             )}
@@ -742,10 +805,8 @@ const AppHeader = ({
   onAppearance,
   publicationBar,
   activitiesMenu,
-  viewToggle,
   fullscreenControl,
   reserveCorner,
-  statusNote,
 }: {
   onHome?: () => void
   mapTitle?: string
@@ -761,12 +822,10 @@ const AppHeader = ({
   onAppearance?: () => void
   publicationBar?: ReactNode
   activitiesMenu?: ReactNode
-  viewToggle?: ReactNode
   fullscreenControl?: ReactNode
   // Fullscreen: the host's exit control sits in the top-right corner, above
   // the app, so nothing of ours may be placed there.
   reserveCorner?: boolean
-  statusNote?: string
 }) => {
   return (
     <header
@@ -826,12 +885,6 @@ const AppHeader = ({
         )}
       </div>
       <div className="ml-auto flex flex-wrap items-center justify-end gap-x-2 gap-y-1">
-        {statusNote && (
-          // For assistive tech; the segmented control shows the mode.
-          <span role="status" className="sr-only">
-            {statusNote}
-          </span>
-        )}
         {isSaving !== undefined && (
           <span className="text-xs font-bold text-ink">
             {isSaving ? es.app.saving : es.app.saved}
@@ -849,7 +902,6 @@ const AppHeader = ({
             {es.app.activitiesOverview}
           </Button>
         )}
-        {viewToggle}
         {fullscreenControl}
         {viewMode && onViewModeChange && (
           // TEMPORARY: a view toggle stands in for real editor/student

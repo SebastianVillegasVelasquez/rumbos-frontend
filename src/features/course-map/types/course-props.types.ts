@@ -1,3 +1,4 @@
+import type { Ref } from 'react'
 import type { DesignSize } from '../coordinates.ts'
 import type {
   Activity,
@@ -39,6 +40,14 @@ export interface BubbleVisualProps {
   // requiring a visual-state change. Used to highlight a bubble picked
   // from the activities overview panel.
   pulseKey?: number
+}
+
+// What the student HUD can ask of the camera.
+export interface MapCanvasControls {
+  zoomIn: () => void
+  zoomOut: () => void
+  // Back to the whole map.
+  recenter: () => void
 }
 
 export interface MapCanvasProps {
@@ -85,4 +94,12 @@ export interface MapCanvasProps {
   // the parent, not state - this fires every pan/zoom tick). Backs the
   // appearance studio's "usar vista actual" capture.
   onViewportChange?: (view: MapInitialView) => void
+  // The student HUD draws the zoom and recenter buttons itself (in its corner
+  // cluster) and drives the camera through this handle; the canvas then omits
+  // its own controls.
+  controlsRef?: Ref<MapCanvasControls>
+  hideControls?: boolean
+  // Narrow screens: the "Mover el mapa" button shows only its icon (its label
+  // stays for assistive technology) to leave room for the rest of the HUD.
+  compactGuard?: boolean
 }

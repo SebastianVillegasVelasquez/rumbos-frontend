@@ -54,3 +54,47 @@ alternative. Newest last.
   technology because the live region already speaks the same text.
 - **Baseline.** The first state after the level's Moodle data is ready, and the
   first state after switching level, set the baseline; nothing is announced.
+
+## Student HUD shell
+
+- **Immersive for everything that is not the editor.** Students (host student
+  mode), "Vista previa" and "Guardado" all render the same `StudentStage`; only
+  the editor keeps the header. A standalone `?view=published` therefore has no
+  header either. Alternative: keep the header outside host mode; rejected
+  because the preview must show what students see.
+- **Placement is computed, then tested.** `hud/metrics.ts` holds the layout
+  rules as numbers and a test checks no overlap, no entry into the 64 px corner
+  and a 44 px minimum over 16 widths x 7 heights x touch x levels x preview.
+  Real CSS can still differ from the model, so it is also checked in the mock
+  host (360-wide phone frame, desktop).
+- **Top-left buttons are icon-only below 640 px and stacked below 480 px.**
+  Their names stay as accessible text and a tooltip. Alternative: keep labels;
+  rejected because at 360 px they would run into the centered chip.
+- **The chip is two lines.** "Nivel 2 de 4" (only with several levels) over
+  "<título> · 3/8"; the title is what gives way, never the progress. The spec's
+  example shows "Nivel 2 · 3/8"; the title is what students recognize.
+- **The chip dims to 70 %, the controls to 45 %.** At 45 % a white-on-scrim chip
+  falls to about 1.4:1 over a light map. At 70 % with the 0.86 scrim it stays
+  above 4.5:1 over white, gray, black, yellow and sky maps (hud/contrast.test.ts).
+  The chip is information, not a control.
+- **The chip is max min(56vw, 280px) at the top** (below the 60vw ceiling, so it
+  clears the left buttons and the corner at 320 px) and min(34vw, 256px) at the
+  bottom left, which leaves room for a centered "Continuar".
+- **"Continuar" shortens to its verb** when it has under 96 px, and its width is
+  capped by the widest neighbor on either side. On touch screens "Mover el mapa"
+  becomes icon-only below 640 px for the same reason.
+- **The preview pill sits at the left edge, vertically centered.** The top is
+  taken by the buttons and the chip, the bottom by "Continuar", and the right by
+  the corner and the cluster; this is the one spot free at every size. It reads
+  "Salir de la vista previa" (or "Salir de la vista guardada" in Guardado).
+- **The level picker has no header for students.** It floats the fullscreen
+  toggle at the bottom right. The toggle is also gone while the host owns
+  fullscreen.
+- **Misiones opens the existing overview modal for now.** The panel replaces it
+  in the next step; until then the button keeps both views reachable.
+- **The 3D-only activity list is hidden for students** because Misiones is the
+  one list. The editor's 3D preview in the Appearance studio is unaffected.
+- **Degraded-state banners stay in the page flow** above the map (rare, and they
+  must not be missed); the toast stack lifts above the bottom row.
+- **Sighted preview banner text removed.** The header's screen-reader-only mode
+  note went with the header; the preview pill is the visible and spoken cue.

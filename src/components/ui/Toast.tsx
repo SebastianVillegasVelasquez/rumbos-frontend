@@ -31,7 +31,7 @@ export const ToastProvider = ({ children }: { children: ReactNode }) => {
     <ToastContext.Provider value={value}>
       {children}
       <LiveRegion />
-      <div className="pointer-events-none fixed bottom-4 left-1/2 z-[60] flex w-[min(calc(100vw-2rem),24rem)] -translate-x-1/2 flex-col gap-2">
+      <div className="pointer-events-none fixed bottom-[calc(1rem+var(--hud-toast-lift)+env(safe-area-inset-bottom,0px))] left-1/2 z-[60] flex w-[min(calc(100vw-2rem),24rem)] -translate-x-1/2 flex-col gap-2">
         {toasts.map((toast) => (
           <div
             key={toast.id}

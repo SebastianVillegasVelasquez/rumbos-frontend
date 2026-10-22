@@ -79,6 +79,14 @@
   /* Page grid: 32px cells, ink lines at 7% */
   --grid-size: 32px;
   --grid-line: color-mix(in srgb, var(--color-ink) 7%, transparent);
+
+  /* Student HUD. The chip's text is white on this scrim; contrast is measured
+     against the scrim over the worst backgrounds in hud/contrast.test.ts. */
+  --hud-scrim: rgb(10 15 30 / 0.86);
+  --hud-dim-controls: 0.45;
+  --hud-dim-chip: 0.7;
+  /* Lifts the toast stack above the HUD's bottom row. */
+  --hud-toast-lift: 0px;
 }
 
 /* "Cliente" theme: proves white-labelling by swapping the palette only. */
@@ -172,4 +180,21 @@
     outline: 3px solid var(--color-primary);
     outline-offset: 3px;
   }
+}
+
+/* HUD controls fade after a few idle seconds and return on pointer, touch or
+   keyboard activity (data-hud-dim is set by the stage). They never vanish. */
+.hud-dimmable,
+.hud-chip {
+  transition: opacity var(--duration-base) ease;
+}
+[data-hud-dim='true'] .hud-dimmable {
+  opacity: var(--hud-dim-controls);
+}
+[data-hud-dim='true'] .hud-chip {
+  opacity: var(--hud-dim-chip);
+}
+[data-hud-dim='true'] .hud-dimmable:hover,
+[data-hud-dim='true'] .hud-dimmable:focus-within {
+  opacity: 1;
 }
