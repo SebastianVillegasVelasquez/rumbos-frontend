@@ -6,6 +6,7 @@ import {
   applyHostStatus,
   availabilityFor,
   indexCourseState,
+  isTrackedFor,
   resolveHostBubbles,
   statusFor,
 } from './hostDerivation.ts'
@@ -18,7 +19,7 @@ const host = (cmid: number, overrides: Partial<HostActivity> = {}): HostActivity
   sectionId: 1,
   availability: 'available',
   availabilityInfo: null,
-  completion: 'none',
+  completion: 'incomplete',
   ...overrides,
 })
 
@@ -51,8 +52,11 @@ const visual = (
 ) => {
   const bubbles = applyHostStatus(index, all)
   const status = bubbles.find((b) => b.id === target.id)!
-  const incomplete = bubbles.filter((b) => b.status !== 'complete').map((b) => b.sequence)
+  const incomplete = bubbles
+    .filter((b) => b.tracked !== false && b.status !== 'complete')
+    .map((b) => b.sequence)
   return deriveVisualState({
+    tracked: status.tracked,
     status: status.status,
     sequence: status.sequence,
     mode,
@@ -170,5 +174,83 @@ describe('applyHostStatus', () => {
     const stored = { ...bubble('a', 1), status: 'no_complete' as const }
     const [result] = applyHostStatus(idx, [stored])
     assert.equal(result, stored)
+  })
+})
+
+// The table the brief asks for: every completion value, in both modes and both
+// roles, with the visual state a bubble ends up in.
+describe('derivation table', () => {
+  const rows: [HostActivity['completion'], string, string][] = [
+    // completion, explorative, guided (the only bubble, so also the first)
+    ['none', 'untracked', 'untracked'],
+    ['incomplete', 'available', 'next'],
+    ['failed', 'inProgress', 'inProgress'],
+    ['complete', 'complete', 'complete'],
+  ]
+  for (const role of ['student', 'editor'] as const) {
+    for (const [completion, explorative, guided] of rows) {
+      it(`${role}: completion ${completion}`, () => {
+        const idx = indexCourseState(state([host(1, { completion })]))
+        const only = [bubble('a', 1, 0)]
+        assert.equal(visual('explorative', role, idx, only[0], only), explorative)
+        assert.equal(visual('guided', role, idx, only[0], only), guided)
+      })
+    }
+  }
+
+  it('an untracked activity never blocks later bubbles in guided mode', () => {
+    const idx = indexCourseState(state([host(1, { completion: 'none' }), host(2), host(3)]))
+    const all = [bubble('a', 1, 0), bubble('b', 2, 1), bubble('c', 3, 2)]
+    assert.equal(visual('guided', 'student', idx, all[0], all), 'untracked')
+    assert.equal(visual('guided', 'student', idx, all[1], all), 'next')
+    assert.equal(visual('guided', 'student', idx, all[2], all), 'locked')
+  })
+
+  it('an untracked activity is open even before earlier tracked ones are done', () => {
+    const idx = indexCourseState(state([host(1), host(2, { completion: 'none' })]))
+    const all = [bubble('a', 1, 0), bubble('b', 2, 1)]
+    assert.equal(visual('guided', 'student', idx, all[1], all), 'untracked')
+  })
+
+  it('restriction and hiding still win over "untracked"', () => {
+    const idx = indexCourseState(
+      state([
+        host(1, { completion: 'none', availability: 'restricted' }),
+        host(2, { completion: 'none', availability: 'hidden' }),
+      ])
+    )
+    const all = [bubble('a', 1, 0), bubble('b', 2, 1)]
+    assert.equal(visual('explorative', 'student', idx, all[0], all), 'locked')
+    assert.equal(visual('explorative', 'student', idx, all[1], all), 'teaser')
+    assert.equal(visual('explorative', 'editor', idx, all[1], all), 'untracked')
+  })
+})
+
+describe('applyHostStatus tracking', () => {
+  it('marks completion none as untracked and clears it when tracking appears', () => {
+    const idx = indexCourseState(state([host(1, { completion: 'none' })]))
+    const [off] = applyHostStatus(idx, [bubble('a', 1)])
+    assert.equal(off.tracked, false)
+    const [on] = applyHostStatus(indexCourseState(state([host(1)])), [off])
+    assert.equal('tracked' in on, false)
+  })
+
+  it('keeps an unchanged untracked bubble as the same object', () => {
+    const idx = indexCourseState(state([host(1, { completion: 'none' })]))
+    const [first] = applyHostStatus(idx, [bubble('a', 1)])
+    const [second] = applyHostStatus(idx, [first])
+    assert.equal(second, first)
+  })
+})
+
+describe('isTrackedFor', () => {
+  it('is false only for completion none', () => {
+    assert.equal(isTrackedFor(host(1, { completion: 'none' })), false)
+    for (const completion of ['incomplete', 'complete', 'failed'] as const)
+      assert.equal(isTrackedFor(host(1, { completion })), true, completion)
+  })
+
+  it('does not judge an activity the host does not list', () => {
+    assert.equal(isTrackedFor(undefined), true)
   })
 })

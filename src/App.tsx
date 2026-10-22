@@ -50,6 +50,7 @@ import {
 } from './features/course-map/data/client.ts'
 import { resolveImageUrl } from './features/course-map/data/assets.ts'
 import { courseTitleFrom } from './features/course-map/courseTitle.ts'
+import { progressCounts } from './features/course-map/progress.ts'
 import { draftToRenderable, publishedToRenderable } from './features/course-map/renderable.ts'
 import type {
   Activity,
@@ -321,6 +322,11 @@ export function AppShell() {
 
   const getAvailabilityForBubble = (bubble: Bubble) =>
     resolvedByBubbleId.get(bubble.id)?.availability
+  const progress = progressCounts(
+    bubbles,
+    getAvailabilityForBubble,
+    isEditor ? 'editor' : 'student'
+  )
   const getModname = (bubble: { activityId: number }) =>
     activities.find((a) => a.activityId === bubble.activityId)?.modname
 
@@ -394,11 +400,15 @@ export function AppShell() {
       >
         <MapCanvas
           backgroundUrl={resolveImageUrl(renderable.imageUrl)}
-          ariaLabel={es.canvas.ariaLabelWithProgress(
-            renderable.title,
-            bubbles.filter((bubble) => bubble.status === 'complete').length,
-            bubbles.length
-          )}
+          ariaLabel={
+            progress.nothingTracked
+              ? es.canvas.ariaLabelNoTracking(renderable.title)
+              : es.canvas.ariaLabelWithProgress(
+                  renderable.title,
+                  progress.completed,
+                  progress.total
+                )
+          }
           bubbles={bubbles}
           editable={isEditor}
           touchGuard={Boolean(embed)}
@@ -629,6 +639,7 @@ export function AppShell() {
             {!isEditor && renderable && !show3d && (
               <StudentHud
                 bubbles={bubbles}
+                progress={progress}
                 activities={activities}
                 onContinue={(bubble) => setFocusBubbleId(bubble.id)}
                 onNextLevel={

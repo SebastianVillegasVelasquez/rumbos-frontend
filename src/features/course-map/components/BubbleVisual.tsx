@@ -21,6 +21,7 @@ const MUTED_FILL = '#8a94a6'
 const PALETTE_STATE: Record<BubbleVisualProps['visualState'], keyof SkinPalette> = {
   locked: 'locked',
   available: 'available',
+  untracked: 'available',
   next: 'available',
   inProgress: 'inProgress',
   complete: 'complete',
@@ -32,6 +33,7 @@ const PALETTE_STATE: Record<BubbleVisualProps['visualState'], keyof SkinPalette>
 const IMAGE_STATE: Record<BubbleVisualProps['visualState'], ImageSkinState> = {
   locked: 'locked',
   available: 'available',
+  untracked: 'available',
   next: 'next',
   inProgress: 'inProgress',
   complete: 'complete',

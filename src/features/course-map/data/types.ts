@@ -32,7 +32,12 @@ export interface Bubble {
 export type RenderableBubble = Pick<
   Bubble,
   'id' | 'activityId' | 'x' | 'y' | 'icon' | 'skinId' | 'sequence' | 'status'
->
+> & {
+  // False when Moodle does not track the activity's completion (embed mode,
+  // completion "none"): it can never become complete, so it is neither "next"
+  // nor part of the progress. Absent means tracked (the backend source).
+  tracked?: boolean
+}
 
 export type PublicationStatus = 'never_published' | 'up_to_date' | 'unpublished_changes'
 

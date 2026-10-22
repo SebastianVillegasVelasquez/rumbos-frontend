@@ -17,6 +17,7 @@ import BubbleVisual from './BubbleVisual.tsx'
 import { IconPickerPopover } from './IconPickerPopover.tsx'
 import { defaultIconForModname, type IconKey } from '../icons.ts'
 import { deriveVisualState, nextIncompleteSequence, type VisualState } from '../visualState.ts'
+import { countsTowardProgress, progressCounts } from '../progress.ts'
 import { resolveSkin } from '../resolveSkin.ts'
 import type { RenderableBubble as BubbleModel, MapFit, MapSettings } from '../data/types.ts'
 import { es } from '../../../i18n/es.ts'
@@ -142,7 +143,14 @@ export const MapCanvas = ({
   // Vertical is the primary scroll axis unless the fit mode can only move
   // horizontally (fit-height leaves no vertical room to pan).
   const primaryAxis: 'x' | 'y' = fit === 'fit-height' ? 'x' : 'y'
-  const nextSequence = useMemo(() => nextIncompleteSequence(bubbles), [bubbles])
+  const view = editable ? 'editor' : 'student'
+  const nextSequence = useMemo(
+    () =>
+      nextIncompleteSequence(bubbles, (bubble) =>
+        countsTowardProgress(bubble, getAvailability?.(bubble), view)
+      ),
+    [bubbles, getAvailability, view]
+  )
   const { tier } = useAnimationQuality()
 
   // Sequence order (not raw API order) is what the connector path and the
@@ -159,11 +167,12 @@ export const MapCanvas = ({
           sequence: bubble.sequence,
           mode: mapMode,
           availability: getAvailability?.(bubble),
-          view: editable ? 'editor' : 'student',
+          view,
+          tracked: bubble.tracked,
           nextIncompleteSequence: nextSequence,
         })
       ),
-    [sortedBubbles, mapMode, getAvailability, editable, nextSequence]
+    [sortedBubbles, mapMode, getAvailability, view, nextSequence]
   )
   const pathPoints = useMemo(
     () =>
@@ -271,7 +280,11 @@ export const MapCanvas = ({
     // Nothing starts under a host overlay; on close this runs again and the
     // transition is seen as live (the ref still holds the earlier value).
     if (overlayOpen || bubbles.length === 0) return
-    const allComplete = bubbles.every((bubble) => bubble.status === 'complete')
+    const allComplete = progressCounts(
+      bubbles,
+      (bubble) => getAvailability?.(bubble),
+      view
+    ).allComplete
     const wasAllComplete = wasAllCompleteRef.current
     wasAllCompleteRef.current = allComplete
     if (wasAllComplete === null || wasAllComplete || !allComplete) return

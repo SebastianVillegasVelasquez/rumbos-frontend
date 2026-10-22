@@ -4,9 +4,11 @@ import { es } from '../../../i18n/es.ts'
 import { Card } from '../../../components/ui/Card.tsx'
 import { ProgressBar } from '../../../components/ui/Skeleton.tsx'
 import { Button } from '../../../components/ui/Button.tsx'
+import { isTracked, type ProgressCounts } from '../progress.ts'
 
 interface StudentHudProps {
   bubbles: Bubble[]
+  progress: ProgressCounts
   activities: Activity[]
   onContinue: (bubble: Bubble) => void
   // Present only when this level is complete and another level follows it
@@ -16,13 +18,20 @@ interface StudentHudProps {
 
 // Derived entirely from the existing `status` field (see the sprint brief):
 // real per-student completion will come from Moodle completion data later.
-export const StudentHud = ({ bubbles, activities, onContinue, onNextLevel }: StudentHudProps) => {
+export const StudentHud = ({
+  bubbles,
+  progress,
+  activities,
+  onContinue,
+  onNextLevel,
+}: StudentHudProps) => {
   if (bubbles.length === 0) return null
 
-  const completed = bubbles.filter((bubble) => bubble.status === 'complete').length
-  const allComplete = completed === bubbles.length
+  const { allComplete } = progress
+  // Only activities that record progress can be what comes next.
   const next = bubbles.find(
-    (bubble) => bubble.status === 'no_complete' || bubble.status === 'in_progress'
+    (bubble) =>
+      isTracked(bubble) && (bubble.status === 'no_complete' || bubble.status === 'in_progress')
   )
   const nextActivity = next
     ? activities.find((activity) => activity.activityId === next.activityId)
@@ -33,8 +42,16 @@ export const StudentHud = ({ bubbles, activities, onContinue, onNextLevel }: Stu
       variant="item"
       className="pointer-events-auto absolute left-1/2 top-2 z-10 w-[min(calc(100%-1rem),22rem)] -translate-x-1/2 space-y-1.5 p-2.5 hover:bg-surface sm:top-3 sm:space-y-2 sm:p-3.5"
     >
-      <p className="text-sm font-bold text-ink">{es.hud.progress(completed, bubbles.length)}</p>
-      <ProgressBar value={completed} max={bubbles.length} />
+      {progress.nothingTracked ? (
+        <p className="text-sm font-bold text-ink">{es.hud.noTracking}</p>
+      ) : (
+        <>
+          <p className="text-sm font-bold text-ink">
+            {es.hud.progress(progress.completed, progress.total)}
+          </p>
+          <ProgressBar value={progress.completed} max={progress.total} />
+        </>
+      )}
       {allComplete && onNextLevel ? (
         <Button size="sm" className="w-full" onClick={onNextLevel}>
           <span className="min-w-0 truncate">{es.levels.goToNextLevel}</span>

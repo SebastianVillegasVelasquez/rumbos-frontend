@@ -6,12 +6,13 @@ import {
   type MapView,
   type VisualState,
 } from '../course-map/visualState.ts'
+import { countsTowardProgress } from '../course-map/progress.ts'
 import type { Locale3d, PinState, Point3D } from './protocol.ts'
 
 // The pin a student sees for each 2D visual state. A bubble in progress is
 // simply open, and an unverifiable one (Moodle outage) is not blocked either.
 export const pinStateFor = (state: VisualState): PinState =>
-  state === 'inProgress' || state === 'unknown' ? 'available' : state
+  state === 'inProgress' || state === 'unknown' || state === 'untracked' ? 'available' : state
 
 const pickText = (text: LocalizedText3d | null, locale: Locale3d): string | null => {
   const value = text?.[locale]?.trim()
@@ -33,7 +34,9 @@ export const buildPoints3d = (
 ): Point3D[] => {
   const bubbleById = new Map(map.bubbles.map((bubble) => [bubble.id, bubble]))
   const resolvedById = new Map((resolved?.bubbles ?? []).map((item) => [item.bubbleId, item]))
-  const nextSequence = nextIncompleteSequence(map.bubbles)
+  const nextSequence = nextIncompleteSequence(map.bubbles, (bubble) =>
+    countsTowardProgress(bubble, resolvedById.get(bubble.id)?.availability, view)
+  )
 
   const points: Point3D[] = []
   for (const binding of [...view3d.bindings].sort((a, b) => a.zoneId - b.zoneId)) {
@@ -46,6 +49,7 @@ export const buildPoints3d = (
       mode: map.settings.mode,
       availability: item?.availability,
       view,
+      tracked: bubble.tracked,
       nextIncompleteSequence: nextSequence,
     })
     points.push({

@@ -6,7 +6,16 @@ import type { Availability, Bubble, BubbleStatus, MapMode } from './data/types.t
 // bubble appearance - BubbleVisual only renders one of these, it never
 // re-derives it.
 export type VisualState =
-  'locked' | 'available' | 'next' | 'inProgress' | 'complete' | 'teaser' | 'missing' | 'unknown'
+  | 'locked'
+  | 'available'
+  | 'next'
+  | 'inProgress'
+  | 'complete'
+  // Open, but Moodle does not track its completion ("Sin seguimiento").
+  | 'untracked'
+  | 'teaser'
+  | 'missing'
+  | 'unknown'
 
 export type MapView = 'editor' | 'student'
 
@@ -16,6 +25,8 @@ export interface DeriveVisualStateInput {
   mode: MapMode
   availability: Availability | undefined
   view: MapView
+  // False when the activity has no completion tracking; absent means tracked.
+  tracked?: boolean
   // The lowest `sequence` among this map's bubbles that are still
   // incomplete (status !== "complete"), or null if every bubble is
   // complete / there are no bubbles. Computed once per map by the caller
@@ -29,12 +40,16 @@ export interface DeriveVisualStateInput {
 // today it's purely sequence-derived.
 export function deriveVisualState(input: DeriveVisualStateInput): VisualState {
   const { status, sequence, mode, availability, view, nextIncompleteSequence } = input
+  const tracked = input.tracked !== false
 
   if (availability === 'missing') return 'missing'
   if (availability === 'hidden' && view === 'student') return 'teaser'
   if (availability === 'unknown') return 'unknown'
   // A Moodle access restriction keeps the activity shut whatever its progress.
   if (availability === 'restricted') return 'locked'
+
+  // Never complete, never "next", never blocked by the guided sequence.
+  if (!tracked) return 'untracked'
 
   if (status === 'complete') return 'complete'
   if (status === 'in_progress') return 'inProgress'
@@ -47,15 +62,26 @@ export function deriveVisualState(input: DeriveVisualStateInput): VisualState {
 
 // Helper for the caller: the lowest `sequence` among bubbles that aren't yet
 // complete, for guided mode's single "next" bubble.
-export function nextIncompleteSequence(
-  bubbles: Pick<Bubble, 'status' | 'sequence'>[]
-): number | null {
-  const incomplete = bubbles.filter((bubble) => bubble.status !== 'complete')
+//
+// Only bubbles that count (see progress.ts) can be next; by default every
+// tracked one does. Untracked bubbles never are.
+export function nextIncompleteSequence<
+  T extends Pick<Bubble, 'status' | 'sequence'> & { tracked?: boolean },
+>(bubbles: T[], counts: (bubble: T) => boolean = () => true): number | null {
+  const incomplete = bubbles.filter(
+    (bubble) => bubble.tracked !== false && bubble.status !== 'complete' && counts(bubble)
+  )
   if (incomplete.length === 0) return null
   return Math.min(...incomplete.map((bubble) => bubble.sequence))
 }
 
 // A visual state's role for the student: can they open it right now?
 export function isVisualStateInteractive(state: VisualState): boolean {
-  return state === 'available' || state === 'next' || state === 'inProgress' || state === 'complete'
+  return (
+    state === 'available' ||
+    state === 'next' ||
+    state === 'inProgress' ||
+    state === 'complete' ||
+    state === 'untracked'
+  )
 }

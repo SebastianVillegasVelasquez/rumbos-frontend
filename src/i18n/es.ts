@@ -224,6 +224,8 @@ export const es = {
     ariaLabelWithProgress: (levelTitle: string, done: number, total: number) =>
       `Mapa de ${levelTitle}. ${done} de ${total} actividades completadas. Usa el resumen de actividades para navegar por teclado.`,
     levelComplete: '¡Nivel completado!',
+    ariaLabelNoTracking: (levelTitle: string) =>
+      `Mapa de ${levelTitle}. Este nivel no registra progreso. Usa el resumen de actividades para navegar por teclado.`,
   },
   animationQuality: {
     label: 'Calidad de animación',
@@ -238,6 +240,7 @@ export const es = {
   hud: {
     progress: (done: number, total: number) => `${done} de ${total} actividades completadas`,
     continue: (name: string) => `Continuar: ${name}`,
+    noTracking: 'Este nivel no registra progreso',
   },
   view3d: {
     toggleLabel: 'Tipo de vista del mapa',

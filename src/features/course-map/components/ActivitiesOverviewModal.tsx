@@ -2,6 +2,7 @@ import * as RadixDialog from '@radix-ui/react-dialog'
 import { X } from 'lucide-react'
 import type { Activity, Availability, MapMode, RenderableBubble as Bubble } from '../data/types.ts'
 import { deriveVisualState, nextIncompleteSequence, type VisualState } from '../visualState.ts'
+import { countsTowardProgress } from '../progress.ts'
 import { es } from '../../../i18n/es.ts'
 import { Badge } from '../../../components/ui/Card.tsx'
 
@@ -24,6 +25,7 @@ const GROUP_FOR: Record<VisualState, GroupKey> = {
   complete: 'complete',
   inProgress: 'in_progress',
   available: 'available',
+  untracked: 'available',
   locked: 'locked',
   teaser: 'teaser',
   missing: 'unavailable',
@@ -57,7 +59,9 @@ export const ActivitiesOverviewModal = ({
   onSelectBubble,
 }: ActivitiesOverviewModalProps) => {
   const activityById = new Map(activities.map((activity) => [activity.activityId, activity]))
-  const nextSequence = nextIncompleteSequence(bubbles)
+  const nextSequence = nextIncompleteSequence(bubbles, (bubble) =>
+    countsTowardProgress(bubble, getAvailability(bubble), view)
+  )
 
   const byGroup = new Map<GroupKey, Bubble[]>()
   for (const bubble of bubbles) {
@@ -67,6 +71,7 @@ export const ActivitiesOverviewModal = ({
       mode,
       availability: getAvailability(bubble),
       view,
+      tracked: bubble.tracked,
       nextIncompleteSequence: nextSequence,
     })
     const key = GROUP_FOR[state]

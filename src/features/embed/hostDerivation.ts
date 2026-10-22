@@ -16,8 +16,12 @@ import type { CourseState, HostActivity, HostSection } from './protocol.ts'
 //   availability "hidden"         -> "hidden" (editors: "Oculta para estudiantes")
 //   availability "restricted"     -> "restricted": locked, tooltip from availabilityInfo
 //   completion complete           -> status complete
-//   completion incomplete / none  -> status no_complete
+//   completion incomplete         -> status no_complete
 //   completion failed             -> status in_progress
+//   completion none               -> status no_complete, but untracked: it can
+//                                    never complete, so it is not "next", does
+//                                    not block the guided sequence and is left
+//                                    out of the progress counts
 
 export interface HostIndex {
   activities: Map<number, HostActivity>
@@ -49,6 +53,11 @@ export const statusFor = (host: HostActivity | undefined): BubbleStatus => {
   }
 }
 
+// Moodle tracks the activity's completion. An activity the host does not list
+// (hidden from this user, or gone) is not judged: availability handles it.
+export const isTrackedFor = (host: HostActivity | undefined): boolean =>
+  host === undefined || host.completion !== 'none'
+
 // Same objects back when nothing changed, so an unrelated refresh does not
 // look like new data to the canvas.
 export const applyHostStatus = (
@@ -56,8 +65,13 @@ export const applyHostStatus = (
   bubbles: RenderableBubble[]
 ): RenderableBubble[] =>
   bubbles.map((bubble) => {
-    const status = statusFor(index.activities.get(bubble.activityId))
-    return status === bubble.status ? bubble : { ...bubble, status }
+    const host = index.activities.get(bubble.activityId)
+    const status = statusFor(host)
+    const tracked = isTrackedFor(host)
+    if (status === bubble.status && (bubble.tracked !== false) === tracked) return bubble
+    const { tracked: _previous, ...rest } = bubble
+    void _previous
+    return tracked ? { ...rest, status } : { ...rest, status, tracked: false }
   })
 
 export interface Placement {
