@@ -44,6 +44,8 @@ export interface Rect {
 }
 
 export interface HudMetrics {
+  // Below COMPACT: icon-only buttons and a bottom sheet instead of a side panel.
+  compact: boolean
   chipOnTop: boolean
   guardCompact: boolean
   topLeftColumn: boolean
@@ -127,6 +129,7 @@ export const hudMetrics = (input: HudInput): HudMetrics => {
       }
 
   return {
+    compact: width < COMPACT,
     chipOnTop,
     guardCompact,
     topLeftColumn,

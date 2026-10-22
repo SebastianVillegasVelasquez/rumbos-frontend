@@ -50,6 +50,10 @@ import {
 import { resolveImageUrl } from './features/course-map/data/assets.ts'
 import { courseTitleFrom } from './features/course-map/courseTitle.ts'
 import { progressCounts } from './features/course-map/progress.ts'
+import { QuestLog } from './features/quests/QuestLog.tsx'
+import { buildQuestEntries } from './features/quests/questEntries.ts'
+import { readQuestsOpen, rememberQuestsOpen } from './features/quests/questsPreference.ts'
+import { viewerStorage } from './features/quests/viewerStorage.ts'
 import { continueTarget } from './features/course-map/continueTarget.ts'
 import { useCompletionNotices } from './features/course-map/useCompletionNotices.ts'
 import { draftToRenderable, publishedToRenderable } from './features/course-map/renderable.ts'
@@ -107,6 +111,8 @@ const AppearanceStudio = lazy(() =>
 )
 
 document.title = `${es.app.wordmark} — ${es.home.title}`
+
+const isWideViewport = () => window.matchMedia('(min-width: 640px)').matches
 
 // A stable empty list, so a map that is still loading does not look new on
 // every render.
@@ -169,6 +175,18 @@ export function AppShell() {
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null)
   const [isActivitiesMenuOpen, setIsActivitiesMenuOpen] = useState(false)
   const [isActivitiesOverviewOpen, setIsActivitiesOverviewOpen] = useState(false)
+  // Misiones. The side panel's state is remembered; a bottom sheet always
+  // starts closed (see questsPreference).
+  const [questsOpen, setQuestsOpen] = useState(
+    () => isWideViewport() && readQuestsOpen(viewerStorage())
+  )
+  const [activeQuestBubbleId, setActiveQuestBubbleId] = useState<string | null>(null)
+  const setQuests = (open: boolean) => {
+    setQuestsOpen(open)
+    if (isWideViewport()) rememberQuestsOpen(open, viewerStorage())
+  }
+  const toggleQuests = () => setQuests(!questsOpen)
+  const closeQuests = () => setQuests(false)
   const [focusBubbleId, setFocusBubbleId] = useState<string | null>(null)
   const [mapView, setMapView] = useState<MapViewKind>(initialMapView)
   const [cachedNoticeDismissed, setCachedNoticeDismissed] = useState(false)
@@ -346,6 +364,12 @@ export function AppShell() {
     isEditor ? 'editor' : 'student'
   )
   const mapMode = renderable?.settings.mode ?? 'explorative'
+  const questGroups = buildQuestEntries({
+    bubbles: immersive ? bubbles : NO_BUBBLES,
+    mode: mapMode,
+    availabilityOf: getAvailabilityForBubble,
+    activityOf: (bubble) => resolvedByBubbleId.get(bubble.id)?.activity,
+  })
   const nextTarget = immersive
     ? continueTarget(bubbles, mapMode, getAvailabilityForBubble, 'student')
     : null
@@ -517,7 +541,6 @@ export function AppShell() {
           focusBubbleId={focusBubbleId}
           onFocusHandled={() => setFocusBubbleId(null)}
           onBackTo2d={() => changeMapView('2d')}
-          showActivityList={!immersive}
         />
       </Suspense>
     )
@@ -714,7 +737,27 @@ export function AppShell() {
                 onOpenLevels={
                   siblingLevels.length > 1 ? () => navigate({ name: 'home' }) : undefined
                 }
-                onOpenQuests={() => setIsActivitiesOverviewOpen(true)}
+                questsOpen={questsOpen}
+                onToggleQuests={toggleQuests}
+                questsPanel={({ compact, bottomOffset }) => (
+                  <QuestLog
+                    open={questsOpen}
+                    compact={compact}
+                    bottomOffset={bottomOffset}
+                    groups={questGroups}
+                    progress={progress}
+                    activeBubbleId={activeQuestBubbleId}
+                    onFocusBubble={(bubbleId) => {
+                      setActiveQuestBubbleId(bubbleId)
+                      setFocusBubbleId(bubbleId)
+                    }}
+                    onOpenBubble={(bubbleId) => {
+                      const bubble = bubbles.find((item) => item.id === bubbleId)
+                      if (bubble) handleBubbleClick(bubble)
+                    }}
+                    onClose={closeQuests}
+                  />
+                )}
                 view={view3d ? { value: show3d ? '3d' : '2d', onChange: changeMapView } : null}
                 zoom={
                   show3d
@@ -730,7 +773,6 @@ export function AppShell() {
                 }
                 continueAction={continueAction}
                 exitPreview={exitPreview}
-                hold={isActivitiesOverviewOpen}
                 embedded={Boolean(embed)}
               >
                 {(layout) => (show3d && view3d ? render3d(view3d) : renderMapArea(layout))}
@@ -747,11 +789,11 @@ export function AppShell() {
       <ActivityModal activity={selectedActivity} onClose={() => setSelectedActivity(null)} />
 
       <ActivitiesOverviewModal
-        open={isActivitiesOverviewOpen}
+        open={isEditor && isActivitiesOverviewOpen}
         bubbles={bubbles}
         activities={activities}
         mode={renderable?.settings.mode ?? 'explorative'}
-        view={isEditor ? 'editor' : 'student'}
+        view="editor"
         getAvailability={getAvailabilityForBubble}
         onClose={() => setIsActivitiesOverviewOpen(false)}
         onSelectBubble={handleSelectBubbleFromOverview}

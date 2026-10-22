@@ -16,7 +16,8 @@ import { Button, IconButton } from '../../components/ui/Button.tsx'
 import { es } from '../../i18n/es.ts'
 import type { ProgressCounts } from '../course-map/progress.ts'
 import type { MapViewKind } from '../view3d/mapViewPreference.ts'
-import { hudMetrics, type HudMetrics } from './metrics.ts'
+import { GAP, GUTTER, TOUCH_TARGET, hudMetrics, type HudMetrics } from './metrics.ts'
+import { PANEL_WIDTH, QUESTS_BUTTON_ID, QUEST_LOG_ID } from '../quests/QuestLog.tsx'
 import { useIdleDim } from './useIdleDim.ts'
 import { useStageSize } from './useStageSize.ts'
 import { isCoarsePointer } from './pointer.ts'
@@ -33,7 +34,7 @@ interface StudentStageProps {
   progress: ProgressCounts
   // Absent when the course has a single level.
   onOpenLevels?: () => void
-  onOpenQuests: () => void
+  onToggleQuests: () => void
   // The 2D/3D switch; absent when the published map has no 3D view.
   view: { value: MapViewKind; onChange: (view: MapViewKind) => void } | null
   // Camera buttons; absent in 3D, which has its own.
@@ -43,8 +44,10 @@ interface StudentStageProps {
   continueAction: ContinueAction
   // An editor looking at the student view: the way back to editing.
   exitPreview: { label: string; onExit: () => void } | null
-  // Keeps the controls fully visible (a panel is open).
-  hold: boolean
+  // Misiones: the button toggles it, the panel itself is drawn by the caller
+  // inside the stage (a side panel, or a bottom sheet when `compact`).
+  questsOpen: boolean
+  questsPanel: (layout: { compact: boolean; bottomOffset: string }) => ReactNode
   embedded: boolean
   children: (layout: Pick<HudMetrics, 'guardCompact'>) => ReactNode
 }
@@ -58,19 +61,20 @@ export const StudentStage = ({
   levelPosition,
   progress,
   onOpenLevels,
-  onOpenQuests,
+  onToggleQuests,
   view,
   zoom,
   onEnterFullscreen,
   continueAction,
   exitPreview,
-  hold,
+  questsOpen,
+  questsPanel,
   embedded,
   children,
 }: StudentStageProps) => {
   const stageRef = useRef<HTMLDivElement>(null)
   const { width, height } = useStageSize(stageRef)
-  const dimmed = useIdleDim(hold)
+  const dimmed = useIdleDim(questsOpen)
 
   // The toast stack would sit on top of "Continuar".
   useEffect(() => {
@@ -90,6 +94,13 @@ export const StudentStage = ({
     hasPreviewPill: Boolean(exitPreview),
   })
 
+  // An open bottom sheet owns the lower part of the screen: what it covers is
+  // hidden and out of the tab order. An open side panel pushes the chip and the
+  // preview pill to its right instead.
+  const sheetOpen = questsOpen && metrics.compact
+  const panelOffset = questsOpen && !metrics.compact ? PANEL_WIDTH + 2 * GUTTER : 0
+  const coveredStyle = sheetOpen ? ({ visibility: 'hidden' } as const) : undefined
+
   const inset = (side: 'top' | 'right' | 'bottom' | 'left') =>
     `max(0.5rem, env(safe-area-inset-${side}, 0px))`
 
@@ -102,7 +113,9 @@ export const StudentStage = ({
   const chip = (
     <div
       className="hud-chip pointer-events-none absolute z-10 rounded-md px-3 py-1.5 text-white"
+      inert={sheetOpen}
       style={{
+        ...coveredStyle,
         background: 'var(--hud-scrim)',
         maxWidth: metrics.chipMaxWidth,
         ...(metrics.chipOnTop
@@ -159,7 +172,10 @@ export const StudentStage = ({
           size="sm"
           dense
           className="hud-dimmable pointer-events-auto min-w-[44px]"
-          onClick={onOpenQuests}
+          id={QUESTS_BUTTON_ID}
+          aria-expanded={questsOpen}
+          aria-controls={QUEST_LOG_ID}
+          onClick={onToggleQuests}
           title={es.hud.quests}
         >
           <ListChecks size={18} strokeWidth={2.5} aria-hidden />
@@ -175,8 +191,10 @@ export const StudentStage = ({
           size="sm"
           dense
           className="hud-dimmable pointer-events-auto absolute z-10"
+          inert={sheetOpen}
           style={{
-            left: inset('left'),
+            ...coveredStyle,
+            left: panelOffset || inset('left'),
             top: '50%',
             transform: 'translateY(-50%)',
             maxWidth: metrics.pillMaxWidth,
@@ -192,7 +210,9 @@ export const StudentStage = ({
         role="group"
         aria-label={es.hud.controls}
         className="pointer-events-none absolute z-10 flex flex-col flex-wrap-reverse content-start justify-end gap-2"
+        inert={sheetOpen}
         style={{
+          ...coveredStyle,
           right: inset('right'),
           bottom: inset('bottom'),
           maxHeight: metrics.clusterMaxHeight,
@@ -260,7 +280,9 @@ export const StudentStage = ({
       {continueAction.kind !== 'none' && (
         <div
           className="pointer-events-none absolute z-10 flex justify-center"
+          inert={sheetOpen}
           style={{
+            ...coveredStyle,
             left: '50%',
             transform: 'translateX(-50%)',
             bottom: inset('bottom'),
@@ -296,6 +318,11 @@ export const StudentStage = ({
           )}
         </div>
       )}
+      {questsPanel({
+        compact: metrics.compact,
+        // Clear of the bottom row (chip, Continuar, "Mover el mapa").
+        bottomOffset: `calc(${inset('bottom')} + ${TOUCH_TARGET + 2 * GAP + (metrics.rects.guard ? TOUCH_TARGET + GAP : 0)}px)`,
+      })}
     </div>
   )
 }

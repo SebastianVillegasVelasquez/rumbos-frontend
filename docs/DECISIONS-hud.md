@@ -98,3 +98,29 @@ alternative. Newest last.
   must not be missed); the toast stack lifts above the bottom row.
 - **Sighted preview banner text removed.** The header's screen-reader-only mode
   note went with the header; the preview pill is the visible and spoken cue.
+
+## Misiones
+
+- **One list, two shapes.** A side panel from 640 px up (left, below the top-left
+  buttons, stopping above the bottom row so the chip and Continuar stay clear)
+  and a bottom sheet below it with half and full positions (full stops 64 px
+  short of the top, under the host's corner). Alternative: a dialog; rejected
+  because the map stays visible and usable beside the list.
+- **The sheet always starts closed; only the side panel's state is remembered.**
+  A sheet that reopened itself would cover half the map on every visit.
+- **The sheet resizes by handle drag (48 px threshold), by the chevron button
+  and by Arrow keys.** Dragging down from half closes it.
+- **An open sheet hides what it covers** (chip, cluster, Continuar, preview
+  pill) and removes it from the tab order; the top-left buttons stay so
+  Misiones can be toggled. Alternative: leave everything under it; rejected
+  because focus would land on obscured controls.
+- **"Siguiente" is Continuar's target in both modes.** In explorative mode that
+  is the first open incomplete activity by sequence.
+- **Untracked activities sit under "Disponibles"** with the status "Sin
+  seguimiento" and a dashed-circle icon, instead of a group of their own.
+  Alternative: a sixth group; rejected to keep the five the brief names.
+- **Missing and unverifiable activities go under "Bloqueadas"** with their own
+  status line and no "Abrir". Hidden ones are "Próximamente" with no real name.
+- **The 3D-only list and its strings are gone;** Misiones drives the pins
+  through the same focus request. The overview modal stays for the editor
+  (header "Resumen de actividades"), which still needs its editor groups.

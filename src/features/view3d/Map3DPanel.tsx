@@ -1,13 +1,11 @@
-import { useMemo, useState } from 'react'
-import { ChevronDown, ListChecks, Loader2 } from 'lucide-react'
-import { Popover } from '../../components/ui/Popover.tsx'
+import { useMemo } from 'react'
+import { Loader2 } from 'lucide-react'
 import { useToast } from '../../components/ui/toastContext.ts'
 import { es } from '../../i18n/es.ts'
 import type { RenderableMap } from '../course-map/renderable.ts'
 import type { RenderableBubble, ResolvedCourseMap, View3d } from '../course-map/data/types.ts'
 import type { MapView } from '../course-map/visualState.ts'
 import { buildPoints3d } from './buildPoints3d.ts'
-import { Map3DActivityList } from './Map3DActivityList.tsx'
 import Map3DView from './Map3DView.tsx'
 import { isPinOpenable } from './pinState.ts'
 import type { Locale3d } from './protocol.ts'
@@ -24,17 +22,15 @@ interface Map3DPanelProps {
   // The same opener and availability reasons the 2D canvas uses.
   onOpenBubble: (bubble: RenderableBubble) => void
   getUnavailableReason: (bubble: RenderableBubble) => string | null
-  // Asked from outside (HUD "continuar", the overview list).
+  // Asked from outside (Continuar, Misiones): fly the camera to this pin.
   focusBubbleId: string | null
   onFocusHandled: () => void
   onBackTo2d: () => void
-  // False when the student HUD offers the activity list itself (Misiones).
-  showActivityList?: boolean
 }
 
-// The 3D view of a level: the world plus the accessible list next to it. It
-// only translates between 3D points and the app's own bubbles; all game rules
-// (state, availability, opening) stay in the shared 2D code paths.
+// The 3D view of a level. It only translates between 3D points and the app's
+// own bubbles; all game rules (state, availability, opening) stay in the shared
+// 2D code paths, and the accessible list is Misiones, shared with the 2D view.
 export const Map3DPanel = ({
   map,
   view3d,
@@ -47,12 +43,8 @@ export const Map3DPanel = ({
   focusBubbleId,
   onFocusHandled,
   onBackTo2d,
-  showActivityList = true,
 }: Map3DPanelProps) => {
   const toast = useToast()
-  const [highlightedId, setHighlightedId] = useState<string | null>(null)
-  const [listFocusId, setListFocusId] = useState<string | null>(null)
-  const [listOpen, setListOpen] = useState(false)
 
   const points = useMemo(
     () => buildPoints3d(map, view3d, resolved, locale, view),
@@ -72,12 +64,9 @@ export const Map3DPanel = ({
     )
   }
 
-  const pointOf = (pointId: string) => points.find((point) => point.id === pointId)
-
   // Clicking a pin that cannot be opened explains why, like the 2D tooltip.
   const handlePinClick = (pointId: string) => {
-    setHighlightedId(pointId)
-    const point = pointOf(pointId)
+    const point = points.find((candidate) => candidate.id === pointId)
     const bubble = bubbleById.get(pointId)
     if (!point || !bubble || isPinOpenable(point.state)) return
     const reason =
@@ -86,7 +75,6 @@ export const Map3DPanel = ({
   }
 
   const handleOpen = (pointId: string) => {
-    setHighlightedId(pointId)
     const bubble = bubbleById.get(pointId)
     if (!bubble) return
     const reason = getUnavailableReason(bubble)
@@ -105,53 +93,10 @@ export const Map3DPanel = ({
         title={es.view3d.iframeTitle(map.title)}
         onPinClick={handlePinClick}
         onOpenActivity={handleOpen}
-        focusPointId={listFocusId ?? requestedFocus}
-        onFocusHandled={() => {
-          setListFocusId(null)
-          onFocusHandled()
-        }}
+        focusPointId={requestedFocus}
+        onFocusHandled={onFocusHandled}
         onBackTo2d={onBackTo2d}
       />
-      {showActivityList && (
-        <>
-          {/* The accessible twin of the canvas, folded away so the world gets the space. */}
-          <div className="absolute bottom-2 left-2 z-10">
-            <Popover
-              open={listOpen}
-              onOpenChange={setListOpen}
-              align="start"
-              trigger={
-                <button
-                  type="button"
-                  className="border-strong inline-flex min-h-[44px] items-center gap-2 rounded-md bg-surface px-3 text-sm font-bold text-ink shadow-md hover:bg-primary-tint"
-                >
-                  <ListChecks size={16} strokeWidth={2.5} aria-hidden />
-                  {es.app.activities}
-                  <ChevronDown
-                    size={16}
-                    strokeWidth={3}
-                    aria-hidden
-                    className={`motion-safe:transition-transform ${listOpen ? '' : 'rotate-180'}`}
-                  />
-                </button>
-              }
-            >
-              <div className="max-h-[60dvh] w-[min(22rem,calc(100vw-4rem))] overflow-y-auto">
-                <Map3DActivityList
-                  scene={view3d.scene}
-                  points={points}
-                  highlightedId={highlightedId}
-                  onFocus={(pointId) => {
-                    setHighlightedId(pointId)
-                    setListFocusId(pointId)
-                  }}
-                  onOpen={handleOpen}
-                />
-              </div>
-            </Popover>
-          </div>
-        </>
-      )}
     </div>
   )
 }
