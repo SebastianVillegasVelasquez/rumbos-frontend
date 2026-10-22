@@ -109,6 +109,7 @@ export const MapCanvas = ({
   controlsRef,
   hideControls = false,
   compactGuard = false,
+  homeView = null,
 }: MapCanvasProps) => {
   // Embedded on a touch screen the page keeps one-finger scrolling until the
   // person opts in to moving the map (see touchGuard).
@@ -635,6 +636,11 @@ export const MapCanvas = ({
     zoomIn: () => handleZoomButton(ZOOM_STEP),
     zoomOut: () => handleZoomButton(1 / ZOOM_STEP),
     recenter: handleZoomReset,
+    resetToInitial: () => {
+      if (!homeView) return controller.resetView()
+      const target = toDesignSpace({ x: homeView.x, y: homeView.y }, designSize)
+      controller.flyTo(target.x, target.y, homeView.zoom)
+    },
   }))
 
   return (

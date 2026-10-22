@@ -274,6 +274,8 @@ export const es = {
   hud: {
     progress: (done: number, total: number) => `${done} de ${total} actividades completadas`,
     continue: (name: string) => `Continuar: ${name}`,
+    open: (name: string) => `Abrir: ${name}`,
+    resetView: 'Reiniciar vista',
     noTracking: 'Este nivel no registra progreso',
     controls: 'Controles del mapa',
     levels: 'Niveles',

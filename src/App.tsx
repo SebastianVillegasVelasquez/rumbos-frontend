@@ -1,4 +1,14 @@
-import { Suspense, lazy, use, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import {
+  Suspense,
+  lazy,
+  use,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react'
 import {
   ChevronDown,
   ChevronLeft,
@@ -50,6 +60,8 @@ import {
 import { resolveImageUrl } from './features/course-map/data/assets.ts'
 import { courseTitleFrom } from './features/course-map/courseTitle.ts'
 import { progressCounts } from './features/course-map/progress.ts'
+import { useResume } from './features/hud/useResume.ts'
+import { readResume } from './features/hud/resume.ts'
 import { QuestLog } from './features/quests/QuestLog.tsx'
 import { buildQuestEntries } from './features/quests/questEntries.ts'
 import { readQuestsOpen, rememberQuestsOpen } from './features/quests/questsPreference.ts'
@@ -201,6 +213,17 @@ export function AppShell() {
   // Students and the editor's previews get the immersive stage, no header.
   const immersive = !isEditor
   const mapControlsRef = useRef<MapCanvasControls>(null)
+  // The camera tagged with its level, for resuming (see useResume).
+  const resumeViewRef = useRef<{ mapId: string; view: MapInitialView } | null>(null)
+  // The level the student had open last time, honored once at the start.
+  const [resumeLevelId, setResumeLevelId] = useState<string | null>(() =>
+    embed && embed.mode === 'student' && route.name === 'course'
+      ? readResume(viewerStorage(), route.moodleCourseId).lastMapId
+      : null
+  )
+  const handleResumeHandled = useCallback(() => setResumeLevelId(null), [])
+  // Continuar's first tap shows the activity; the second opens it.
+  const [armedBubbleId, setArmedBubbleId] = useState<string | null>(null)
   const showPublished = viewMode === 'published'
 
   const changeMapView = (next: MapViewKind) => {
@@ -376,18 +399,48 @@ export function AppShell() {
   const nextTargetName = nextTarget
     ? activities.find((a) => a.activityId === nextTarget.activityId)?.name
     : undefined
+  const continueArmed = nextTarget !== null && armedBubbleId === nextTarget.id
   const continueAction: ContinueAction =
     progress.allComplete && nextLevel
       ? { kind: 'next-level', onClick: () => navigate({ name: 'map', mapId: nextLevel.id }) }
       : progress.allComplete
         ? { kind: 'done' }
         : nextTarget && nextTargetName
-          ? {
-              kind: 'continue',
-              label: es.hud.continue(nextTargetName),
-              onClick: () => setFocusBubbleId(nextTarget.id),
-            }
+          ? continueArmed
+            ? {
+                kind: 'continue',
+                label: es.hud.open(nextTargetName),
+                onClick: () => {
+                  setArmedBubbleId(null)
+                  handleBubbleClick(nextTarget)
+                },
+              }
+            : {
+                kind: 'continue',
+                label: es.hud.continue(nextTargetName),
+                onClick: () => {
+                  setActiveQuestBubbleId(nextTarget.id)
+                  setFocusBubbleId(nextTarget.id)
+                  setArmedBubbleId(nextTarget.id)
+                },
+              }
           : { kind: 'none' }
+  const resumeCourseId = renderable?.moodleCourseId ?? null
+  const resumeMapId = renderable?.id ?? null
+  useResume({
+    enabled: immersive && resumeMapId !== null,
+    courseId: resumeCourseId,
+    mapId: resumeMapId,
+    viewRef: resumeViewRef,
+  })
+  // The camera the student had on this level, read once when it opens.
+  const savedView = useMemo(
+    () =>
+      immersive && resumeCourseId !== null && resumeMapId !== null
+        ? (readResume(viewerStorage(), resumeCourseId).views[resumeMapId] ?? null)
+        : null,
+    [immersive, resumeCourseId, resumeMapId]
+  )
   const getModname = (bubble: { activityId: number }) =>
     activities.find((a) => a.activityId === bubble.activityId)?.modname
 
@@ -478,11 +531,16 @@ export function AppShell() {
           compactGuard={layout?.guardCompact}
           fit={renderable.settings.fit}
           mapMode={renderable.settings.mode}
-          initialView={renderable.settings.initialView}
-          intro={renderable.settings.intro}
+          key={renderable.id}
+          initialView={savedView ?? renderable.settings.initialView}
+          homeView={renderable.settings.initialView}
+          intro={savedView ? 'none' : renderable.settings.intro}
           pathSettings={renderable.settings.path}
           ambient={renderable.settings.ambient}
-          onViewportChange={(view) => (latestViewportRef.current = view)}
+          onViewportChange={(view) => {
+            latestViewportRef.current = view
+            resumeViewRef.current = { mapId: renderable.id, view }
+          }}
           skins={renderable.skins}
           defaultSkinId={renderable.defaultSkinId}
           skinRules={renderable.skinRules}
@@ -605,6 +663,8 @@ export function AppShell() {
           moodleCourseId={route.moodleCourseId}
           viewMode={viewMode}
           onOpenLevel={(id) => navigate({ name: 'map', mapId: id })}
+          resumeLevelId={resumeLevelId}
+          onResumeHandled={handleResumeHandled}
         />
       </div>
     )
@@ -756,6 +816,9 @@ export function AppShell() {
                       if (bubble) handleBubbleClick(bubble)
                     }}
                     onClose={closeQuests}
+                    onResetView={
+                      show3d ? undefined : () => mapControlsRef.current?.resetToInitial()
+                    }
                   />
                 )}
                 view={view3d ? { value: show3d ? '3d' : '2d', onChange: changeMapView } : null}

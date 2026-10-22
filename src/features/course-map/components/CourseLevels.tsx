@@ -28,9 +28,19 @@ interface CourseLevelsProps {
   // students can see.
   viewMode: 'edit' | 'preview' | 'published'
   onOpenLevel: (courseMapId: string) => void
+  // The level the student had open last time. Honored once, when the picker
+  // first shows, so "Niveles" can still bring them back to it.
+  resumeLevelId?: string | null
+  onResumeHandled?: () => void
 }
 
-export const CourseLevels = ({ moodleCourseId, viewMode, onOpenLevel }: CourseLevelsProps) => {
+export const CourseLevels = ({
+  moodleCourseId,
+  viewMode,
+  onOpenLevel,
+  resumeLevelId = null,
+  onResumeHandled,
+}: CourseLevelsProps) => {
   const embed = useEmbed()
   const editable = viewMode === 'edit'
   const showPublished = viewMode === 'published'
@@ -52,6 +62,14 @@ export const CourseLevels = ({ moodleCourseId, viewMode, onOpenLevel }: CourseLe
   useEffect(() => {
     if (levels.length === 1) onOpenLevel(levels[0].id)
   }, [levels, onOpenLevel])
+
+  // Several levels: go straight back to the one the student left.
+  useEffect(() => {
+    if (!resumeLevelId || levelsQuery.isPending) return
+    onResumeHandled?.()
+    if (levels.length > 1 && levels.some((level) => level.id === resumeLevelId))
+      onOpenLevel(resumeLevelId)
+  }, [resumeLevelId, levels, levelsQuery.isPending, onOpenLevel, onResumeHandled])
 
   if (levelsQuery.isPending) {
     return (

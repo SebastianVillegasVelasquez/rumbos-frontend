@@ -62,6 +62,8 @@ interface QuestLogProps {
   onFocusBubble: (bubbleId: string) => void
   onOpenBubble: (bubbleId: string) => void
   onClose: () => void
+  // 2D only: back to the map's starting view.
+  onResetView?: () => void
 }
 
 // Misiones: the level's activities and the player's progress, as a list. It is
@@ -77,6 +79,7 @@ export const QuestLog = ({
   onFocusBubble,
   onOpenBubble,
   onClose,
+  onResetView,
 }: QuestLogProps) => {
   const [expanded, setExpanded] = useState(false)
   const headingRef = useRef<HTMLHeadingElement>(null)
@@ -271,6 +274,15 @@ export const QuestLog = ({
           </section>
         ))}
       </div>
+
+      {onResetView && (
+        <footer className="shrink-0 border-t-soft px-3 py-2">
+          <Button variant="surface" dense size="sm" className="w-full" onClick={onResetView}>
+            <RotateCcw size={16} strokeWidth={2.5} aria-hidden />
+            {es.hud.resetView}
+          </Button>
+        </footer>
+      )}
     </section>
   )
 }

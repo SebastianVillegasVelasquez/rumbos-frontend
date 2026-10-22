@@ -124,3 +124,28 @@ alternative. Newest last.
 - **The 3D-only list and its strings are gone;** Misiones drives the pins
   through the same focus request. The overview modal stays for the editor
   (header "Resumen de actividades"), which still needs its editor groups.
+
+## Continuar and resume
+
+- **Continuar is two taps.** The first flies the camera to the activity,
+  highlights it (and its row in Misiones) and the button becomes "Abrir:
+  <nombre>"; the second opens it through the host. The armed state belongs to
+  that activity: if the target changes (it was completed, a lock lifted) the
+  button goes back to "Continuar". Opening anything else does not disarm it.
+- **Resume covers the last level and one camera view per level**, per viewer
+  and course, in localStorage, validated on read (finite numbers, zoom clamped
+  to 1..3, at most 30 views, oldest dropped first).
+- **Resume jumps back into the last level once, at the start.** The picker is
+  skipped only when the app first opens; "Niveles" still shows it. Only students
+  (host student mode) resume; the editor always starts at the picker.
+- **The camera is saved every 2 s while it changes, when the tab is hidden or
+  closed, and when the level changes**, tagged with its level so a view is never
+  filed under the next one. A resumed view opens without the fly-in intro.
+- **"Reiniciar vista" lives in Misiones' footer (2D only)** and flies back to the
+  map's own starting view; "Recentrar" in the corner still fits the whole map.
+  Alternative: a second corner button; rejected to keep the cluster short.
+- **MapCanvas remounts per level** (keyed by level id). Before, the "apply the
+  starting view once" guard was never re-armed when moving between levels.
+- **Not verified in the mock host:** the mock API issues new level ids on every
+  page load, so a saved level never matches after a reload. The storage logic is
+  unit tested; the end-to-end resume needs a real backend (stable ids).

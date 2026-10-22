@@ -48,6 +48,8 @@ export interface MapCanvasControls {
   zoomOut: () => void
   // Back to the whole map.
   recenter: () => void
+  // Back to the map's own starting view (the editor's choice).
+  resetToInitial: () => void
 }
 
 export interface MapCanvasProps {
@@ -102,4 +104,7 @@ export interface MapCanvasProps {
   // Narrow screens: the "Mover el mapa" button shows only its icon (its label
   // stays for assistive technology) to leave room for the rest of the HUD.
   compactGuard?: boolean
+  // The map's own starting view, for resetToInitial; `initialView` may be a
+  // resumed one instead.
+  homeView?: MapInitialView | null
 }
