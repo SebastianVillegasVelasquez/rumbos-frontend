@@ -142,6 +142,12 @@ export const View3dTab = ({ courseMap, activities, onPreview }: View3dTabProps) 
 
       {form.enabled && (
         <>
+          <p
+            role="note"
+            className="border-hair rounded-md bg-primary-tint px-3 py-2 text-xs font-bold text-ink"
+          >
+            {text.publishHint}
+          </p>
           {scenesQuery.isError ? (
             <p role="alert" className="text-xs font-bold text-danger">
               {text.scenesError}

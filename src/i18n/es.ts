@@ -364,6 +364,7 @@ export const es = {
     view3d: {
       enable: 'Habilitar vista 3D',
       enableHint: 'Los estudiantes podrán alternar entre el mapa 2D y el mundo 3D.',
+      publishHint: 'Los estudiantes verán la vista 3D cuando guardes los cambios.',
       scene: 'Escena',
       noScenes: 'No hay escenas 3D disponibles en este momento.',
       scenesError: 'No se pudieron cargar las escenas 3D.',
