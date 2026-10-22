@@ -41,18 +41,20 @@ Always `v: 1`. The iframe URL is `{APP_URL}/embed?host={hostOrigin}`. **No secre
 in URLs.** Both sides verify `event.origin` **and** `event.source`, and always pass
 an explicit `targetOrigin` (never `"*"`).
 
-| Direction  | Message                                                                  | Meaning                                                    |
-| ---------- | ------------------------------------------------------------------------ | ---------------------------------------------------------- |
-| app → host | `{ type: "rumbos:embed-ready" }`                                         | The iframe loaded; send me the init.                       |
-| host → app | `{ type: "rumbos:host-init", mode, locale, courseId, assertion, state }` | Start the session.                                         |
-| app → host | `{ type: "rumbos:request-state" }`                                       | Please send a fresh `CourseState`.                         |
-| host → app | `{ type: "rumbos:host-state", state }`                                   | The current user's `CourseState`.                          |
-| app → host | `{ type: "rumbos:request-launch" }`                                      | The token expired; send a new assertion.                   |
-| host → app | `{ type: "rumbos:host-launch", assertion }`                              | A fresh assertion (only accepted after a request-launch).  |
-| app → host | `{ type: "rumbos:open-activity", cmid }`                                 | Open this activity. The host looks the URL up itself.      |
-| app → host | `{ type: "rumbos:request-fullscreen", on }`                              | Expand / restore the iframe.                               |
-| app → host | `{ type: "rumbos:error", code }`                                         | The app gave up; fall back to the standard course page.    |
-| host → app | `{ type: "rumbos:host-overlay", open }` (v5.3)                           | An activity popup opened/closed above the app (see below). |
+| Direction  | Message                                                                  | Meaning                                                        |
+| ---------- | ------------------------------------------------------------------------ | -------------------------------------------------------------- |
+| app → host | `{ type: "rumbos:embed-ready" }`                                         | The iframe loaded; send me the init.                           |
+| host → app | `{ type: "rumbos:host-init", mode, locale, courseId, assertion, state }` | Start the session.                                             |
+| app → host | `{ type: "rumbos:request-state" }`                                       | Please send a fresh `CourseState`.                             |
+| host → app | `{ type: "rumbos:host-state", state }`                                   | The current user's `CourseState`.                              |
+| app → host | `{ type: "rumbos:request-launch" }`                                      | The token expired; send a new assertion.                       |
+| host → app | `{ type: "rumbos:host-launch", assertion }`                              | A fresh assertion (only accepted after a request-launch).      |
+| app → host | `{ type: "rumbos:open-activity", cmid }`                                 | Open this activity. The host looks the URL up itself.          |
+| app → host | `{ type: "rumbos:request-fullscreen", on }`                              | Expand / restore the iframe.                                   |
+| app → host | `{ type: "rumbos:error", code }`                                         | The app gave up; fall back to the standard course page.        |
+| host → app | `{ type: "rumbos:host-overlay", open }` (v5.3)                           | An activity popup opened/closed above the app (see below).     |
+| app → host | `{ type: "rumbos:open-activity-settings", cmid }` (v5.4)                 | Editor only: open the activity's settings page in a new tab.   |
+| host → app | `{ type: "rumbos:host-fullscreen", on }`                                 | The iframe is (or stopped being) expanded. The app follows it. |
 
 `rumbos:error` codes: `not_embedded`, `invalid_host`, `handshake_timeout`,
 `launch_invalid`, `tenant_disabled`, `origin_mismatch`, `course_mismatch`,
@@ -97,7 +99,8 @@ CourseState = { schemaVersion: 1, courseId, generatedAt,
                  availability: "available" | "restricted" | "hidden",
                  availabilityInfo: string | null,   // plain text
                  completion: "none" | "incomplete" | "complete" | "failed" }],
-  unavailableCmids: [int] }   // exist, but this user cannot see them at all
+  unavailableCmids: [int],    // exist, but this user cannot see them at all
+  courseCompletionEnabled?: boolean }   // v5.4; absent = an older plugin = unknown
 ```
 
 The state is always the current user's. `"hidden"` appears only for users who can
@@ -254,6 +257,25 @@ endpoints 501, replayed assertions 401).
   assumes it is fullscreen before the host says so.
 - The 3D view is a nested iframe with its own touch handling (unchanged).
 
+## Contract v5.4
+
+- **`courseCompletionEnabled`** on `CourseState`: whether completion tracking is on for
+  the course. **Absent is unknown, never false**: the plugin and the app deploy
+  independently, so an older plugin shows no banner and no "Configurar en Moodle". Its
+  presence also tells the app the host speaks v5.4.
+- **`open-activity-settings { cmid }`**, editor mode only. The host checks the
+  capability and that the cmid is in its last state, then opens the activity's settings
+  page in a new tab. The app never sends a URL. The app offers the button only when the
+  state carries `courseCompletionEnabled`.
+- **Fullscreen layout rule.** While `host-fullscreen { on: true }` holds, the host draws
+  its exit control in the top-right 64x64 CSS px of the viewport, above the app. The app
+  keeps that square free (the HUD never uses the top-right corner at all), hides its own
+  toggle until `host-fullscreen { on: false }`, and never assumes it is fullscreen
+  before the host says so. Escape and the exit control belong to the host.
+- **State refresh.** Requests are throttled to one per 3 s and the last one is deferred,
+  not dropped. After `host-overlay { open: false }` the app waits 1.5 s for the host's own
+  refresh and asks once if none arrived.
+
 ## Testing by hand (needs real devices)
 
 Automated and mock-host checks cover the protocol, derivation and access matrix.
@@ -270,3 +292,22 @@ These need a human on real hardware, inside a real Moodle page:
   under a cross-origin Moodle page, and the real CORS / `Authorization` header.
 - The real assertion (RS256), `hostOrigin` registration and token expiry against the
   real backend; completion changes made in Moodle showing up on return.
+
+### Added by the immersive HUD work (v5.4 and the student stage)
+
+- **Quiz inside a popup:** hand in a quiz in the real Moodle popup, close it, and check
+  the bubble completes within a few seconds with its toast and announcement. The mock host
+  has a scenario for this; a real Moodle that completes a quiz late (cron) will not match.
+- **Escape in fullscreen with focus inside the iframe:** the contract leaves Escape to the
+  host. Check a real Moodle host actually receives it while the iframe has focus.
+- **The host's exit control in the top-right 64x64** against the app in fullscreen on a
+  phone in portrait and landscape, with a notch (safe-area insets on all four edges).
+- **Apariencia → 3D → "Guardar" → student sees 3D**, in a real Moodle with a real backend.
+- **Resume:** open a level, move the camera, leave, come back (stable level ids only exist
+  against a real backend; the mock issues new ones on every load).
+- **Music (unverified):** Range requests, MP3 and M4A on iPhone Safari (which ignores
+  programmatic volume), playing after the first tap, silence under a popup and in a hidden
+  tab, and the 422/413/503 messages from the real backend.
+- **Data saver:** Chrome with Save-Data on, and a throttled 2G/slow connection.
+- **Text scaling to 200 %** and a screen reader (VoiceOver, TalkBack) on Misiones, the coach
+  marks and the live announcements.

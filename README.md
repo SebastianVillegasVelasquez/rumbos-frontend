@@ -60,6 +60,14 @@ chunk). The message protocol, the status-derivation table, the CSP /
 Try it without a backend or Moodle: `VITE_USE_MOCK_API=true pnpm dev`, then open
 `http://127.0.0.1:5173/mock-host/`.
 
+## Student HUD
+
+Students (and the editor's previews) get an immersive stage with floating controls, Misiones,
+Continuar, first-run coach marks, a data saver and optional map music. See
+[`docs/HUD.md`](docs/HUD.md) and the decision log [`docs/DECISIONS-hud.md`](docs/DECISIONS-hud.md).
+`pnpm check:budget` (after `pnpm build`) fails if the embed student initial JavaScript passes
+350 KB gzipped.
+
 ## 3D view
 
 A level can have an optional **3D view**: a hand-authored three.js world,
@@ -263,6 +271,12 @@ for demoing the precise-availability-states UI without a real Moodle:
 | `cached`  | `moodleStatus: "cached"`; availability resolves normally.      |
 
 Example: `http://localhost:5173/?map=<uuid>&mockMoodle=hidden`.
+
+### Forcing audio states in the mock
+
+`?mockAudio=off` makes the audio endpoints answer 404 (a backend that predates audio: the Música
+tab disappears). `?mockAudio=uploads-off` makes uploads answer 503 `audio_uploads_disabled`. The
+mock's "library" is two generated sine tones.
 
 ### Forcing an asset-upload failure in the mock
 
