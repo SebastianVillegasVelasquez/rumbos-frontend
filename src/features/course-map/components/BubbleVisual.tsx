@@ -132,6 +132,7 @@ const BubbleVisual = ({
   onDragStart,
   onDragEnd,
   pulseKey,
+  warning = false,
 }: BubbleVisualProps) => {
   const { x: posX, y: posY } = toDesignSpace({ x, y }, designSize)
   const muted = isMuted(visualState)
@@ -363,6 +364,23 @@ const BubbleVisual = ({
         />
       ) : (
         <ImageBody skin={skin} visualState={visualState} isHovered={isHovered} />
+      )}
+      {warning && (
+        // A triangle with an exclamation mark, so it reads without color.
+        <Group x={(skin.size / 2) * 0.8} y={(-skin.size / 2) * 0.8} listening={false}>
+          <RegularPolygon sides={3} radius={15} fill="#ffb703" stroke="#12284a" strokeWidth={2.5} />
+          <Text
+            text="!"
+            fontSize={16}
+            fontStyle="bold"
+            fill="#12284a"
+            x={-4}
+            y={-9}
+            width={8}
+            align="center"
+            listening={false}
+          />
+        </Group>
       )}
       {showLabel && (
         <Group y={skin.size / 2 + 10} listening={false}>

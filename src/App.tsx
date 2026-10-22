@@ -16,6 +16,7 @@ import {
   List,
   Loader2,
   Maximize2,
+  TriangleAlert,
   RefreshCw,
 } from 'lucide-react'
 import { ActivitySidebar } from './features/course-map/components/ActivitySidebar.tsx'
@@ -80,6 +81,14 @@ import type {
 import { useBackendMoodleState } from './features/course-map/moodle/backendMoodleState.ts'
 import { MoodleStateContext } from './features/course-map/moodle/moodleState.ts'
 import { useEmbed } from './features/embed/EmbedContext.ts'
+import {
+  canConfigureCompletion,
+  completionNotices,
+} from './features/course-map/completionNotices.ts'
+import {
+  useHostCompletionEnabled,
+  useHostSupportsActivitySettings,
+} from './features/embed/hostState.ts'
 import { RESERVED_CORNER_PX, useHostFullscreen } from './features/embed/hostFullscreen.ts'
 import { useRoute, type Route } from './hooks/useRoute.ts'
 import { Wordmark } from './components/Logo.tsx'
@@ -387,6 +396,31 @@ export function AppShell() {
     isEditor ? 'editor' : 'student'
   )
   const mapMode = renderable?.settings.mode ?? 'explorative'
+  // Editor: activities Moodle does not track (the host's v5.4 flags say whether
+  // completion is on for the course and whether it can open the settings page).
+  const completionEnabled = useHostCompletionEnabled()
+  const supportsActivitySettings = useHostSupportsActivitySettings()
+  const untrackedCount = isEditor
+    ? bubbles.filter(
+        (bubble) => bubble.tracked === false && getAvailabilityForBubble(bubble) !== 'missing'
+      ).length
+    : 0
+  const notices = completionNotices({
+    isEditor,
+    embedded: Boolean(embed),
+    completionEnabled,
+    mode: mapMode,
+    untrackedCount,
+  })
+  const configureCompletion =
+    embed &&
+    canConfigureCompletion({
+      embedded: true,
+      editorMode: embed.mode === 'editor',
+      hostSpeaksV54: supportsActivitySettings,
+    })
+      ? (cmid: number) => embed.openActivitySettings(cmid)
+      : undefined
   const questGroups = buildQuestEntries({
     bubbles: immersive ? bubbles : NO_BUBBLES,
     mode: mapMode,
@@ -527,6 +561,9 @@ export function AppShell() {
           editable={isEditor}
           touchGuard={Boolean(embed)}
           controlsRef={mapControlsRef}
+          onConfigureCompletion={
+            configureCompletion ? (bubble) => configureCompletion(bubble.activityId) : undefined
+          }
           hideControls={immersive}
           compactGuard={layout?.guardCompact}
           fit={renderable.settings.fit}
@@ -736,6 +773,29 @@ export function AppShell() {
         <main
           className={`flex min-h-0 flex-1 flex-col overflow-hidden ${immersive ? '' : 'p-1 sm:p-1.5'}`}
         >
+          {notices.courseDisabled && (
+            <div
+              role="status"
+              className="border-soft mb-2 flex items-start gap-2 rounded-md bg-sun-tint px-3 py-2 text-sm font-semibold text-sun-dark"
+            >
+              <TriangleAlert size={18} strokeWidth={2.5} aria-hidden className="mt-0.5 shrink-0" />
+              <span>{es.completion.disabledBanner}</span>
+            </div>
+          )}
+          {notices.guidedWithUntracked && (
+            <div
+              role="alert"
+              className="border-strong mb-2 flex items-start gap-2 rounded-md bg-danger-tint px-3 py-2 text-sm font-bold text-danger"
+            >
+              <TriangleAlert size={20} strokeWidth={2.5} aria-hidden className="mt-0.5 shrink-0" />
+              <span>
+                {es.completion.guidedWarning}{' '}
+                <span className="font-semibold">
+                  {es.completion.guidedWarningCount(untrackedCount)}
+                </span>
+              </span>
+            </div>
+          )}
           {isEditor && (
             <p className="px-1 pb-1 text-xs font-semibold text-ink-soft">
               {es.publication.autosaveHint}
@@ -861,6 +921,7 @@ export function AppShell() {
         getAvailability={getAvailabilityForBubble}
         onClose={() => setIsActivitiesOverviewOpen(false)}
         onSelectBubble={handleSelectBubbleFromOverview}
+        onConfigureCompletion={configureCompletion}
       />
 
       {isEditor && isAppearanceOpen && draftQuery.data && (

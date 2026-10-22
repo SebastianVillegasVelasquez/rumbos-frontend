@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
-import { ExternalLink, Trash2 } from 'lucide-react'
+import { ExternalLink, Trash2, TriangleAlert } from 'lucide-react'
 import { Button } from '../../../components/ui/Button.tsx'
 import { ICON_DATA_URIS_LIGHT, ICON_KEYS, ICON_LABELS, type IconKey } from '../icons.ts'
 import type { Activity, Availability, BubbleStatus, Skin } from '../data/types.ts'
@@ -26,6 +26,10 @@ interface IconPickerPopoverProps {
   skins?: Skin[]
   currentSkinId?: string | null
   onSkinSelect?: (skinId: string | null) => void
+  // Moodle does not track this activity's completion (embed editor).
+  untracked?: boolean
+  // Present only when the host can open the activity's settings (v5.4).
+  onConfigureCompletion?: () => void
 }
 
 const STATUS_OPTIONS: { value: BubbleStatus; label: string }[] = [
@@ -52,6 +56,8 @@ export const IconPickerPopover = ({
   skins,
   currentSkinId,
   onSkinSelect,
+  untracked = false,
+  onConfigureCompletion,
 }: IconPickerPopoverProps) => {
   const embed = useEmbed()
   const popoverRef = useRef<HTMLDivElement>(null)
@@ -90,6 +96,19 @@ export const IconPickerPopover = ({
         } as CSSProperties
       }
     >
+      {untracked && (
+        <div className="border-hair space-y-1 rounded-md bg-sun-tint p-2">
+          <Badge tone="sun">
+            <TriangleAlert size={13} strokeWidth={2.5} aria-hidden />
+            {es.completion.untracked}
+          </Badge>
+          {onConfigureCompletion && (
+            <Button variant="secondary" dense size="sm" onClick={onConfigureCompletion}>
+              {es.completion.configure}
+            </Button>
+          )}
+        </div>
+      )}
       {availability === 'hidden' && (
         <div className="border-hair space-y-1 rounded-md bg-sun-tint p-2">
           <Badge tone="sun">{es.sidebar.hiddenBadge}</Badge>

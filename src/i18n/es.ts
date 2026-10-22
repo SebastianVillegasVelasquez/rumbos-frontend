@@ -237,6 +237,18 @@ export const es = {
       off: 'Sin animaciones',
     },
   },
+  completion: {
+    untracked: 'Sin finalización configurada',
+    configure: 'Configurar en Moodle',
+    configureAria: (name: string) => `Configurar la finalización de ${name} en Moodle`,
+    disabledBanner:
+      'El seguimiento de finalización está desactivado en este curso. Sin él, el progreso no se registra.',
+    guidedWarning: 'El modo guiado necesita que las actividades tengan finalización configurada.',
+    guidedWarningCount: (count: number) =>
+      count === 1
+        ? '1 actividad de este nivel no la tiene.'
+        : `${count} actividades de este nivel no la tienen.`,
+  },
   coach: {
     label: 'Guía de inicio',
     progress: (step: number, total: number) => `Paso ${step} de ${total}`,

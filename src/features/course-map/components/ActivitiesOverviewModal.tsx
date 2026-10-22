@@ -1,10 +1,11 @@
 import * as RadixDialog from '@radix-ui/react-dialog'
-import { X } from 'lucide-react'
+import { TriangleAlert, X } from 'lucide-react'
 import type { Activity, Availability, MapMode, RenderableBubble as Bubble } from '../data/types.ts'
 import { deriveVisualState, nextIncompleteSequence, type VisualState } from '../visualState.ts'
 import { countsTowardProgress } from '../progress.ts'
 import { es } from '../../../i18n/es.ts'
 import { Badge } from '../../../components/ui/Card.tsx'
+import { Button } from '../../../components/ui/Button.tsx'
 
 interface ActivitiesOverviewModalProps {
   open: boolean
@@ -15,6 +16,8 @@ interface ActivitiesOverviewModalProps {
   getAvailability: (bubble: Bubble) => Availability | undefined
   onClose: () => void
   onSelectBubble: (bubble: Bubble) => void
+  // Editor, host speaking v5.4: open the activity's settings page in Moodle.
+  onConfigureCompletion?: (cmid: number) => void
 }
 
 type GroupKey =
@@ -57,6 +60,7 @@ export const ActivitiesOverviewModal = ({
   getAvailability,
   onClose,
   onSelectBubble,
+  onConfigureCompletion,
 }: ActivitiesOverviewModalProps) => {
   const activityById = new Map(activities.map((activity) => [activity.activityId, activity]))
   const nextSequence = nextIncompleteSequence(bubbles, (bubble) =>
@@ -129,6 +133,29 @@ export const ActivitiesOverviewModal = ({
                                 </span>
                               )}
                             </button>
+                            {view === 'editor' &&
+                              bubble.tracked === false &&
+                              getAvailability(bubble) !== 'missing' && (
+                                <div className="mt-1 flex flex-wrap items-center gap-2 px-1">
+                                  <Badge tone="sun">
+                                    <TriangleAlert size={13} strokeWidth={2.5} aria-hidden />
+                                    {es.completion.untracked}
+                                  </Badge>
+                                  {onConfigureCompletion && (
+                                    <Button
+                                      variant="secondary"
+                                      dense
+                                      size="sm"
+                                      aria-label={es.completion.configureAria(
+                                        activity?.name ?? `#${bubble.activityId}`
+                                      )}
+                                      onClick={() => onConfigureCompletion(bubble.activityId)}
+                                    >
+                                      {es.completion.configure}
+                                    </Button>
+                                  )}
+                                </div>
+                              )}
                           </li>
                         )
                       })}

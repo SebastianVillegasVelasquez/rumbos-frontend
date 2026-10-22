@@ -40,6 +40,8 @@ export interface BubbleVisualProps {
   // requiring a visual-state change. Used to highlight a bubble picked
   // from the activities overview panel.
   pulseKey?: number
+  // Editor only: Moodle does not track this activity's completion.
+  warning?: boolean
 }
 
 // What the student HUD can ask of the camera.
@@ -107,4 +109,6 @@ export interface MapCanvasProps {
   // The map's own starting view, for resetToInitial; `initialView` may be a
   // resumed one instead.
   homeView?: MapInitialView | null
+  // Editor, host speaking v5.4: open the activity's settings page in Moodle.
+  onConfigureCompletion?: (bubble: RenderableBubble) => void
 }

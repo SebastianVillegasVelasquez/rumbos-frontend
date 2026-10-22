@@ -110,6 +110,7 @@ export const MapCanvas = ({
   hideControls = false,
   compactGuard = false,
   homeView = null,
+  onConfigureCompletion,
 }: MapCanvasProps) => {
   // Embedded on a touch screen the page keeps one-finger scrolling until the
   // person opts in to moving the map (see touchGuard).
@@ -773,6 +774,9 @@ export const MapCanvas = ({
                   icon={iconFor(bubble)}
                   label={getResolvedActivity?.(bubble)?.name}
                   draggable={editable}
+                  warning={
+                    editable && bubble.tracked === false && getAvailability?.(bubble) !== 'missing'
+                  }
                   pulseKey={focusPulse?.bubbleId === bubble.id ? focusPulse.key : undefined}
                   onClick={
                     unavailableReasonFor(bubble) ? undefined : () => handleBubbleClick(bubble)
@@ -840,6 +844,10 @@ export const MapCanvas = ({
             skins={skins}
             currentSkinId={iconPickerBubble.skinId}
             onSkinSelect={(skinId) => onBubbleUpdate?.(iconPickerBubble.id, { skinId })}
+            untracked={iconPickerBubble.tracked === false}
+            onConfigureCompletion={
+              onConfigureCompletion ? () => onConfigureCompletion(iconPickerBubble) : undefined
+            }
           />
         )}
       </div>

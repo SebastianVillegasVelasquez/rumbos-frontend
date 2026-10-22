@@ -166,3 +166,21 @@ alternative. Newest last.
   no animation, so reduced motion needs no special case.
 - **On touch screens the first step names "Mover el mapa"** (the scroll-trap
   button), since dragging only works after tapping it.
+
+## Editor completion warnings
+
+- **The warning is a triangle with "!" on the bubble** (shape, not just amber),
+  and an amber badge "Sin finalización configurada" in the bubble's popover and
+  in the activity overview, which is the editor's list. Misiones is the
+  student HUD, so the editor's preview shows no warnings at all.
+- **"Configurar en Moodle" only appears for an embedded editor whose host sends
+  `courseCompletionEnabled`** (it speaks v5.4); an older host would ignore the
+  message. It sits in the bubble popover and in each overview row.
+- **The course banner needs the flag to be `false`.** Absent means unknown and
+  says nothing. It is a polite status (amber), not an alert, because the editor
+  cannot fix it from here.
+- **The guided-mode warning is an alert** (red, thick border, above the map)
+  with a second sentence giving how many activities lack it. It shows whenever
+  the level is guided and has a visible untracked activity, in or out of the
+  embed (the standalone app never marks an activity untracked, so it stays quiet
+  there). Missing activities are not counted.
