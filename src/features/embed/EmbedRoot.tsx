@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useSyncExternalStore } from 'react'
+import { useEffect, useMemo, useSyncExternalStore } from 'react'
 import { Loader2 } from 'lucide-react'
 import { AppShell } from '../../App.tsx'
 import { Button } from '../../components/ui/Button.tsx'
@@ -16,44 +16,61 @@ import {
   type HostBridge,
 } from './hostBridge.ts'
 import { useHostMoodleState } from './hostMoodleState.ts'
+import { isHostOverlayOpen, subscribeHostOverlay } from './hostOverlay.ts'
+import { getHostStateReceivedCount } from './hostState.ts'
+import { createStateRequester } from './stateRequester.ts'
 import type { EmbedErrorCode } from './protocol.ts'
 import { createEmbedSession, type EmbedPhase } from './session.ts'
 
 // Refreshing the host's CourseState: when the tab comes back into view, on a
-// gentle interval while it is visible, and after the person returns from an
-// activity (which brings the page back into view or focus). Never more often
-// than the minimum gap, so a burst of triggers is one request.
+// gentle interval while it is visible, after the person returns from an
+// activity (which brings the page back into view or focus) and after the host's
+// overlay closes. Requests are throttled and coalesced (see stateRequester): a
+// burst is one message and the last trigger is never dropped.
 const REFRESH_INTERVAL_MS = 60_000
-const MIN_REFRESH_GAP_MS = 3_000
+const clock = () => Date.now()
 
 const useHostStateRefresh = (bridge: HostBridge, enabled: boolean) => {
-  const lastRequestAt = useRef(0)
-
-  const requestState = useCallback(() => {
-    const now = Date.now()
-    if (now - lastRequestAt.current < MIN_REFRESH_GAP_MS) return
-    lastRequestAt.current = now
-    bridge.send({ type: 'rumbos:request-state', v: 1 })
-  }, [bridge])
+  const requester = useMemo(
+    () =>
+      createStateRequester({
+        send: () => bridge.send({ type: 'rumbos:request-state', v: 1 }),
+        now: clock,
+        schedule: (run, delayMs) => {
+          const timer = window.setTimeout(run, delayMs)
+          return () => window.clearTimeout(timer)
+        },
+        receivedCount: getHostStateReceivedCount,
+      }),
+    [bridge]
+  )
 
   useEffect(() => {
     if (!enabled) return
     const onVisible = () => {
-      if (document.visibilityState === 'visible') requestState()
+      if (document.visibilityState === 'visible') requester.request()
     }
     const timer = window.setInterval(onVisible, REFRESH_INTERVAL_MS)
     document.addEventListener('visibilitychange', onVisible)
     window.addEventListener('focus', onVisible)
     window.addEventListener('pageshow', onVisible)
+    let wasOpen = isHostOverlayOpen()
+    const unsubscribeOverlay = subscribeHostOverlay(() => {
+      const open = isHostOverlayOpen()
+      if (wasOpen && !open) requester.afterOverlayClosed()
+      wasOpen = open
+    })
     return () => {
       window.clearInterval(timer)
       document.removeEventListener('visibilitychange', onVisible)
       window.removeEventListener('focus', onVisible)
       window.removeEventListener('pageshow', onVisible)
+      unsubscribeOverlay()
+      requester.dispose()
     }
-  }, [enabled, requestState])
+  }, [enabled, requester])
 
-  return requestState
+  return requester.request
 }
 
 const EmbedMessage = ({

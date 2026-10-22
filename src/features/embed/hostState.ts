@@ -21,7 +21,13 @@ const contentKey = (state: CourseState) =>
 
 export const getHostState = () => current
 
+// How many states the host has sent, changed or not. A refresh that changed
+// nothing does not re-render, but it does tell the app the host answered.
+let receivedCount = 0
+export const getHostStateReceivedCount = () => receivedCount
+
 export const setHostState = (next: CourseState | null) => {
+  if (next) receivedCount++
   if (next && current && contentKey(next) === contentKey(current)) return
   current = next
   listeners.forEach((listener) => listener())
