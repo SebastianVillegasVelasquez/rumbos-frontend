@@ -237,6 +237,28 @@ export const es = {
       off: 'Sin animaciones',
     },
   },
+  coach: {
+    label: 'Guía de inicio',
+    progress: (step: number, total: number) => `Paso ${step} de ${total}`,
+    steps: {
+      move: {
+        title: 'Recorre el mapa',
+        body: 'Arrastra el mapa para moverte y usa + y − (o pellizca) para acercarte.',
+      },
+      bubble: {
+        title: 'Toca una burbuja',
+        body: 'Cada burbuja es una actividad. Tócala para abrirla cuando esté disponible.',
+      },
+      quests: {
+        title: 'Abre Misiones',
+        body: 'Ahí ves tu progreso y todas las actividades del nivel.',
+      },
+    },
+    moveTouch: 'Toca «Mover el mapa» para arrastrarlo; usa + y − (o pellizca) para acercarte.',
+    next: 'Siguiente',
+    done: 'Entendido',
+    skip: 'Omitir',
+  },
   quests: {
     title: 'Misiones',
     summary: (done: number, total: number, percent: number) => `${done} de ${total} · ${percent}%`,

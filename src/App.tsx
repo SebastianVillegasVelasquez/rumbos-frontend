@@ -797,6 +797,7 @@ export function AppShell() {
                 onOpenLevels={
                   siblingLevels.length > 1 ? () => navigate({ name: 'home' }) : undefined
                 }
+                coachMarks={!exitPreview}
                 questsOpen={questsOpen}
                 onToggleQuests={toggleQuests}
                 questsPanel={({ compact, bottomOffset }) => (

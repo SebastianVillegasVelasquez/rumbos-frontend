@@ -149,3 +149,20 @@ alternative. Newest last.
 - **Not verified in the mock host:** the mock API issues new level ids on every
   page load, so a saved level never matches after a reload. The storage logic is
   unit tested; the end-to-end resume needs a real backend (stable ids).
+
+## Coach marks
+
+- **Three steps, in the brief's order:** "Recorre el mapa", "Toca una burbuja",
+  "Abre Misiones". Shown once per viewer (localStorage) to students only, never
+  in an editor's preview. If storage cannot be read the marks do not show,
+  rather than nagging on every visit.
+- **A non-modal dialog.** Focus moves to its button at each step so keyboard and
+  screen-reader users meet it; Escape skips; focus returns to where it was. It
+  steps aside (keeping its step) while Misiones is open or a host overlay is
+  open. Alternative: a modal with a backdrop; rejected because the map should
+  stay usable underneath.
+- **Placement:** above Continuar, centered, at most 320 px and never reaching the
+  bottom-right cluster; the last step sits under the Misiones button. There is
+  no animation, so reduced motion needs no special case.
+- **On touch screens the first step names "Mover el mapa"** (the scroll-trap
+  button), since dragging only works after tapping it.

@@ -17,6 +17,7 @@ import { es } from '../../i18n/es.ts'
 import type { ProgressCounts } from '../course-map/progress.ts'
 import type { MapViewKind } from '../view3d/mapViewPreference.ts'
 import { GAP, GUTTER, TOUCH_TARGET, hudMetrics, type HudMetrics } from './metrics.ts'
+import { CoachMarks } from './CoachMarks.tsx'
 import { PANEL_WIDTH, QUESTS_BUTTON_ID, QUEST_LOG_ID } from '../quests/QuestLog.tsx'
 import { useIdleDim } from './useIdleDim.ts'
 import { useStageSize } from './useStageSize.ts'
@@ -46,6 +47,8 @@ interface StudentStageProps {
   exitPreview: { label: string; onExit: () => void } | null
   // Misiones: the button toggles it, the panel itself is drawn by the caller
   // inside the stage (a side panel, or a bottom sheet when `compact`).
+  // First-run coach marks: for real students only, never an editor's preview.
+  coachMarks: boolean
   questsOpen: boolean
   questsPanel: (layout: { compact: boolean; bottomOffset: string }) => ReactNode
   embedded: boolean
@@ -67,6 +70,7 @@ export const StudentStage = ({
   onEnterFullscreen,
   continueAction,
   exitPreview,
+  coachMarks,
   questsOpen,
   questsPanel,
   embedded,
@@ -317,6 +321,13 @@ export const StudentStage = ({
             </Button>
           )}
         </div>
+      )}
+      {coachMarks && (
+        <CoachMarks
+          hidden={questsOpen}
+          touchGuard={embedded && isCoarsePointer()}
+          maxWidth={width - 2 * (metrics.rects.cluster.w + 2 * GUTTER)}
+        />
       )}
       {questsPanel({
         compact: metrics.compact,
