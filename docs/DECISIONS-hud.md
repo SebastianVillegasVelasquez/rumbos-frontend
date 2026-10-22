@@ -246,3 +246,15 @@ actually sends them, and anything on a real phone. Treat as unverified.
   dropped `audioInfo`, so a saved track never reached the preview. Fixed.
 - **Bundle:** the player, session and fades are a lazy chunk (about 2.5 KB gz).
   The editor strings and tab cost about 3 KB in the initial bundle.
+
+## Mock host
+
+- **The mock plays the v5.4 host:** a `courseCompletionEnabled` selector (true,
+  false, absent = an older plugin), the exit control in fullscreen (64x64, top
+  right, above the app) that answers `host-fullscreen`, `open-activity-settings`
+  (editor only, known cmid), "Overlay close, no state" (the host forgets to
+  refresh) and a quiz-submitted scenario.
+- **Escape inside the iframe never reaches the host page in this mock.** A
+  keydown with focus in the iframe goes to the iframe. The contract leaves
+  Escape to the host; whether a real Moodle host sees it while the iframe has
+  focus must be checked by hand (listed in the hand-test list).

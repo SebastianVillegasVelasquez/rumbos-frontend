@@ -52,6 +52,8 @@ const config = {
   wrongTenantHost: false,
   gone: false,
   frameSize: 'desktop' as 'desktop' | 'phone' | 'tablet',
+  // Contract v5.4: "absent" plays a plugin that predates it.
+  completionEnabled: 'true' as 'true' | 'false' | 'absent',
 }
 
 const alias = location.hostname === 'localhost' ? '127.0.0.1' : 'localhost'
@@ -114,6 +116,9 @@ const buildState = () => {
     sections,
     activities,
     unavailableCmids,
+    ...(config.completionEnabled === 'absent'
+      ? {}
+      : { courseCompletionEnabled: config.completionEnabled === 'true' }),
   }
 }
 
@@ -183,8 +188,20 @@ window.addEventListener('message', (event) => {
       log('host', { type: 'note', text: note })
       return
     }
+    case 'rumbos:open-activity-settings': {
+      // Contract v5.4: editor mode only, and the cmid must be in the last state.
+      const row = rows.find((item) => item.cmid === data.cmid)
+      const allowed = config.role === 'editor' && config.editing && row
+      log('host', {
+        type: 'note',
+        text: allowed
+          ? `Would open https://moodle.example/course/modedit.php?update=${row.cmid} in a new tab`
+          : `Refused open-activity-settings for ${String(data.cmid)} (needs an editor and a known cmid)`,
+      })
+      return
+    }
     case 'rumbos:request-fullscreen':
-      $('frame-wrap').classList.toggle('fullscreen', data.on === true)
+      setFullscreen(data.on === true)
       return
     case 'rumbos:error':
       $('fallback').style.display = 'block'
@@ -192,6 +209,35 @@ window.addEventListener('message', (event) => {
         `The plugin would now fall back to the standard course content (code: ${String(data.code)}).`
       return
   }
+})
+
+// ---- Fullscreen (contract v5.4) ----------------------------------------------------
+// While fullscreen the host owns the exit: a 64x64 control in the top-right
+// corner, above the app, and Escape. The app only follows host-fullscreen.
+
+let exitControl: HTMLButtonElement | null = null
+
+const setFullscreen = (on: boolean) => {
+  $('frame-wrap').classList.toggle('fullscreen', on)
+  if (on && !exitControl) {
+    exitControl = Object.assign(document.createElement('button'), {
+      textContent: 'Exit',
+      title: 'Host exit control (top-right 64x64)',
+      onclick: () => setFullscreen(false),
+    })
+    exitControl.style.cssText =
+      'position:fixed;top:0;right:0;width:64px;height:64px;z-index:200;background:#12284a;color:#fff;border:0;font:700 14px system-ui;cursor:pointer'
+    document.body.append(exitControl)
+  }
+  if (!on) {
+    exitControl?.remove()
+    exitControl = null
+  }
+  send({ type: 'rumbos:host-fullscreen', v: 1, on })
+}
+
+window.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && exitControl) setFullscreen(false)
 })
 
 // ---- Frame ----------------------------------------------------------------------------
@@ -383,7 +429,28 @@ const buildControls = () => {
     button('Overlay close + state', () => {
       send({ type: 'rumbos:host-overlay', v: 1, open: false })
       pushState()
-    })
+    }),
+    // The host forgets to refresh: the app must ask once by itself.
+    button('Overlay close, no state', () =>
+      send({ type: 'rumbos:host-overlay', v: 1, open: false })
+    ),
+    // A quiz handed in inside the popup: 103 completes, the popup closes.
+    button('Quiz submitted (103 complete, overlay close + state)', () => {
+      const row = rows.find((item) => item.cmid === 103)
+      if (row) row.completion = 'complete'
+      send({ type: 'rumbos:host-overlay', v: 1, open: true })
+      setTimeout(() => {
+        send({ type: 'rumbos:host-overlay', v: 1, open: false })
+        pushState()
+      }, 600)
+    }),
+    labelled(
+      'courseCompletionEnabled',
+      select(['true', 'false', 'absent'] as const, config.completionEnabled, (value) => {
+        config.completionEnabled = value
+        pushState()
+      })
+    )
   )
 
   const table = document.createElement('table')
