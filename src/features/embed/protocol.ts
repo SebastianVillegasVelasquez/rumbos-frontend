@@ -1,5 +1,5 @@
 // The postMessage protocol between the Moodle plugin (host page) and this app
-// (the iframe). Contract v5, always `v: 1`. Everything crossing the boundary
+// (the iframe). Contract v5 to v5.4, always `v: 1`. Everything crossing the boundary
 // is untrusted: incoming messages are parsed by hand-written guards that
 // either return a clean, size-bounded value or null (ignore the message).
 // Host-provided text is plain text: it is only ever rendered as a React text
@@ -51,6 +51,11 @@ export interface CourseState {
   activities: HostActivity[]
   // Activities that exist but this user cannot see at all.
   unavailableCmids: number[]
+  // Contract v5.4: whether completion tracking is enabled for the course.
+  // Absent means the host predates v5.4: unknown, never "false". It is also
+  // how the app knows the host speaks v5.4 (and so understands
+  // open-activity-settings).
+  courseCompletionEnabled?: boolean
 }
 
 // ---- Messages ---------------------------------------------------------------------
@@ -147,6 +152,10 @@ export type AppMessage =
   | { type: 'rumbos:request-state'; v: 1 }
   | { type: 'rumbos:request-launch'; v: 1 }
   | { type: 'rumbos:open-activity'; v: 1; cmid: number }
+  // Contract v5.4, editor mode only: the host validates the capability and
+  // that the cmid is in its last state, then opens the activity's settings
+  // page in a new tab. The app never supplies a URL.
+  | { type: 'rumbos:open-activity-settings'; v: 1; cmid: number }
   | { type: 'rumbos:request-fullscreen'; v: 1; on: boolean }
   | { type: 'rumbos:error'; v: 1; code: ReportedErrorCode; detail?: string }
 
@@ -258,7 +267,7 @@ export const parseCourseState = (value: unknown): CourseState | null => {
     seen.add(activity.cmid)
     return true
   })
-  return {
+  const parsed: CourseState = {
     schemaVersion: 1,
     courseId: value.courseId,
     generatedAt,
@@ -266,6 +275,11 @@ export const parseCourseState = (value: unknown): CourseState | null => {
     activities: unique,
     unavailableCmids: unavailable,
   }
+  // Optional and tolerant: anything but a boolean is "unknown", not a reason to
+  // drop the whole state.
+  if (typeof value.courseCompletionEnabled === 'boolean')
+    parsed.courseCompletionEnabled = value.courseCompletionEnabled
+  return parsed
 }
 
 const parseAssertion = (value: unknown): string | null =>

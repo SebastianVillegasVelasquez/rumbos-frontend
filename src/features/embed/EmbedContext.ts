@@ -13,6 +13,10 @@ export interface EmbedContextValue {
   // Tell the host to open an activity. Only the cmid travels: the host looks
   // the URL up in its own state, the app never builds or sends one.
   openActivity: (cmid: number) => void
+  // Contract v5.4, editor mode: ask the host to open the activity's settings
+  // page in a new tab (cmid only). Hosts that predate v5.4 ignore it, so the UI
+  // offers it only when useHostSupportsActivitySettings is true.
+  openActivitySettings: (cmid: number) => void
   // Ask the host for a fresh CourseState (throttled).
   requestState: () => void
   requestFullscreen: (on: boolean) => void

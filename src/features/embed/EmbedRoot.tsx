@@ -115,6 +115,11 @@ const EmbedSessionView = ({ hostOrigin, bridge }: { hostOrigin: string; bridge: 
             mode,
             courseId,
             openActivity: (cmid) => bridge.send({ type: 'rumbos:open-activity', v: 1, cmid }),
+            openActivitySettings: (cmid) => {
+              // Editor mode only; a student session never asks for this.
+              if (mode === 'editor')
+                bridge.send({ type: 'rumbos:open-activity-settings', v: 1, cmid })
+            },
             requestState,
             requestFullscreen: (on) => bridge.send({ type: 'rumbos:request-fullscreen', v: 1, on }),
           }

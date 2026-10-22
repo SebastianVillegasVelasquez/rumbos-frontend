@@ -11,7 +11,13 @@ const listeners = new Set<() => void>()
 // Everything but the timestamp: a refresh that changed nothing must not
 // re-render the map.
 const contentKey = (state: CourseState) =>
-  JSON.stringify([state.courseId, state.sections, state.activities, state.unavailableCmids])
+  JSON.stringify([
+    state.courseId,
+    state.sections,
+    state.activities,
+    state.unavailableCmids,
+    state.courseCompletionEnabled,
+  ])
 
 export const getHostState = () => current
 
@@ -27,3 +33,15 @@ const subscribe = (listener: () => void) => {
 }
 
 export const useHostState = () => useSyncExternalStore(subscribe, getHostState)
+
+// Whether completion tracking is enabled for the course; null while unknown
+// (no state yet, or a host that predates contract v5.4).
+export const completionEnabledOf = (state: CourseState | null): boolean | null =>
+  state?.courseCompletionEnabled ?? null
+
+export const useHostCompletionEnabled = () =>
+  completionEnabledOf(useSyncExternalStore(subscribe, getHostState))
+
+// A host that sends courseCompletionEnabled speaks v5.4, so it understands
+// open-activity-settings; an older one would ignore the message.
+export const useHostSupportsActivitySettings = () => useHostCompletionEnabled() !== null

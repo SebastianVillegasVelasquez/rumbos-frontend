@@ -38,6 +38,32 @@ const init = {
   state,
 }
 
+describe('courseCompletionEnabled (contract v5.4)', () => {
+  it('keeps a boolean and leaves it undefined (unknown) otherwise', () => {
+    assert.equal(parseCourseState(state)?.courseCompletionEnabled, undefined)
+    assert.equal(
+      parseCourseState({ ...state, courseCompletionEnabled: true })?.courseCompletionEnabled,
+      true
+    )
+    assert.equal(
+      parseCourseState({ ...state, courseCompletionEnabled: false })?.courseCompletionEnabled,
+      false
+    )
+    // Garbage is unknown, not a reason to drop the state and not "false".
+    const odd = parseCourseState({ ...state, courseCompletionEnabled: 'no' })
+    assert.ok(odd)
+    assert.equal(odd.courseCompletionEnabled, undefined)
+  })
+
+  it('sends open-activity-settings with the cmid only', () => {
+    assert.deepEqual(toWireMessage({ type: 'rumbos:open-activity-settings', v: 1, cmid: 11 }), {
+      type: 'rumbos:open-activity-settings',
+      v: 1,
+      cmid: 11,
+    })
+  })
+})
+
 describe('parseCourseState', () => {
   it('accepts a well-formed state and drops the activity url', () => {
     const parsed = parseCourseState(state)
