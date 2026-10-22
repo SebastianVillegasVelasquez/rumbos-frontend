@@ -1,8 +1,13 @@
 import { useSyncExternalStore } from 'react'
 
-// Whether the host has the iframe expanded. The host is the source of truth
-// (host-fullscreen), but pressing the button flips it at once so the control
-// does not wait for a round trip; the host's next message overrides the guess.
+// Contract v5.4: while fullscreen is on, the host owns an exit control in the
+// top-right 64x64 CSS px of the viewport, always above the app. The app keeps
+// that square free of anything interactive and hides its own fullscreen toggle.
+export const RESERVED_CORNER_PX = 64
+
+// Whether the host has the iframe expanded. The host is the only source of
+// truth (host-fullscreen): the app asks to enter but never assumes it did, so
+// the state only changes when the host says so.
 let current = false
 const listeners = new Set<() => void>()
 

@@ -519,7 +519,6 @@ export const es = {
     expiredHint: 'Tu avance en el curso no se perdió.',
     reload: 'Recargar la página',
     fullscreen: 'Pantalla completa',
-    exitFullscreen: 'Salir de pantalla completa',
     moveMap: 'Mover el mapa',
     leaveMap: 'Seguir con la página',
     moveMapHint: 'Con un dedo la página se desplaza; toca para mover el mapa.',

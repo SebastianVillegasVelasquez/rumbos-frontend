@@ -6,7 +6,6 @@ import {
   List,
   Loader2,
   Maximize2,
-  Minimize2,
   RefreshCw,
 } from 'lucide-react'
 import { ActivitySidebar } from './features/course-map/components/ActivitySidebar.tsx'
@@ -63,7 +62,7 @@ import type {
 import { useBackendMoodleState } from './features/course-map/moodle/backendMoodleState.ts'
 import { MoodleStateContext } from './features/course-map/moodle/moodleState.ts'
 import { useEmbed } from './features/embed/EmbedContext.ts'
-import { setHostFullscreen, useHostFullscreen } from './features/embed/hostFullscreen.ts'
+import { RESERVED_CORNER_PX, useHostFullscreen } from './features/embed/hostFullscreen.ts'
 import { useRoute, type Route } from './hooks/useRoute.ts'
 import { Wordmark } from './components/Logo.tsx'
 import { Button, IconButton } from './components/ui/Button.tsx'
@@ -146,20 +145,16 @@ export function AppShell() {
   // in fullscreen): size to the viewport it actually has.
   const shellHeight = embed ? 'h-dvh' : 'h-screen'
   const isFullscreen = useHostFullscreen()
-  const toggleFullscreen = () => {
-    embed?.requestFullscreen(!isFullscreen)
-    setHostFullscreen(!isFullscreen)
-  }
-  const fullscreenControl = embed ? (
-    <Button variant="surface" size="sm" onClick={toggleFullscreen} aria-pressed={isFullscreen}>
-      {isFullscreen ? (
-        <Minimize2 size={16} strokeWidth={2.5} aria-hidden />
-      ) : (
+  // The host owns leaving fullscreen (its exit control sits in the top-right
+  // corner, above the app) and tells us when it ends; the app only asks to
+  // enter, and never assumes it got there before the host says so.
+  const fullscreenControl =
+    embed && !isFullscreen ? (
+      <Button variant="surface" size="sm" onClick={() => embed.requestFullscreen(true)}>
         <Maximize2 size={16} strokeWidth={2.5} aria-hidden />
-      )}
-      {isFullscreen ? es.embed.exitFullscreen : es.embed.fullscreen}
-    </Button>
-  ) : null
+        {es.embed.fullscreen}
+      </Button>
+    ) : null
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null)
   const [isActivitiesMenuOpen, setIsActivitiesMenuOpen] = useState(false)
   const [isActivitiesOverviewOpen, setIsActivitiesOverviewOpen] = useState(false)
@@ -512,6 +507,7 @@ export function AppShell() {
           viewMode={headerViewMode}
           onViewModeChange={setViewMode}
           fullscreenControl={fullscreenControl}
+          reserveCorner={isFullscreen}
         />
         <CourseLevels
           moodleCourseId={route.moodleCourseId}
@@ -748,6 +744,7 @@ const AppHeader = ({
   activitiesMenu,
   viewToggle,
   fullscreenControl,
+  reserveCorner,
   statusNote,
 }: {
   onHome?: () => void
@@ -766,10 +763,20 @@ const AppHeader = ({
   activitiesMenu?: ReactNode
   viewToggle?: ReactNode
   fullscreenControl?: ReactNode
+  // Fullscreen: the host's exit control sits in the top-right corner, above
+  // the app, so nothing of ours may be placed there.
+  reserveCorner?: boolean
   statusNote?: string
 }) => {
   return (
-    <header className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b-strong bg-accent px-2 py-1 sm:px-3">
+    <header
+      className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b-strong bg-accent px-2 py-1 sm:px-3"
+      style={
+        reserveCorner
+          ? { paddingRight: RESERVED_CORNER_PX, minHeight: RESERVED_CORNER_PX }
+          : undefined
+      }
+    >
       <div className="flex min-w-0 items-center gap-2">
         {onHome ? (
           <button

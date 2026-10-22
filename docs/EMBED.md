@@ -246,8 +246,12 @@ endpoints 501, replayed assertions 401).
   canvas the touch (`touch-action: none`, only inside its own viewport) and turns
   into **"Seguir con la página"**, which gives the page back. The header and HUD sit
   outside the canvas and always scroll the page.
-- **"Pantalla completa"** in the header sends `request-fullscreen { on }`; the label
-  becomes "Salir de pantalla completa".
+- **"Pantalla completa"** in the header sends `request-fullscreen { on: true }`. The
+  host owns leaving fullscreen (contract v5.4): while `host-fullscreen { on: true }`
+  holds, the host draws its exit control in the top-right 64x64 CSS px of the
+  viewport, above the app. The app hides its own toggle until `host-fullscreen
+{ on: false }`, keeps that square free of interactive controls, and never
+  assumes it is fullscreen before the host says so.
 - The 3D view is a nested iframe with its own touch handling (unchanged).
 
 ## Testing by hand (needs real devices)
