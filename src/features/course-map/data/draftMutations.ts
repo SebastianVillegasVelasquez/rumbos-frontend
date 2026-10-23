@@ -38,7 +38,13 @@ const invalidateListsAndState = (queryClient: QueryClient, courseMapId: string) 
 }
 
 const contentKey = (bubbleId: string, input: BubbleUpdate) =>
-  'x' in input ? `pos:${bubbleId}` : 'icon' in input ? `icon:${bubbleId}` : `skin:${bubbleId}`
+  'x' in input
+    ? `pos:${bubbleId}`
+    : 'icon' in input
+      ? `icon:${bubbleId}`
+      : 'content' in input
+        ? `content:${bubbleId}`
+        : `skin:${bubbleId}`
 
 // What a bubble looked like before the first of a run of collapsed edits, so a
 // failed write can put it back. Keyed like the queue's collapse key.

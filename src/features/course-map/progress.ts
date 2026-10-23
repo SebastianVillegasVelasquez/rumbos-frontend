@@ -1,4 +1,5 @@
 import type { Availability, RenderableBubble } from './data/types.ts'
+import { isContentBubble } from '../content/contentTypes.ts'
 import type { MapView } from './visualState.ts'
 
 // What counts as progress. Only activities Moodle tracks can become complete,
@@ -12,10 +13,12 @@ export const isTracked = (bubble: Pick<RenderableBubble, 'tracked'>) => bubble.t
 
 // Whether a bubble is part of the progress fraction for this viewer.
 export const countsTowardProgress = (
-  bubble: Pick<RenderableBubble, 'tracked'>,
+  bubble: Pick<RenderableBubble, 'tracked' | 'kind'>,
   availability: Availability | undefined,
   view: MapView
 ): boolean => {
+  // Content is information, not an activity: it never counts.
+  if (isContentBubble(bubble)) return false
   if (!isTracked(bubble)) return false
   if (availability === 'missing') return false
   if (availability === 'hidden' && view === 'student') return false
@@ -45,6 +48,7 @@ export const progressCounts = (
   let completed = 0
   let untracked = 0
   for (const bubble of bubbles) {
+    if (isContentBubble(bubble)) continue
     const availability = availabilityOf(bubble)
     if (availability === 'missing' || (availability === 'hidden' && view === 'student')) continue
     if (!isTracked(bubble)) {
@@ -59,7 +63,7 @@ export const progressCounts = (
     completed,
     untracked,
     percent: total > 0 ? Math.round((completed / total) * 100) : null,
-    nothingTracked: total === 0 && bubbles.length > 0,
+    nothingTracked: total === 0 && bubbles.some((bubble) => !isContentBubble(bubble)),
     allComplete: total > 0 && completed === total,
   }
 }

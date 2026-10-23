@@ -1,9 +1,9 @@
 import type { Ref } from 'react'
 import type { DesignSize } from '../coordinates.ts'
+import type { RenderIconKey } from '../icons.ts'
 import type {
   Activity,
   Availability,
-  Bubble,
   RenderableBubble,
   BubbleUpdate,
   MapFit,
@@ -28,7 +28,7 @@ export interface BubbleVisualProps {
   designSize: DesignSize
   visualState: VisualState
   skin: Skin['config']
-  icon?: Bubble['icon']
+  icon?: RenderIconKey | null
   label?: string
   draggable?: boolean
   onClick?: () => void
@@ -79,6 +79,9 @@ export interface MapCanvasProps {
   onBubbleUpdate?: (bubbleId: string, input: BubbleUpdate) => void
   onBubbleDelete?: (bubbleId: string) => void
   onActivityDrop?: (activityId: number, x: number, y: number) => void
+  // A content bubble dragged from the palette, and the editor's way to edit one.
+  onContentDrop?: (x: number, y: number) => void
+  onEditContent?: (bubble: RenderableBubble) => void
   // Student view: a non-null reason makes the bubble non-interactive and is
   // shown as a tooltip on hover.
   getUnavailableReason?: (bubble: RenderableBubble) => string | null

@@ -307,8 +307,11 @@ export const useCreateCourseMap = () => {
 export const usePendingActivityIds = (courseMapId: string) =>
   useMutationState({
     filters: { mutationKey: courseMapKeys.createBubble(courseMapId), status: 'pending' },
-    select: (mutation) => (mutation.state.variables as BubbleCreate).activityId,
-  })
+    select: (mutation) => {
+      const input = mutation.state.variables as BubbleCreate
+      return 'activityId' in input ? input.activityId : null
+    },
+  }).filter((id): id is number => id !== null)
 
 export const useCreateBubble = (courseMapId: string) => {
   const queryClient = useQueryClient()

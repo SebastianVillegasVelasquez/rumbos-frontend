@@ -258,3 +258,82 @@ actually sends them, and anything on a real phone. Treat as unverified.
   keydown with focus in the iframe goes to the iframe. The contract leaves
   Escape to the host; whether a real Moodle host sees it while the iframe has
   focus must be checked by hand (listed in the hand-test list).
+
+## Never-empty states and preferred size (contract v5.5)
+
+- **`empty_map` only when the open level is the course's only one.** With several
+  levels, one empty level is not the whole course: sending `no-content` would make
+  the host drop the area and strand the student without the other levels. The app
+  says "Este nivel todavía no tiene actividades." and offers the level picker.
+  Alternative: always send; rejected for that reason.
+- **`no_saved_map` covers two cases:** a course with no saved level, and a link to a
+  level that was never saved (404 `not_published`). A failed request is neither:
+  nothing is sent.
+- **Both reports are student-UI only and idempotent.** A host-student-mode editor
+  also reports (and keeps the in-app message). The once-per-reason rule lives in
+  `hostReports.ts`; it is per page load, not per condition change. Alternative:
+  re-arm when content appears; rejected, a host that already fell back has left.
+- **`preferred-size` is student UI only.** An editor needs the room the host gives
+  them for the palette and dialogs. It is sent for every level that opens,
+  including an empty one (harmless: the host is already falling back).
+- **Aspect, not pixels.** `original` (large explorable canvas) asks for 16/9; the
+  three fitting modes use the background's own ratio, read with `useImageSize`
+  (a second request for the same image, served from cache). Until the size is known
+  nothing is sent. The ratio is rounded to a thousandth before the duplicate check.
+
+## Content bubbles
+
+- **A content bubble is informational by one predicate** (`isContentBubble`,
+  `kind === "content"`; a missing `kind` is an activity). Progress, "next", Continuar
+  and the overview modal skip it; the canvas gives it `informational`, so it is always
+  open; the quest log files it under "Información". Alternative: mark it untracked;
+  rejected because untracked means "a Moodle activity without completion" and shows
+  warnings to editors.
+- **It sits beside the path, not on it.** The dashed path and the traveler dot join
+  activities only; a content bubble in the middle of a route would read as a step.
+- **The "info" icon is drawn but never stored.** The backend contract lists no `info`
+  in the bubble icon set, so a content bubble with `icon: null` is drawn with it by
+  default and the popover's icon picker is unchanged. A teacher who picks another icon
+  stores one of the existing ones.
+- **Feature detection is learned, not assumed** (`contentSupport.ts`): any bubble with
+  `kind` says yes; a create refused with 400 or 422 that is not one of the content
+  codes, or answered with a bubble that is not content, says no and hides the palette
+  entry. While unknown the entry is offered (an empty map has nothing to learn from).
+- **`/auth/me` fails closed.** `features` absent, a failed request, or anything but
+  `true` means no widgets. It is fetched once per course session (5 min stale time).
+- **Seen and first visit.** One localStorage record, bubble id plus a hash of the
+  content, so editing the content makes it new. Opening by hand marks it at once; an
+  auto-opened content is marked when it is closed (marking it while open made it
+  disappear on the next render). At most one auto-open per level visit, for students
+  only: not in an editor's previews (nothing is marked there either), not while a host
+  overlay is open. It opens before the coach marks, which wait their turn.
+- **Focus returns to what had it.** The canvas is one focusable element and its bubbles
+  are not individually focusable, so "back to the bubble" is the element that opened the
+  viewer: the canvas, the Misiones row, or the 3D frame. Radix restores it.
+- **Video.** The placeholder shows the title and "Reproducir (se cargará desde
+  YouTube/Vimeo)"; nothing third-party loads before the tap, data saver or not. The frame
+  is `sandbox="allow-scripts allow-same-origin allow-presentation"` with its own
+  `referrerpolicy="strict-origin-when-cross-origin"` (the embed route's `no-referrer`
+  would otherwise be inherited, and YouTube refuses some embeds without a referrer: not
+  verified against a real player).
+- **Images** come from `/assets/{id}`, lazy, with alt text; one that fails shows its alt
+  text instead. The `image` kind refuses AVIF client side (the contract lists PNG, JPEG,
+  WebP).
+- **Creating saves nothing until "Guardar contenido".** A bubble is not created empty and
+  then edited; the dialog collects it, and a drop on the map supplies the position. An
+  empty block list is allowed. The type (blocks or widget) is chosen at creation.
+- **Reordering is by buttons, plus Alt+Arrow on a focused block.** Keys are stable, so
+  focus stays on the moved block's buttons.
+- **A widget whose tenant turned widgets off** renders the neutral message and the editor
+  shows it read-only (save is disabled): the server would answer 403.
+- **Message handling in the widget frame:** exact shape, finite height clamped to
+  120..1600 px, at most one accepted message per 100 ms.
+- **The level card's "N actividades" comes from the backend's `bubbleCount`,** which
+  includes content bubbles (seen in the mock). Not changed here; the backend may want to
+  count activities only.
+- **Bundle.** The viewer (including the sandbox and widget frame) and the editor are lazy
+  chunks. The initial JS grew from 280.2 KB (before this work) to the figure in
+  `docs/HUD.md`: the Spanish strings and the editor/viewer state in `App` are in the
+  entry; moving the dictionary per feature was out of scope.
+- **Tests that need a real browser were run in Chrome 155 only** (the hostile widget and
+  the mock-host scenarios). Safari, Firefox, iOS and Android are on the hand-test list.

@@ -13,6 +13,10 @@ export interface MockAssertionClaims {
   // Seconds an access token issued from this assertion lives (default 900).
   ttl?: number
   tenantDisabled?: boolean
+  // Backend features the mock reports in /auth/me.
+  widgets?: boolean
+  // false plays a backend that predates content bubbles.
+  contentSupport?: boolean
 }
 
 const toBase64Url = (text: string) =>

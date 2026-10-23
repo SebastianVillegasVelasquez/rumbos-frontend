@@ -57,6 +57,15 @@ export const CourseLevels = ({
   const [deleteTarget, setDeleteTarget] = useState<CourseMapSummary | null>(null)
   const reorderLevels = useReorderCourseMaps()
 
+  // A student with no saved level has nothing to look at: the host falls back
+  // to the standard course content (contract v5.5). Never while loading, never
+  // on a failed request, and never for the editor's own UI.
+  const reportNoContent = embed?.mode === 'student' ? embed.reportNoContent : null
+  const noSavedMap = !levelsQuery.isPending && !levelsQuery.isError && levels.length === 0
+  useEffect(() => {
+    if (reportNoContent && noSavedMap) reportNoContent('no_saved_map')
+  }, [reportNoContent, noSavedMap])
+
   // Exactly one level opens it directly (the carousel would be pointless);
   // several (or none yet) show the carousel/empty state.
   useEffect(() => {

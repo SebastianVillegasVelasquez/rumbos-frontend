@@ -33,6 +33,13 @@ describe('describeChanges', () => {
     ])
   })
 
+  it('mentions content bubbles, and ignores a backend that does not report them', () => {
+    assert.deepEqual(describeChanges({ ...none, contentChanged: true }), [
+      'Burbujas de contenido cambiadas',
+    ])
+    assert.deepEqual(describeChanges({ ...none }), [])
+  })
+
   it('uses the singular for a single bubble', () => {
     assert.deepEqual(describeChanges({ ...none, bubblesRemoved: 1, bubblesRestyled: 1 }), [
       '1 burbuja eliminada',

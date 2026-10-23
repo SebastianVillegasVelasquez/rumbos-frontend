@@ -3,6 +3,7 @@ import { TriangleAlert, X } from 'lucide-react'
 import type { Activity, Availability, MapMode, RenderableBubble as Bubble } from '../data/types.ts'
 import { deriveVisualState, nextIncompleteSequence, type VisualState } from '../visualState.ts'
 import { countsTowardProgress } from '../progress.ts'
+import { isContentBubble } from '../../content/contentTypes.ts'
 import { es } from '../../../i18n/es.ts'
 import { Badge } from '../../../components/ui/Card.tsx'
 import { Button } from '../../../components/ui/Button.tsx'
@@ -53,7 +54,7 @@ const GROUP_ORDER: { key: GroupKey; tone: 'leaf' | 'teal' | 'sun' | 'slate' | 'c
 // show up here exactly as they do on the map.
 export const ActivitiesOverviewModal = ({
   open,
-  bubbles,
+  bubbles: allBubbles,
   activities,
   mode,
   view,
@@ -62,6 +63,8 @@ export const ActivitiesOverviewModal = ({
   onSelectBubble,
   onConfigureCompletion,
 }: ActivitiesOverviewModalProps) => {
+  // The overview lists Moodle activities; content bubbles are not among them.
+  const bubbles = allBubbles.filter((bubble) => !isContentBubble(bubble))
   const activityById = new Map(activities.map((activity) => [activity.activityId, activity]))
   const nextSequence = nextIncompleteSequence(bubbles, (bubble) =>
     countsTowardProgress(bubble, getAvailability(bubble), view)
@@ -114,7 +117,7 @@ export const ActivitiesOverviewModal = ({
                     <p className="mb-2 text-xs text-ink-soft">{groupMeta.description}</p>
                     <ul className="space-y-1.5">
                       {groupBubbles.map((bubble) => {
-                        const activity = activityById.get(bubble.activityId)
+                        const activity = activityById.get(bubble.activityId ?? -1)
                         return (
                           <li key={bubble.id}>
                             <button
@@ -123,7 +126,7 @@ export const ActivitiesOverviewModal = ({
                               className="flex min-h-[44px] w-full items-center justify-between rounded-md border-hair bg-surface-muted px-3 py-2 text-left text-sm transition-colors hover:bg-primary-tint"
                             >
                               <span className="min-w-0 truncate font-semibold text-ink">
-                                {activity?.name ?? `#${bubble.activityId}`}
+                                {activity?.name ?? `#${String(bubble.activityId)}`}
                               </span>
                               {activity && (
                                 <span className="ml-3 shrink-0 text-[11px] font-bold uppercase text-ink-soft">
@@ -149,7 +152,10 @@ export const ActivitiesOverviewModal = ({
                                       aria-label={es.completion.configureAria(
                                         activity?.name ?? `#${bubble.activityId}`
                                       )}
-                                      onClick={() => onConfigureCompletion(bubble.activityId)}
+                                      onClick={() =>
+                                        bubble.activityId !== null &&
+                                        onConfigureCompletion(bubble.activityId)
+                                      }
                                     >
                                       {es.completion.configure}
                                     </Button>

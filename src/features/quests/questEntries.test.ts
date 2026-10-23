@@ -26,7 +26,7 @@ const bubble = (
 })
 
 const activity = (b: RenderableBubble, extra: Partial<Activity> = {}): Activity => ({
-  activityId: b.activityId,
+  activityId: b.activityId as number,
   name: `Actividad ${b.id}`,
   modname: 'quiz',
   url: '',

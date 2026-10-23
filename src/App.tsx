@@ -29,6 +29,21 @@ import { StudentLevelsChrome } from './features/hud/StudentLevelsChrome.tsx'
 import { WriteSyncHost } from './features/course-map/components/WriteSyncHost.tsx'
 import { PublicationBar } from './features/course-map/components/publication/PublicationBar.tsx'
 import { LazyBackgroundPicker } from './features/course-map/components/background/LazyBackgroundPicker.tsx'
+import { useImageSize } from './features/course-map/components/background/useImageSize.ts'
+import { preferredAspectRatio } from './features/embed/preferredSize.ts'
+import { isContentBubble, type Content } from './features/content/contentTypes.ts'
+import { LazyContentEditor } from './features/content/editor/LazyContentEditor.tsx'
+import { contentErrorMessage } from './features/content/editor/contentMessages.ts'
+import { contentBytes } from './features/content/validateContent.ts'
+import { LazyContentViewer } from './features/content/LazyContentViewer.tsx'
+import {
+  learnFromBubbles,
+  learnFromCreated,
+  learnFromCreateFailure,
+  useContentSupported,
+} from './features/content/contentSupport.ts'
+import { isContentSeen, markContentSeen, shouldAutoOpen } from './features/content/seen.ts'
+import { useWidgetsEnabled } from './features/content/useAuthFeatures.ts'
 import { useChangeBackground } from './features/course-map/components/background/useChangeBackground.ts'
 import { rememberCourseMap } from './features/course-map/data/recentMaps.ts'
 import {
@@ -91,6 +106,7 @@ import {
   useHostCompletionEnabled,
   useHostSupportsActivitySettings,
 } from './features/embed/hostState.ts'
+import { useHostOverlayOpen } from './features/embed/hostOverlay.ts'
 import { RESERVED_CORNER_PX, useHostFullscreen } from './features/embed/hostFullscreen.ts'
 import { useRoute, type Route } from './hooks/useRoute.ts'
 import { Wordmark } from './components/Logo.tsx'
@@ -326,6 +342,34 @@ export function AppShell() {
   )
   const moodleStatus = moodle.resolved?.moodleStatus ?? null
 
+  // Contract v5.5: the ratio the host may size the area to, reported once the
+  // level is on screen and again when the level (or its fit) changes.
+  const backgroundSize = useImageSize(renderable ? resolveImageUrl(renderable.imageUrl) : null)
+  const reportPreferredSize = hostStudentMode ? embed?.reportPreferredSize : undefined
+  const levelFit = renderable?.settings.fit ?? null
+  const aspectRatio = levelFit ? preferredAspectRatio(levelFit, backgroundSize) : null
+  useEffect(() => {
+    if (reportPreferredSize && aspectRatio !== null) reportPreferredSize(aspectRatio)
+  }, [reportPreferredSize, aspectRatio])
+
+  // Contract v5.5: a student who would see nothing is sent back to the standard
+  // course content by the host. Only the student UI reports, and only once the
+  // data is in (a failed or pending query says nothing about emptiness).
+  const reportNoContent = hostStudentMode ? embed?.reportNoContent : undefined
+  const levelNotSaved =
+    showPublished && publishedQuery.error instanceof ApiError && publishedQuery.error.status === 404
+  // With several levels, one empty level is not the course's whole content: the
+  // student is told in the app and can go to another level.
+  const onlyLevelIsEmpty =
+    renderable !== null && bubbles.length === 0 && !publishedSiblingsQuery.isPending
+      ? siblingLevels.length <= 1
+      : false
+  useEffect(() => {
+    if (!reportNoContent) return
+    if (levelNotSaved) reportNoContent('no_saved_map')
+    else if (onlyLevelIsEmpty) reportNoContent('empty_map')
+  }, [reportNoContent, levelNotSaved, onlyLevelIsEmpty])
+
   const isSaving = updateBubble.isPending || createBubble.isPending || deleteBubble.isPending
 
   // A write the user was already told about (conflict dialog / toast) is not
@@ -361,7 +405,111 @@ export function AppShell() {
     [embed]
   )
 
+  // The content bubble open in the viewer. "Seen" lives in localStorage and is
+  // read on every render; the counter only makes opening one re-render.
+  const [openContentId, setOpenContentId] = useState<string | null>(null)
+  const [, setSeenTick] = useState(0)
+  const widgetsEnabled = useWidgetsEnabled()
+  const openContentBubble = openContentId
+    ? (bubbles.find((bubble) => bubble.id === openContentId) ?? null)
+    : null
+
+  const openContent = (bubble: Bubble) => {
+    if (!bubble.content) return
+    setOpenContentId(bubble.id)
+    // The editor looking at the student view is not a student: leave "seen" alone.
+    if (!exitPreview) {
+      markContentSeen(viewerStorage(), bubble.id, bubble.content)
+      setSeenTick((tick) => tick + 1)
+    }
+  }
+
+  // A backend that sends `kind` speaks content bubbles (see contentSupport.ts).
+  useEffect(() => {
+    if (storedRenderable) learnFromBubbles(storedRenderable.bubbles)
+  }, [storedRenderable])
+
+  // First visit: the first unseen auto-open content of a level opens by itself,
+  // once per level visit, for students only (never the editor's own preview).
+  // Derived, not an effect: it is shown until the first close handles the level.
+  const overlayOpen = useHostOverlayOpen()
+  const [autoHandledLevel, setAutoHandledLevel] = useState<string | null>(null)
+  const autoCandidate =
+    immersive && !exitPreview && courseMapId && !overlayOpen && autoHandledLevel !== courseMapId
+      ? ([...bubbles]
+          .sort((a, b) => a.sequence - b.sequence)
+          .find(
+            (bubble) => bubble.content && shouldAutoOpen(viewerStorage(), bubble.id, bubble.content)
+          ) ?? null)
+      : null
+  const shownContentBubble = openContentBubble ?? autoCandidate
+  // An auto-opened content counts as seen once it is closed: marking it while it
+  // is up would make the candidate vanish on the next render.
+  const closeContent = () => {
+    if (shownContentBubble?.content && !exitPreview)
+      markContentSeen(viewerStorage(), shownContentBubble.id, shownContentBubble.content)
+    setOpenContentId(null)
+    setAutoHandledLevel(courseMapId)
+    setSeenTick((tick) => tick + 1)
+  }
+
+  // Editor: the content being written (a new one carries where it will go).
+  const contentSupported = useContentSupported()
+  const [contentEditor, setContentEditor] = useState<
+    { mode: 'create'; x: number; y: number } | { mode: 'edit'; bubbleId: string } | null
+  >(null)
+  const [contentError, setContentError] = useState<string | null>(null)
+  const editedBubble =
+    contentEditor?.mode === 'edit'
+      ? (bubbles.find((bubble) => bubble.id === contentEditor.bubbleId) ?? null)
+      : null
+  const closeContentEditor = () => {
+    setContentEditor(null)
+    setContentError(null)
+  }
+  const saveContent = (content: Content) => {
+    if (!contentEditor) return
+    setContentError(null)
+    if (contentEditor.mode === 'create') {
+      createBubble.mutate(
+        { kind: 'content', content, x: contentEditor.x, y: contentEditor.y },
+        {
+          onSuccess: (bubble) => {
+            learnFromCreated(bubble)
+            if (bubble.kind === 'content') closeContentEditor()
+            else setContentError(es.content.editor.errors.unsupported)
+          },
+          onError: (error) => {
+            if (error instanceof ApiError)
+              learnFromCreateFailure({ status: error.status, code: error.detail.code })
+            setContentError(contentErrorMessage(error))
+            // The dialog says what went wrong; not the activity-placement banner.
+            createBubble.reset()
+          },
+        }
+      )
+    } else {
+      updateBubble.mutate(
+        { bubbleId: contentEditor.bubbleId, input: { content } },
+        {
+          onSuccess: closeContentEditor,
+          onError: (error) => setContentError(contentErrorMessage(error)),
+        }
+      )
+    }
+  }
+  // What the level's other content bubbles weigh against the 1 MB allowance.
+  const otherContentBytes = bubbles.reduce(
+    (sum, bubble) =>
+      bubble.content && bubble.id !== editedBubble?.id ? sum + contentBytes(bubble.content) : sum,
+    0
+  )
+
   const handleBubbleClick = (bubble: Bubble) => {
+    if (isContentBubble(bubble)) {
+      openContent(bubble)
+      return
+    }
     const resolved = resolvedByBubbleId.get(bubble.id)
     const activity =
       resolved?.activity ?? activities.find((a) => a.activityId === bubble.activityId)
@@ -374,6 +522,7 @@ export function AppShell() {
   // list" heuristic with the precise available/hidden/missing/unknown states
   // from the backend.
   const getUnavailableReason = (bubble: Bubble): string | null => {
+    if (isContentBubble(bubble)) return null
     if (moodle.resolvedPending) return es.bubble.loadingActivity
     if (moodle.resolvedError) return es.bubble.activitiesUnavailable
     const resolved = resolvedByBubbleId.get(bubble.id)
@@ -389,8 +538,9 @@ export function AppShell() {
     return null
   }
 
+  // Content is information: always there, whatever Moodle says.
   const getAvailabilityForBubble = (bubble: Bubble) =>
-    resolvedByBubbleId.get(bubble.id)?.availability
+    isContentBubble(bubble) ? 'available' : resolvedByBubbleId.get(bubble.id)?.availability
   useCompletionNotices({
     levelKey: courseMapId,
     ready: !moodle.resolvedPending && !moodle.resolvedError,
@@ -435,6 +585,8 @@ export function AppShell() {
     mode: mapMode,
     availabilityOf: getAvailabilityForBubble,
     activityOf: (bubble) => resolvedByBubbleId.get(bubble.id)?.activity,
+    seenOf: (bubble) =>
+      bubble.content ? isContentSeen(viewerStorage(), bubble.id, bubble.content) : false,
   })
   const nextTarget = immersive
     ? continueTarget(bubbles, mapMode, getAvailabilityForBubble, 'student')
@@ -511,8 +663,10 @@ export function AppShell() {
         : null,
     [immersive, resumeCourseId, resumeMapId]
   )
-  const getModname = (bubble: { activityId: number }) =>
-    activities.find((a) => a.activityId === bubble.activityId)?.modname
+  const getModname = (bubble: { activityId: number | null }) =>
+    bubble.activityId === null
+      ? undefined
+      : activities.find((a) => a.activityId === bubble.activityId)?.modname
 
   const handleSelectBubbleFromOverview = (bubble: Bubble) => {
     setIsActivitiesOverviewOpen(false)
@@ -573,6 +727,18 @@ export function AppShell() {
       )
     }
 
+    if (hostStudentMode && bubbles.length === 0 && siblingLevels.length > 1) {
+      return (
+        <div className="space-y-3 p-4" role="status">
+          <p className="font-heading text-lg font-semibold text-ink">{es.student.emptyLevel}</p>
+          <p className="text-sm text-ink-soft">{es.student.emptyLevelHint}</p>
+          <Button variant="secondary" onClick={() => navigate({ name: 'home' })}>
+            {es.app.backToHome}
+          </Button>
+        </div>
+      )
+    }
+
     return (
       <Suspense
         fallback={
@@ -598,7 +764,11 @@ export function AppShell() {
           touchGuard={Boolean(embed)}
           controlsRef={mapControlsRef}
           onConfigureCompletion={
-            configureCompletion ? (bubble) => configureCompletion(bubble.activityId) : undefined
+            configureCompletion
+              ? (bubble) => {
+                  if (bubble.activityId !== null) configureCompletion(bubble.activityId)
+                }
+              : undefined
           }
           hideControls={immersive}
           compactGuard={layout?.guardCompact}
@@ -620,6 +790,10 @@ export function AppShell() {
           onBubbleMove={(bubbleId, x, y) => updateBubble.mutate({ bubbleId, input: { x, y } })}
           onBubbleUpdate={(bubbleId, input) => updateBubble.mutate({ bubbleId, input })}
           onBubbleDelete={(bubbleId) => deleteBubble.mutate(bubbleId)}
+          onContentDrop={
+            contentSupported ? (x, y) => setContentEditor({ mode: 'create', x, y }) : undefined
+          }
+          onEditContent={(bubble) => setContentEditor({ mode: 'edit', bubbleId: bubble.id })}
           onActivityDrop={(activityId, x, y) => {
             if (pendingActivityIds.includes(activityId)) return
             createBubble.mutate(
@@ -690,6 +864,9 @@ export function AppShell() {
     currentCourseMapId: courseMapId ?? undefined,
     levelTitleById,
     sectionFilter: renderable?.moodleSectionId ?? null,
+    onAddContent: contentSupported
+      ? () => setContentEditor({ mode: 'create', x: 0.5, y: 0.5 })
+      : undefined,
   }
 
   // Embedded in student mode there is no mode switch: only the saved map is shown.
@@ -893,7 +1070,7 @@ export function AppShell() {
                 onOpenLevels={
                   siblingLevels.length > 1 ? () => navigate({ name: 'home' }) : undefined
                 }
-                coachMarks={!exitPreview}
+                coachMarks={!exitPreview && !shownContentBubble}
                 questsOpen={questsOpen}
                 onToggleQuests={toggleQuests}
                 questsPanel={({ compact, bottomOffset }) => (
@@ -946,6 +1123,25 @@ export function AppShell() {
           </div>
         </main>
       </div>
+
+      {isEditor && contentEditor && (contentEditor.mode === 'create' || editedBubble) && (
+        <LazyContentEditor
+          key={editedBubble?.id ?? 'new'}
+          initial={editedBubble?.content ?? null}
+          widgetsEnabled={widgetsEnabled}
+          otherBytes={otherContentBytes}
+          saving={createBubble.isPending || updateBubble.isPending}
+          error={contentError}
+          onSave={saveContent}
+          onCancel={closeContentEditor}
+        />
+      )}
+
+      <LazyContentViewer
+        content={shownContentBubble?.content ?? null}
+        widgetsEnabled={widgetsEnabled}
+        onClose={closeContent}
+      />
 
       <ActivityModal activity={selectedActivity} onClose={() => setSelectedActivity(null)} />
 

@@ -18,6 +18,7 @@ import {
 import { useHostMoodleState } from './hostMoodleState.ts'
 import { isHostOverlayOpen, subscribeHostOverlay } from './hostOverlay.ts'
 import { getHostStateReceivedCount } from './hostState.ts'
+import { createHostReports } from './hostReports.ts'
 import { createStateRequester } from './stateRequester.ts'
 import type { EmbedErrorCode } from './protocol.ts'
 import { createEmbedSession, type EmbedPhase } from './session.ts'
@@ -124,6 +125,7 @@ const EmbedSessionView = ({ hostOrigin, bridge }: { hostOrigin: string; bridge: 
   const courseId = phase.name === 'ready' ? phase.courseId : null
   // The host's mode never grants more than the token's role does.
   const mode = phase.name === 'ready' && phase.role === 'editor' ? phase.mode : 'student'
+  const reports = useMemo(() => createHostReports(bridge.send), [bridge])
   const context = useMemo<EmbedContextValue | null>(
     () =>
       role && courseId
@@ -139,9 +141,11 @@ const EmbedSessionView = ({ hostOrigin, bridge }: { hostOrigin: string; bridge: 
             },
             requestState,
             requestFullscreen: (on) => bridge.send({ type: 'rumbos:request-fullscreen', v: 1, on }),
+            reportNoContent: reports.noContent,
+            reportPreferredSize: reports.preferredSize,
           }
         : null,
-    [role, mode, courseId, bridge, requestState]
+    [role, mode, courseId, bridge, requestState, reports]
   )
 
   if (phase.name === 'failed') {

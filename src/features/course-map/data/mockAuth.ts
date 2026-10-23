@@ -6,12 +6,14 @@
 // mock stays open like before.
 import { decodeMockAssertion } from '../../embed/mockAssertion.ts'
 import { ApiError, getAuthToken, hasAuthHooks, retryOnUnauthorized } from './client.ts'
-import type { AuthRole, LaunchResult } from './types.ts'
+import type { AuthMe, AuthRole, LaunchResult } from './types.ts'
 
 interface MockToken {
   role: AuthRole
   course: number
   expiresAt: number
+  widgets: boolean
+  contentSupport: boolean
 }
 
 const DEFAULT_TOKEN_TTL_S = 900
@@ -40,6 +42,8 @@ export const mockLaunch = (assertion: string): LaunchResult => {
     role: claims.role,
     course: claims.course,
     expiresAt: Date.now() + ttl * 1000,
+    widgets: claims.widgets === true,
+    contentSupport: claims.contentSupport !== false,
   })
   return {
     accessToken,
@@ -48,6 +52,23 @@ export const mockLaunch = (assertion: string): LaunchResult => {
     role: claims.role,
     courseId: claims.course,
     hostOrigin: claims.host,
+  }
+}
+
+// The mock backend's feature flags for the current session. Outside embed mode
+// everything is on, so the standalone mock can try every feature.
+export const mockFeatures = (): { widgets: boolean; contentSupport: boolean } => {
+  if (!hasAuthHooks()) return { widgets: true, contentSupport: true }
+  const { widgets, contentSupport } = requireSession()
+  return { widgets, contentSupport }
+}
+
+export const mockMe = (): AuthMe => {
+  const session = requireSession()
+  return {
+    role: session.role,
+    courseId: session.course,
+    features: { widgets: session.widgets },
   }
 }
 
@@ -65,7 +86,7 @@ const requireSession = (): MockToken => {
 }
 
 // Students may only read published maps of their own course.
-const STUDENT_METHODS = new Set(['listPublishedCourseMaps', 'getPublishedCourseMap'])
+const STUDENT_METHODS = new Set(['listPublishedCourseMaps', 'getPublishedCourseMap', 'getMe'])
 
 // The host provides this data in plugin mode.
 const HOST_PROVIDED_METHODS = new Set([

@@ -5,6 +5,8 @@ import type { AssetUsage, ImageAssetKind } from './types.ts'
 export const ASSET_LIMITS: Record<ImageAssetKind, { maxBytes: number; maxSide: number }> = {
   background: { maxBytes: 8 * 1024 * 1024, maxSide: 8192 },
   bubble: { maxBytes: 2 * 1024 * 1024, maxSide: 1024 },
+  // Pictures inside content bubbles.
+  image: { maxBytes: 4 * 1024 * 1024, maxSide: 2048 },
 }
 
 export const ALLOWED_IMAGE_MIME = ['image/png', 'image/jpeg', 'image/webp', 'image/avif'] as const
@@ -13,11 +15,16 @@ export const CREDIT_MAX_LENGTH = 300
 
 export type UploadCheckError = 'notImage' | 'tooLarge' | 'tooBig'
 
+// Pictures inside content bubbles stay to the three formats every browser
+// draws.
+export const allowedMimeFor = (kind: ImageAssetKind): readonly string[] =>
+  kind === 'image' ? ALLOWED_IMAGE_MIME.filter((mime) => mime !== 'image/avif') : ALLOWED_IMAGE_MIME
+
 export const checkFileBasics = (
   file: { type: string; size: number },
   kind: ImageAssetKind
 ): UploadCheckError | null => {
-  if (!(ALLOWED_IMAGE_MIME as readonly string[]).includes(file.type)) return 'notImage'
+  if (!allowedMimeFor(kind).includes(file.type)) return 'notImage'
   if (file.size > ASSET_LIMITS[kind].maxBytes) return 'tooLarge'
   return null
 }

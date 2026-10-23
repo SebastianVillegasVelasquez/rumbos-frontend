@@ -21,6 +21,10 @@ export const ICON_KEYS = [
 
 export type IconKey = (typeof ICON_KEYS)[number]
 
+// What can be drawn: the icons people choose from, plus "info", which only
+// content bubbles use by default and is never stored in a bubble or a skin.
+export type RenderIconKey = IconKey | 'info'
+
 export const ICON_LABELS: Record<IconKey, string> = {
   question: 'Pregunta (por defecto)',
   chest: 'Cofre',
@@ -52,7 +56,11 @@ const svgDataUri = (inner: IconPath, color: string) =>
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">${inner(color)}</svg>`
   )}`
 
-const paths: Partial<Record<IconKey, IconPath>> = {
+const paths: Partial<Record<RenderIconKey, IconPath>> = {
+  info: (c) =>
+    `<circle cx="12" cy="12" r="9" fill="none" stroke="${c}" stroke-width="2"/>
+         <line x1="12" y1="11" x2="12" y2="17" stroke="${c}" stroke-width="2.4" stroke-linecap="round"/>
+         <circle cx="12" cy="7.6" r="1.4" fill="${c}"/>`,
   chest: (c) =>
     `<rect x="3" y="10" width="18" height="10" rx="1.5" fill="${c}"/>
          <path d="M3 10a9 5 0 0 1 18 0" fill="none" stroke="${c}" stroke-width="2"/>
@@ -79,8 +87,8 @@ const paths: Partial<Record<IconKey, IconPath>> = {
 }
 
 const buildVariant = (color: string) => {
-  const uris: Partial<Record<IconKey, string>> = {}
-  for (const key of ICON_KEYS) {
+  const uris: Partial<Record<RenderIconKey, string>> = {}
+  for (const key of [...ICON_KEYS, 'info'] as const) {
     const path = paths[key]
     if (path) uris[key] = svgDataUri(path, color)
   }
@@ -89,12 +97,12 @@ const buildVariant = (color: string) => {
 
 // "question" has no entry - it renders via the existing Konva Text "?"
 // fallback in BubbleVisual.tsx instead of an image.
-export const ICON_DATA_URIS_LIGHT: Partial<Record<IconKey, string>> = buildVariant('white')
-export const ICON_DATA_URIS_DARK: Partial<Record<IconKey, string>> = buildVariant('#1E2A4A')
+export const ICON_DATA_URIS_LIGHT: Partial<Record<RenderIconKey, string>> = buildVariant('white')
+export const ICON_DATA_URIS_DARK: Partial<Record<RenderIconKey, string>> = buildVariant('#1E2A4A')
 
 // Arbitrary-color variant, for a procedural skin's icon.color (which can be
 // any hex, not just the two precomputed light/dark variants above).
-export const iconDataUri = (icon: IconKey, color: string): string | null => {
+export const iconDataUri = (icon: RenderIconKey, color: string): string | null => {
   const path = paths[icon]
   return path ? svgDataUri(path, color) : null
 }

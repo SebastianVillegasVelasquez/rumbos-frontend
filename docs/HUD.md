@@ -72,6 +72,7 @@ not counted.
 | Before this work                                       | 268.4 KB                 |
 | After the HUD, Misiones, resume, coach marks, warnings | about 276 KB             |
 | After data saver and audio                             | 280.2 KB                 |
+| After never-empty states and content bubbles           | 287.6 KB                 |
 
 These are static sizes. A throttled-4G run on a mid-range Android was not measured.
 

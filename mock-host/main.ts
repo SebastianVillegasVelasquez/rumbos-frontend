@@ -54,6 +54,11 @@ const config = {
   frameSize: 'desktop' as 'desktop' | 'phone' | 'tablet',
   // Contract v5.4: "absent" plays a plugin that predates it.
   completionEnabled: 'true' as 'true' | 'false' | 'absent',
+  // Contract v5.5: size the frame to the app's preferred aspect ratio.
+  followPreferredSize: false,
+  // What the mock backend reports for this tenant (GET /auth/me) and supports.
+  widgets: false,
+  contentSupport: true,
 }
 
 const alias = location.hostname === 'localhost' ? '127.0.0.1' : 'localhost'
@@ -144,6 +149,8 @@ const assertion = () =>
     exp: Math.floor(Date.now() / 1000) + 60,
     ttl: config.tokenTtl,
     tenantDisabled: config.tenantDisabled,
+    widgets: config.widgets,
+    contentSupport: config.contentSupport,
   })
 
 const send = (message: Record<string, unknown>) => {
@@ -203,6 +210,28 @@ window.addEventListener('message', (event) => {
     case 'rumbos:request-fullscreen':
       setFullscreen(data.on === true)
       return
+    case 'rumbos:no-content': {
+      // Contract v5.5: the plugin shows the standard course content instead.
+      const fallback = $('fallback')
+      fallback.style.display = 'block'
+      fallback.textContent = `The plugin would now show the standard course content (no-content: ${String(data.reason)}).`
+      return
+    }
+    case 'rumbos:preferred-size': {
+      const ratio = data.aspectRatio
+      const valid = typeof ratio === 'number' && ratio >= 0.5 && ratio <= 4
+      log('host', {
+        type: 'note',
+        text: valid
+          ? `preferred aspect ratio ${ratio.toFixed(3)}${config.followPreferredSize ? ': frame resized' : ' (not following)'}`
+          : `Refused preferred-size ${String(ratio)} (outside 0.5..4)`,
+      })
+      if (valid && config.followPreferredSize) {
+        const wrap = $('frame-wrap')
+        wrap.style.height = `${Math.round(wrap.clientWidth / ratio)}px`
+      }
+      return
+    }
     case 'rumbos:error':
       $('fallback').style.display = 'block'
       $('fallback').textContent =
@@ -349,6 +378,20 @@ const buildControls = () => {
       checkbox(config.tenantDisabled, (value) => (config.tenantDisabled = value))
     ),
     labelled(
+      'widgets enabled for the tenant',
+      checkbox(config.widgets, (value) => {
+        config.widgets = value
+        mountFrame()
+      })
+    ),
+    labelled(
+      'backend supports content bubbles',
+      checkbox(config.contentSupport, (value) => {
+        config.contentSupport = value
+        mountFrame()
+      })
+    ),
+    labelled(
       'backend knows another host',
       checkbox(config.wrongTenantHost, (value) => (config.wrongTenantHost = value))
     ),
@@ -390,6 +433,38 @@ const buildControls = () => {
       'push state on every change',
       checkbox(config.autoPush, (value) => (config.autoPush = value))
     ),
+    labelled(
+      'follow preferred-size',
+      checkbox(config.followPreferredSize, (value) => {
+        config.followPreferredSize = value
+        if (!value) frameStyle()
+      })
+    ),
+    // The container height is the host's call: the app must lay out at any height.
+    labelled(
+      'frame height',
+      Object.assign(document.createElement('input'), {
+        type: 'range',
+        min: '240',
+        max: '900',
+        value: '640',
+        oninput: (event: Event) => {
+          $('frame-wrap').style.height = `${(event.target as HTMLInputElement).value}px`
+        },
+      })
+    ),
+    button('Course 4: no saved map', () => {
+      config.courseId = 4
+      mountFrame()
+    }),
+    button('Course 5: empty map', () => {
+      config.courseId = 5
+      mountFrame()
+    }),
+    button('Course 1: normal', () => {
+      config.courseId = 1
+      mountFrame()
+    }),
     button('Push state now', pushState),
     button('Expire token (dev)', () => {
       send({ type: 'rumbos:dev-expire-token', v: 1 })

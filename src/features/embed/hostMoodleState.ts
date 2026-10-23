@@ -24,6 +24,7 @@ const combinePlacements = (
   const placements: Record<number, Placement> = {}
   for (const { data } of results) {
     for (const bubble of data?.bubbles ?? []) {
+      if (bubble.activityId === null) continue
       placements[bubble.activityId] = {
         placed: true,
         bubbleId: bubble.id,

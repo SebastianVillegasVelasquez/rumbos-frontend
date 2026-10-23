@@ -1,6 +1,6 @@
 import { createContext, useContext } from 'react'
 import type { AuthRole } from '../course-map/data/types.ts'
-import type { HostMode } from './protocol.ts'
+import type { HostMode, NoContentReason } from './protocol.ts'
 
 // Present only under the /embed route; null means the standalone app.
 export interface EmbedContextValue {
@@ -20,6 +20,9 @@ export interface EmbedContextValue {
   // Ask the host for a fresh CourseState (throttled).
   requestState: () => void
   requestFullscreen: (on: boolean) => void
+  // Contract v5.5. Idempotent: safe to call from an effect on every render.
+  reportNoContent: (reason: NoContentReason) => void
+  reportPreferredSize: (aspectRatio: number) => void
 }
 
 export const EmbedContext = createContext<EmbedContextValue | null>(null)

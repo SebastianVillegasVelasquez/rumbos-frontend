@@ -1,5 +1,7 @@
 import { ApiError } from './client.ts'
-import { mockLaunch, withMockAuth } from './mockAuth.ts'
+import { mockFeatures, mockLaunch, mockMe, withMockAuth } from './mockAuth.ts'
+import { CONTENT_LIMITS, isContentBubble, type Content } from '../../content/contentTypes.ts'
+import { contentBytes, validateContent } from '../../content/validateContent.ts'
 import { assetObjectUrls } from './mockAssetUrls.ts'
 import { LIBRARY_TRACKS, makeToneWav, readAudioDuration } from './mockAudio.ts'
 import {
@@ -333,7 +335,7 @@ const SCENES: Scene3d[] = [{ id: 'region-encuentros', zoneCount: 9 }]
 
 type SnapshotBubble = Pick<
   PublishedBubble,
-  'id' | 'activityId' | 'x' | 'y' | 'icon' | 'skinId' | 'sequence'
+  'id' | 'activityId' | 'x' | 'y' | 'icon' | 'skinId' | 'sequence' | 'kind' | 'content'
 >
 
 // The publishable content of a map. Hashing this is what defines "the draft
@@ -414,6 +416,8 @@ const seedMap = (
     moodleSectionId?: number | null
     position?: number
     mode?: MapSettings['mode']
+    // Content bubbles, after the activity ones.
+    content?: ReadonlyArray<{ x: number; y: number; content: Content }>
     // Bindings refer to bubbles by their index in `bubbleSpecs`.
     view3d?: {
       scene: string
@@ -430,6 +434,19 @@ const seedMap = (
   const timestamp = now()
   const id = newId()
   const bubbles = bubbleSpecs.map((spec, index) => seedBubble(id, timestamp, index, spec))
+  for (const item of options.content ?? []) {
+    bubbles.push({
+      ...seedBubble(id, timestamp, bubbles.length, {
+        activityId: 0,
+        x: item.x,
+        y: item.y,
+        status: 'no_complete',
+      }),
+      kind: 'content',
+      activityId: null,
+      content: item.content,
+    })
+  }
   return {
     id,
     title,
@@ -472,7 +489,51 @@ const createInitialMaps = (): MockMap[] => [
       { activityId: 102, x: 0.5, y: 0.45, status: 'complete' },
       { activityId: 103, x: 0.82, y: 0.6, status: 'in_progress' },
     ],
-    { moodleSectionId: 1, position: 0, mode: 'explorative' }
+    {
+      moodleSectionId: 1,
+      position: 0,
+      mode: 'explorative',
+      content: [
+        {
+          x: 0.08,
+          y: 0.2,
+          content: {
+            type: 'blocks',
+            title: 'Bienvenida al curso',
+            autoOpen: 'first_visit',
+            body: {
+              schemaVersion: 1,
+              blocks: [
+                { type: 'heading', text: 'Antes de empezar', level: 2 },
+                {
+                  type: 'paragraph',
+                  text: 'Este curso se recorre como un mapa.\nAbre las burbujas en el orden que prefieras.',
+                },
+                {
+                  type: 'video',
+                  provider: 'youtube',
+                  videoId: 'dQw4w9WgXcQ',
+                  title: 'Presentación del curso',
+                },
+                { type: 'divider' },
+                { type: 'link', text: 'Guía del estudiante', url: 'https://example.org/guia' },
+              ],
+            },
+          },
+        },
+        {
+          x: 0.92,
+          y: 0.2,
+          content: {
+            type: 'widget',
+            title: 'Juego de memoria',
+            autoOpen: 'never',
+            altText: 'Un contador de clics para practicar; no es necesario para avanzar.',
+            html: '<main style="font:16px system-ui;padding:12px"><h1>Contador</h1><p id="n">0</p><button id="b">Sumar</button> <button id="c">Cerrar</button></main><script>var n=0;document.getElementById("b").onclick=function(){n++;document.getElementById("n").textContent=n};document.getElementById("c").onclick=function(){rumbos.close()};rumbos.setHeight(220)</script>',
+          },
+        },
+      ],
+    }
   ),
   seedMap(
     'Fundamentos de programación — Nivel 2',
@@ -523,6 +584,9 @@ const createInitialMaps = (): MockMap[] => [
     { activityId: 108, x: 0.75, y: 0.65, status: 'locked' },
   ]),
   seedMap('Ciudadanía digital', 4, [{ activityId: 109, x: 0.4, y: 0.5, status: 'no_complete' }]),
+  // Published with no bubbles: what a student sees when a teacher saved a
+  // level before placing anything (mock host course 5).
+  seedMap('Taller en construcción', 5, []),
 ]
 
 let maps: MockMap[] = createInitialMaps()
@@ -554,6 +618,58 @@ const requireMap = (courseMapId: string) => {
   const map = maps.find((item) => item.id === courseMapId)
   if (!map) throw notFound('course_map_not_found', 'Mapa no encontrado')
   return map
+}
+
+// What the backend does with a content body: widgets are a tenant feature,
+// the shape is validated (422 with the problems), and the sizes have their own
+// code (413).
+const checkContent = (map: MockMap, content: Content, replacing: string | null) => {
+  if (content.type === 'widget' && !mockFeatures().widgets) {
+    throw businessError(403, 'widgets_disabled', 'Los widgets no están habilitados en este sitio')
+  }
+  const problems = validateContent(content)
+  if (content.type === 'blocks') {
+    for (const [index, block] of content.body.blocks.entries()) {
+      if (block.type !== 'image') continue
+      const asset = assets.find((item) => item.id === block.assetId)
+      if (!asset || asset.kind !== 'image')
+        problems.push({ path: `blocks.${index}.assetId`, code: 'invalid' })
+    }
+  }
+  if (problems.some((problem) => problem.code === 'too_large')) {
+    throw businessError(413, 'content_too_large', 'El contenido es demasiado grande')
+  }
+  if (problems.length > 0) {
+    throw businessError(422, 'content_invalid', 'El contenido no es válido', { problems })
+  }
+  const others = map.bubbles
+    .filter((bubble) => bubble.id !== replacing && bubble.content)
+    .reduce((sum, bubble) => sum + contentBytes(bubble.content!), 0)
+  if (others + contentBytes(content) > CONTENT_LIMITS.maxContentBytesPerMap) {
+    throw businessError(413, 'content_too_large', 'Este nivel ya tiene demasiado contenido')
+  }
+}
+
+// A backend that predates content bubbles has none to send.
+const wireBubbles = <T extends { kind?: Bubble['kind']; content?: Bubble['content'] }>(
+  bubbles: readonly T[]
+): T[] =>
+  (mockFeatures().contentSupport ? [...bubbles] : bubbles.filter((b) => !isContentBubble(b))).map(
+    wireBubble
+  )
+
+// The shape of a bubble on the wire: a backend that predates content bubbles
+// sends neither `kind` nor `content`.
+const wireBubble = <T extends { kind?: Bubble['kind']; content?: Bubble['content'] }>(
+  bubble: T
+): T => {
+  if (!mockFeatures().contentSupport) {
+    const { kind: _kind, content: _content, ...rest } = bubble
+    void _kind
+    void _content
+    return rest as T
+  }
+  return { ...bubble, kind: bubble.kind ?? 'activity' }
 }
 
 const requireBubble = (map: MockMap, bubbleId: string) => {
@@ -637,7 +753,7 @@ const draftSnapshot = (map: MockMap): Snapshot => ({
   ),
   bubbles: [...map.bubbles]
     .sort((a, b) => a.sequence - b.sequence || a.id.localeCompare(b.id))
-    .map(({ id, activityId, x, y, icon, skinId, sequence }) => ({
+    .map(({ id, kind, activityId, content, x, y, icon, skinId, sequence }) => ({
       id,
       activityId,
       x,
@@ -645,6 +761,9 @@ const draftSnapshot = (map: MockMap): Snapshot => ({
       icon,
       skinId,
       sequence,
+      // Only content bubbles carry them, so activity-only snapshots keep
+      // hashing exactly as before.
+      ...(kind === 'content' ? { kind, content } : {}),
     })),
   ...(map.view3d ? { view3d: canonicalView3d(map.view3d) } : {}),
 })
@@ -679,6 +798,9 @@ const diffSnapshots = (published: Snapshot, draft: Snapshot): PublicationChanges
       ]) !== canonicalJson([withoutAudio(draft.settings), draft.defaultSkinId, draft.skinRules]),
     skinsChanged: canonicalJson(published.skins) !== canonicalJson(draft.skins),
     view3dChanged: canonicalJson(published.view3d ?? null) !== canonicalJson(draft.view3d ?? null),
+    contentChanged:
+      canonicalJson(published.bubbles.map((b) => b.content ?? null)) !==
+      canonicalJson(draft.bubbles.map((b) => b.content ?? null)),
     audioChanged:
       canonicalJson(published.settings.audio ?? null) !==
       canonicalJson(draft.settings.audio ?? null),
@@ -770,12 +892,13 @@ const loadSnapshotIntoDraft = (map: MockMap, snapshot: Snapshot): DraftReplaceRe
   const takenElsewhere = new Set<number>()
   for (const other of maps) {
     if (other.moodleCourseId !== map.moodleCourseId || other.id === map.id) continue
-    for (const bubble of other.bubbles) takenElsewhere.add(bubble.activityId)
+    for (const bubble of other.bubbles)
+      if (bubble.activityId !== null) takenElsewhere.add(bubble.activityId)
   }
 
   const bubbles: Bubble[] = []
   for (const saved of snapshot.bubbles) {
-    if (takenElsewhere.has(saved.activityId)) {
+    if (saved.activityId !== null && takenElsewhere.has(saved.activityId)) {
       warnings.push({
         code: 'activity_already_placed',
         message: `La actividad ${saved.activityId} ya está en otro nivel; se omitió su burbuja.`,
@@ -787,6 +910,7 @@ const loadSnapshotIntoDraft = (map: MockMap, snapshot: Snapshot): DraftReplaceRe
       id: saved.id,
       courseMapId: map.id,
       activityId: saved.activityId,
+      ...(saved.kind === 'content' ? { kind: saved.kind, content: saved.content } : {}),
       x: saved.x,
       y: saved.y,
       icon: saved.icon,
@@ -868,7 +992,7 @@ const toRead = (map: MockMap): CourseMapRead => ({
   skinRules: map.skinRules,
   view3d: map.view3d,
   audioInfo: audioInfoOf(map.settings),
-  bubbles: map.bubbles,
+  bubbles: wireBubbles(map.bubbles),
   revision: map.revision,
   createdAt: map.createdAt,
   updatedAt: map.updatedAt,
@@ -919,10 +1043,12 @@ const toPublishedRead = (map: MockMap, publication: MockPublication): PublishedM
   view3d: publication.snapshot.view3d ?? null,
   audioInfo: audioInfoOf(publication.snapshot.settings),
   skins: publication.snapshot.skins,
-  bubbles: publication.snapshot.bubbles.map((bubble) => ({
-    ...bubble,
-    status: liveStatus(map, publication, bubble.id),
-  })),
+  bubbles: wireBubbles(
+    publication.snapshot.bubbles.map((bubble) => ({
+      ...bubble,
+      status: liveStatus(map, publication, bubble.id),
+    }))
+  ),
   publicationNumber: publication.number,
   publishedAt: publication.createdAt,
 })
@@ -957,7 +1083,7 @@ const activityFor = (activityId: number): Activity | null => {
 
 const resolveBubbles = (
   mapId: string,
-  bubbles: ReadonlyArray<{ id: string; activityId: number }>,
+  bubbles: ReadonlyArray<{ id: string; activityId: number | null }>,
   includeHidden: boolean
 ): ResolvedCourseMap => {
   const override = mockMoodleOverride()
@@ -967,7 +1093,7 @@ const resolveBubbles = (
       moodleStatus: 'unavailable',
       bubbles: bubbles.map((bubble) => ({
         bubbleId: bubble.id,
-        availability: 'unknown',
+        availability: bubble.activityId === null ? 'available' : 'unknown',
         activity: null,
       })),
     }
@@ -976,6 +1102,8 @@ const resolveBubbles = (
   const moodleStatus: MoodleStatus = override === 'cached' ? 'cached' : 'live'
 
   const resolved: ResolvedBubble[] = bubbles.map((bubble) => {
+    if (bubble.activityId === null)
+      return { bubbleId: bubble.id, availability: 'available', activity: null }
     const module = mockModules.find((item) => item.activityId === bubble.activityId)
 
     let availability: Availability
@@ -1226,6 +1354,10 @@ const impl: CourseMapApi = {
     return mockLaunch(assertion)
   },
 
+  async getMe() {
+    return mockMe()
+  },
+
   async listCourseMaps(params: CourseMapListParams): Promise<CourseMapListResult> {
     const limit = Math.min(params.limit ?? DEFAULT_LIMIT, MAX_LIMIT)
     const offset = params.offset ?? 0
@@ -1398,6 +1530,7 @@ const impl: CourseMapApi = {
     const placementByActivity = new Map<number, { bubbleId: string; mapId: string }>()
     for (const courseMap of courseMaps) {
       for (const bubble of courseMap.bubbles) {
+        if (bubble.activityId === null) continue
         placementByActivity.set(bubble.activityId, { bubbleId: bubble.id, mapId: courseMap.id })
       }
     }
@@ -1428,6 +1561,33 @@ const impl: CourseMapApi = {
 
   async createBubble(courseMapId: string, input: BubbleCreate): Promise<Bubble> {
     const map = requireMap(courseMapId)
+    if ('kind' in input) {
+      // A backend that predates content bubbles does not know the field and
+      // rejects the body for the missing activityId.
+      if (!mockFeatures().contentSupport) {
+        throw businessError(422, 'validation_error', 'Field required: activityId')
+      }
+      checkContent(map, input.content, null)
+      const timestamp = now()
+      const created: Bubble = {
+        id: newId(),
+        courseMapId: map.id,
+        kind: 'content',
+        activityId: null,
+        content: input.content,
+        x: input.x,
+        y: input.y,
+        icon: input.icon ?? null,
+        status: 'no_complete',
+        skinId: null,
+        sequence: map.bubbles.length,
+        version: 1,
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      }
+      replaceMap({ ...map, bubbles: [...map.bubbles, created], updatedAt: timestamp })
+      return wireBubble(created)
+    }
     for (const courseMap of mapsForCourse(map.moodleCourseId)) {
       if (courseMap.bubbles.some((bubble) => bubble.activityId === input.activityId)) {
         throw businessError(
@@ -1457,7 +1617,7 @@ const impl: CourseMapApi = {
       updatedAt: timestamp,
     }
     replaceMap({ ...map, bubbles: [...map.bubbles, bubble], updatedAt: timestamp })
-    return bubble
+    return wireBubble(bubble)
   },
 
   async updateBubble(
@@ -1473,6 +1633,12 @@ const impl: CourseMapApi = {
     const statusOnly = Object.keys(input).every((key) => key === 'status')
     if (!statusOnly) checkIfMatch(ifMatch, current.version, 'currentVersion')
     if ('skinId' in input && input.skinId !== null) requireSkin(input.skinId)
+    if ('content' in input) {
+      if (!isContentBubble(current)) {
+        throw businessError(422, 'not_a_content_bubble', 'Esta burbuja no es de contenido')
+      }
+      checkContent(map, input.content, current.id)
+    }
     const updated: Bubble = {
       ...current,
       ...input,
@@ -1484,7 +1650,7 @@ const impl: CourseMapApi = {
       bubbles: map.bubbles.map((bubble) => (bubble.id === bubbleId ? updated : bubble)),
       updatedAt: updated.updatedAt,
     })
-    return updated
+    return wireBubble(updated)
   },
 
   async deleteBubble(courseMapId: string, bubbleId: string, ifMatch: number): Promise<void> {
@@ -1621,7 +1787,7 @@ const impl: CourseMapApi = {
         'Se alcanzó el límite de almacenamiento de imágenes'
       )
     }
-    if (!ALLOWED_MIME.has(file.type)) {
+    if (!ALLOWED_MIME.has(file.type) || (kind === 'image' && file.type === 'image/avif')) {
       throw businessError(
         422,
         'asset_type_not_allowed',
@@ -1918,6 +2084,7 @@ const seedPublications = async (library: MockAsset[]) => {
   // courses are published so the student view has something to show.
   await createPublication(byTitle('Matemáticas para datos'), null, daysAgo(2))
   await createPublication(byTitle('Historia regional'), 'Lanzamiento del curso', daysAgo(1))
+  await createPublication(byTitle('Taller en construcción'), null, daysAgo(1))
 }
 
 const ready: Promise<void> = (async () => {
