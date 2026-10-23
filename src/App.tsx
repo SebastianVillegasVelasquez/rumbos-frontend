@@ -32,6 +32,10 @@ import { LazyBackgroundPicker } from './features/course-map/components/backgroun
 import { useImageSize } from './features/course-map/components/background/useImageSize.ts'
 import { preferredAspectRatio } from './features/embed/preferredSize.ts'
 import { isContentBubble } from './features/content/contentTypes.ts'
+import { LazyContentViewer } from './features/content/LazyContentViewer.tsx'
+import { learnFromBubbles } from './features/content/contentSupport.ts'
+import { isContentSeen, markContentSeen, shouldAutoOpen } from './features/content/seen.ts'
+import { useWidgetsEnabled } from './features/content/useAuthFeatures.ts'
 import { useChangeBackground } from './features/course-map/components/background/useChangeBackground.ts'
 import { rememberCourseMap } from './features/course-map/data/recentMaps.ts'
 import {
@@ -94,6 +98,7 @@ import {
   useHostCompletionEnabled,
   useHostSupportsActivitySettings,
 } from './features/embed/hostState.ts'
+import { useHostOverlayOpen } from './features/embed/hostOverlay.ts'
 import { RESERVED_CORNER_PX, useHostFullscreen } from './features/embed/hostFullscreen.ts'
 import { useRoute, type Route } from './hooks/useRoute.ts'
 import { Wordmark } from './components/Logo.tsx'
@@ -392,7 +397,59 @@ export function AppShell() {
     [embed]
   )
 
+  // The content bubble open in the viewer. "Seen" lives in localStorage and is
+  // read on every render; the counter only makes opening one re-render.
+  const [openContentId, setOpenContentId] = useState<string | null>(null)
+  const [, setSeenTick] = useState(0)
+  const widgetsEnabled = useWidgetsEnabled()
+  const openContentBubble = openContentId
+    ? (bubbles.find((bubble) => bubble.id === openContentId) ?? null)
+    : null
+
+  const openContent = (bubble: Bubble) => {
+    if (!bubble.content) return
+    setOpenContentId(bubble.id)
+    // The editor looking at the student view is not a student: leave "seen" alone.
+    if (!exitPreview) {
+      markContentSeen(viewerStorage(), bubble.id, bubble.content)
+      setSeenTick((tick) => tick + 1)
+    }
+  }
+
+  // A backend that sends `kind` speaks content bubbles (see contentSupport.ts).
+  useEffect(() => {
+    if (storedRenderable) learnFromBubbles(storedRenderable.bubbles)
+  }, [storedRenderable])
+
+  // First visit: the first unseen auto-open content of a level opens by itself,
+  // once per level visit, for students only (never the editor's own preview).
+  // Derived, not an effect: it is shown until the first close handles the level.
+  const overlayOpen = useHostOverlayOpen()
+  const [autoHandledLevel, setAutoHandledLevel] = useState<string | null>(null)
+  const autoCandidate =
+    immersive && !exitPreview && courseMapId && !overlayOpen && autoHandledLevel !== courseMapId
+      ? ([...bubbles]
+          .sort((a, b) => a.sequence - b.sequence)
+          .find(
+            (bubble) => bubble.content && shouldAutoOpen(viewerStorage(), bubble.id, bubble.content)
+          ) ?? null)
+      : null
+  const shownContentBubble = openContentBubble ?? autoCandidate
+  // An auto-opened content counts as seen once it is closed: marking it while it
+  // is up would make the candidate vanish on the next render.
+  const closeContent = () => {
+    if (shownContentBubble?.content && !exitPreview)
+      markContentSeen(viewerStorage(), shownContentBubble.id, shownContentBubble.content)
+    setOpenContentId(null)
+    setAutoHandledLevel(courseMapId)
+    setSeenTick((tick) => tick + 1)
+  }
+
   const handleBubbleClick = (bubble: Bubble) => {
+    if (isContentBubble(bubble)) {
+      openContent(bubble)
+      return
+    }
     const resolved = resolvedByBubbleId.get(bubble.id)
     const activity =
       resolved?.activity ?? activities.find((a) => a.activityId === bubble.activityId)
@@ -468,6 +525,8 @@ export function AppShell() {
     mode: mapMode,
     availabilityOf: getAvailabilityForBubble,
     activityOf: (bubble) => resolvedByBubbleId.get(bubble.id)?.activity,
+    seenOf: (bubble) =>
+      bubble.content ? isContentSeen(viewerStorage(), bubble.id, bubble.content) : false,
   })
   const nextTarget = immersive
     ? continueTarget(bubbles, mapMode, getAvailabilityForBubble, 'student')
@@ -944,7 +1003,7 @@ export function AppShell() {
                 onOpenLevels={
                   siblingLevels.length > 1 ? () => navigate({ name: 'home' }) : undefined
                 }
-                coachMarks={!exitPreview}
+                coachMarks={!exitPreview && !shownContentBubble}
                 questsOpen={questsOpen}
                 onToggleQuests={toggleQuests}
                 questsPanel={({ compact, bottomOffset }) => (
@@ -997,6 +1056,12 @@ export function AppShell() {
           </div>
         </main>
       </div>
+
+      <LazyContentViewer
+        content={shownContentBubble?.content ?? null}
+        widgetsEnabled={widgetsEnabled}
+        onClose={closeContent}
+      />
 
       <ActivityModal activity={selectedActivity} onClose={() => setSelectedActivity(null)} />
 

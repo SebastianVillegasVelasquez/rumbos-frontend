@@ -342,6 +342,26 @@ export const es = {
     done: 'Entendido',
     skip: 'Omitir',
   },
+  // Content bubbles: information that is not a Moodle activity.
+  content: {
+    infoGroup: 'Información',
+    viewer: {
+      close: 'Cerrar',
+      opensInNewTab: '(se abre en una pestaña nueva)',
+      videoLabel: (title: string) => `Video: ${title}`,
+      playVideo: (provider: 'youtube' | 'vimeo') =>
+        `Reproducir (se cargará desde ${provider === 'youtube' ? 'YouTube' : 'Vimeo'})`,
+      videoFrameTitle: (title: string) => `Video: ${title}`,
+      missingImage: 'No se pudo cargar la imagen.',
+      empty: 'Esta información todavía no tiene contenido.',
+      widgetLabel: 'Contenido interactivo creado por el docente',
+      widgetFrameTitle: (title: string) => `${title} (contenido interactivo)`,
+      widgetDescription: 'Ver descripción',
+      widgetDescriptionHide: 'Ocultar descripción',
+      widgetDisabledTitle: 'Contenido interactivo no disponible',
+      widgetDisabled: 'Este contenido interactivo no está disponible en este momento.',
+    },
+  },
   quests: {
     title: 'Misiones',
     summary: (done: number, total: number, percent: number) => `${done} de ${total} · ${percent}%`,
