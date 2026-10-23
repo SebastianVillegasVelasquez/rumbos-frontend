@@ -29,6 +29,8 @@ import { StudentLevelsChrome } from './features/hud/StudentLevelsChrome.tsx'
 import { WriteSyncHost } from './features/course-map/components/WriteSyncHost.tsx'
 import { PublicationBar } from './features/course-map/components/publication/PublicationBar.tsx'
 import { LazyBackgroundPicker } from './features/course-map/components/background/LazyBackgroundPicker.tsx'
+import { useImageSize } from './features/course-map/components/background/useImageSize.ts'
+import { preferredAspectRatio } from './features/embed/preferredSize.ts'
 import { useChangeBackground } from './features/course-map/components/background/useChangeBackground.ts'
 import { rememberCourseMap } from './features/course-map/data/recentMaps.ts'
 import {
@@ -325,6 +327,16 @@ export function AppShell() {
     [resolvedBubbles]
   )
   const moodleStatus = moodle.resolved?.moodleStatus ?? null
+
+  // Contract v5.5: the ratio the host may size the area to, reported once the
+  // level is on screen and again when the level (or its fit) changes.
+  const backgroundSize = useImageSize(renderable ? resolveImageUrl(renderable.imageUrl) : null)
+  const reportPreferredSize = hostStudentMode ? embed?.reportPreferredSize : undefined
+  const levelFit = renderable?.settings.fit ?? null
+  const aspectRatio = levelFit ? preferredAspectRatio(levelFit, backgroundSize) : null
+  useEffect(() => {
+    if (reportPreferredSize && aspectRatio !== null) reportPreferredSize(aspectRatio)
+  }, [reportPreferredSize, aspectRatio])
 
   // Contract v5.5: a student who would see nothing is sent back to the standard
   // course content by the host. Only the student UI reports, and only once the
