@@ -523,6 +523,9 @@ const createInitialMaps = (): MockMap[] => [
     { activityId: 108, x: 0.75, y: 0.65, status: 'locked' },
   ]),
   seedMap('Ciudadanía digital', 4, [{ activityId: 109, x: 0.4, y: 0.5, status: 'no_complete' }]),
+  // Published with no bubbles: what a student sees when a teacher saved a
+  // level before placing anything (mock host course 5).
+  seedMap('Taller en construcción', 5, []),
 ]
 
 let maps: MockMap[] = createInitialMaps()
@@ -1918,6 +1921,7 @@ const seedPublications = async (library: MockAsset[]) => {
   // courses are published so the student view has something to show.
   await createPublication(byTitle('Matemáticas para datos'), null, daysAgo(2))
   await createPublication(byTitle('Historia regional'), 'Lanzamiento del curso', daysAgo(1))
+  await createPublication(byTitle('Taller en construcción'), null, daysAgo(1))
 }
 
 const ready: Promise<void> = (async () => {
