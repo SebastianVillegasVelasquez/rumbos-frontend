@@ -56,6 +56,9 @@ const config = {
   completionEnabled: 'true' as 'true' | 'false' | 'absent',
   // Contract v5.5: size the frame to the app's preferred aspect ratio.
   followPreferredSize: false,
+  // What the mock backend reports for this tenant (GET /auth/me) and supports.
+  widgets: false,
+  contentSupport: true,
 }
 
 const alias = location.hostname === 'localhost' ? '127.0.0.1' : 'localhost'
@@ -146,6 +149,8 @@ const assertion = () =>
     exp: Math.floor(Date.now() / 1000) + 60,
     ttl: config.tokenTtl,
     tenantDisabled: config.tenantDisabled,
+    widgets: config.widgets,
+    contentSupport: config.contentSupport,
   })
 
 const send = (message: Record<string, unknown>) => {
@@ -371,6 +376,20 @@ const buildControls = () => {
     labelled(
       'tenant disabled',
       checkbox(config.tenantDisabled, (value) => (config.tenantDisabled = value))
+    ),
+    labelled(
+      'widgets enabled for the tenant',
+      checkbox(config.widgets, (value) => {
+        config.widgets = value
+        mountFrame()
+      })
+    ),
+    labelled(
+      'backend supports content bubbles',
+      checkbox(config.contentSupport, (value) => {
+        config.contentSupport = value
+        mountFrame()
+      })
     ),
     labelled(
       'backend knows another host',

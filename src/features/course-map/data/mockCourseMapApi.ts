@@ -416,6 +416,8 @@ const seedMap = (
     moodleSectionId?: number | null
     position?: number
     mode?: MapSettings['mode']
+    // Content bubbles, after the activity ones.
+    content?: ReadonlyArray<{ x: number; y: number; content: Content }>
     // Bindings refer to bubbles by their index in `bubbleSpecs`.
     view3d?: {
       scene: string
@@ -432,6 +434,19 @@ const seedMap = (
   const timestamp = now()
   const id = newId()
   const bubbles = bubbleSpecs.map((spec, index) => seedBubble(id, timestamp, index, spec))
+  for (const item of options.content ?? []) {
+    bubbles.push({
+      ...seedBubble(id, timestamp, bubbles.length, {
+        activityId: 0,
+        x: item.x,
+        y: item.y,
+        status: 'no_complete',
+      }),
+      kind: 'content',
+      activityId: null,
+      content: item.content,
+    })
+  }
   return {
     id,
     title,
@@ -474,7 +489,51 @@ const createInitialMaps = (): MockMap[] => [
       { activityId: 102, x: 0.5, y: 0.45, status: 'complete' },
       { activityId: 103, x: 0.82, y: 0.6, status: 'in_progress' },
     ],
-    { moodleSectionId: 1, position: 0, mode: 'explorative' }
+    {
+      moodleSectionId: 1,
+      position: 0,
+      mode: 'explorative',
+      content: [
+        {
+          x: 0.08,
+          y: 0.2,
+          content: {
+            type: 'blocks',
+            title: 'Bienvenida al curso',
+            autoOpen: 'first_visit',
+            body: {
+              schemaVersion: 1,
+              blocks: [
+                { type: 'heading', text: 'Antes de empezar', level: 2 },
+                {
+                  type: 'paragraph',
+                  text: 'Este curso se recorre como un mapa.\nAbre las burbujas en el orden que prefieras.',
+                },
+                {
+                  type: 'video',
+                  provider: 'youtube',
+                  videoId: 'dQw4w9WgXcQ',
+                  title: 'Presentación del curso',
+                },
+                { type: 'divider' },
+                { type: 'link', text: 'Guía del estudiante', url: 'https://example.org/guia' },
+              ],
+            },
+          },
+        },
+        {
+          x: 0.92,
+          y: 0.2,
+          content: {
+            type: 'widget',
+            title: 'Juego de memoria',
+            autoOpen: 'never',
+            altText: 'Un contador de clics para practicar; no es necesario para avanzar.',
+            html: '<main style="font:16px system-ui;padding:12px"><h1>Contador</h1><p id="n">0</p><button id="b">Sumar</button> <button id="c">Cerrar</button></main><script>var n=0;document.getElementById("b").onclick=function(){n++;document.getElementById("n").textContent=n};document.getElementById("c").onclick=function(){rumbos.close()};rumbos.setHeight(220)</script>',
+          },
+        },
+      ],
+    }
   ),
   seedMap(
     'Fundamentos de programación — Nivel 2',
