@@ -4,6 +4,8 @@
 // If-Match), an asset library. Contract v2: several maps ("levels") per course, map settings/appearance,
 // procedural and image skins, and an asset store for backgrounds/bubble art.
 
+import type { BubbleKind, Content } from '../../content/contentTypes.ts'
+
 export type BubbleStatus = 'locked' | 'no_complete' | 'in_progress' | 'complete'
 
 export type BubbleIcon =
@@ -12,7 +14,11 @@ export type BubbleIcon =
 export interface Bubble {
   id: string
   courseMapId: string
-  activityId: number
+  // Absent on a backend that predates content bubbles: an activity bubble.
+  kind?: BubbleKind
+  // The Moodle cmid; null for a content bubble.
+  activityId: number | null
+  content?: Content | null
   x: number
   y: number
   icon: BubbleIcon | null
@@ -31,7 +37,7 @@ export interface Bubble {
 // renderer serve editors and students.
 export type RenderableBubble = Pick<
   Bubble,
-  'id' | 'activityId' | 'x' | 'y' | 'icon' | 'skinId' | 'sequence' | 'status'
+  'id' | 'kind' | 'activityId' | 'content' | 'x' | 'y' | 'icon' | 'skinId' | 'sequence' | 'status'
 > & {
   // False when Moodle does not track the activity's completion (embed mode,
   // completion "none"): it can never become complete, so it is neither "next"
@@ -250,12 +256,9 @@ export interface CourseMapCreate {
   moodleSectionId?: number
 }
 
-export interface BubbleCreate {
-  activityId: number
-  x: number
-  y: number
-  icon?: BubbleIcon
-}
+export type BubbleCreate =
+  | { activityId: number; x: number; y: number; icon?: BubbleIcon }
+  | { kind: 'content'; content: Content; x: number; y: number; icon?: BubbleIcon }
 
 // Partial update. x and y always travel together, and every field is non-null
 // except icon/skinId, where null clears the override. `sequence` only
@@ -265,6 +268,8 @@ export type BubbleUpdate =
   | { icon: BubbleIcon | null }
   | { status: BubbleStatus }
   | { skinId: string | null }
+  // Content bubbles only; guarded like every other content edit.
+  | { content: Content }
 
 export interface ReorderBubblesInput {
   bubbleIds: string[]
@@ -379,7 +384,7 @@ export interface SkinListResult {
 
 // ---- Assets -----------------------------------------------------------------
 
-export type ImageAssetKind = 'background' | 'bubble'
+export type ImageAssetKind = 'background' | 'bubble' | 'image'
 
 // Contract: audio assets (background music). Their `url` is "/assets/{id}" and
 // supports HTTP Range requests (iOS Safari will not play audio without them).
@@ -473,6 +478,8 @@ export interface PublicationChanges {
   view3dChanged: boolean
   // Absent on a backend that predates audio.
   audioChanged?: boolean
+  // Absent on a backend that predates content bubbles.
+  contentChanged?: boolean
   bubblesAdded: number
   bubblesRemoved: number
   bubblesMoved: number
@@ -548,7 +555,9 @@ export interface PublishedSkin {
 
 export interface PublishedBubble {
   id: string
-  activityId: number
+  kind?: BubbleKind
+  activityId: number | null
+  content?: Content | null
   x: number
   y: number
   icon: BubbleIcon | null
@@ -590,6 +599,13 @@ export interface LaunchResult {
   role: AuthRole
   courseId: number
   hostOrigin: string
+}
+
+// GET /auth/me. `features` is absent on a backend that predates it: no widgets.
+export interface AuthMe {
+  role: AuthRole
+  courseId: number
+  features?: { widgets?: boolean }
 }
 
 // ---- Errors -----------------------------------------------------------------

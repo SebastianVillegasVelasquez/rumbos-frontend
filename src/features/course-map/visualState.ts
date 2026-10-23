@@ -33,6 +33,8 @@ export interface DeriveVisualStateInput {
   // (see nextIncompleteSequence below) and passed in, so this function
   // stays pure and doesn't need the whole bubble list.
   nextIncompleteSequence: number | null
+  // A content bubble: informational, always open, outside the sequence.
+  informational?: boolean
 }
 
 // TODO(moodle-restrictions): "locked" for later guided-mode bubbles is a
@@ -42,6 +44,7 @@ export function deriveVisualState(input: DeriveVisualStateInput): VisualState {
   const { status, sequence, mode, availability, view, nextIncompleteSequence } = input
   const tracked = input.tracked !== false
 
+  if (input.informational) return 'available'
   if (availability === 'missing') return 'missing'
   if (availability === 'hidden' && view === 'student') return 'teaser'
   if (availability === 'unknown') return 'unknown'

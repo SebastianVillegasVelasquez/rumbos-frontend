@@ -1,4 +1,5 @@
 import type { Availability, MapMode, RenderableBubble } from './data/types.ts'
+import { isContentBubble } from '../content/contentTypes.ts'
 import { countsTowardProgress } from './progress.ts'
 import { deriveVisualState, nextIncompleteSequence, type MapView } from './visualState.ts'
 
@@ -20,6 +21,7 @@ export const continueTarget = (
   const candidates = [...bubbles]
     .sort((a, b) => a.sequence - b.sequence)
     .filter((bubble) => {
+      if (isContentBubble(bubble)) return false
       const state = deriveVisualState({
         status: bubble.status,
         sequence: bubble.sequence,

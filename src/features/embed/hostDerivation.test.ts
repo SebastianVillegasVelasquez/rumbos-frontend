@@ -60,7 +60,7 @@ const visual = (
     status: status.status,
     sequence: status.sequence,
     mode,
-    availability: availabilityFor(index, target.activityId),
+    availability: availabilityFor(index, target.activityId as number),
     view,
     nextIncompleteSequence: incomplete.length ? Math.min(...incomplete) : null,
   })

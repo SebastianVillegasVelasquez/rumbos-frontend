@@ -1,9 +1,9 @@
 import type { Ref } from 'react'
 import type { DesignSize } from '../coordinates.ts'
+import type { RenderIconKey } from '../icons.ts'
 import type {
   Activity,
   Availability,
-  Bubble,
   RenderableBubble,
   BubbleUpdate,
   MapFit,
@@ -28,7 +28,7 @@ export interface BubbleVisualProps {
   designSize: DesignSize
   visualState: VisualState
   skin: Skin['config']
-  icon?: Bubble['icon']
+  icon?: RenderIconKey | null
   label?: string
   draggable?: boolean
   onClick?: () => void

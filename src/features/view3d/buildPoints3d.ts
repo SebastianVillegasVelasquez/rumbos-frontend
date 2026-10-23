@@ -6,6 +6,7 @@ import {
   type MapView,
   type VisualState,
 } from '../course-map/visualState.ts'
+import { isContentBubble } from '../content/contentTypes.ts'
 import { countsTowardProgress } from '../course-map/progress.ts'
 import type { Locale3d, PinState, Point3D } from './protocol.ts'
 
@@ -50,12 +51,15 @@ export const buildPoints3d = (
       availability: item?.availability,
       view,
       tracked: bubble.tracked,
+      informational: isContentBubble(bubble),
       nextIncompleteSequence: nextSequence,
     })
     points.push({
       id: bubble.id,
       zoneId: binding.zoneId,
-      title: pickText(binding.title, locale) ?? (item?.activity?.name.trim() || null),
+      title:
+        pickText(binding.title, locale) ??
+        (item?.activity?.name.trim() || bubble.content?.title.trim() || null),
       description: pickText(binding.description, locale),
       state: pinStateFor(visual),
     })

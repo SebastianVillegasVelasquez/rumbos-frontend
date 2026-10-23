@@ -21,6 +21,18 @@ describe('asset limits', () => {
     assert.equal(checkFileBasics({ type: 'image/webp', size: 1024 }, 'bubble'), null)
   })
 
+  it('keeps content pictures to PNG, JPEG and WebP up to 4 MB and 2048 px', () => {
+    assert.equal(checkFileBasics({ type: 'image/avif', size: 1024 }, 'image'), 'notImage')
+    assert.equal(checkFileBasics({ type: 'image/avif', size: 1024 }, 'background'), null)
+    assert.equal(checkFileBasics({ type: 'image/jpeg', size: 4 * 1024 * 1024 }, 'image'), null)
+    assert.equal(
+      checkFileBasics({ type: 'image/jpeg', size: 4 * 1024 * 1024 + 1 }, 'image'),
+      'tooLarge'
+    )
+    assert.equal(checkDimensions(2048, 2048, 'image'), null)
+    assert.equal(checkDimensions(2049, 10, 'image'), 'tooBig')
+  })
+
   it('rejects dimensions beyond the per-kind maximum', () => {
     assert.equal(checkDimensions(8192, 4000, 'background'), null)
     assert.equal(checkDimensions(8193, 100, 'background'), 'tooBig')

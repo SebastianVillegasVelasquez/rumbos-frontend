@@ -5,6 +5,7 @@ import type {
   RenderableBubble,
   ResolvedBubble,
 } from '../course-map/data/types.ts'
+import { isContentBubble } from '../content/contentTypes.ts'
 import type { CourseState, HostActivity, HostSection } from './protocol.ts'
 
 // The shared status-derivation rule (contract v5), applied to the host's
@@ -65,6 +66,8 @@ export const applyHostStatus = (
   bubbles: RenderableBubble[]
 ): RenderableBubble[] =>
   bubbles.map((bubble) => {
+    // Content has no Moodle activity behind it: nothing to derive.
+    if (bubble.activityId === null || isContentBubble(bubble)) return bubble
     const host = index.activities.get(bubble.activityId)
     const status = statusFor(host)
     const tracked = isTrackedFor(host)
@@ -114,6 +117,8 @@ export const resolveHostBubbles = (
   showHidden: boolean
 ): ResolvedBubble[] =>
   bubbles.map((bubble) => {
+    if (bubble.activityId === null || isContentBubble(bubble))
+      return { bubbleId: bubble.id, availability: 'available', activity: null }
     const availability = availabilityFor(index, bubble.activityId)
     const host = index.activities.get(bubble.activityId)
     const visible = host && (availability !== 'hidden' || showHidden) && availability !== 'missing'

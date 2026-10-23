@@ -31,6 +31,7 @@ import { PublicationBar } from './features/course-map/components/publication/Pub
 import { LazyBackgroundPicker } from './features/course-map/components/background/LazyBackgroundPicker.tsx'
 import { useImageSize } from './features/course-map/components/background/useImageSize.ts'
 import { preferredAspectRatio } from './features/embed/preferredSize.ts'
+import { isContentBubble } from './features/content/contentTypes.ts'
 import { useChangeBackground } from './features/course-map/components/background/useChangeBackground.ts'
 import { rememberCourseMap } from './features/course-map/data/recentMaps.ts'
 import {
@@ -404,6 +405,7 @@ export function AppShell() {
   // list" heuristic with the precise available/hidden/missing/unknown states
   // from the backend.
   const getUnavailableReason = (bubble: Bubble): string | null => {
+    if (isContentBubble(bubble)) return null
     if (moodle.resolvedPending) return es.bubble.loadingActivity
     if (moodle.resolvedError) return es.bubble.activitiesUnavailable
     const resolved = resolvedByBubbleId.get(bubble.id)
@@ -419,8 +421,9 @@ export function AppShell() {
     return null
   }
 
+  // Content is information: always there, whatever Moodle says.
   const getAvailabilityForBubble = (bubble: Bubble) =>
-    resolvedByBubbleId.get(bubble.id)?.availability
+    isContentBubble(bubble) ? 'available' : resolvedByBubbleId.get(bubble.id)?.availability
   useCompletionNotices({
     levelKey: courseMapId,
     ready: !moodle.resolvedPending && !moodle.resolvedError,
@@ -541,8 +544,10 @@ export function AppShell() {
         : null,
     [immersive, resumeCourseId, resumeMapId]
   )
-  const getModname = (bubble: { activityId: number }) =>
-    activities.find((a) => a.activityId === bubble.activityId)?.modname
+  const getModname = (bubble: { activityId: number | null }) =>
+    bubble.activityId === null
+      ? undefined
+      : activities.find((a) => a.activityId === bubble.activityId)?.modname
 
   const handleSelectBubbleFromOverview = (bubble: Bubble) => {
     setIsActivitiesOverviewOpen(false)
@@ -640,7 +645,11 @@ export function AppShell() {
           touchGuard={Boolean(embed)}
           controlsRef={mapControlsRef}
           onConfigureCompletion={
-            configureCompletion ? (bubble) => configureCompletion(bubble.activityId) : undefined
+            configureCompletion
+              ? (bubble) => {
+                  if (bubble.activityId !== null) configureCompletion(bubble.activityId)
+                }
+              : undefined
           }
           hideControls={immersive}
           compactGuard={layout?.guardCompact}

@@ -11,7 +11,11 @@ import type { RenderableBubble } from './data/types.ts'
 export type CompletionSnapshot = ReadonlyMap<number, boolean>
 
 export const snapshotOf = (bubbles: readonly RenderableBubble[]): CompletionSnapshot =>
-  new Map(bubbles.map((bubble) => [bubble.activityId, bubble.status === 'complete']))
+  new Map(
+    bubbles.flatMap((bubble) =>
+      bubble.activityId === null ? [] : [[bubble.activityId, bubble.status === 'complete'] as const]
+    )
+  )
 
 // The activities that just went from not complete to complete. `previous` is
 // null for the first state, which only establishes the baseline.

@@ -107,7 +107,9 @@ export const View3dTab = ({ courseMap, activities, onPreview }: View3dTabProps) 
   )
   const bubbleName = (bubbleId: string) => {
     const bubble = bubbles.find((item) => item.id === bubbleId)
-    return bubble ? (activityNames.get(bubble.activityId) ?? `#${bubble.activityId}`) : bubbleId
+    if (!bubble) return bubbleId
+    if (bubble.activityId === null) return bubble.content?.title ?? bubbleId
+    return activityNames.get(bubble.activityId) ?? `#${bubble.activityId}`
   }
 
   const dirty = isDirty(effective, baseline)

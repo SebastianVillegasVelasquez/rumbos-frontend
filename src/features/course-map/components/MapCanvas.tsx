@@ -15,7 +15,8 @@ import { useViewportController } from '../viewport/useViewportController.ts'
 import { sharedTicker } from '../viewport/ticker.ts'
 import BubbleVisual from './BubbleVisual.tsx'
 import { IconPickerPopover } from './IconPickerPopover.tsx'
-import { defaultIconForModname, type IconKey } from '../icons.ts'
+import { defaultIconForModname, type IconKey, type RenderIconKey } from '../icons.ts'
+import { isContentBubble } from '../../content/contentTypes.ts'
 import { deriveVisualState, nextIncompleteSequence, type VisualState } from '../visualState.ts'
 import { countsTowardProgress, progressCounts } from '../progress.ts'
 import { resolveSkin } from '../resolveSkin.ts'
@@ -177,18 +178,29 @@ export const MapCanvas = ({
           availability: getAvailability?.(bubble),
           view,
           tracked: bubble.tracked,
+          informational: isContentBubble(bubble),
           nextIncompleteSequence: nextSequence,
         })
       ),
     [sortedBubbles, mapMode, getAvailability, view, nextSequence]
   )
+  // The path joins activities in order; content bubbles are information and sit
+  // beside it.
+  const pathIndexes = useMemo(
+    () => sortedBubbles.flatMap((bubble, i) => (isContentBubble(bubble) ? [] : [i])),
+    [sortedBubbles]
+  )
+  const pathVisualStates = useMemo(
+    () => pathIndexes.map((i) => sortedVisualStates[i]),
+    [pathIndexes, sortedVisualStates]
+  )
   const pathPoints = useMemo(
     () =>
-      sortedBubbles.flatMap((bubble) => {
-        const p = toDesignSpace({ x: bubble.x, y: bubble.y }, designSize)
+      pathIndexes.flatMap((i) => {
+        const p = toDesignSpace({ x: sortedBubbles[i].x, y: sortedBubbles[i].y }, designSize)
         return [p.x, p.y]
       }),
-    [sortedBubbles, designSize]
+    [pathIndexes, sortedBubbles, designSize]
   )
   const visualStateById = useMemo(
     () => new Map(sortedBubbles.map((bubble, i) => [bubble.id, sortedVisualStates[i]])),
@@ -363,7 +375,7 @@ export const MapCanvas = ({
       return
     }
 
-    const targetT = travelerTargetT(sortedVisualStates)
+    const targetT = travelerTargetT(pathVisualStates)
     const showTraveler = tier === 'high' && targetT !== null && pathPoints.length >= 4
 
     const unsubscribe = sharedTicker.subscribe(stage, (frame) => {
@@ -385,7 +397,7 @@ export const MapCanvas = ({
       }
     })
     return unsubscribe
-  }, [pathSettings.animated, tier, sortedVisualStates, pathPoints])
+  }, [pathSettings.animated, tier, pathVisualStates, pathPoints])
 
   // Single owner of wheel/pointer/touch/keyboard input, all funneled
   // through the viewport controller - see viewport/useViewportController.ts.
@@ -576,8 +588,9 @@ export const MapCanvas = ({
 
   const unavailableReasonFor = (bubble: BubbleModel) =>
     editable ? null : (getUnavailableReason?.(bubble) ?? null)
-  const iconFor = (bubble: BubbleModel): IconKey | undefined => {
+  const iconFor = (bubble: BubbleModel): RenderIconKey | undefined => {
     if (bubble.icon) return bubble.icon
+    if (isContentBubble(bubble)) return 'info'
     const modname = getModnameForBubble?.(bubble)
     return modname ? defaultIconForModname(modname) : undefined
   }
@@ -726,14 +739,14 @@ export const MapCanvas = ({
                   lineJoin="round"
                   opacity={0.55}
                 />
-                {sortedVisualStates.some(
-                  (state, i) => i > 0 && isSegmentComplete(sortedVisualStates[i - 1], state)
+                {pathVisualStates.some(
+                  (state, i) => i > 0 && isSegmentComplete(pathVisualStates[i - 1], state)
                 ) && (
                   <Line
                     ref={completedPathRef}
                     points={pathPoints.slice(
                       0,
-                      (sortedVisualStates.findLastIndex((state) => state === 'complete') + 1) * 2
+                      (pathVisualStates.findLastIndex((state) => state === 'complete') + 1) * 2
                     )}
                     stroke={pathSettings.color ?? '#2fbf71'}
                     strokeWidth={4}
@@ -775,7 +788,7 @@ export const MapCanvas = ({
                   visualState={visualState}
                   skin={skin}
                   icon={iconFor(bubble)}
-                  label={getResolvedActivity?.(bubble)?.name}
+                  label={getResolvedActivity?.(bubble)?.name ?? bubble.content?.title}
                   draggable={editable}
                   warning={
                     editable && bubble.tracked === false && getAvailability?.(bubble) !== 'missing'

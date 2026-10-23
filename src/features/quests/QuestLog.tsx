@@ -7,6 +7,7 @@ import {
   CircleCheck,
   CircleDashed,
   Clock,
+  Info,
   Lock,
   MapPin,
   RotateCcw,
@@ -42,6 +43,8 @@ const ICON: Record<VisualState, LucideIcon> = {
 
 const statusLine = (entry: QuestEntry) => {
   if (entry.group === 'next') return es.quests.status.next
+  if (entry.group === 'info')
+    return entry.seen ? es.quests.status.infoSeen : es.quests.status.infoNew
   if (entry.state === 'teaser') return es.quests.status.upcoming
   if (entry.state === 'locked') return entry.info ?? es.quests.status.locked
   return es.quests.status[entry.state]
@@ -229,7 +232,12 @@ export const QuestLog = ({
             </h3>
             <ul className="space-y-1">
               {groups[group].map((entry) => {
-                const Icon = entry.group === 'next' ? ICON.next : ICON[entry.state]
+                const Icon =
+                  entry.group === 'info'
+                    ? Info
+                    : entry.group === 'next'
+                      ? ICON.next
+                      : ICON[entry.state]
                 const name =
                   entry.state === 'teaser'
                     ? es.quests.upcomingName
@@ -245,7 +253,7 @@ export const QuestLog = ({
                       aria-label={es.quests.focusAria(name, status)}
                       className={`flex min-h-[44px] min-w-0 flex-1 items-start gap-3 rounded-md px-3 py-2 text-left hover:bg-primary-tint ${
                         active ? 'border-soft bg-primary-tint' : 'border-hair bg-surface-muted'
-                      }`}
+                      } ${entry.seen ? 'opacity-70' : ''}`}
                     >
                       <Icon size={20} strokeWidth={2.5} aria-hidden className="mt-0.5 shrink-0" />
                       <span className="min-w-0">

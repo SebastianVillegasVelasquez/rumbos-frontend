@@ -5,7 +5,7 @@ import { Input } from '../../../../components/ui/Input.tsx'
 import { es } from '../../../../i18n/es.ts'
 import {
   ASSET_LIMITS,
-  ALLOWED_IMAGE_MIME,
+  allowedMimeFor,
   CREDIT_MAX_LENGTH,
   TITLE_MAX_LENGTH,
   checkDimensions,
@@ -180,7 +180,7 @@ export const AssetUploader = ({ kind, onUploaded }: AssetUploaderProps) => {
         <input
           ref={inputRef}
           type="file"
-          accept={ALLOWED_IMAGE_MIME.join(',')}
+          accept={allowedMimeFor(kind).join(',')}
           className="sr-only"
           tabIndex={-1}
           aria-label={es.background.upload.browse}

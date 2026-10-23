@@ -32,7 +32,7 @@ interface BackgroundPickerProps {
   // only applies on confirmation. Without one (creating a level) the choice
   // is returned straight away.
   map?: RenderableMap
-  getModnameForBubble?: (bubble: { activityId: number }) => string | undefined
+  getModnameForBubble?: (bubble: { activityId: number | null }) => string | undefined
   onApply?: (imageUrl: string, previousImageUrl: string) => Promise<ChangeBackgroundResult>
   onChoose?: (choice: { imageUrl: string; label: string }) => void
 }

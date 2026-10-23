@@ -19,6 +19,7 @@ import type {
   CourseMapPatch,
   CourseMapSummary,
   DraftReplaceResult,
+  AuthMe,
   LaunchResult,
   PublicationListResult,
   PublicationState,
@@ -46,6 +47,8 @@ export interface CourseMapApi {
   // Embed mode: exchanges the host's launch assertion for a bearer token. The
   // only call made without one.
   launch(assertion: string): Promise<LaunchResult>
+  // Who the token is and which optional backend features it may use.
+  getMe(): Promise<AuthMe>
   listCourseMaps(params: CourseMapListParams): Promise<CourseMapListResult>
   createCourseMap(input: CourseMapCreate): Promise<CourseMapSummary>
   getCourseMap(courseMapId: string): Promise<CourseMapDetail>
@@ -134,6 +137,8 @@ export const moodleFromBackend = <T>(request: () => Promise<T>): Promise<T> =>
 export const realCourseMapApi: CourseMapApi = {
   launch: (assertion) =>
     apiRequest('/auth/launch', { method: 'POST', body: { assertion }, auth: false }),
+
+  getMe: () => apiRequest('/auth/me'),
 
   listCourseMaps: (params) =>
     apiRequest(
