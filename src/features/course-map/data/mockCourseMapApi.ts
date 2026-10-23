@@ -650,6 +650,14 @@ const checkContent = (map: MockMap, content: Content, replacing: string | null) 
   }
 }
 
+// A backend that predates content bubbles has none to send.
+const wireBubbles = <T extends { kind?: Bubble['kind']; content?: Bubble['content'] }>(
+  bubbles: readonly T[]
+): T[] =>
+  (mockFeatures().contentSupport ? [...bubbles] : bubbles.filter((b) => !isContentBubble(b))).map(
+    wireBubble
+  )
+
 // The shape of a bubble on the wire: a backend that predates content bubbles
 // sends neither `kind` nor `content`.
 const wireBubble = <T extends { kind?: Bubble['kind']; content?: Bubble['content'] }>(
@@ -984,7 +992,7 @@ const toRead = (map: MockMap): CourseMapRead => ({
   skinRules: map.skinRules,
   view3d: map.view3d,
   audioInfo: audioInfoOf(map.settings),
-  bubbles: map.bubbles.map(wireBubble),
+  bubbles: wireBubbles(map.bubbles),
   revision: map.revision,
   createdAt: map.createdAt,
   updatedAt: map.updatedAt,
@@ -1035,8 +1043,11 @@ const toPublishedRead = (map: MockMap, publication: MockPublication): PublishedM
   view3d: publication.snapshot.view3d ?? null,
   audioInfo: audioInfoOf(publication.snapshot.settings),
   skins: publication.snapshot.skins,
-  bubbles: publication.snapshot.bubbles.map((bubble) =>
-    wireBubble({ ...bubble, status: liveStatus(map, publication, bubble.id) })
+  bubbles: wireBubbles(
+    publication.snapshot.bubbles.map((bubble) => ({
+      ...bubble,
+      status: liveStatus(map, publication, bubble.id),
+    }))
   ),
   publicationNumber: publication.number,
   publishedAt: publication.createdAt,
