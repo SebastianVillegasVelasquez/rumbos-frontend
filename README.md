@@ -68,6 +68,17 @@ Continuar, first-run coach marks, a data saver and optional map music. See
 `pnpm check:budget` (after `pnpm build`) fails if the embed student initial JavaScript passes
 350 KB gzipped.
 
+## Content bubbles
+
+Bubbles that are not Moodle activities, such as an introduction: informational, never counted
+in progress, never "next", listed under "Información" in Misiones. Two kinds: **blocks**
+(heading, paragraph, image, video, link, divider, stored as data and rendered as semantic HTML)
+and **widgets** (author-written HTML, CSS and JavaScript, only for tenants that enable them,
+only inside a strict sandbox). See [`docs/WIDGET-SANDBOX.md`](docs/WIDGET-SANDBOX.md),
+[`docs/EMBED.md`](docs/EMBED.md) (contract v5.5) and the decision log. The mock host has
+scenarios for all of it (courses 4 and 5 for the never-empty states, switches for widgets and
+for a backend without content support); `mock-host/widget-test.html` runs the hostile widget.
+
 ## 3D view
 
 A level can have an optional **3D view**: a hand-authored three.js world,

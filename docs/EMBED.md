@@ -55,6 +55,8 @@ an explicit `targetOrigin` (never `"*"`).
 | host → app | `{ type: "rumbos:host-overlay", open }` (v5.3)                           | An activity popup opened/closed above the app (see below).     |
 | app → host | `{ type: "rumbos:open-activity-settings", cmid }` (v5.4)                 | Editor only: open the activity's settings page in a new tab.   |
 | host → app | `{ type: "rumbos:host-fullscreen", on }`                                 | The iframe is (or stopped being) expanded. The app follows it. |
+| app → host | `{ type: "rumbos:no-content", reason }` (v5.5)                           | A student has nothing to see; show the standard course page.   |
+| app → host | `{ type: "rumbos:preferred-size", aspectRatio }` (v5.5)                  | The width / height the area would like (0.5 to 4).             |
 
 `rumbos:error` codes: `not_embedded`, `invalid_host`, `handshake_timeout`,
 `launch_invalid`, `tenant_disabled`, `origin_mismatch`, `course_mismatch`,
@@ -276,6 +278,33 @@ endpoints 501, replayed assertions 401).
   not dropped. After `host-overlay { open: false }` the app waits 1.5 s for the host's own
   refresh and asks once if none arrived.
 
+## Contract v5.5
+
+Both messages are additive and always `v: 1`; a host that does not know them ignores
+them, so the area simply keeps the size and content it had.
+
+- **`no-content { reason }`**: `"no_saved_map"` (the course has no saved level, or the
+  opened level was never saved) or `"empty_map"` (the course's only level has no
+  bubbles). Sent once per reason, only after the data has loaded (never while loading
+  or when a request failed), and only by the student UI. An editor in editing mode never
+  sends it: they see the editor and its call to action. A teacher viewing the course as a
+  student also sends it, and still sees "Aún no hay un mapa guardado. Activa la edición
+  del curso para configurarlo." in the app. A level that is empty among several shows a
+  message in the app instead, because one empty level is not the whole course.
+- **`preferred-size { aspectRatio }`**: width / height, clamped to 0.5..4 on the wire.
+  Sent by the student UI once the level is open (for the fit modes that show the whole
+  image, the background's ratio; for `original`, the large explorable canvas, 16/9), and
+  again when the level changes. Never twice with the same value. The app lays out for any
+  height the host gives it.
+
+### Content bubbles
+
+Content bubbles are not Moodle activities, so nothing about them crosses the host
+boundary: opening and closing the viewer sends no message, and the viewer is a modal
+inside the app, not the host overlay. A video loads nothing from YouTube or Vimeo until
+the student presses "Reproducir"; links open in a new tab with `noopener noreferrer`.
+Widgets run in a sandboxed frame, see [`WIDGET-SANDBOX.md`](WIDGET-SANDBOX.md).
+
 ## Testing by hand (needs real devices)
 
 Automated and mock-host checks cover the protocol, derivation and access matrix.
@@ -292,6 +321,37 @@ These need a human on real hardware, inside a real Moodle page:
   under a cross-origin Moodle page, and the real CORS / `Authorization` header.
 - The real assertion (RS256), `hostOrigin` registration and token expiry against the
   real backend; completion changes made in Moodle showing up on return.
+
+### Added by content bubbles and never-empty states (v5.5)
+
+On an iPhone with Safari, a mid-range Android, and inside a real Moodle:
+
+- **The plugin handles `no-content`:** a course with no saved level, and one whose only
+  level is empty, both fall back to the standard course content and do not flash the
+  empty app first. Check the fallback does not loop when the teacher saves a level.
+- **The plugin handles `preferred-size`:** the area follows it on a phone in portrait and
+  landscape and on desktop, never below a sensible minimum, without a layout jump on every
+  level change (the app sends it again when the level changes).
+- **A content bubble on a phone:** the viewer is usable with one thumb (close button
+  reachable, long text scrolls inside the dialog, the on-screen keyboard is not involved),
+  Escape/back behaviour, VoiceOver and TalkBack read the title, the blocks in order and
+  the alt text, focus returns where it came from.
+- **Video click-to-load on real networks:** nothing from YouTube or Vimeo loads before
+  the tap (check the network panel or a content blocker), the video plays inside the
+  frame, and fullscreen from the player works on iOS. The app's `Referrer-Policy:
+no-referrer` on `/embed` is overridden for the player by the iframe's own
+  `referrerpolicy`; YouTube refuses some embeds without a referrer, so check a real one.
+- **Images** from the asset store (PNG, JPEG, WebP up to 2048 px) load on a slow
+  connection, lazily, with alt text; an image that fails shows its alt text.
+- **First-visit auto-open** happens once, before the coach marks, and not again after a
+  reload (localStorage in the iframe; check Safari's cross-site storage partitioning in a
+  real Moodle, where it may forget between visits).
+- **Widgets (only on a tenant that enables them):** run the hostile widget from
+  `mock-host/widget-test.html` in Safari on macOS and iOS and in Firefox, and a real
+  widget inside the real plugin page; check `close()` and `setHeight()`, the visible label,
+  and "Ver descripción" with a screen reader. A tenant that turns widgets off shows the
+  neutral message.
+- **A backend that predates content bubbles** shows no editor entry and no content bubbles.
 
 ### Added by the immersive HUD work (v5.4 and the student stage)
 
