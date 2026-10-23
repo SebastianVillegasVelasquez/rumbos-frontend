@@ -326,6 +326,24 @@ export function AppShell() {
   )
   const moodleStatus = moodle.resolved?.moodleStatus ?? null
 
+  // Contract v5.5: a student who would see nothing is sent back to the standard
+  // course content by the host. Only the student UI reports, and only once the
+  // data is in (a failed or pending query says nothing about emptiness).
+  const reportNoContent = hostStudentMode ? embed?.reportNoContent : undefined
+  const levelNotSaved =
+    showPublished && publishedQuery.error instanceof ApiError && publishedQuery.error.status === 404
+  // With several levels, one empty level is not the course's whole content: the
+  // student is told in the app and can go to another level.
+  const onlyLevelIsEmpty =
+    renderable !== null && bubbles.length === 0 && !publishedSiblingsQuery.isPending
+      ? siblingLevels.length <= 1
+      : false
+  useEffect(() => {
+    if (!reportNoContent) return
+    if (levelNotSaved) reportNoContent('no_saved_map')
+    else if (onlyLevelIsEmpty) reportNoContent('empty_map')
+  }, [reportNoContent, levelNotSaved, onlyLevelIsEmpty])
+
   const isSaving = updateBubble.isPending || createBubble.isPending || deleteBubble.isPending
 
   // A write the user was already told about (conflict dialog / toast) is not
@@ -568,6 +586,18 @@ export function AppShell() {
           <p className="text-sm text-coral-dark">{es.app.courseMapLoadError}</p>
           <Button variant="secondary" onClick={() => void mapQuery.refetch()}>
             {es.app.retry}
+          </Button>
+        </div>
+      )
+    }
+
+    if (hostStudentMode && bubbles.length === 0 && siblingLevels.length > 1) {
+      return (
+        <div className="space-y-3 p-4" role="status">
+          <p className="font-heading text-lg font-semibold text-ink">{es.student.emptyLevel}</p>
+          <p className="text-sm text-ink-soft">{es.student.emptyLevelHint}</p>
+          <Button variant="secondary" onClick={() => navigate({ name: 'home' })}>
+            {es.app.backToHome}
           </Button>
         </div>
       )

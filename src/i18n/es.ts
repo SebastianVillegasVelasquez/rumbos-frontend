@@ -620,6 +620,8 @@ export const es = {
   student: {
     levelUnavailable: 'Este nivel aún no está disponible.',
     levelUnavailableHint: 'Tu docente todavía no lo ha guardado.',
+    emptyLevel: 'Este nivel todavía no tiene actividades.',
+    emptyLevelHint: 'Vuelve a los niveles para seguir con otro.',
   },
   // A feature that failed while the rest of the app keeps working (embed mode).
   localErrors: {
