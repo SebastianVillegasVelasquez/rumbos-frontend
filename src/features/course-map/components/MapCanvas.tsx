@@ -100,6 +100,8 @@ export const MapCanvas = ({
   onBubbleUpdate,
   onBubbleDelete,
   onActivityDrop,
+  onContentDrop,
+  onEditContent,
   onBubbleClick,
   getUnavailableReason,
   getModnameForBubble,
@@ -626,7 +628,7 @@ export const MapCanvas = ({
     const raw = e.dataTransfer.getData('application/json')
     if (!raw) return
 
-    const { activityId } = JSON.parse(raw) as { activityId: number }
+    const payload = JSON.parse(raw) as { activityId?: number; kind?: string }
     const container = containerRef.current
     if (!container) return
 
@@ -634,7 +636,9 @@ export const MapCanvas = ({
     const design = controller.screenToContent(e.clientX - rect.left, e.clientY - rect.top)
     const relative = clampRelative(toRelativeSpace(design, designSize))
 
-    onActivityDrop?.(activityId, relative.x, relative.y)
+    if (payload.kind === 'content') onContentDrop?.(relative.x, relative.y)
+    else if (typeof payload.activityId === 'number')
+      onActivityDrop?.(payload.activityId, relative.x, relative.y)
   }
 
   const handleZoomButton = (factor: number) => {
@@ -861,6 +865,14 @@ export const MapCanvas = ({
             currentSkinId={iconPickerBubble.skinId}
             onSkinSelect={(skinId) => onBubbleUpdate?.(iconPickerBubble.id, { skinId })}
             untracked={iconPickerBubble.tracked === false}
+            onEditContent={
+              isContentBubble(iconPickerBubble) && onEditContent
+                ? () => {
+                    setIconPickerBubbleId(null)
+                    onEditContent(iconPickerBubble)
+                  }
+                : undefined
+            }
             onConfigureCompletion={
               onConfigureCompletion ? () => onConfigureCompletion(iconPickerBubble) : undefined
             }

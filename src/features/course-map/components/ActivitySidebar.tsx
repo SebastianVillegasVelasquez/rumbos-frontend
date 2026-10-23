@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react'
-import { ChevronDown, PartyPopper, Search } from 'lucide-react'
+import { ChevronDown, Info, PartyPopper, Search } from 'lucide-react'
 import type { Activity } from '../data/types.ts'
 import { es } from '../../../i18n/es.ts'
 import { Badge } from '../../../components/ui/Card.tsx'
+import { Button } from '../../../components/ui/Button.tsx'
 import { Input } from '../../../components/ui/Input.tsx'
 
 interface ActivitySidebarProps {
@@ -21,6 +22,9 @@ interface ActivitySidebarProps {
   // unfiltered `activities` list can also drive modname/icon lookups for
   // every bubble on the map, regardless of section).
   sectionFilter?: number | null
+  // Offered when the backend supports content bubbles: adds one at the center
+  // of the level (it can also be dragged onto the map).
+  onAddContent?: () => void
 }
 
 type ActivityType = keyof typeof es.activityTypes
@@ -44,6 +48,11 @@ const handleDragStart = (e: React.DragEvent<HTMLLIElement>, activity: Activity) 
   e.dataTransfer.effectAllowed = 'copy'
 }
 
+const handleContentDragStart = (e: React.DragEvent<HTMLDivElement>) => {
+  e.dataTransfer.setData('application/json', JSON.stringify({ kind: 'content' }))
+  e.dataTransfer.effectAllowed = 'copy'
+}
+
 const DEFAULT_CLASS_NAME = 'flex w-64 shrink-0 flex-col border-r-soft bg-surface p-4'
 
 export const ActivitySidebar = ({
@@ -56,6 +65,7 @@ export const ActivitySidebar = ({
   currentCourseMapId,
   levelTitleById,
   sectionFilter = null,
+  onAddContent,
 }: ActivitySidebarProps) => {
   const [search, setSearch] = useState('')
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set())
@@ -207,6 +217,20 @@ export const ActivitySidebar = ({
         </span>
       </div>
       <p className="mb-3 text-xs text-ink-soft">{es.sidebar.hint}</p>
+      {onAddContent && (
+        <div
+          draggable
+          onDragStart={handleContentDragStart}
+          className="border-hair mb-3 space-y-1 rounded-md border-l-[6px] border-l-primary bg-surface-muted p-2"
+        >
+          <Button variant="secondary" dense size="sm" onClick={onAddContent}>
+            <Info size={16} strokeWidth={2.5} aria-hidden />
+            {es.content.editor.addBubble}
+          </Button>
+          <p className="text-xs text-ink-soft">{es.content.editor.addBubbleHint}</p>
+          <p className="text-xs text-ink-soft">{es.content.editor.dragHint}</p>
+        </div>
+      )}
       <div className="relative mb-3">
         <Search
           size={16}

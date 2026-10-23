@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
-import { ExternalLink, Trash2, TriangleAlert } from 'lucide-react'
+import { ExternalLink, Pencil, Trash2, TriangleAlert } from 'lucide-react'
 import { Button } from '../../../components/ui/Button.tsx'
 import { ICON_DATA_URIS_LIGHT, ICON_KEYS, ICON_LABELS, type IconKey } from '../icons.ts'
 import type { Activity, Availability, BubbleStatus, Skin } from '../data/types.ts'
@@ -30,6 +30,8 @@ interface IconPickerPopoverProps {
   untracked?: boolean
   // Present only when the host can open the activity's settings (v5.4).
   onConfigureCompletion?: () => void
+  // A content bubble: edited here, and no Moodle completion or status to set.
+  onEditContent?: () => void
 }
 
 const STATUS_OPTIONS: { value: BubbleStatus; label: string }[] = [
@@ -58,6 +60,7 @@ export const IconPickerPopover = ({
   onSkinSelect,
   untracked = false,
   onConfigureCompletion,
+  onEditContent,
 }: IconPickerPopoverProps) => {
   const embed = useEmbed()
   const popoverRef = useRef<HTMLDivElement>(null)
@@ -96,7 +99,13 @@ export const IconPickerPopover = ({
         } as CSSProperties
       }
     >
-      {untracked && (
+      {onEditContent && (
+        <Button variant="secondary" dense size="sm" className="w-full" onClick={onEditContent}>
+          <Pencil size={16} strokeWidth={2.5} aria-hidden />
+          {es.content.editor.edit}
+        </Button>
+      )}
+      {untracked && !onEditContent && (
         <div className="border-hair space-y-1 rounded-md bg-sun-tint p-2">
           <Badge tone="sun">
             <TriangleAlert size={13} strokeWidth={2.5} aria-hidden />
@@ -190,7 +199,7 @@ export const IconPickerPopover = ({
       )}
 
       {/* Demo only. Embedded, progress comes from Moodle completion instead. */}
-      {!embed && (
+      {!embed && !onEditContent && (
         <label className="block space-y-1">
           <span className="text-xs font-bold uppercase tracking-wide text-ink-soft">
             {es.bubble.demoStatusLabel}

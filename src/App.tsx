@@ -31,9 +31,17 @@ import { PublicationBar } from './features/course-map/components/publication/Pub
 import { LazyBackgroundPicker } from './features/course-map/components/background/LazyBackgroundPicker.tsx'
 import { useImageSize } from './features/course-map/components/background/useImageSize.ts'
 import { preferredAspectRatio } from './features/embed/preferredSize.ts'
-import { isContentBubble } from './features/content/contentTypes.ts'
+import { isContentBubble, type Content } from './features/content/contentTypes.ts'
+import { LazyContentEditor } from './features/content/editor/LazyContentEditor.tsx'
+import { contentErrorMessage } from './features/content/editor/contentMessages.ts'
+import { contentBytes } from './features/content/validateContent.ts'
 import { LazyContentViewer } from './features/content/LazyContentViewer.tsx'
-import { learnFromBubbles } from './features/content/contentSupport.ts'
+import {
+  learnFromBubbles,
+  learnFromCreated,
+  learnFromCreateFailure,
+  useContentSupported,
+} from './features/content/contentSupport.ts'
 import { isContentSeen, markContentSeen, shouldAutoOpen } from './features/content/seen.ts'
 import { useWidgetsEnabled } from './features/content/useAuthFeatures.ts'
 import { useChangeBackground } from './features/course-map/components/background/useChangeBackground.ts'
@@ -445,6 +453,58 @@ export function AppShell() {
     setSeenTick((tick) => tick + 1)
   }
 
+  // Editor: the content being written (a new one carries where it will go).
+  const contentSupported = useContentSupported()
+  const [contentEditor, setContentEditor] = useState<
+    { mode: 'create'; x: number; y: number } | { mode: 'edit'; bubbleId: string } | null
+  >(null)
+  const [contentError, setContentError] = useState<string | null>(null)
+  const editedBubble =
+    contentEditor?.mode === 'edit'
+      ? (bubbles.find((bubble) => bubble.id === contentEditor.bubbleId) ?? null)
+      : null
+  const closeContentEditor = () => {
+    setContentEditor(null)
+    setContentError(null)
+  }
+  const saveContent = (content: Content) => {
+    if (!contentEditor) return
+    setContentError(null)
+    if (contentEditor.mode === 'create') {
+      createBubble.mutate(
+        { kind: 'content', content, x: contentEditor.x, y: contentEditor.y },
+        {
+          onSuccess: (bubble) => {
+            learnFromCreated(bubble)
+            if (bubble.kind === 'content') closeContentEditor()
+            else setContentError(es.content.editor.errors.unsupported)
+          },
+          onError: (error) => {
+            if (error instanceof ApiError)
+              learnFromCreateFailure({ status: error.status, code: error.detail.code })
+            setContentError(contentErrorMessage(error))
+            // The dialog says what went wrong; not the activity-placement banner.
+            createBubble.reset()
+          },
+        }
+      )
+    } else {
+      updateBubble.mutate(
+        { bubbleId: contentEditor.bubbleId, input: { content } },
+        {
+          onSuccess: closeContentEditor,
+          onError: (error) => setContentError(contentErrorMessage(error)),
+        }
+      )
+    }
+  }
+  // What the level's other content bubbles weigh against the 1 MB allowance.
+  const otherContentBytes = bubbles.reduce(
+    (sum, bubble) =>
+      bubble.content && bubble.id !== editedBubble?.id ? sum + contentBytes(bubble.content) : sum,
+    0
+  )
+
   const handleBubbleClick = (bubble: Bubble) => {
     if (isContentBubble(bubble)) {
       openContent(bubble)
@@ -730,6 +790,10 @@ export function AppShell() {
           onBubbleMove={(bubbleId, x, y) => updateBubble.mutate({ bubbleId, input: { x, y } })}
           onBubbleUpdate={(bubbleId, input) => updateBubble.mutate({ bubbleId, input })}
           onBubbleDelete={(bubbleId) => deleteBubble.mutate(bubbleId)}
+          onContentDrop={
+            contentSupported ? (x, y) => setContentEditor({ mode: 'create', x, y }) : undefined
+          }
+          onEditContent={(bubble) => setContentEditor({ mode: 'edit', bubbleId: bubble.id })}
           onActivityDrop={(activityId, x, y) => {
             if (pendingActivityIds.includes(activityId)) return
             createBubble.mutate(
@@ -800,6 +864,9 @@ export function AppShell() {
     currentCourseMapId: courseMapId ?? undefined,
     levelTitleById,
     sectionFilter: renderable?.moodleSectionId ?? null,
+    onAddContent: contentSupported
+      ? () => setContentEditor({ mode: 'create', x: 0.5, y: 0.5 })
+      : undefined,
   }
 
   // Embedded in student mode there is no mode switch: only the saved map is shown.
@@ -1056,6 +1123,19 @@ export function AppShell() {
           </div>
         </main>
       </div>
+
+      {isEditor && contentEditor && (contentEditor.mode === 'create' || editedBubble) && (
+        <LazyContentEditor
+          key={editedBubble?.id ?? 'new'}
+          initial={editedBubble?.content ?? null}
+          widgetsEnabled={widgetsEnabled}
+          otherBytes={otherContentBytes}
+          saving={createBubble.isPending || updateBubble.isPending}
+          error={contentError}
+          onSave={saveContent}
+          onCancel={closeContentEditor}
+        />
+      )}
 
       <LazyContentViewer
         content={shownContentBubble?.content ?? null}

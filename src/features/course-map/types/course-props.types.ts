@@ -79,6 +79,9 @@ export interface MapCanvasProps {
   onBubbleUpdate?: (bubbleId: string, input: BubbleUpdate) => void
   onBubbleDelete?: (bubbleId: string) => void
   onActivityDrop?: (activityId: number, x: number, y: number) => void
+  // A content bubble dragged from the palette, and the editor's way to edit one.
+  onContentDrop?: (x: number, y: number) => void
+  onEditContent?: (bubble: RenderableBubble) => void
   // Student view: a non-null reason makes the bubble non-interactive and is
   // shown as a tooltip on hover.
   getUnavailableReason?: (bubble: RenderableBubble) => string | null
