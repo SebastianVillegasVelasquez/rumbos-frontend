@@ -1,5 +1,5 @@
 // The postMessage protocol between the Moodle plugin (host page) and this app
-// (the iframe). Contract v5 to v5.4, always `v: 1`. Everything crossing the boundary
+// (the iframe). Contract v5 to v5.5, always `v: 1`. Everything crossing the boundary
 // is untrusted: incoming messages are parsed by hand-written guards that
 // either return a clean, size-bounded value or null (ignore the message).
 // Host-provided text is plain text: it is only ever rendered as a React text
@@ -158,10 +158,29 @@ export type AppMessage =
   | { type: 'rumbos:open-activity-settings'; v: 1; cmid: number }
   | { type: 'rumbos:request-fullscreen'; v: 1; on: boolean }
   | { type: 'rumbos:error'; v: 1; code: ReportedErrorCode; detail?: string }
+  // Contract v5.5: the student has nothing to see, so the host falls back to
+  // the standard course content.
+  | { type: 'rumbos:no-content'; v: 1; reason: NoContentReason }
+  // Contract v5.5: width / height the host may size the area to.
+  | { type: 'rumbos:preferred-size'; v: 1; aspectRatio: number }
+
+export type NoContentReason = 'no_saved_map' | 'empty_map'
+
+export const MIN_ASPECT_RATIO = 0.5
+export const MAX_ASPECT_RATIO = 4
+
+export const clampAspectRatio = (ratio: number): number | null =>
+  Number.isFinite(ratio) && ratio > 0
+    ? Math.min(MAX_ASPECT_RATIO, Math.max(MIN_ASPECT_RATIO, ratio))
+    : null
 
 // What actually crosses the boundary: error codes are mapped to the wire set
 // and the detail is cut to plain text of at most 200 characters.
 export const toWireMessage = (message: AppMessage): unknown => {
+  if (message.type === 'rumbos:preferred-size') {
+    const aspectRatio = clampAspectRatio(message.aspectRatio)
+    return aspectRatio === null ? null : { ...message, aspectRatio }
+  }
   if (message.type !== 'rumbos:error') return message
   const wire: { type: 'rumbos:error'; v: 1; code: WireErrorCode; detail?: string } = {
     type: 'rumbos:error',

@@ -45,7 +45,8 @@ export const createHostBridge = (hostOrigin: string): HostBridge => {
     send: (message) => {
       if (window.parent === window) return
       warnOnce(message)
-      window.parent.postMessage(toWireMessage(message), hostOrigin)
+      const wire = toWireMessage(message)
+      if (wire !== null) window.parent.postMessage(wire, hostOrigin)
     },
     subscribe: (listener) => {
       if (listeners.size === 0) window.addEventListener('message', onMessage)
