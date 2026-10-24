@@ -68,6 +68,9 @@ export interface HostInitMessage {
   mode: HostMode
   locale: string
   courseId: number
+  // Contract v5.6: the course's name as plain text (at most 200 characters), or
+  // null from a host that predates it. Untrusted: only ever rendered as text.
+  courseName: string | null
   // Opaque to the app: handed to the backend untouched, never logged.
   assertion: string
   state: CourseState
@@ -306,6 +309,13 @@ const parseAssertion = (value: unknown): string | null =>
     ? value
     : null
 
+const MAX_COURSE_NAME_LENGTH = 200
+
+const parseCourseName = (value: unknown): string | null => {
+  const name = cleanText(value, MAX_COURSE_NAME_LENGTH)?.trim()
+  return name ? name : null
+}
+
 export const parseHostMessage = (data: unknown): HostMessage | null => {
   if (!isRecord(data) || data.v !== EMBED_PROTOCOL_VERSION) return null
   switch (data.type) {
@@ -322,6 +332,7 @@ export const parseHostMessage = (data: unknown): HostMessage | null => {
         mode: data.mode,
         locale,
         courseId: data.courseId,
+        courseName: parseCourseName(data.courseName),
         assertion,
         state,
       }

@@ -2,6 +2,7 @@ import { courseMapApi } from '../course-map/data/index.ts'
 import { ApiError, setAuthHooks } from '../course-map/data/client.ts'
 import type { AuthRole, LaunchResult } from '../course-map/data/types.ts'
 import type { HostBridge } from './hostBridge.ts'
+import { setHostCourseName } from './hostCourse.ts'
 import { setHostFullscreen } from './hostFullscreen.ts'
 import { setHostState } from './hostState.ts'
 import { hostOriginMatches, parseLaunchResult } from './launch.ts'
@@ -117,6 +118,7 @@ export const createEmbedSession = (bridge: HostBridge): EmbedSession => {
       identity = { role: result.role, courseId: result.courseId }
       setAuthHooks({ getToken: () => token, refresh })
       setHostState(message.state)
+      setHostCourseName(message.courseName)
       setPhase({ name: 'ready', role: result.role, courseId: result.courseId, mode: message.mode })
     } catch (error) {
       const failure = failureFor(error)
