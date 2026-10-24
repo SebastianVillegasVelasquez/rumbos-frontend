@@ -108,14 +108,15 @@ export interface MapAudio {
   // 0..1, the volume the viewer starts with (default 0.4).
   volume: number
   loop: boolean
-  // Start by itself after the viewer's first tap or key press (default false).
+  // Start by itself after the viewer's first tap or key press. The editor
+  // pre-selects it when music is first added (the wire default stays false).
   startAfterInteraction: boolean
 }
 
 export const DEFAULT_MAP_AUDIO = {
   volume: 0.4,
   loop: true,
-  startAfterInteraction: false,
+  startAfterInteraction: true,
 } as const
 
 // Read-only on CourseMapRead and PublishedMapRead: what to show as credit.

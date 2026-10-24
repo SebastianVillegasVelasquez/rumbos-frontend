@@ -263,9 +263,9 @@ export const es = {
       remove: 'Quitar música',
       volume: 'Volumen inicial',
       loop: 'Repetir en bucle',
-      startAfterInteraction: 'Iniciar tras la primera interacción',
+      startAfterInteraction: 'Iniciar al empezar',
       startAfterInteractionHint:
-        'Empieza sola cuando el estudiante toque o pulse algo, salvo que la haya silenciado o use ahorro de datos.',
+        'La música empieza sola cuando el estudiante entra (con el botón de la bienvenida o con su primer toque), salvo que la haya silenciado o use ahorro de datos.',
       uploadsDisabled:
         'Tu sitio no tiene habilitada la subida de audio. Elige una pista de la biblioteca.',
       rightsNotice:
