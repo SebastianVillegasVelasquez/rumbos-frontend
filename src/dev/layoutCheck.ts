@@ -17,6 +17,8 @@ const INTERACTIVE = [
   '[role="tab"]',
   '[tabindex]:not([tabindex="-1"])',
 ].join(', ')
+// Anything covering this share of the viewport is a surface (the map), not a control.
+const SURFACE_SHARE = 0.4
 const PANEL_ID = 'layout-check-panel'
 
 const describe = (el: Element, prefix: string) => {
@@ -90,9 +92,13 @@ const collect = (
   const view = doc.defaultView
   if (!view) return
   for (const el of doc.querySelectorAll(INTERACTIVE)) {
-    if (!isShown(el, view)) continue
+    // The map is a focusable image the controls float on, not a control.
+    if (el.matches('[role="img"]') || !isShown(el, view)) continue
     const box = visibleBox(el, view, origin)
     if (!box) continue
+    // The map itself (a focusable surface the controls float on) is not a control.
+    const area = (box.right - box.left) * (box.bottom - box.top)
+    if (area > SURFACE_SHARE * view.innerWidth * view.innerHeight) continue
     items.push({
       label: describe(el, prefix),
       box,
@@ -117,6 +123,7 @@ export const runLayoutCheck = (): Collision[] => {
     const rect = frame.getBoundingClientRect()
     collect(inner, { x: rect.left, y: rect.top }, '3d:', items, index + 1)
   })
+  ;(window as unknown as { __layoutItems: number }).__layoutItems = items.length
   return findCollisions(items)
 }
 
