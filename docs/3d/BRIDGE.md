@@ -26,6 +26,22 @@ host -> 3D page
   { type: "rumbos:theme",  v: 1, cssVars }
   { type: "rumbos:focus",  v: 1, pointId }               fly to a pin and open its panel
 
+Bare mode (the app's HUD owns every control; still `v: 1`, all additive):
+
+  host -> 3D page
+  { type: "rumbos:init", ..., ui: "bare" }       the page draws no controls, title, language
+                                                  switch or places list: only the world, pin
+                                                  labels and the detail panel
+  { type: "rumbos:layout", v: 1, insets }         { top, right, bottom, left } CSS px the HUD
+                                                  covers; labels under the HUD are hidden and
+                                                  the detail panel stays inside
+  { type: "rumbos:camera", v: 1, action }         "zoom-in" | "zoom-out" | "reset"
+  3D page -> host
+  { type: "rumbos:camera-state", v: 1, canZoomIn, canZoomOut }   the HUD disables its buttons
+
+`/3d/?demo=1` sends no `ui`, so it keeps its own controls: bare is a flag, not a fork.
+Auto-rotate and "hide pins" exist only in the standalone page; the HUD has no slot for them.
+
 Point3D  = { id: string /* the bubble id */, zoneId: number, title: string|null,
              description: string|null, state: PinState }   // null text = the scene's built-in text
 PinState = "locked" | "available" | "next" | "complete" | "teaser" | "missing"

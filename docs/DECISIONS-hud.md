@@ -337,3 +337,44 @@ actually sends them, and anything on a real phone. Treat as unverified.
   entry; moving the dictionary per feature was out of scope.
 - **Tests that need a real browser were run in Chrome 155 only** (the hostile widget and
   the mock-host scenarios). Safari, Firefox, iOS and Android are on the hand-test list.
+
+## Welcome curtain, music by default and collision-free 3D
+
+- **The backend was not running,** so `MapSettings.welcome` and `welcome_invalid` were
+  built against the written contract and a mock, not checked against `/openapi.json`.
+- **Feature detection** for the Bienvenida tab is "the settings carry a `welcome` key".
+  The contract says null or absent both mean defaults, so absence alone cannot tell an old
+  backend from a new one; this relies on the backend sending `welcome: null`. To confirm.
+- **The map is not mounted behind the curtain.** It mounts when the curtain closes, so
+  the 2D fly-in and the 3D intro play after it with no extra hold flag or message. The
+  cost is that the 3D world starts loading after the click. The HUD is inert meanwhile.
+- **The editor's `startAfterInteraction` is still honored.** The curtain button is the
+  first gesture, but music starts only if the editor left that option on (now preselected
+  when music is first added; maps that already stored false keep it). Data saver still
+  blocks autostart.
+- **"Sin música" on the curtain is the viewer's remembered mute** (the same preference as
+  the volume popover), so it wins over the editor from then on, and turning it back on
+  starts the music.
+- **Music waits while the welcome video plays** (a new hold in the audio state) so the two
+  do not talk over each other.
+- **The "Video alojado en <proveedor>" footnote** is shown whenever the welcome has a
+  video, as asked, and is easy to remove (one line in `WelcomeCurtain.tsx`) if legal review
+  says the privacy policy suffices.
+- **Video end detection** reads the providers' own postMessage events (YouTube
+  `onStateChange` 0, Vimeo `finish`) with origin and source checks; "Saltar" always works
+  if they never arrive. Not verified against real players.
+- **Welcome changes count as "settings"** in the save dialog: the backend's change list
+  has no separate welcome flag.
+- **`first_visit` is keyed by map id and a hash of the welcome settings,** so editing the
+  welcome shows it once more. "Vista previa" remembers nothing.
+- **Removed in embed 3D:** auto-rotate and "hide pins", which the HUD has no slot for.
+  The standalone `/3d/?demo=1` page keeps them.
+- **The 3D page's own controls are hidden, not deleted,** in bare mode (`display: none`
+  on `html[data-ui="bare"]`), so the world code keeps working unchanged.
+- **Labels under the HUD are hidden, not moved,** in bare mode; the detail panel is
+  positioned inside the insets. Insets are one rectangle per edge, so the right inset
+  (the control column) reserves the full height on the right.
+- **Pill in the level picker** moved from the left edge, centered, to the bottom left,
+  because it overlapped the first level card (found by the layout check).
+- **Existing content video button** still says "Reproducir (se cargará desde YouTube)";
+  that wording rule was applied to the curtain only.

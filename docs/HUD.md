@@ -50,6 +50,29 @@ On by itself for Save-Data or a slow-2g/2g connection; forced on or off in Ajust
 on: animation tier capped at low, no ambient particles, a remembered 3D choice is not
 started, no audio autostart. It never preloads audio in any case.
 
+## Welcome curtain
+
+The first thing a viewer sees in a map: the map's background blurred under a dark scrim, a
+title ("Bienvenido a {curso}" by default, `{curso}` being the host's `courseName`, else
+the map title), an optional message and video, and one button. With a video that plays on
+entering the button says "Reproducir"; otherwise "Empezar viaje" (plus "Ver video de
+bienvenida" when the video is optional). The button is also the gesture that starts the
+music. The video loads only after that click, plays inside the curtain with "Saltar", and
+offers "Empezar viaje" when it ends. "Video alojado en <proveedor>" is a small footnote.
+
+Shown once per viewer, map and welcome settings (`first_visit`) or on every app start
+(`always`); re-openable from Ajustes ("Ver bienvenida"); shown with a visible skip in
+"Vista previa" and never to an editor editing. Order on a first visit: curtain, camera
+intro, content that auto-opens, coach marks (with a last step about the volume button
+when the map has music). The editor's "Bienvenida" tab in Apariencia has a live preview.
+
+## 3D controls
+
+In 3D the HUD draws every control (zoom in, zoom out, Reiniciar vista, 2D/3D, music,
+fullscreen) and the 3D page runs in bare mode inside the insets the HUD measures; see
+[`3d/BRIDGE.md`](3d/BRIDGE.md). `?debug=layout` (development builds) lists any pair of
+overlapping controls, in the app and in the 3D page.
+
 ## Music (unverified against a real backend)
 
 Editors pick a track in Apariencia → Música (library by OBJ Digital, or their own upload

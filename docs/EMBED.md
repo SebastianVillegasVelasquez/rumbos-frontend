@@ -305,6 +305,17 @@ inside the app, not the host overlay. A video loads nothing from YouTube or Vime
 the student presses "Reproducir"; links open in a new tab with `noopener noreferrer`.
 Widgets run in a sandboxed frame, see [`WIDGET-SANDBOX.md`](WIDGET-SANDBOX.md).
 
+## Contract v5.6
+
+`host-init` gains one optional field:
+
+- **`courseName`**: the course's name as plain text, at most 200 characters. The app
+  drops control characters, trims it and treats a missing or non-string value as "not
+  sent", so a host that predates v5.6 keeps working. It is untrusted: it is only ever
+  rendered as a text node (never as markup). The welcome curtain uses it for `{curso}`
+  and falls back to the map's title when it is absent. The mock host can send it or omit
+  it ("courseName (v5.6)").
+
 ## Testing by hand (needs real devices)
 
 Automated and mock-host checks cover the protocol, derivation and access matrix.
