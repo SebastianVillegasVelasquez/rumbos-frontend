@@ -7,6 +7,8 @@ import { SegmentedControl } from '../../../components/ui/SegmentedControl.tsx'
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog.tsx'
 import { SkinStudio } from './SkinStudio.tsx'
 import { AUDIO_LIBRARY_PARAMS } from '../../audio/editor/audioErrors.ts'
+import { WelcomeTab } from '../../welcome/editor/WelcomeTab.tsx'
+import { ApiError } from '../data/client.ts'
 import { MusicTab } from '../../audio/editor/MusicTab.tsx'
 import { View3dTab } from '../../view3d/editor/View3dTab.tsx'
 import { useAnimationQuality, type QualitySetting } from '../../../fx/quality.ts'
@@ -30,7 +32,7 @@ import type {
   SkinRule,
 } from '../data/types.ts'
 
-type Tab = 'bubbles' | 'map' | 'ambient' | 'sequence' | 'view3d' | 'animation' | 'music'
+type Tab = 'bubbles' | 'map' | 'ambient' | 'sequence' | 'view3d' | 'animation' | 'music' | 'welcome'
 
 interface AppearanceStudioProps {
   courseMap: CourseMapRead
@@ -69,6 +71,9 @@ export const AppearanceStudio = ({
   // A backend that predates audio answers the library listing with an error:
   // the Música tab then does not exist.
   const audioSupported = !useAssets(AUDIO_LIBRARY_PARAMS).isError
+  // A backend that predates the welcome curtain never sends the key (it sends
+  // null when it knows the feature and nothing is set).
+  const welcomeSupported = 'welcome' in courseMap.settings
 
   // Re-sync the draft whenever a fresh save lands (new updatedAt), but
   // never while the panel is mid-edit otherwise - it would stomp on
@@ -124,8 +129,20 @@ export const AppearanceStudio = ({
 
       <div className="border-b-soft px-4 py-2">
         <div className="flex flex-wrap gap-1.5">
-          {(['bubbles', 'map', 'ambient', 'sequence', 'view3d', 'animation', 'music'] as Tab[])
+          {(
+            [
+              'bubbles',
+              'map',
+              'ambient',
+              'sequence',
+              'view3d',
+              'animation',
+              'music',
+              'welcome',
+            ] as Tab[]
+          )
             .filter((t) => t !== 'music' || audioSupported)
+            .filter((t) => t !== 'welcome' || welcomeSupported)
             .map((t) => (
               <button
                 key={t}
@@ -179,6 +196,15 @@ export const AppearanceStudio = ({
         {tab === 'music' && audioSupported && (
           <MusicTab settings={settings} onChange={setSettings} />
         )}
+        {tab === 'welcome' && welcomeSupported && (
+          <WelcomeTab
+            settings={settings}
+            onChange={setSettings}
+            mapTitle={courseMap.title}
+            imageUrl={courseMap.imageUrl}
+            hasMusic={Boolean(settings.audio)}
+          />
+        )}
       </div>
 
       {isDirty && (
@@ -193,7 +219,10 @@ export const AppearanceStudio = ({
       )}
       {updateAppearance.isError && (
         <p role="alert" className="px-4 pb-3 text-xs font-bold text-danger">
-          {es.studio.saveError}
+          {updateAppearance.error instanceof ApiError &&
+          updateAppearance.error.detail.code === 'welcome_invalid'
+            ? es.studio.welcome.errors.welcome_invalid
+            : es.studio.saveError}
         </p>
       )}
 

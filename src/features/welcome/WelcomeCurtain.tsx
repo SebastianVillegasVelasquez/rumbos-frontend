@@ -27,6 +27,7 @@ interface WelcomeCurtainProps {
   isolated?: boolean
   // Shows a visible way out ("Vista previa" and the editor's preview).
   showSkip?: boolean
+  skipLabel?: string
   onDone: () => void
 }
 
@@ -46,6 +47,7 @@ const WelcomeCurtain = ({
   hasMusic,
   isolated = false,
   showSkip = false,
+  skipLabel = text.skipPreview,
   onDone,
 }: WelcomeCurtainProps) => {
   const dataSaver = useDataSaver().active
@@ -180,7 +182,7 @@ const WelcomeCurtain = ({
           }}
           onClick={onDone}
         >
-          {text.skipPreview}
+          {skipLabel}
         </Button>
       )}
 
