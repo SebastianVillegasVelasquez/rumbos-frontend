@@ -79,6 +79,10 @@ import { courseTitleFrom } from './features/course-map/courseTitle.ts'
 import { progressCounts } from './features/course-map/progress.ts'
 import { useResume } from './features/hud/useResume.ts'
 import { readResume } from './features/hud/resume.ts'
+import { useHostCourseName } from './features/embed/hostCourse.ts'
+import { LazyWelcomeCurtain } from './features/welcome/LazyWelcomeCurtain.tsx'
+import { useWelcome } from './features/welcome/useWelcome.ts'
+import { welcomeTitle } from './features/welcome/welcome.ts'
 import { cameraBridge } from './features/view3d/cameraBridge.ts'
 import { LazyAudioControl } from './features/audio/LazyAudioControl.tsx'
 import type { AudioTrack } from './features/audio/audioSession.ts'
@@ -649,6 +653,30 @@ export function AppShell() {
       audio?.info.credit,
     ]
   )
+  // The welcome curtain: once per viewer and map; never to an editor editing.
+  const hostCourseName = useHostCourseName()
+  const welcomeState = useWelcome({
+    mapId: renderable?.id ?? null,
+    settings: renderable?.settings.welcome,
+    isEditorMode: isEditor,
+    isPreview: exitPreview !== null,
+    noContent: levelNotSaved || onlyLevelIsEmpty,
+  })
+  const welcomeCurtain =
+    welcomeState.open && renderable ? (
+      <LazyWelcomeCurtain
+        key={renderable.id}
+        welcome={welcomeState.welcome}
+        title={welcomeTitle(welcomeState.welcome, es.welcome.defaultTitle, {
+          courseName: hostCourseName,
+          mapTitle: renderable.title,
+        })}
+        imageUrl={renderable.imageUrl}
+        hasMusic={audioTrack !== null}
+        showSkip={exitPreview !== null}
+        onDone={welcomeState.dismiss}
+      />
+    ) : null
   const resumeCourseId = renderable?.moodleCourseId ?? null
   const resumeMapId = renderable?.id ?? null
   useResume({
@@ -1116,6 +1144,8 @@ export function AppShell() {
                       }
                 }
                 reportInsets={show3d}
+                curtain={welcomeCurtain}
+                onShowWelcome={welcomeState.reopen}
                 audio={audioTrack ? <LazyAudioControl track={audioTrack} /> : null}
                 onEnterFullscreen={
                   embed && !isFullscreen ? () => embed.requestFullscreen(true) : null

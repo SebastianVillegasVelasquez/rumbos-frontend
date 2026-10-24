@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { COACH_STEPS, readCoachDone, rememberCoachDone } from './coachPreference.ts'
+import { COACH_STEPS, coachSteps, readCoachDone, rememberCoachDone } from './coachPreference.ts'
 
 const memory = () => {
   const data = new Map<string, string>()
@@ -30,5 +30,10 @@ describe('coach marks preference', () => {
 
   it('has the three steps of the brief, in order', () => {
     assert.deepEqual([...COACH_STEPS], ['move', 'bubble', 'quests'])
+  })
+
+  it('adds the music step last, only when the map has music', () => {
+    assert.deepEqual([...coachSteps(false)], ['move', 'bubble', 'quests'])
+    assert.deepEqual([...coachSteps(true)], ['move', 'bubble', 'quests', 'audio'])
   })
 })

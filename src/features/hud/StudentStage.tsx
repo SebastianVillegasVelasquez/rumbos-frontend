@@ -52,6 +52,12 @@ interface StudentStageProps {
   } | null
   // The 3D world is on screen: tell its page what the HUD covers.
   reportInsets?: boolean
+  // The welcome curtain, while it is up. The map is not mounted behind it (its
+  // intro plays when the curtain closes), the HUD is inert and the first-run
+  // marks wait.
+  curtain?: ReactNode
+  // "Ver bienvenida" in Ajustes; absent when the map has no welcome to show.
+  onShowWelcome?: (() => void) | null
   // The music control (lazy-loaded), when the map has music.
   audio: ReactNode | null
   // Absent while the host owns fullscreen (its exit control is in the corner).
@@ -90,6 +96,8 @@ export const StudentStage = ({
   questsPanel,
   embedded,
   reportInsets = false,
+  curtain = null,
+  onShowWelcome = null,
   children,
 }: StudentStageProps) => {
   const stageRef = useRef<HTMLDivElement>(null)
@@ -165,201 +173,209 @@ export const StudentStage = ({
 
   return (
     <div ref={stageRef} className="relative h-full w-full" data-hud-dim={dimmed}>
-      {children({ guardCompact: metrics.guardCompact })}
+      {curtain ? null : children({ guardCompact: metrics.guardCompact })}
+      {curtain}
 
-      <div
-        role="group"
-        aria-label={es.hud.controls}
-        data-hud-edge="top"
-        className="pointer-events-none absolute z-10 flex gap-2"
-        style={{
-          top: inset('top'),
-          left: inset('left'),
-          flexDirection: metrics.topLeftColumn ? 'column' : 'row',
-        }}
-      >
-        {onOpenLevels && (
+      <div className="contents" inert={curtain !== null}>
+        <div
+          role="group"
+          aria-label={es.hud.controls}
+          data-hud-edge="top"
+          className="pointer-events-none absolute z-10 flex gap-2"
+          style={{
+            top: inset('top'),
+            left: inset('left'),
+            flexDirection: metrics.topLeftColumn ? 'column' : 'row',
+          }}
+        >
+          {onOpenLevels && (
+            <Button
+              variant="surface"
+              size="sm"
+              dense
+              className="hud-dimmable pointer-events-auto min-w-[44px]"
+              onClick={onOpenLevels}
+              title={es.hud.levels}
+            >
+              <Layers size={18} strokeWidth={2.5} aria-hidden />
+              <span className={labelClass}>{es.hud.levels}</span>
+            </Button>
+          )}
           <Button
             variant="surface"
             size="sm"
             dense
             className="hud-dimmable pointer-events-auto min-w-[44px]"
-            onClick={onOpenLevels}
-            title={es.hud.levels}
+            id={QUESTS_BUTTON_ID}
+            aria-expanded={questsOpen}
+            aria-controls={QUEST_LOG_ID}
+            onClick={onToggleQuests}
+            title={es.hud.quests}
           >
-            <Layers size={18} strokeWidth={2.5} aria-hidden />
-            <span className={labelClass}>{es.hud.levels}</span>
+            <ListChecks size={18} strokeWidth={2.5} aria-hidden />
+            <span className={labelClass}>{es.hud.quests}</span>
+          </Button>
+          <SettingsPopover onShowWelcome={onShowWelcome} />
+        </div>
+
+        {chip}
+
+        {exitPreview && (
+          <Button
+            variant="secondary"
+            size="sm"
+            dense
+            className="hud-dimmable pointer-events-auto absolute z-10"
+            data-hud-edge="left"
+            inert={sheetOpen}
+            style={{
+              ...coveredStyle,
+              left: panelOffset || inset('left'),
+              top: metrics.rects.pill?.y,
+              maxWidth: metrics.pillMaxWidth,
+            }}
+            onClick={exitPreview.onExit}
+          >
+            <ArrowLeft size={16} strokeWidth={2.5} aria-hidden className="shrink-0" />
+            <span className="min-w-0 truncate">{exitPreview.label}</span>
           </Button>
         )}
-        <Button
-          variant="surface"
-          size="sm"
-          dense
-          className="hud-dimmable pointer-events-auto min-w-[44px]"
-          id={QUESTS_BUTTON_ID}
-          aria-expanded={questsOpen}
-          aria-controls={QUEST_LOG_ID}
-          onClick={onToggleQuests}
-          title={es.hud.quests}
-        >
-          <ListChecks size={18} strokeWidth={2.5} aria-hidden />
-          <span className={labelClass}>{es.hud.quests}</span>
-        </Button>
-        <SettingsPopover />
-      </div>
 
-      {chip}
-
-      {exitPreview && (
-        <Button
-          variant="secondary"
-          size="sm"
-          dense
-          className="hud-dimmable pointer-events-auto absolute z-10"
-          data-hud-edge="left"
-          inert={sheetOpen}
-          style={{
-            ...coveredStyle,
-            left: panelOffset || inset('left'),
-            top: metrics.rects.pill?.y,
-            maxWidth: metrics.pillMaxWidth,
-          }}
-          onClick={exitPreview.onExit}
-        >
-          <ArrowLeft size={16} strokeWidth={2.5} aria-hidden className="shrink-0" />
-          <span className="min-w-0 truncate">{exitPreview.label}</span>
-        </Button>
-      )}
-
-      <div
-        role="group"
-        aria-label={es.hud.controls}
-        className="pointer-events-none absolute z-10 flex flex-col flex-wrap-reverse content-start justify-end gap-2"
-        data-hud-edge="right"
-        inert={sheetOpen}
-        style={{
-          ...coveredStyle,
-          right: inset('right'),
-          bottom: inset('bottom'),
-          maxHeight: metrics.clusterMaxHeight,
-        }}
-      >
-        {zoom && (
-          <>
-            <IconButton
-              variant="surface"
-              className="hud-dimmable pointer-events-auto"
-              aria-label={es.canvas.zoomIn}
-              title={es.canvas.zoomIn}
-              disabled={zoom.canZoomIn === false}
-              onClick={zoom.zoomIn}
-            >
-              <Plus size={18} strokeWidth={3} aria-hidden />
-            </IconButton>
-            <IconButton
-              variant="surface"
-              className="hud-dimmable pointer-events-auto"
-              aria-label={es.canvas.zoomOut}
-              title={es.canvas.zoomOut}
-              disabled={zoom.canZoomOut === false}
-              onClick={zoom.zoomOut}
-            >
-              <Minus size={18} strokeWidth={3} aria-hidden />
-            </IconButton>
-            <IconButton
-              variant="surface"
-              className="hud-dimmable pointer-events-auto"
-              aria-label={zoom.recenterLabel ?? es.hud.recenter}
-              title={zoom.recenterLabel ?? es.hud.recenter}
-              onClick={zoom.recenter}
-            >
-              <Scan size={18} strokeWidth={2.5} aria-hidden />
-            </IconButton>
-          </>
-        )}
-        {view && (
-          <IconButton
-            variant="surface"
-            className="hud-dimmable pointer-events-auto"
-            aria-label={view.value === '2d' ? es.view3d.switchTo3d : es.view3d.switchTo2d}
-            title={view.value === '2d' ? es.view3d.switchTo3d : es.view3d.switchTo2d}
-            onClick={() => view.onChange(view.value === '2d' ? '3d' : '2d')}
-          >
-            {view.value === '2d' ? (
-              <Box size={18} strokeWidth={2.5} aria-hidden />
-            ) : (
-              <MapIcon size={18} strokeWidth={2.5} aria-hidden />
-            )}
-          </IconButton>
-        )}
-        {audio}
-        {onEnterFullscreen && (
-          <IconButton
-            variant="surface"
-            className="hud-dimmable pointer-events-auto"
-            aria-label={es.embed.fullscreen}
-            title={es.embed.fullscreen}
-            onClick={onEnterFullscreen}
-          >
-            <Maximize2 size={18} strokeWidth={2.5} aria-hidden />
-          </IconButton>
-        )}
-      </div>
-
-      {continueAction.kind !== 'none' && (
         <div
-          className="pointer-events-none absolute z-10 flex justify-center"
-          data-hud-edge="bottom"
+          role="group"
+          aria-label={es.hud.controls}
+          className="pointer-events-none absolute z-10 flex flex-col flex-wrap-reverse content-start justify-end gap-2"
+          data-hud-edge="right"
           inert={sheetOpen}
           style={{
             ...coveredStyle,
-            left: '50%',
-            transform: 'translateX(-50%)',
+            right: inset('right'),
             bottom: inset('bottom'),
-            width: metrics.continueMaxWidth,
+            maxHeight: metrics.clusterMaxHeight,
           }}
         >
-          {continueAction.kind === 'done' ? (
-            <p
-              className="hud-chip border-soft inline-flex min-h-[44px] max-w-full items-center gap-2 rounded-md bg-leaf-tint px-4 text-sm font-bold text-leaf-dark"
-              role="status"
+          {zoom && (
+            <>
+              <IconButton
+                variant="surface"
+                className="hud-dimmable pointer-events-auto"
+                aria-label={es.canvas.zoomIn}
+                title={es.canvas.zoomIn}
+                disabled={zoom.canZoomIn === false}
+                onClick={zoom.zoomIn}
+              >
+                <Plus size={18} strokeWidth={3} aria-hidden />
+              </IconButton>
+              <IconButton
+                variant="surface"
+                className="hud-dimmable pointer-events-auto"
+                aria-label={es.canvas.zoomOut}
+                title={es.canvas.zoomOut}
+                disabled={zoom.canZoomOut === false}
+                onClick={zoom.zoomOut}
+              >
+                <Minus size={18} strokeWidth={3} aria-hidden />
+              </IconButton>
+              <IconButton
+                variant="surface"
+                className="hud-dimmable pointer-events-auto"
+                aria-label={zoom.recenterLabel ?? es.hud.recenter}
+                title={zoom.recenterLabel ?? es.hud.recenter}
+                onClick={zoom.recenter}
+              >
+                <Scan size={18} strokeWidth={2.5} aria-hidden />
+              </IconButton>
+            </>
+          )}
+          {view && (
+            <IconButton
+              variant="surface"
+              className="hud-dimmable pointer-events-auto"
+              aria-label={view.value === '2d' ? es.view3d.switchTo3d : es.view3d.switchTo2d}
+              title={view.value === '2d' ? es.view3d.switchTo3d : es.view3d.switchTo2d}
+              onClick={() => view.onChange(view.value === '2d' ? '3d' : '2d')}
             >
-              <CheckCircle2 size={18} strokeWidth={2.5} aria-hidden className="shrink-0" />
-              <span className="min-w-0 truncate">{es.hud.levelDone}</span>
-            </p>
-          ) : (
-            <Button
-              size="sm"
-              className="hud-dimmable pointer-events-auto max-w-full"
-              onClick={continueAction.onClick}
-              aria-label={
-                continueAction.kind === 'continue' ? continueAction.label : es.levels.goToNextLevel
-              }
+              {view.value === '2d' ? (
+                <Box size={18} strokeWidth={2.5} aria-hidden />
+              ) : (
+                <MapIcon size={18} strokeWidth={2.5} aria-hidden />
+              )}
+            </IconButton>
+          )}
+          {audio}
+          {onEnterFullscreen && (
+            <IconButton
+              variant="surface"
+              className="hud-dimmable pointer-events-auto"
+              aria-label={es.embed.fullscreen}
+              title={es.embed.fullscreen}
+              onClick={onEnterFullscreen}
             >
-              <span className="min-w-0 truncate">
-                {continueAction.kind === 'continue'
-                  ? metrics.continueIconOnly
-                    ? es.hud.continueShort
-                    : continueAction.label
-                  : es.levels.goToNextLevel}
-              </span>
-              <ArrowRight size={16} strokeWidth={3} aria-hidden className="shrink-0" />
-            </Button>
+              <Maximize2 size={18} strokeWidth={2.5} aria-hidden />
+            </IconButton>
           )}
         </div>
-      )}
-      {coachMarks && (
-        <CoachMarks
-          hidden={questsOpen}
-          touchGuard={embedded && isCoarsePointer()}
-          maxWidth={width - 2 * (metrics.rects.cluster.w + 2 * GUTTER)}
-        />
-      )}
-      {questsPanel({
-        compact: metrics.compact,
-        // Clear of the bottom row (chip, Continuar, "Mover el mapa").
-        bottomOffset: `calc(${inset('bottom')} + ${TOUCH_TARGET + 2 * GAP + (metrics.rects.guard ? TOUCH_TARGET + GAP : 0)}px)`,
-      })}
+
+        {continueAction.kind !== 'none' && (
+          <div
+            className="pointer-events-none absolute z-10 flex justify-center"
+            data-hud-edge="bottom"
+            inert={sheetOpen}
+            style={{
+              ...coveredStyle,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              bottom: inset('bottom'),
+              width: metrics.continueMaxWidth,
+            }}
+          >
+            {continueAction.kind === 'done' ? (
+              <p
+                className="hud-chip border-soft inline-flex min-h-[44px] max-w-full items-center gap-2 rounded-md bg-leaf-tint px-4 text-sm font-bold text-leaf-dark"
+                role="status"
+              >
+                <CheckCircle2 size={18} strokeWidth={2.5} aria-hidden className="shrink-0" />
+                <span className="min-w-0 truncate">{es.hud.levelDone}</span>
+              </p>
+            ) : (
+              <Button
+                size="sm"
+                className="hud-dimmable pointer-events-auto max-w-full"
+                onClick={continueAction.onClick}
+                aria-label={
+                  continueAction.kind === 'continue'
+                    ? continueAction.label
+                    : es.levels.goToNextLevel
+                }
+              >
+                <span className="min-w-0 truncate">
+                  {continueAction.kind === 'continue'
+                    ? metrics.continueIconOnly
+                      ? es.hud.continueShort
+                      : continueAction.label
+                    : es.levels.goToNextLevel}
+                </span>
+                <ArrowRight size={16} strokeWidth={3} aria-hidden className="shrink-0" />
+              </Button>
+            )}
+          </div>
+        )}
+        {coachMarks && curtain === null && (
+          <CoachMarks
+            hasAudio={audio !== null}
+            clusterWidth={metrics.rects.cluster.w}
+            stageWidth={width}
+            hidden={questsOpen}
+            touchGuard={embedded && isCoarsePointer()}
+            maxWidth={width - 2 * (metrics.rects.cluster.w + 2 * GUTTER)}
+          />
+        )}
+        {questsPanel({
+          compact: metrics.compact,
+          // Clear of the bottom row (chip, Continuar, "Mover el mapa").
+          bottomOffset: `calc(${inset('bottom')} + ${TOUCH_TARGET + 2 * GAP + (metrics.rects.guard ? TOUCH_TARGET + GAP : 0)}px)`,
+        })}
+      </div>
     </div>
   )
 }
