@@ -437,11 +437,24 @@ export function AppShell() {
 
   // First visit: the first unseen auto-open content of a level opens by itself,
   // once per level visit, for students only (never the editor's own preview).
+  // The welcome curtain goes first: an auto-opening content waits for it to close.
+  const welcomeState = useWelcome({
+    mapId: renderable?.id ?? null,
+    settings: renderable?.settings.welcome,
+    isEditorMode: isEditor,
+    isPreview: exitPreview !== null,
+    noContent: levelNotSaved || onlyLevelIsEmpty,
+  })
   // Derived, not an effect: it is shown until the first close handles the level.
   const overlayOpen = useHostOverlayOpen()
   const [autoHandledLevel, setAutoHandledLevel] = useState<string | null>(null)
   const autoCandidate =
-    immersive && !exitPreview && courseMapId && !overlayOpen && autoHandledLevel !== courseMapId
+    immersive &&
+    !exitPreview &&
+    !welcomeState.open &&
+    courseMapId &&
+    !overlayOpen &&
+    autoHandledLevel !== courseMapId
       ? ([...bubbles]
           .sort((a, b) => a.sequence - b.sequence)
           .find(
@@ -655,13 +668,6 @@ export function AppShell() {
   )
   // The welcome curtain: once per viewer and map; never to an editor editing.
   const hostCourseName = useHostCourseName()
-  const welcomeState = useWelcome({
-    mapId: renderable?.id ?? null,
-    settings: renderable?.settings.welcome,
-    isEditorMode: isEditor,
-    isPreview: exitPreview !== null,
-    noContent: levelNotSaved || onlyLevelIsEmpty,
-  })
   const welcomeCurtain =
     welcomeState.open && renderable ? (
       <LazyWelcomeCurtain
