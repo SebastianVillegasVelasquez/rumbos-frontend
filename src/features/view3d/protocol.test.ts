@@ -89,3 +89,37 @@ describe('isPageMessage', () => {
     assert.equal(isPageMessage({ type: 'omelette:notify-3d-export', v: 1 }), false)
   })
 })
+
+describe('bare mode messages', () => {
+  it('accepts ui: bare on init and rejects other values', () => {
+    assert.ok(isHostMessage({ ...init, ui: 'bare' }))
+    assert.equal(isHostMessage({ ...init, ui: 'full' }), false)
+  })
+
+  it('validates layout insets', () => {
+    const insets = { top: 0, right: 56, bottom: 120, left: 8.5 }
+    assert.ok(isHostMessage({ type: 'rumbos:layout', v: 1, insets }))
+    assert.equal(
+      isHostMessage({ type: 'rumbos:layout', v: 1, insets: { ...insets, top: -1 } }),
+      false
+    )
+    assert.equal(
+      isHostMessage({ type: 'rumbos:layout', v: 1, insets: { ...insets, left: NaN } }),
+      false
+    )
+    assert.equal(isHostMessage({ type: 'rumbos:layout', v: 1, insets: { top: 0 } }), false)
+  })
+
+  it('validates camera commands and camera-state', () => {
+    for (const action of ['zoom-in', 'zoom-out', 'reset'])
+      assert.ok(isHostMessage({ type: 'rumbos:camera', v: 1, action }))
+    assert.equal(isHostMessage({ type: 'rumbos:camera', v: 1, action: 'spin' }), false)
+    assert.ok(
+      isPageMessage({ type: 'rumbos:camera-state', v: 1, canZoomIn: true, canZoomOut: false })
+    )
+    assert.equal(
+      isPageMessage({ type: 'rumbos:camera-state', v: 1, canZoomIn: 1, canZoomOut: false }),
+      false
+    )
+  })
+})
