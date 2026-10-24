@@ -1,3 +1,5 @@
+import { announce } from '../../components/ui/announce.ts'
+import { es } from '../../i18n/es.ts'
 import { isDataSaverActive } from '../../fx/dataSaverStore.ts'
 import { isHostOverlayOpen, subscribeHostOverlay } from '../embed/hostOverlay.ts'
 import { viewerStorage } from '../quests/viewerStorage.ts'
@@ -57,8 +59,15 @@ let view: AudioSessionView = { state, prefs, track, playing: false }
 
 const targetVolume = () => (track ? effectiveVolume(prefs, track.volume) : 0)
 
+// Said once per app start, when the music begins on its own.
+let startAnnounced = false
+
 const notify = () => {
   view = { state, prefs, track, playing: isPlaying(state) && track !== null }
+  if (view.playing && state.autostarted && !startAnnounced) {
+    startAnnounced = true
+    announce(es.audio.startedAnnouncement)
+  }
   listeners.forEach((listener) => listener())
 }
 
@@ -210,6 +219,28 @@ export const audioSession = {
     rememberAudioPrefs(prefs, viewerStorage())
     dispatch({ type: 'toggle' })
   },
+
+  // The welcome curtain's button is the viewer's first gesture: apply the
+  // autostart rule now, whether or not the music control has mounted yet (a
+  // track that arrives later finds the gesture already seen).
+  startFromGesture: () => {
+    attach()
+    dispatch({ type: 'gesture', autostart: autostartAllowed() })
+  },
+
+  // The curtain's "Sin música" switch: the viewer's mute, remembered, which
+  // wins over the editor's setting. Called from a click, so it may start the
+  // music when the viewer turns it back on.
+  setMuted: (muted: boolean) => {
+    prefs = { ...prefs, muted }
+    rememberAudioPrefs(prefs, viewerStorage())
+    if (muted && state.wants === true) dispatch({ type: 'toggle' })
+    else if (!muted && state.wants === false) dispatch({ type: 'toggle' })
+    else notify()
+  },
+
+  // The welcome video plays over a track that should not talk across it.
+  hold: (held: boolean) => dispatch({ type: 'hold', held }),
 
   setVolume: (volume: number) => {
     prefs = { ...prefs, volume: Math.min(1, Math.max(0, volume)) }
