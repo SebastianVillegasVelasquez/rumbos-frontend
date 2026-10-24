@@ -12,6 +12,7 @@ import {
   resolveWelcome,
   shouldShowWelcome,
   welcomeHash,
+  validateWelcome,
   welcomeTitle,
 } from './welcome.ts'
 
@@ -155,6 +156,33 @@ describe('welcomeHash', () => {
     assert.notEqual(
       welcomeHash(DEFAULT_WELCOME),
       welcomeHash({ ...DEFAULT_WELCOME, show: 'always' })
+    )
+  })
+})
+
+describe('validateWelcome', () => {
+  it('accepts null, the defaults and a full welcome', () => {
+    assert.deepEqual(validateWelcome(null), [])
+    assert.deepEqual(validateWelcome(DEFAULT_WELCOME), [])
+    assert.deepEqual(
+      validateWelcome({ ...DEFAULT_WELCOME, title: 'Hola, {curso}', message: 'x', video }),
+      []
+    )
+  })
+
+  it('refuses what the backend refuses', () => {
+    assert.deepEqual(validateWelcome({ ...DEFAULT_WELCOME, title: 'x'.repeat(121) }), [
+      'title_too_long',
+    ])
+    assert.deepEqual(validateWelcome({ ...DEFAULT_WELCOME, title: 'Hola {nombre}' }), [
+      'title_placeholder',
+    ])
+    assert.deepEqual(validateWelcome({ ...DEFAULT_WELCOME, message: 'x'.repeat(301) }), [
+      'message_too_long',
+    ])
+    assert.deepEqual(
+      validateWelcome({ ...DEFAULT_WELCOME, video: { provider: 'vimeo', videoId: 'no' } }),
+      ['video_invalid']
     )
   })
 })

@@ -1,5 +1,6 @@
 import { canonicalJson } from '../course-map/data/canonicalJson.ts'
-import type { MapSettings, MapWelcome } from '../course-map/data/types.ts'
+import { WELCOME_LIMITS, type MapSettings, type MapWelcome } from '../course-map/data/types.ts'
+import { isVideoId } from '../content/validateContent.ts'
 
 // The rules of the welcome curtain, free of React and the DOM so they can be
 // tested: what the settings mean with their defaults, the title, the button
@@ -112,3 +113,22 @@ export const shouldShowWelcome = (input: ShowInput): boolean => {
 
 // Test helper: a fresh app start.
 export const resetWelcomeSession = () => handledThisSession.clear()
+
+export type WelcomeProblem =
+  'title_too_long' | 'title_placeholder' | 'message_too_long' | 'video_invalid'
+
+// The backend's rules (422 welcome_invalid), checked on the client too so the
+// editor can say what is wrong before saving and the mock answers like the real thing.
+export const validateWelcome = (welcome: MapWelcome | null | undefined): WelcomeProblem[] => {
+  if (!welcome) return []
+  const problems: WelcomeProblem[] = []
+  const { title, message, video } = welcome
+  if (title !== null && title.length > WELCOME_LIMITS.titleMax) problems.push('title_too_long')
+  // Only {curso} is a placeholder; any other braces would be shown as typed.
+  if (title !== null && /[{}]/.test(title.split(PLACEHOLDER).join('')))
+    problems.push('title_placeholder')
+  if (message !== null && message.length > WELCOME_LIMITS.messageMax)
+    problems.push('message_too_long')
+  if (video !== null && !isVideoId(video.provider, video.videoId)) problems.push('video_invalid')
+  return problems
+}
