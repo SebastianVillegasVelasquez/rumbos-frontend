@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type RefObject } from 'react'
+import { cameraBridge } from './cameraBridge.ts'
 import {
   PROTOCOL_VERSION,
   isPageMessage,
@@ -9,6 +10,8 @@ import {
 } from './protocol.ts'
 
 export const HANDSHAKE_TIMEOUT_MS = 10_000
+// Insets change while the HUD animates or text wraps; send the settled value.
+export const LAYOUT_DEBOUNCE_MS = 120
 
 export type BridgeStatus = 'loading' | 'ready' | 'error'
 
@@ -81,6 +84,7 @@ export const useView3dBridge = (options: View3dBridgeOptions): View3dBridge => {
         reducedMotion: current.reducedMotion,
         theme: { cssVars: current.cssVars },
         points: current.points,
+        ui: 'bare',
       })
       sent.current = {
         structure: JSON.stringify([
@@ -118,6 +122,9 @@ export const useView3dBridge = (options: View3dBridgeOptions): View3dBridge => {
             latest.current.onOpenActivity(message.pointId)
           }
           break
+        case 'rumbos:camera-state':
+          cameraBridge.setState({ canZoomIn: message.canZoomIn, canZoomOut: message.canZoomOut })
+          break
         case 'rumbos:error':
           setState({ status: 'error', errorCode: message.code })
           break
@@ -151,6 +158,7 @@ export const useView3dBridge = (options: View3dBridgeOptions): View3dBridge => {
       reducedMotion: current.reducedMotion,
       theme: { cssVars: current.cssVars },
       points: current.points,
+      ui: 'bare',
     })
     sent.current = {
       ...sent.current,
@@ -179,6 +187,30 @@ export const useView3dBridge = (options: View3dBridgeOptions): View3dBridge => {
     send({ type: 'rumbos:theme', v: PROTOCOL_VERSION, cssVars: latest.current.cssVars })
     sent.current.theme = themeKey
   }, [ready, themeKey, send])
+
+  // The HUD's camera buttons reach the page through here.
+  useEffect(
+    () =>
+      cameraBridge.attach((action) => send({ type: 'rumbos:camera', v: PROTOCOL_VERSION, action })),
+    [send]
+  )
+
+  // What the HUD covers: sent once the page is listening, then on each settled change.
+  useEffect(() => {
+    if (!ready) return
+    let timer = 0
+    const push = () =>
+      send({ type: 'rumbos:layout', v: PROTOCOL_VERSION, insets: cameraBridge.getInsets() })
+    push()
+    const unsubscribe = cameraBridge.subscribeInsets(() => {
+      window.clearTimeout(timer)
+      timer = window.setTimeout(push, LAYOUT_DEBOUNCE_MS)
+    })
+    return () => {
+      window.clearTimeout(timer)
+      unsubscribe()
+    }
+  }, [ready, send])
 
   useEffect(() => {
     if (!ready || focusPointId === null) return

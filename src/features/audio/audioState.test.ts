@@ -85,3 +85,19 @@ describe('audio state', () => {
     assert.equal(isPlaying(state), true)
   })
 })
+
+describe('autostart announcement and the welcome video hold', () => {
+  it('flags only a start the viewer did not ask for', () => {
+    assert.equal(run([{ type: 'gesture', autostart: true }]).autostarted, true)
+    assert.equal(run([{ type: 'gesture', autostart: false }]).autostarted, false)
+    assert.equal(run([{ type: 'toggle' }]).autostarted, false)
+  })
+
+  it('waits while the welcome video plays and resumes after', () => {
+    const started = run([{ type: 'gesture', autostart: true }])
+    const held = audioReducer(started, { type: 'hold', held: true })
+    assert.equal(isPlaying(held), false)
+    assert.equal(wantsMusic(held), true)
+    assert.equal(isPlaying(audioReducer(held, { type: 'hold', held: false })), true)
+  })
+})

@@ -21,4 +21,8 @@ export const rememberCoachDone = (storage: Pick<Storage, 'setItem'> | null) => {
 }
 
 export const COACH_STEPS = ['move', 'bubble', 'quests'] as const
-export type CoachStep = (typeof COACH_STEPS)[number]
+export type CoachStep = (typeof COACH_STEPS)[number] | 'audio'
+
+// The steps for this map: the one about the music exists only when it has music.
+export const coachSteps = (hasAudio: boolean): readonly CoachStep[] =>
+  hasAudio ? [...COACH_STEPS, 'audio'] : COACH_STEPS

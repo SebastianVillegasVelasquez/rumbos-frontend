@@ -7,7 +7,7 @@ import { es } from '../../i18n/es.ts'
 
 // The student's settings: today just the data saver. When it is on, the button
 // carries a leaf badge (a shape, not only a color) and says so in its name.
-export const SettingsPopover = () => {
+export const SettingsPopover = ({ onShowWelcome }: { onShowWelcome: (() => void) | null }) => {
   const [open, setOpen] = useState(false)
   const saver = useDataSaver()
   const label = saver.active ? es.settings.openActive : es.settings.open
@@ -55,6 +55,19 @@ export const SettingsPopover = () => {
         </label>
         {saver.setting === 'auto' && saver.detected && (
           <p className="text-xs font-semibold text-ink-soft">{es.settings.dataSaverAuto}</p>
+        )}
+        {onShowWelcome && (
+          <Button
+            variant="surface"
+            dense
+            size="sm"
+            onClick={() => {
+              setOpen(false)
+              onShowWelcome()
+            }}
+          >
+            {es.settings.showWelcome}
+          </Button>
         )}
         {saver.setting !== 'auto' && (
           <Button variant="surface" dense size="sm" onClick={() => saver.setSetting('auto')}>

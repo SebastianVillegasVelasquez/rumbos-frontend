@@ -101,21 +101,41 @@ export interface MapSettings {
   intro: MapIntro
   // Background music. Absent or null: none.
   audio?: MapAudio | null
+  // The welcome curtain. Null or absent means all defaults; a backend that
+  // predates it never sends the key (the editor then hides the tab).
+  welcome?: MapWelcome | null
 }
+
+export type WelcomeShow = 'first_visit' | 'always'
+
+export interface MapWelcome {
+  enabled: boolean
+  // At most 120 characters; the only placeholder allowed is {curso}.
+  title: string | null
+  // At most 300 characters.
+  message: string | null
+  video: { provider: 'youtube' | 'vimeo'; videoId: string } | null
+  // Start the video when the viewer enters (default true).
+  playOnEnter: boolean
+  show: WelcomeShow
+}
+
+export const WELCOME_LIMITS = { titleMax: 120, messageMax: 300 } as const
 
 export interface MapAudio {
   assetId: string
   // 0..1, the volume the viewer starts with (default 0.4).
   volume: number
   loop: boolean
-  // Start by itself after the viewer's first tap or key press (default false).
+  // Start by itself after the viewer's first tap or key press. The editor
+  // pre-selects it when music is first added (the wire default stays false).
   startAfterInteraction: boolean
 }
 
 export const DEFAULT_MAP_AUDIO = {
   volume: 0.4,
   loop: true,
-  startAfterInteraction: false,
+  startAfterInteraction: true,
 } as const
 
 // Read-only on CourseMapRead and PublishedMapRead: what to show as credit.

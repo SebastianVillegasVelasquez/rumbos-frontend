@@ -7,6 +7,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type ReactNode,
 } from 'react'
 import {
@@ -78,6 +79,11 @@ import { courseTitleFrom } from './features/course-map/courseTitle.ts'
 import { progressCounts } from './features/course-map/progress.ts'
 import { useResume } from './features/hud/useResume.ts'
 import { readResume } from './features/hud/resume.ts'
+import { useHostCourseName } from './features/embed/hostCourse.ts'
+import { LazyWelcomeCurtain } from './features/welcome/LazyWelcomeCurtain.tsx'
+import { useWelcome } from './features/welcome/useWelcome.ts'
+import { welcomeTitle } from './features/welcome/welcome.ts'
+import { cameraBridge } from './features/view3d/cameraBridge.ts'
 import { LazyAudioControl } from './features/audio/LazyAudioControl.tsx'
 import type { AudioTrack } from './features/audio/audioSession.ts'
 import { QuestLog } from './features/quests/QuestLog.tsx'
@@ -431,11 +437,24 @@ export function AppShell() {
 
   // First visit: the first unseen auto-open content of a level opens by itself,
   // once per level visit, for students only (never the editor's own preview).
+  // The welcome curtain goes first: an auto-opening content waits for it to close.
+  const welcomeState = useWelcome({
+    mapId: renderable?.id ?? null,
+    settings: renderable?.settings.welcome,
+    isEditorMode: isEditor,
+    isPreview: exitPreview !== null,
+    noContent: levelNotSaved || onlyLevelIsEmpty,
+  })
   // Derived, not an effect: it is shown until the first close handles the level.
   const overlayOpen = useHostOverlayOpen()
   const [autoHandledLevel, setAutoHandledLevel] = useState<string | null>(null)
   const autoCandidate =
-    immersive && !exitPreview && courseMapId && !overlayOpen && autoHandledLevel !== courseMapId
+    immersive &&
+    !exitPreview &&
+    !welcomeState.open &&
+    courseMapId &&
+    !overlayOpen &&
+    autoHandledLevel !== courseMapId
       ? ([...bubbles]
           .sort((a, b) => a.sequence - b.sequence)
           .find(
@@ -647,6 +666,23 @@ export function AppShell() {
       audio?.info.credit,
     ]
   )
+  // The welcome curtain: once per viewer and map; never to an editor editing.
+  const hostCourseName = useHostCourseName()
+  const welcomeCurtain =
+    welcomeState.open && renderable ? (
+      <LazyWelcomeCurtain
+        key={renderable.id}
+        welcome={welcomeState.welcome}
+        title={welcomeTitle(welcomeState.welcome, es.welcome.defaultTitle, {
+          courseName: hostCourseName,
+          mapTitle: renderable.title,
+        })}
+        imageUrl={renderable.imageUrl}
+        hasMusic={audioTrack !== null}
+        showSkip={exitPreview !== null}
+        onDone={welcomeState.dismiss}
+      />
+    ) : null
   const resumeCourseId = renderable?.moodleCourseId ?? null
   const resumeMapId = renderable?.id ?? null
   useResume({
@@ -676,6 +712,7 @@ export function AppShell() {
   // 3D is for students and the editor's preview; editing stays on the 2D map.
   const view3d = renderable?.view3d ?? null
   const show3d = !isEditor && view3d !== null && mapView === '3d'
+  const camera3d = useSyncExternalStore(cameraBridge.subscribeState, cameraBridge.getState)
 
   const renderMapArea = (layout?: { guardCompact: boolean }) => {
     if (mapQuery.isPending) {
@@ -1098,13 +1135,23 @@ export function AppShell() {
                 view={view3d ? { value: show3d ? '3d' : '2d', onChange: changeMapView } : null}
                 zoom={
                   show3d
-                    ? null
+                    ? {
+                        zoomIn: () => cameraBridge.command('zoom-in'),
+                        zoomOut: () => cameraBridge.command('zoom-out'),
+                        recenter: () => cameraBridge.command('reset'),
+                        canZoomIn: camera3d.canZoomIn,
+                        canZoomOut: camera3d.canZoomOut,
+                        recenterLabel: es.hud.resetView,
+                      }
                     : {
                         zoomIn: () => mapControlsRef.current?.zoomIn(),
                         zoomOut: () => mapControlsRef.current?.zoomOut(),
                         recenter: () => mapControlsRef.current?.recenter(),
                       }
                 }
+                reportInsets={show3d}
+                curtain={welcomeCurtain}
+                onShowWelcome={welcomeState.reopen}
                 audio={audioTrack ? <LazyAudioControl track={audioTrack} /> : null}
                 onEnterFullscreen={
                   embed && !isFullscreen ? () => embed.requestFullscreen(true) : null

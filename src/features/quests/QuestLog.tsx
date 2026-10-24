@@ -140,6 +140,7 @@ export const QuestLog = ({
   return (
     <section
       id={QUEST_LOG_ID}
+      data-hud-edge={compact ? 'bottom' : 'left'}
       aria-labelledby="quest-log-title"
       className={`pointer-events-auto absolute z-30 flex flex-col overflow-hidden border-soft bg-surface text-ink shadow-md ${
         compact

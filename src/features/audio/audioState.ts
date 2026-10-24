@@ -17,11 +17,16 @@ export interface AudioState {
   overlayOpen: boolean
   // The tab is not visible.
   hidden: boolean
+  // The welcome video is playing: the music waits for it.
+  held: boolean
   // The control is on screen. Leaving the stage (the level picker) pauses the
   // music without forgetting what the viewer wanted.
   active: boolean
   // The file could not be played.
   failed: boolean
+  // The music began by itself (not because the viewer pressed the button), so
+  // it is announced once to screen readers.
+  autostarted: boolean
 }
 
 export type AudioEvent =
@@ -32,6 +37,7 @@ export type AudioEvent =
   | { type: 'toggle' }
   | { type: 'overlay'; open: boolean }
   | { type: 'visibility'; hidden: boolean }
+  | { type: 'hold'; held: boolean }
   | { type: 'active'; active: boolean }
   | { type: 'failed' }
   // A different track was loaded: forget the failure, keep what the viewer wants.
@@ -42,18 +48,23 @@ export const initialAudioState: AudioState = {
   gestureSeen: false,
   overlayOpen: false,
   hidden: false,
+  held: false,
   active: false,
   failed: false,
+  autostarted: false,
 }
 
 export const audioReducer = (state: AudioState, event: AudioEvent): AudioState => {
   switch (event.type) {
-    case 'gesture':
+    case 'gesture': {
+      const starts = state.wants === null && event.autostart
       return {
         ...state,
         gestureSeen: true,
-        wants: state.wants === null && event.autostart ? true : state.wants,
+        wants: starts ? true : state.wants,
+        autostarted: state.autostarted || starts,
       }
+    }
     case 'toggle':
       // Pressing the button is itself a gesture.
       return { ...state, gestureSeen: true, wants: state.wants !== true, failed: false }
@@ -61,6 +72,8 @@ export const audioReducer = (state: AudioState, event: AudioEvent): AudioState =
       return { ...state, overlayOpen: event.open }
     case 'visibility':
       return { ...state, hidden: event.hidden }
+    case 'hold':
+      return { ...state, held: event.held }
     case 'active':
       return { ...state, active: event.active }
     case 'failed':
@@ -77,6 +90,7 @@ export const isPlaying = (state: AudioState): boolean =>
   state.active &&
   !state.overlayOpen &&
   !state.hidden &&
+  !state.held &&
   !state.failed
 
 // The button's state: the viewer wants music, even if something is holding it

@@ -14,6 +14,7 @@ import {
 import { canonicalJson, sha256Hex } from './canonicalJson.ts'
 import { DESCRIPTION3D_MAX_LENGTH, TITLE3D_MAX_LENGTH } from './view3dLimits.ts'
 import { DEFAULT_BACKGROUND_URL } from '../../../assets/backgrounds/index.ts'
+import { validateWelcome } from '../../welcome/welcome.ts'
 import type { CourseMapApi } from './courseMapApi.ts'
 import type {
   Activity,
@@ -118,6 +119,39 @@ const mockMoodleOverride = (): 'down' | 'hidden' | 'missing' | 'cached' | null =
 const mockAudioOverride = (): 'off' | 'uploads-off' | null => {
   const value = queryParam('mockAudio')
   return value === 'off' || value === 'uploads-off' ? value : null
+}
+
+// ?mockWelcome=off: a backend that predates the welcome curtain (the settings
+// carry no `welcome` key). Otherwise a seeded welcome to demo each variant:
+// video | video-optional | always | message | disabled.
+const mockWelcomeOverride = () => queryParam('mockWelcome')
+
+const mockWelcomeSeed = (): MapSettings['welcome'] | undefined => {
+  const base = {
+    enabled: true,
+    title: null,
+    message: null,
+    video: null,
+    playOnEnter: true,
+    show: 'first_visit' as const,
+  }
+  const video = { provider: 'youtube' as const, videoId: 'jNQXAC9IVRw' }
+  switch (mockWelcomeOverride()) {
+    case 'off':
+      return undefined
+    case 'video':
+      return { ...base, message: 'Mira este video antes de empezar.', video }
+    case 'video-optional':
+      return { ...base, message: 'El video es opcional.', video, playOnEnter: false }
+    case 'always':
+      return { ...base, show: 'always' }
+    case 'message':
+      return { ...base, title: 'Tu viaje por {curso}', message: 'Explora cada burbuja a tu ritmo.' }
+    case 'disabled':
+      return { ...base, enabled: false }
+    default:
+      return null
+  }
 }
 
 const mockAssetsOverride = (): 'quota' | 'down' | null => {
@@ -325,6 +359,7 @@ const defaultSettings = (mode: MapSettings['mode']): MapSettings => ({
   path: { visible: true, style: 'dashed', color: null, animated: mode === 'guided' },
   ambient: { kind: 'none', intensity: 0 },
   intro: 'none',
+  ...(mockWelcomeSeed() === undefined ? {} : { welcome: mockWelcomeSeed() }),
 })
 
 // The scenes this "backend" accepts. A scene is hand-authored with a fixed
@@ -1468,6 +1503,8 @@ const impl: CourseMapApi = {
     const map = requireMap(courseMapId)
     checkIfMatch(ifMatch, map.revision, 'currentRevision')
     if (input.defaultSkinId !== null) requireSkin(input.defaultSkinId)
+    if (validateWelcome(input.settings.welcome).length > 0)
+      throw businessError(422, 'welcome_invalid', 'La bienvenida no es válida')
     const seenModnames = new Set<string>()
     for (const rule of input.skinRules) {
       if (seenModnames.has(rule.modname)) {

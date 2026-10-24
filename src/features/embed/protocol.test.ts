@@ -223,3 +223,27 @@ describe('host-fullscreen', () => {
     assert.equal(parseHostMessage({ type: 'rumbos:host-fullscreen', on: true }), null)
   })
 })
+
+describe('courseName (contract v5.6)', () => {
+  const nameOf = (courseName: unknown) => {
+    const parsed = parseHostMessage({ ...init, courseName })
+    return parsed?.type === 'rumbos:host-init' ? parsed.courseName : 'rejected'
+  }
+
+  it('keeps plain text and is null when absent or not a string', () => {
+    assert.equal(nameOf('Ecología'), 'Ecología')
+    assert.equal(nameOf(undefined), null)
+    assert.equal(nameOf(42), null)
+    assert.equal(nameOf('   '), null)
+  })
+
+  it('caps the length and drops control characters, leaving markup as inert text', () => {
+    assert.equal(nameOf('x'.repeat(500))?.length, 200)
+    assert.equal(nameOf('A B'), 'AB')
+    assert.equal(nameOf('<b>Curso</b>'), '<b>Curso</b>')
+  })
+
+  it('does not reject host-init from a host that predates it', () => {
+    assert.equal(parseHostMessage(init)?.type, 'rumbos:host-init')
+  })
+})

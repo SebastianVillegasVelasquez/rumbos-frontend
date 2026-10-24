@@ -56,6 +56,8 @@ const config = {
   completionEnabled: 'true' as 'true' | 'false' | 'absent',
   // Contract v5.5: size the frame to the app's preferred aspect ratio.
   followPreferredSize: false,
+  // Contract v5.6: host-init.courseName; "absent" plays a plugin that predates it.
+  courseName: 'present' as 'present' | 'absent',
   // What the mock backend reports for this tenant (GET /auth/me) and supports.
   widgets: false,
   contentSupport: true,
@@ -177,6 +179,7 @@ window.addEventListener('message', (event) => {
         mode: config.role === 'editor' && config.editing ? 'editor' : 'student',
         locale: 'es',
         courseId: config.courseId,
+        ...(config.courseName === 'present' ? { courseName: 'Introducción a la Ecología' } : {}),
         assertion: assertion(),
         state: buildState(),
       })
@@ -432,6 +435,13 @@ const buildControls = () => {
     labelled(
       'push state on every change',
       checkbox(config.autoPush, (value) => (config.autoPush = value))
+    ),
+    labelled(
+      'courseName (v5.6)',
+      select(['present', 'absent'] as const, config.courseName, (value) => {
+        config.courseName = value
+        mountFrame()
+      })
     ),
     labelled(
       'follow preferred-size',

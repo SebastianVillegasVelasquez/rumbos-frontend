@@ -87,6 +87,28 @@
   --hud-dim-chip: 0.7;
   /* Lifts the toast stack above the HUD's bottom row. */
   --hud-toast-lift: 0px;
+  /* Welcome curtain: white text over this scrim on the blurred map; contrast is
+     measured over the worst backgrounds in welcome/contrast.test.ts. */
+  --welcome-scrim: rgb(10 15 30 / 0.82);
+}
+
+@keyframes welcome-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Entrance of the curtain's card. Not defined at all for reduced motion; the
+   curtain also leaves it out under the data saver. */
+@media (prefers-reduced-motion: no-preference) {
+  .welcome-in {
+    animation: welcome-in 450ms ease-out both;
+  }
 }
 
 /* "Cliente" theme: proves white-labelling by swapping the palette only. */

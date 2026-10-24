@@ -9,6 +9,11 @@ const queryClient = new QueryClient({
   defaultOptions: { queries: { refetchOnWindowFocus: false } },
 })
 
+// ?debug=layout: report overlapping controls (development builds only).
+if (import.meta.env.DEV && new URLSearchParams(window.location.search).get('debug') === 'layout') {
+  void import('./dev/layoutCheck.ts').then((module) => module.startLayoutCheck())
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>

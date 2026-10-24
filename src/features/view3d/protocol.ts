@@ -11,6 +11,17 @@ export const PROTOCOL_VERSION = 1
 
 export type PinState = 'locked' | 'available' | 'next' | 'complete' | 'teaser' | 'missing'
 export type Locale3d = 'es' | 'en'
+// "bare": the host draws every control; the page keeps only its world, pin
+// labels and detail panel, inside the insets the host sends.
+export type UiMode = 'bare'
+export type CameraAction = 'zoom-in' | 'zoom-out' | 'reset'
+// CSS pixels the host's controls occupy at each edge of the frame.
+export interface Insets {
+  top: number
+  right: number
+  bottom: number
+  left: number
+}
 
 // A null title or description means "use the scene's built-in text".
 export interface Point3D {
@@ -31,6 +42,9 @@ export type PageMessage =
   | { type: 'rumbos:pin-click'; v: 1; pointId: string }
   | { type: 'rumbos:open-activity'; v: 1; pointId: string }
   | { type: 'rumbos:error'; v: 1; code: string; message: string }
+  // Whether the camera can still move in each direction, so the host can
+  // disable its zoom buttons at the limits.
+  | { type: 'rumbos:camera-state'; v: 1; canZoomIn: boolean; canZoomOut: boolean }
 
 // ---- host -> 3D page ---------------------------------------------------------
 
@@ -43,7 +57,10 @@ export type HostMessage =
       reducedMotion: boolean
       theme: { cssVars: CssVars }
       points: Point3D[]
+      ui?: UiMode
     }
+  | { type: 'rumbos:layout'; v: 1; insets: Insets }
+  | { type: 'rumbos:camera'; v: 1; action: CameraAction }
   | { type: 'rumbos:states'; v: 1; states: Record<string, PinState> }
   | { type: 'rumbos:locale'; v: 1; locale: Locale3d }
   | { type: 'rumbos:theme'; v: 1; cssVars: CssVars }
@@ -67,6 +84,7 @@ const MAX_DESCRIPTION_LENGTH = 2000
 const MAX_CSS_VARS = 64
 const MAX_CSS_VALUE_LENGTH = 200
 const MAX_ERROR_LENGTH = 500
+const MAX_INSET = 4000
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -113,6 +131,15 @@ export const isCssVars = (value: unknown): value is CssVars => {
   )
 }
 
+const CAMERA_ACTIONS: readonly CameraAction[] = ['zoom-in', 'zoom-out', 'reset']
+
+const isInsets = (value: unknown): value is Insets =>
+  isRecord(value) &&
+  (['top', 'right', 'bottom', 'left'] as const).every((side) => {
+    const inset = value[side]
+    return typeof inset === 'number' && Number.isFinite(inset) && inset >= 0 && inset <= MAX_INSET
+  })
+
 const isStatesMap = (value: unknown): value is Record<string, PinState> =>
   isRecord(value) &&
   Object.keys(value).length <= MAX_POINTS &&
@@ -130,8 +157,13 @@ export const isHostMessage = (data: unknown): data is HostMessage => {
         isCssVars(data.theme.cssVars) &&
         Array.isArray(data.points) &&
         data.points.length <= MAX_POINTS &&
-        data.points.every(isPoint3D)
+        data.points.every(isPoint3D) &&
+        (data.ui === undefined || data.ui === 'bare')
       )
+    case 'rumbos:layout':
+      return isInsets(data.insets)
+    case 'rumbos:camera':
+      return (CAMERA_ACTIONS as readonly unknown[]).includes(data.action)
     case 'rumbos:states':
       return isStatesMap(data.states)
     case 'rumbos:locale':
@@ -155,6 +187,8 @@ export const isPageMessage = (data: unknown): data is PageMessage => {
       return isId(data.pointId)
     case 'rumbos:error':
       return isBoundedString(data.code, 64) && isBoundedString(data.message, MAX_ERROR_LENGTH)
+    case 'rumbos:camera-state':
+      return typeof data.canZoomIn === 'boolean' && typeof data.canZoomOut === 'boolean'
     default:
       return false
   }

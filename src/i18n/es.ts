@@ -245,6 +245,7 @@ export const es = {
     turnOff: 'Apagar la música',
     volume: 'Volumen',
     failed: 'No se pudo reproducir la música.',
+    startedAnnouncement: 'Música activada. Puedes silenciarla con el botón de volumen.',
     credit: (title: string, credit: string) => `Música: ${title} — ${credit}`,
     editor: {
       current: 'Música de este nivel',
@@ -263,9 +264,9 @@ export const es = {
       remove: 'Quitar música',
       volume: 'Volumen inicial',
       loop: 'Repetir en bucle',
-      startAfterInteraction: 'Iniciar tras la primera interacción',
+      startAfterInteraction: 'Iniciar al empezar',
       startAfterInteractionHint:
-        'Empieza sola cuando el estudiante toque o pulse algo, salvo que la haya silenciado o use ahorro de datos.',
+        'La música empieza sola cuando el estudiante entra (con el botón de la bienvenida o con su primer toque), salvo que la haya silenciado o use ahorro de datos.',
       uploadsDisabled:
         'Tu sitio no tiene habilitada la subida de audio. Elige una pista de la biblioteca.',
       rightsNotice:
@@ -307,6 +308,23 @@ export const es = {
     dataSaverHint: 'Usa menos datos: menos animaciones, sin 3D automático ni música precargada.',
     dataSaverAuto: 'Se activó solo por tu conexión.',
     backToAuto: 'Volver a automático',
+    showWelcome: 'Ver bienvenida',
+  },
+  // The welcome curtain students see when they enter a map.
+  welcome: {
+    label: 'Bienvenida',
+    defaultTitle: 'Bienvenido a {curso}',
+    play: 'Reproducir',
+    start: 'Empezar viaje',
+    watchVideo: 'Ver video de bienvenida',
+    skipVideo: 'Saltar',
+    skipPreview: 'Saltar bienvenida',
+    musicOn: 'Con música',
+    musicOff: 'Sin música',
+    musicLabel: 'Música de fondo',
+    videoTitle: 'Video de bienvenida',
+    videoHost: (provider: string) => `Video alojado en ${provider}`,
+    providers: { youtube: 'YouTube', vimeo: 'Vimeo' },
   },
   completion: {
     untracked: 'Sin finalización configurada',
@@ -335,6 +353,10 @@ export const es = {
       quests: {
         title: 'Abre Misiones',
         body: 'Ahí ves tu progreso y todas las actividades del nivel.',
+      },
+      audio: {
+        title: 'Aquí puedes silenciar la música',
+        body: 'Es el botón de volumen, abajo a la derecha. Ahí también ajustas el volumen.',
       },
     },
     moveTouch: 'Toca «Mover el mapa» para arrastrarlo; usa + y − (o pellizca) para acercarte.',
@@ -544,6 +566,33 @@ export const es = {
       view3d: '3D',
       animation: 'Animación',
       music: 'Música',
+      welcome: 'Bienvenida',
+    },
+    welcome: {
+      title: 'Pantalla de bienvenida',
+      intro: 'Es lo primero que ven tus estudiantes al entrar al mapa.',
+      enable: 'Mostrar pantalla de bienvenida',
+      titleLabel: 'Título',
+      titleHint:
+        'Escribe {curso} para poner el nombre del curso. Si lo dejas vacío: «Bienvenido a {curso}».',
+      messageLabel: 'Mensaje (opcional)',
+      messageCount: (used: number, max: number) => `${used} de ${max} caracteres`,
+      videoLabel: 'Video de bienvenida (opcional)',
+      videoHint: 'Pega un enlace de YouTube o de Vimeo, o solo el código del video.',
+      videoInvalid: 'No reconocemos ese video. Pega un enlace de YouTube o de Vimeo.',
+      videoFound: (provider: string) => `Video de ${provider} reconocido.`,
+      videoRemove: 'Quitar el video',
+      playOnEnter: 'Reproducir al entrar',
+      playOnEnterHint: 'El video empieza cuando el estudiante pulsa «Reproducir».',
+      showLabel: 'Mostrar',
+      showOptions: { first_visit: 'Solo la primera vez', always: 'Cada vez que entre' },
+      previewTitle: 'Así se verá',
+      previewButton: 'Ver vista previa',
+      previewClose: 'Cerrar vista previa',
+      errors: {
+        welcome_invalid: 'La bienvenida no es válida. Revisa el título, el mensaje y el video.',
+        unreachable: 'No se pudo guardar la bienvenida. Revisa tu conexión.',
+      },
     },
     view3d: {
       enable: 'Habilitar vista 3D',
