@@ -21,6 +21,7 @@ import { CoachMarks } from './CoachMarks.tsx'
 import { SettingsPopover } from './SettingsPopover.tsx'
 import { PANEL_WIDTH, QUESTS_BUTTON_ID, QUEST_LOG_ID } from '../quests/QuestLog.tsx'
 import { useIdleDim } from './useIdleDim.ts'
+import { useHudInsets } from './useHudInsets.ts'
 import { useStageSize } from './useStageSize.ts'
 import { isCoarsePointer } from './pointer.ts'
 
@@ -39,8 +40,18 @@ interface StudentStageProps {
   onToggleQuests: () => void
   // The 2D/3D switch; absent when the published map has no 3D view.
   view: { value: MapViewKind; onChange: (view: MapViewKind) => void } | null
-  // Camera buttons; absent in 3D, which has its own.
-  zoom: { zoomIn: () => void; zoomOut: () => void; recenter: () => void } | null
+  // Camera buttons, for 2D and 3D alike (the 3D page draws none). In 3D the
+  // limits come from the page, and the last button says "Reiniciar vista".
+  zoom: {
+    zoomIn: () => void
+    zoomOut: () => void
+    recenter: () => void
+    canZoomIn?: boolean
+    canZoomOut?: boolean
+    recenterLabel?: string
+  } | null
+  // The 3D world is on screen: tell its page what the HUD covers.
+  reportInsets?: boolean
   // The music control (lazy-loaded), when the map has music.
   audio: ReactNode | null
   // Absent while the host owns fullscreen (its exit control is in the corner).
@@ -78,11 +89,13 @@ export const StudentStage = ({
   questsOpen,
   questsPanel,
   embedded,
+  reportInsets = false,
   children,
 }: StudentStageProps) => {
   const stageRef = useRef<HTMLDivElement>(null)
   const { width, height } = useStageSize(stageRef)
   const dimmed = useIdleDim(questsOpen)
+  useHudInsets(stageRef, reportInsets)
 
   // The toast stack would sit on top of "Continuar".
   useEffect(() => {
@@ -122,6 +135,7 @@ export const StudentStage = ({
   const chip = (
     <div
       className="hud-chip pointer-events-none absolute z-10 rounded-md px-3 py-1.5 text-white"
+      data-hud-edge={metrics.chipOnTop ? 'top' : 'bottom'}
       inert={sheetOpen}
       style={{
         ...coveredStyle,
@@ -156,6 +170,7 @@ export const StudentStage = ({
       <div
         role="group"
         aria-label={es.hud.controls}
+        data-hud-edge="top"
         className="pointer-events-none absolute z-10 flex gap-2"
         style={{
           top: inset('top'),
@@ -201,6 +216,7 @@ export const StudentStage = ({
           size="sm"
           dense
           className="hud-dimmable pointer-events-auto absolute z-10"
+          data-hud-edge="left"
           inert={sheetOpen}
           style={{
             ...coveredStyle,
@@ -219,6 +235,7 @@ export const StudentStage = ({
         role="group"
         aria-label={es.hud.controls}
         className="pointer-events-none absolute z-10 flex flex-col flex-wrap-reverse content-start justify-end gap-2"
+        data-hud-edge="right"
         inert={sheetOpen}
         style={{
           ...coveredStyle,
@@ -234,6 +251,7 @@ export const StudentStage = ({
               className="hud-dimmable pointer-events-auto"
               aria-label={es.canvas.zoomIn}
               title={es.canvas.zoomIn}
+              disabled={zoom.canZoomIn === false}
               onClick={zoom.zoomIn}
             >
               <Plus size={18} strokeWidth={3} aria-hidden />
@@ -243,6 +261,7 @@ export const StudentStage = ({
               className="hud-dimmable pointer-events-auto"
               aria-label={es.canvas.zoomOut}
               title={es.canvas.zoomOut}
+              disabled={zoom.canZoomOut === false}
               onClick={zoom.zoomOut}
             >
               <Minus size={18} strokeWidth={3} aria-hidden />
@@ -250,8 +269,8 @@ export const StudentStage = ({
             <IconButton
               variant="surface"
               className="hud-dimmable pointer-events-auto"
-              aria-label={es.hud.recenter}
-              title={es.hud.recenter}
+              aria-label={zoom.recenterLabel ?? es.hud.recenter}
+              title={zoom.recenterLabel ?? es.hud.recenter}
               onClick={zoom.recenter}
             >
               <Scan size={18} strokeWidth={2.5} aria-hidden />
@@ -290,6 +309,7 @@ export const StudentStage = ({
       {continueAction.kind !== 'none' && (
         <div
           className="pointer-events-none absolute z-10 flex justify-center"
+          data-hud-edge="bottom"
           inert={sheetOpen}
           style={{
             ...coveredStyle,

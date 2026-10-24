@@ -7,6 +7,7 @@ import {
   useMemo,
   useRef,
   useState,
+  useSyncExternalStore,
   type ReactNode,
 } from 'react'
 import {
@@ -78,6 +79,7 @@ import { courseTitleFrom } from './features/course-map/courseTitle.ts'
 import { progressCounts } from './features/course-map/progress.ts'
 import { useResume } from './features/hud/useResume.ts'
 import { readResume } from './features/hud/resume.ts'
+import { cameraBridge } from './features/view3d/cameraBridge.ts'
 import { LazyAudioControl } from './features/audio/LazyAudioControl.tsx'
 import type { AudioTrack } from './features/audio/audioSession.ts'
 import { QuestLog } from './features/quests/QuestLog.tsx'
@@ -676,6 +678,7 @@ export function AppShell() {
   // 3D is for students and the editor's preview; editing stays on the 2D map.
   const view3d = renderable?.view3d ?? null
   const show3d = !isEditor && view3d !== null && mapView === '3d'
+  const camera3d = useSyncExternalStore(cameraBridge.subscribeState, cameraBridge.getState)
 
   const renderMapArea = (layout?: { guardCompact: boolean }) => {
     if (mapQuery.isPending) {
@@ -1098,13 +1101,21 @@ export function AppShell() {
                 view={view3d ? { value: show3d ? '3d' : '2d', onChange: changeMapView } : null}
                 zoom={
                   show3d
-                    ? null
+                    ? {
+                        zoomIn: () => cameraBridge.command('zoom-in'),
+                        zoomOut: () => cameraBridge.command('zoom-out'),
+                        recenter: () => cameraBridge.command('reset'),
+                        canZoomIn: camera3d.canZoomIn,
+                        canZoomOut: camera3d.canZoomOut,
+                        recenterLabel: es.hud.resetView,
+                      }
                     : {
                         zoomIn: () => mapControlsRef.current?.zoomIn(),
                         zoomOut: () => mapControlsRef.current?.zoomOut(),
                         recenter: () => mapControlsRef.current?.recenter(),
                       }
                 }
+                reportInsets={show3d}
                 audio={audioTrack ? <LazyAudioControl track={audioTrack} /> : null}
                 onEnterFullscreen={
                   embed && !isFullscreen ? () => embed.requestFullscreen(true) : null
