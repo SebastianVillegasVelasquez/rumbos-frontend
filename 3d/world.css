@@ -527,3 +527,20 @@ button:focus-visible,
 #fallback[hidden] {
   display: none;
 }
+
+/* Bare mode (embedded in the app): the host draws every control. The page keeps
+   its world, the pin labels and the detail panel, inside the insets the host
+   sends (--ins-*, CSS px the host's controls occupy at each edge). */
+html[data-ui='bare'] #zoomctl,
+html[data-ui='bare'] .hud,
+html[data-ui='bare'] .list,
+html[data-ui='bare'] .back,
+html[data-ui='bare'] #infoPop {
+  display: none !important;
+}
+html[data-ui='bare'] .panel {
+  top: calc(var(--ins-top, 0px) + 8px);
+  right: calc(var(--ins-right, 0px) + 8px);
+  width: min(340px, calc(100vw - var(--ins-left, 0px) - var(--ins-right, 0px) - 16px));
+  max-height: calc(100vh - var(--ins-top, 0px) - var(--ins-bottom, 0px) - 16px);
+}

@@ -122,6 +122,8 @@ async function loadWorld(): Promise<World | null> {
     onPinClick: (pointId) => post({ type: 'rumbos:pin-click', v: PROTOCOL_VERSION, pointId }),
     onOpenActivity: (pointId) =>
       post({ type: 'rumbos:open-activity', v: PROTOCOL_VERSION, pointId }),
+    onCameraState: ({ canZoomIn, canZoomOut }) =>
+      post({ type: 'rumbos:camera-state', v: PROTOCOL_VERSION, canZoomIn, canZoomOut }),
   })
   return world
 }
@@ -132,6 +134,7 @@ const apply = (world: World, message: HostMessage) => {
       if (message.scene !== scene.id) return fail('scene_unknown', 'unknownScene')
       locale = message.locale
       applyTheme(message.theme.cssVars)
+      world.setBare(message.ui === 'bare')
       world.setReducedMotion(message.reducedMotion || prefersReducedMotion())
       world.setLocale(message.locale)
       world.setPoints(message.points)
@@ -149,6 +152,12 @@ const apply = (world: World, message: HostMessage) => {
       break
     case 'rumbos:focus':
       world.focusPoint(message.pointId)
+      break
+    case 'rumbos:layout':
+      world.setInsets(message.insets)
+      break
+    case 'rumbos:camera':
+      world.cameraCommand(message.action)
       break
   }
 }

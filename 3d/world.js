@@ -1377,7 +1377,7 @@ const PIN_COLOR = { locked: '#8A94A6', teaser: '#8A94A6', missing: '#B9BFCA', co
 const OPENABLE = new Set(['available', 'next', 'complete']);
 const L10 = v => (v && (v[LANG] || v.es)) || '';
 const points = new Map(), pointZone = new Map(); // zoneId -> Point3D, pointId -> zoneId
-const callbacks = { onPinClick: null, onOpenActivity: null };
+const callbacks = { onPinClick: null, onOpenActivity: null, onCameraState: null };
 const stateOf = n => (points.get(n) || {}).state;
 const pinColor = n => PIN_COLOR[stateOf(n)] || zoneColor[n];
 const titleOf = n => { const p = points.get(n); return (p && p.title) || L10(ZONES[n].title); };
@@ -1442,7 +1442,10 @@ function closePanel() { active = null; panel.classList.remove('open'); Object.va
 $('p-link').onclick = () => { if (active !== null && OPENABLE.has(stateOf(active)) && callbacks.onOpenActivity) callbacks.onOpenActivity(points.get(active).id); };
 document.getElementById('p-x').onclick = closePanel;
 
-backBtn.onclick = () => { closePanel(); flyTo(HOME.target, HOME.dist, 1200, { home: true }); setZoomed(false); };
+const zoomBy = f => { fly = null; const off = camera.position.clone().sub(controls.target); const d = THREE.MathUtils.clamp(off.length() * f, controls.minDistance, controls.maxDistance); camera.position.copy(controls.target).addScaledVector(off.normalize(), d); controls.update(); };
+const camDistance = () => camera.position.distanceTo(controls.target);
+const resetView = () => { closePanel(); flyTo(HOME.target, HOME.dist, 1200, { home: true }); setZoomed(false); };
+backBtn.onclick = resetView;
 addEventListener('keydown', e => { if (e.key === 'Escape') backBtn.onclick(); });
 controls.addEventListener('change', () => { if (!fly && !window.__intro) clampCam(); });
 // opening drone flight: 6 s sweep around the territory, ending on the plaza view
@@ -1463,7 +1466,7 @@ function introStep(now) { const I = window.__intro; if (!I || I.hold) return;
   camera.position.copy(cr(I.P, u)); controls.target.copy(cr(I.T, u)); controls.update();
   if (k >= 1) { window.__intro = null; camera.position.copy(INTRO_END.pos); controls.target.copy(INTRO_END.tgt); controls.update(); setZoomed(true); } }
 { const ib = document.getElementById('infoBtn'), ip = document.getElementById('infoPop'); ib.onclick = e => { e.stopPropagation(); const o = ip.classList.toggle('open'); ib.setAttribute('aria-expanded', o); ib.classList.add('seen'); }; addEventListener('keydown', e => { if (e.key === 'Escape') { ip.classList.remove('open'); ib.setAttribute('aria-expanded', false); } }); canvas.addEventListener('pointerdown', () => { ip.classList.remove('open'); ib.setAttribute('aria-expanded', false); }); }
-{ const zoomBy = f => { fly = null; const off = camera.position.clone().sub(controls.target); const d = THREE.MathUtils.clamp(off.length() * f, controls.minDistance, controls.maxDistance); camera.position.copy(controls.target).addScaledVector(off.normalize(), d); controls.update(); };
+{
   { const rb = document.getElementById('zrot'); let spin = false; rb.onclick = () => { spin = !spin; fly = null; controls.autoRotate = spin; controls.autoRotateSpeed = 0.6; rb.setAttribute('aria-pressed', spin); rb.style.background = spin ? 'var(--r3d-primary, #2D3172)' : 'var(--r3d-surface, rgba(255,255,255,.96))'; rb.style.color = spin ? '#FFFFFF' : 'var(--r3d-ink, #1B1E4A)'; }; controls.addEventListener('start', () => { if (spin) rb.onclick(); }); }
   { const pb = document.getElementById('zpins'), sl = document.getElementById('zpinsSlash'); pb.onclick = () => { window.__pinsOn = !window.__pinsOn; const on = window.__pinsOn; applyPinVisibility(); labelsEl.style.display = on ? '' : 'none'; [document.querySelector('.hud'), listEl, backBtn, document.getElementById('infoPop')].forEach(el => { if (el) el.style.visibility = on ? '' : 'hidden'; }); sl.style.display = on ? 'none' : ''; pb.setAttribute('aria-pressed', !on); pb.setAttribute('aria-label', on ? 'Ocultar puntos activos y textos' : 'Mostrar puntos activos y textos'); pb.title = pb.getAttribute('aria-label'); pb.style.background = on ? 'var(--r3d-surface, rgba(255,255,255,.96))' : 'var(--r3d-primary, #2D3172)'; pb.style.color = on ? 'var(--r3d-ink, #1B1E4A)' : '#FFFFFF'; if (!on) hover = null; }; window.__pinsOn = true; }
   document.getElementById('zin').onclick = () => zoomBy(0.75); document.getElementById('zout').onclick = () => zoomBy(1.33);
@@ -1972,6 +1975,9 @@ function tick(now) {
     tmp.copy(hs.top).setY(hs.top.y + bob).project(camera);
     const el = labels[hs.n]; if (!el) return;
     if (tmp.z > 1 || tmp.z < -1 || Math.abs(tmp.x) > 1.1 || Math.abs(tmp.y) > 1.1) { el.classList.add('hide'); return; }
+    // Bare mode: a label whose anchor falls under the host's controls is hidden, so nothing is drawn beneath them.
+    const ax = (tmp.x * 0.5 + 0.5) * w, ay = (-tmp.y * 0.5 + 0.5) * h;
+    if (insets && (ax < insets.left + 12 || ax > w - insets.right - 12 || ay < insets.top + 36 || ay > h - insets.bottom)) { el.classList.add('hide'); return; }
     el.classList.remove('hide');
     el.classList.toggle('dim', active !== null && hs.n !== active);
     el.style.left = `${(tmp.x * 0.5 + 0.5) * w}px`; el.style.top = `${(-tmp.y * 0.5 + 0.5) * h}px`;
@@ -1981,6 +1987,7 @@ function tick(now) {
     const a = vis[j], b = vis[i];
     if (Math.abs(a.x - b.x) < (a.w + b.w) / 2 + 4 && Math.abs(a.y - b.y) < b.h + 4) { b.y = a.y + b.h + 4; b.el.style.top = b.y + 'px'; }
   }
+  reportCameraState();
   rafId = requestAnimationFrame(tick);
 }
 // ---------- lifecycle: stop drawing while hidden, free the GL context on dispose ----------
@@ -1994,7 +2001,26 @@ document.addEventListener('visibilitychange', onVisibility);
 if (!document.hidden) rafId = requestAnimationFrame(tick);
 
 // ================= Public API (used by main.ts; the page has no other data source) =================
-export function setCallbacks(cb) { callbacks.onPinClick = cb.onPinClick || null; callbacks.onOpenActivity = cb.onOpenActivity || null; }
+export function setCallbacks(cb) { callbacks.onPinClick = cb.onPinClick || null; callbacks.onOpenActivity = cb.onOpenActivity || null; callbacks.onCameraState = cb.onCameraState || null; }
+// Bare mode: the host draws every control, so the page keeps only the world, the pin labels and the detail panel.
+let insets = null, lastCam = '';
+const EDGES = ['top', 'right', 'bottom', 'left'];
+function reportCameraState() {
+  if (!callbacks.onCameraState) return;
+  const d = camDistance(), state = { canZoomIn: d > controls.minDistance + 0.5, canZoomOut: d < controls.maxDistance - 0.5 }, key = state.canZoomIn + ':' + state.canZoomOut;
+  if (key !== lastCam) { lastCam = key; callbacks.onCameraState(state); }
+}
+export function setBare(on) {
+  document.documentElement.dataset.ui = on ? 'bare' : '';
+  if (!on) setInsets(null);
+}
+export function setInsets(next) {
+  insets = next;
+  EDGES.forEach(e => document.documentElement.style.setProperty('--ins-' + e, (next ? next[e] : 0) + 'px'));
+}
+export function cameraCommand(action) {
+  if (action === 'zoom-in') zoomBy(0.75); else if (action === 'zoom-out') zoomBy(1.33); else if (action === 'reset') resetView();
+}
 export function setPoints(list) {
   points.clear(); pointZone.clear();
   for (const p of list) { if (!ZONES[p.zoneId] || points.has(p.zoneId) || pointZone.has(p.id)) continue; points.set(p.zoneId, { ...p }); pointZone.set(p.id, p.zoneId); }
