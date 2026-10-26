@@ -143,6 +143,8 @@ export interface AudioInfo {
   title: string
   credit: string
   durationSeconds: number
+  // Absent on an older backend: that means "unknown", never "false".
+  available?: boolean
 }
 
 export interface SkinRule {
@@ -441,6 +443,9 @@ export interface AssetUsage {
 
 export interface AssetListItem extends Asset {
   usage: AssetUsage
+  // False when the file is missing on the server. Absent on an older backend:
+  // that means "unknown", never "false".
+  available?: boolean
 }
 
 export interface AssetListParams {
