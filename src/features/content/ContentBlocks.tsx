@@ -6,6 +6,7 @@ import { isAssetPath, resolveImageUrl } from '../course-map/data/assets.ts'
 import type { Block } from './contentTypes.ts'
 import { isHttpsUrl } from './validateContent.ts'
 import { videoEmbedUrl } from './video.ts'
+import { videoPlaceholder } from './videoPlaceholder.ts'
 
 // Blocks are data. Every string below reaches the page as a React text node or
 // as an attribute built from a validated value; there is no innerHTML anywhere
@@ -16,6 +17,7 @@ const VideoBlock = ({ block }: { block: Extract<Block, { type: 'video' }> }) => 
   const src = videoEmbedUrl(block.provider, block.videoId)
   if (!src) return null
   const text = es.content.viewer
+  const placeholder = videoPlaceholder(block)
   return (
     <figure className="border-soft overflow-hidden rounded-md bg-surface-muted">
       <div className="relative aspect-video w-full">
@@ -31,11 +33,14 @@ const VideoBlock = ({ block }: { block: Extract<Block, { type: 'video' }> }) => 
           />
         ) : (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-4 text-center">
-            <p className="font-heading text-base font-bold text-ink">{block.title}</p>
+            <p className="font-heading text-base font-bold text-ink">{placeholder.title}</p>
             <Button variant="secondary" onClick={() => setLoaded(true)}>
               <Play size={16} strokeWidth={2.5} aria-hidden />
-              {text.playVideo(block.provider)}
+              {placeholder.buttonLabel}
             </Button>
+            {placeholder.note && (
+              <p className="text-xs font-semibold text-ink-soft">{placeholder.note}</p>
+            )}
           </div>
         )}
       </div>

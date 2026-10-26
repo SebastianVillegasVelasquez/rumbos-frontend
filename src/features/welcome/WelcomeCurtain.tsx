@@ -9,6 +9,7 @@ import type { MapWelcome } from '../course-map/data/types.ts'
 import { viewerStorage } from '../quests/viewerStorage.ts'
 import { WelcomeSparkles } from './WelcomeSparkles.tsx'
 import { isEndedMessage, playerOrigin, playerUrl, subscribeMessages } from './videoPlayer.ts'
+import { curtainButtons, videoHostNote } from './videoControls.ts'
 import { hasOptionalVideo, primaryAction } from './welcome.ts'
 
 const text = es.welcome
@@ -142,7 +143,15 @@ const WelcomeCurtain = ({
     }
   }
 
-  const providerName = video ? text.providers[video.provider] : ''
+  const hostNote = video ? videoHostNote(video.provider) : ''
+  const buttons = curtainButtons({
+    showPlay,
+    offerOptionalVideo: hasOptionalVideo(welcome) && canPlay && !videoSeen,
+    hasMusic,
+    canFullscreen: false,
+  })
+  const labelOf = (id: (typeof buttons)[number]['id']) =>
+    buttons.find((button) => button.id === id)?.label ?? ''
   const inVideo = phase === 'video' && canPlay
 
   return (
@@ -248,16 +257,16 @@ const WelcomeCurtain = ({
               <div className="flex flex-col items-center gap-3 pt-2">
                 <Button ref={primaryRef} variant="secondary" onClick={showPlay ? play : enter}>
                   {showPlay ? <Play size={18} strokeWidth={3} aria-hidden /> : null}
-                  {showPlay ? text.play : text.start}
+                  {labelOf('primary')}
                   {!showPlay && <ArrowRight size={18} strokeWidth={3} aria-hidden />}
                 </Button>
-                {hasOptionalVideo(welcome) && canPlay && !videoSeen && (
+                {labelOf('watch') && (
                   <button
                     type="button"
                     onClick={play}
                     className="min-h-[44px] px-3 text-sm font-bold underline underline-offset-4"
                   >
-                    {text.watchVideo}
+                    {labelOf('watch')}
                   </button>
                 )}
                 {hasMusic && (
@@ -282,12 +291,12 @@ const WelcomeCurtain = ({
             </>
           )}
         </div>
-        {video && (
+        {hostNote && (
           <p
             className="pointer-events-none px-4 pb-3 text-center text-xs font-semibold text-white/85"
             style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom, 0px))' }}
           >
-            {text.videoHost(providerName)}
+            {hostNote}
           </p>
         )}
       </div>

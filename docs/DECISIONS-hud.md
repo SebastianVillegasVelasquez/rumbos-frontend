@@ -376,5 +376,8 @@ actually sends them, and anything on a real phone. Treat as unverified.
   (the control column) reserves the full height on the right.
 - **Pill in the level picker** moved from the left edge, centered, to the bottom left,
   because it overlapped the first level card (found by the layout check).
-- **Existing content video button** still says "Reproducir (se cargará desde YouTube)";
-  that wording rule was applied to the curtain only.
+- **No button names the video provider.** The curtain says "Reproducir" / "Ver video de
+  bienvenida" and the click-to-load block says "Reproducir video". "Video alojado en
+  <proveedor>" is plain text outside the buttons, from one key (`welcome.videoHost`); an empty
+  string hides it. The video block of content bubbles now shows the same footnote under its
+  button, so the third-party disclosure survives the shorter label.
