@@ -114,6 +114,7 @@ import {
 } from './features/embed/hostState.ts'
 import { useHostOverlayOpen } from './features/embed/hostOverlay.ts'
 import { RESERVED_CORNER_PX, useHostFullscreen } from './features/embed/hostFullscreen.ts'
+import { useFullscreenEntry } from './features/embed/useFullscreenEntry.ts'
 import { useRoute, type Route } from './hooks/useRoute.ts'
 import { Wordmark } from './components/Logo.tsx'
 import { Button, IconButton } from './components/ui/Button.tsx'
@@ -675,6 +676,7 @@ export function AppShell() {
   )
   // The welcome curtain: once per viewer and map; never to an editor editing.
   const hostCourseName = useHostCourseName()
+  const curtainFullscreen = useFullscreenEntry(embed)
   const welcomeCurtain =
     welcomeState.open && renderable ? (
       <LazyWelcomeCurtain
@@ -686,6 +688,7 @@ export function AppShell() {
         })}
         imageUrl={renderable.imageUrl}
         hasMusic={audioTrack !== null}
+        onEnterFullscreen={curtainFullscreen}
         showSkip={exitPreview !== null}
         onDone={welcomeState.dismiss}
       />
