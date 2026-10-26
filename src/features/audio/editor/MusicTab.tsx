@@ -14,6 +14,7 @@ import {
   type MapAudio,
   type MapSettings,
 } from '../../course-map/data/types.ts'
+import { isAvailable } from '../audioAvailability.ts'
 import {
   AUDIO_LIBRARY_PARAMS,
   AUDIO_MIME_TYPES,
@@ -53,6 +54,9 @@ export const MusicTab = ({ settings, onChange }: MusicTabProps) => {
   // One shared preview player: starting another stops the first.
   const previewRef = useRef<HTMLAudioElement | null>(null)
   const [previewing, setPreviewing] = useState<string | null>(null)
+  // Tracks whose file did not play when previewed: the same warning as a
+  // missing file, found by listening.
+  const [brokenPreviews, setBrokenPreviews] = useState<ReadonlySet<string>>(new Set())
   useEffect(
     () => () => {
       previewRef.current?.pause()
@@ -69,8 +73,17 @@ export const MusicTab = ({ settings, onChange }: MusicTabProps) => {
     player.preload = 'none'
     player.src = resolveImageUrl(asset.url)
     player.onended = () => setPreviewing(null)
-    player.onerror = () => setPreviewing(null)
-    void player.play().catch(() => setPreviewing(null))
+    const broke = () => {
+      setPreviewing(null)
+      setBrokenPreviews((current) => new Set(current).add(asset.id))
+    }
+    player.onerror = broke
+    void player.play().catch((error: unknown) => {
+      // A blocked or interrupted play is not a missing file.
+      if (error instanceof DOMException && error.name === 'NotAllowedError') setPreviewing(null)
+      else if (error instanceof DOMException && error.name === 'AbortError') return
+      else broke()
+    })
     setPreviewing(asset.id)
   }
 
@@ -99,6 +112,9 @@ export const MusicTab = ({ settings, onChange }: MusicTabProps) => {
     [...(library.data?.items ?? []), ...(own.data?.items ?? [])].find(
       (item) => item.id === audio?.assetId
     ) ?? null
+  const currentBroken =
+    audio !== null &&
+    ((chosen !== null && !isAvailable(chosen)) || brokenPreviews.has(audio.assetId))
   const activeQuery = source === 'library' ? library : own
 
   return (
@@ -119,7 +135,12 @@ export const MusicTab = ({ settings, onChange }: MusicTabProps) => {
               <p className="break-words text-xs font-semibold text-ink-soft">{chosen.credit}</p>
             )}
           </div>
-          {chosen && (
+          {currentBroken && (
+            <p role="alert" className="text-xs font-bold text-danger">
+              {es.audio.unavailableWarning}
+            </p>
+          )}
+          {chosen && isAvailable(chosen) && (
             <Button variant="surface" dense size="sm" onClick={() => togglePreview(chosen)}>
               {previewing === chosen.id ? (
                 <Pause size={16} strokeWidth={2.5} aria-hidden />
@@ -221,6 +242,7 @@ export const MusicTab = ({ settings, onChange }: MusicTabProps) => {
         <ul className="space-y-1.5">
           {items.map((asset) => {
             const selected = asset.id === audio?.assetId
+            const available = isAvailable(asset)
             return (
               <li
                 key={asset.id}
@@ -234,6 +256,7 @@ export const MusicTab = ({ settings, onChange }: MusicTabProps) => {
                   size="sm"
                   className="shrink-0 px-0"
                   aria-label={`${previewing === asset.id ? text.stop : text.listen}: ${asset.title}`}
+                  disabled={!available}
                   onClick={() => togglePreview(asset)}
                 >
                   {previewing === asset.id ? (
@@ -245,7 +268,11 @@ export const MusicTab = ({ settings, onChange }: MusicTabProps) => {
                 <div className="min-w-0 flex-1">
                   <p className="break-words text-sm font-bold text-ink">{asset.title}</p>
                   <p className="break-words text-xs font-semibold text-ink-soft">
-                    {[asset.credit, formatDuration(asset.durationSeconds)]
+                    {[
+                      available ? null : text.unavailable,
+                      asset.credit,
+                      formatDuration(asset.durationSeconds),
+                    ]
                       .filter(Boolean)
                       .join(' · ')}
                   </p>
@@ -256,6 +283,7 @@ export const MusicTab = ({ settings, onChange }: MusicTabProps) => {
                   size="sm"
                   className="shrink-0"
                   aria-pressed={selected}
+                  disabled={!available}
                   onClick={() => choose(asset)}
                 >
                   {selected ? text.chosen : text.choose}

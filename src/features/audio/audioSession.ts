@@ -18,6 +18,7 @@ import {
   type AudioPrefs,
 } from './audioPrefs.ts'
 import { fadeStep } from './fade.ts'
+import { guardSource, type SourceGuard } from './sourceGuard.ts'
 
 // The one place that touches an <audio> element. It lives in a lazy chunk and is
 // a module-level singleton on purpose: the music keeps playing across the 2D/3D
@@ -37,6 +38,8 @@ export interface AudioTrack {
   startAfterInteraction: boolean
   title: string
   credit: string
+  // The backend says the file is gone: do not even try to download it.
+  unavailable?: boolean
 }
 
 export interface AudioSessionView {
@@ -50,6 +53,7 @@ let state: AudioState = initialAudioState
 let prefs: AudioPrefs = readAudioPrefs(viewerStorage())
 let track: AudioTrack | null = null
 let element: HTMLAudioElement | null = null
+let guard: SourceGuard | null = null
 let level = 0
 let frame = 0
 let attached = false
@@ -100,9 +104,32 @@ const ensureElement = (): HTMLAudioElement => {
     element = new Audio()
     // Download only on play (and a Range request at that, which iOS needs).
     element.preload = 'none'
-    element.addEventListener('error', () => dispatch({ type: 'failed' }))
+    // A failed source gets one more try; the second error ends it.
+    guard = guardSource(element, {
+      retry: () => {
+        if (!element || !track) return
+        element.src = track.url
+        element.load()
+        if (isPlaying(state)) element.play().catch(onPlayRejected)
+      },
+      fail: () => dispatch({ type: 'failed' }),
+    })
   }
   return element
+}
+
+// A rejected play(). The cases below are not failures of the file: the browser
+// wants a gesture first, a newer load interrupted this one, or the source is
+// unsupported, which the element's own `error` event reports (and retries).
+const onPlayRejected = (error: unknown) => {
+  if (
+    error instanceof DOMException &&
+    (error.name === 'NotAllowedError' ||
+      error.name === 'AbortError' ||
+      error.name === 'NotSupportedError')
+  )
+    return
+  dispatch({ type: 'failed' })
 }
 
 const startPlayback = () => {
@@ -117,12 +144,7 @@ const startPlayback = () => {
   const target = targetVolume()
   if (audio.paused) {
     audio.volume = level
-    audio.play().catch((error: unknown) => {
-      // Blocked by the browser (no activation yet): wait for the viewer rather
-      // than calling it a failure.
-      if (error instanceof DOMException && error.name === 'NotAllowedError') return
-      dispatch({ type: 'failed' })
-    })
+    audio.play().catch(onPlayRejected)
   }
   fadeTo(target)
 }
@@ -203,7 +225,10 @@ export const audioSession = {
     if (changed) {
       if (element) element.pause()
       level = 0
+      guard?.reset()
       dispatch({ type: 'trackChanged' })
+      // Known to be missing: no download, no retry.
+      if (next.unavailable) dispatch({ type: 'failed' })
     } else {
       if (element) element.loop = next.loop
       notify()

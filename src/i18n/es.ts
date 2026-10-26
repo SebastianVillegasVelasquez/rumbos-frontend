@@ -244,7 +244,8 @@ export const es = {
     turnOn: 'Activar la música',
     turnOff: 'Apagar la música',
     volume: 'Volumen',
-    failed: 'No se pudo reproducir la música.',
+    unavailableWarning:
+      'El archivo de audio no está disponible. Vuelve a subirlo o elige otra pista de la biblioteca.',
     startedAnnouncement: 'Música activada. Puedes silenciarla con el botón de volumen.',
     credit: (title: string, credit: string) => `Música: ${title} — ${credit}`,
     editor: {
@@ -260,6 +261,7 @@ export const es = {
       listen: 'Escuchar',
       stop: 'Detener',
       choose: 'Elegir',
+      unavailable: 'No disponible',
       chosen: 'Elegida',
       remove: 'Quitar música',
       volume: 'Volumen inicial',

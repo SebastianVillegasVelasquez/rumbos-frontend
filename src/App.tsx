@@ -642,9 +642,13 @@ export function AppShell() {
   // The level's background music, if any. Memoized by what defines the track so
   // the same track stays one track across re-renders and levels.
   const audio = renderable?.audio ?? null
+  // Editors and the preview are told when the music file is missing; students
+  // never are (their control just does not appear).
+  const audioDiagnostics = exitPreview !== null || embed?.mode === 'editor'
+  const audioMissing = audio?.info.available === false
   const audioTrack = useMemo<AudioTrack | null>(
     () =>
-      audio
+      audio && (!audioMissing || audioDiagnostics)
         ? {
             assetId: audio.settings.assetId,
             url: resolveImageUrl(`/assets/${audio.settings.assetId}`),
@@ -653,6 +657,7 @@ export function AppShell() {
             startAfterInteraction: audio.settings.startAfterInteraction,
             title: audio.info.title,
             credit: audio.info.credit,
+            unavailable: audioMissing,
           }
         : null,
     // The track is defined by these values, not by the object that carries them.
@@ -664,6 +669,8 @@ export function AppShell() {
       audio?.settings.startAfterInteraction,
       audio?.info.title,
       audio?.info.credit,
+      audioMissing,
+      audioDiagnostics,
     ]
   )
   // The welcome curtain: once per viewer and map; never to an editor editing.
@@ -1152,7 +1159,11 @@ export function AppShell() {
                 reportInsets={show3d}
                 curtain={welcomeCurtain}
                 onShowWelcome={welcomeState.reopen}
-                audio={audioTrack ? <LazyAudioControl track={audioTrack} /> : null}
+                audio={
+                  audioTrack ? (
+                    <LazyAudioControl track={audioTrack} diagnostics={audioDiagnostics} />
+                  ) : null
+                }
                 onEnterFullscreen={
                   embed && !isFullscreen ? () => embed.requestFullscreen(true) : null
                 }

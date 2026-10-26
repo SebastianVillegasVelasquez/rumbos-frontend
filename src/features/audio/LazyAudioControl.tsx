@@ -5,8 +5,14 @@ import type { AudioTrack } from './audioSession.ts'
 // bundle: it loads only for a map that has music.
 const AudioControl = lazy(() => import('./AudioControl.tsx'))
 
-export const LazyAudioControl = ({ track }: { track: AudioTrack }) => (
+export const LazyAudioControl = ({
+  track,
+  diagnostics,
+}: {
+  track: AudioTrack
+  diagnostics: boolean
+}) => (
   <Suspense fallback={null}>
-    <AudioControl track={track} />
+    <AudioControl track={track} diagnostics={diagnostics} />
   </Suspense>
 )
