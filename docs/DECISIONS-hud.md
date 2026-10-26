@@ -376,5 +376,25 @@ actually sends them, and anything on a real phone. Treat as unverified.
   (the control column) reserves the full height on the right.
 - **Pill in the level picker** moved from the left edge, centered, to the bottom left,
   because it overlapped the first level card (found by the layout check).
-- **Existing content video button** still says "Reproducir (se cargará desde YouTube)";
-  that wording rule was applied to the curtain only.
+- **No button names the video provider.** The curtain says "Reproducir" / "Ver video de
+  bienvenida" and the click-to-load block says "Reproducir video". "Video alojado en
+  <proveedor>" is plain text outside the buttons, from one key (`welcome.videoHost`); an empty
+  string hides it. The video block of content bubbles now shows the same footnote under its
+  button, so the third-party disclosure survives the shorter label.
+- **Curtain fullscreen button** sits in the bottom row, right, with the provider footnote
+  on the left; the music switch stays in the centered column above (it was not moved).
+  It follows host-fullscreen when embedded and the browser's `fullscreenchange` standalone
+  (hidden without the Fullscreen API), and never starts the music or closes the curtain.
+  If it had focus when it leaves, focus returns to the primary button.
+- **Audio that cannot play:** one retry on the element's `error`, then the track is dropped
+  for the session. `play()` rejections that the `error` event also reports (NotSupported,
+  Abort) are not counted twice. Students lose the control silently; editors and the preview
+  keep it with the warning. A track the backend marks `available: false` is never
+  downloaded: students never get a control, editors get the warning.
+- **Unavailable tracks in the pickers are shown disabled** with "No disponible" (not hidden),
+  so an editor can still see that an upload exists. Absent `available` is treated as available.
+- **"Editor" for the audio warning** means the preview/published-view exit is on screen, or
+  the host's mode is editor.
+- **Mock API tests:** `mockCourseMapApi.ts` cannot be imported under `node --test` (it
+  imports an .avif asset), so the cases are tested through the pure helpers. The mock
+  answers `?mockAudio=missing` and `?mockAudio=legacy` for manual checks.

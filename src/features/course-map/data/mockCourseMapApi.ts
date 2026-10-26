@@ -116,9 +116,19 @@ const mockMoodleOverride = (): 'down' | 'hidden' | 'missing' | 'cached' | null =
 
 // ?mockAudio=off: a backend that predates audio (the endpoints answer 404).
 // ?mockAudio=uploads-off: the library works, uploads answer 503.
-const mockAudioOverride = (): 'off' | 'uploads-off' | null => {
+// ?mockAudio=missing: every audio file is gone from the server (available: false).
+// ?mockAudio=legacy: a backend that predates `available` (the field is absent).
+const mockAudioOverride = (): 'off' | 'uploads-off' | 'missing' | 'legacy' | null => {
   const value = queryParam('mockAudio')
-  return value === 'off' || value === 'uploads-off' ? value : null
+  return value === 'off' || value === 'uploads-off' || value === 'missing' || value === 'legacy'
+    ? value
+    : null
+}
+
+// What `available` says about an audio asset; undefined (absent) on "legacy".
+const availableOf = (kind: string): { available?: boolean } => {
+  if (kind !== 'audio' || mockAudioOverride() === 'legacy') return {}
+  return { available: mockAudioOverride() !== 'missing' }
 }
 
 // ?mockWelcome=off: a backend that predates the welcome curtain (the settings
@@ -1012,6 +1022,7 @@ const audioInfoOf = (settings: MapSettings): AudioInfo | null => {
     title: asset.title,
     credit: asset.credit ?? '',
     durationSeconds: asset.durationSeconds ?? 0,
+    ...availableOf(asset.kind),
   }
 }
 
@@ -1206,6 +1217,7 @@ const toAsset = (asset: MockAsset): Asset => {
 const toListItem = (asset: MockAsset): AssetListItem => ({
   ...toAsset(asset),
   usage: assetUsage(asset.id),
+  ...availableOf(asset.kind),
 })
 
 const validateAssetMetadata = (title: string | undefined, credit: string | null | undefined) => {

@@ -244,7 +244,8 @@ export const es = {
     turnOn: 'Activar la música',
     turnOff: 'Apagar la música',
     volume: 'Volumen',
-    failed: 'No se pudo reproducir la música.',
+    unavailableWarning:
+      'El archivo de audio no está disponible. Vuelve a subirlo o elige otra pista de la biblioteca.',
     startedAnnouncement: 'Música activada. Puedes silenciarla con el botón de volumen.',
     credit: (title: string, credit: string) => `Música: ${title} — ${credit}`,
     editor: {
@@ -260,6 +261,7 @@ export const es = {
       listen: 'Escuchar',
       stop: 'Detener',
       choose: 'Elegir',
+      unavailable: 'No disponible',
       chosen: 'Elegida',
       remove: 'Quitar música',
       volume: 'Volumen inicial',
@@ -323,6 +325,8 @@ export const es = {
     musicOff: 'Sin música',
     musicLabel: 'Música de fondo',
     videoTitle: 'Video de bienvenida',
+    fullscreen: 'Pantalla completa',
+    // The footnote under a video; an empty string hides it.
     videoHost: (provider: string) => `Video alojado en ${provider}`,
     providers: { youtube: 'YouTube', vimeo: 'Vimeo' },
   },
@@ -460,8 +464,7 @@ export const es = {
       close: 'Cerrar',
       opensInNewTab: '(se abre en una pestaña nueva)',
       videoLabel: (title: string) => `Video: ${title}`,
-      playVideo: (provider: 'youtube' | 'vimeo') =>
-        `Reproducir (se cargará desde ${provider === 'youtube' ? 'YouTube' : 'Vimeo'})`,
+      playVideo: 'Reproducir video',
       videoFrameTitle: (title: string) => `Video: ${title}`,
       missingImage: 'No se pudo cargar la imagen.',
       empty: 'Esta información todavía no tiene contenido.',

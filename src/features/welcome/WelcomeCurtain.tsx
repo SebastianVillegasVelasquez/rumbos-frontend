@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
-import { ArrowRight, Play, Volume2, VolumeX } from 'lucide-react'
+import { ArrowRight, Maximize2, Play, Volume2, VolumeX } from 'lucide-react'
 import { Button } from '../../components/ui/Button.tsx'
 import { useDataSaver } from '../../fx/dataSaverStore.ts'
 import { es } from '../../i18n/es.ts'
@@ -9,6 +9,7 @@ import type { MapWelcome } from '../course-map/data/types.ts'
 import { viewerStorage } from '../quests/viewerStorage.ts'
 import { WelcomeSparkles } from './WelcomeSparkles.tsx'
 import { isEndedMessage, playerOrigin, playerUrl, subscribeMessages } from './videoPlayer.ts'
+import { curtainButtons, videoHostNote } from './videoControls.ts'
 import { hasOptionalVideo, primaryAction } from './welcome.ts'
 
 const text = es.welcome
@@ -27,6 +28,9 @@ interface WelcomeCurtainProps {
   isolated?: boolean
   // Shows a visible way out ("Vista previa" and the editor's preview).
   showSkip?: boolean
+  // Enters fullscreen without starting anything else; null while there is
+  // nothing to offer (already fullscreen, or no way to do it).
+  onEnterFullscreen?: (() => void) | null
   skipLabel?: string
   onDone: () => void
 }
@@ -47,6 +51,7 @@ const WelcomeCurtain = ({
   hasMusic,
   isolated = false,
   showSkip = false,
+  onEnterFullscreen = null,
   skipLabel = text.skipPreview,
   onDone,
 }: WelcomeCurtainProps) => {
@@ -86,6 +91,15 @@ const WelcomeCurtain = ({
     },
     []
   )
+
+  // The button leaves while fullscreen is on, possibly with focus on it: keep
+  // the focus inside the dialog.
+  const canFullscreen = onEnterFullscreen !== null
+  useEffect(() => {
+    if (canFullscreen || rootRef.current?.contains(document.activeElement)) return
+    if (phase === 'video') skipVideoRef.current?.focus()
+    else primaryRef.current?.focus()
+  }, [canFullscreen, phase])
 
   useEffect(() => {
     if (phase === 'video') skipVideoRef.current?.focus()
@@ -142,7 +156,15 @@ const WelcomeCurtain = ({
     }
   }
 
-  const providerName = video ? text.providers[video.provider] : ''
+  const hostNote = video ? videoHostNote(video.provider) : ''
+  const buttons = curtainButtons({
+    showPlay,
+    offerOptionalVideo: hasOptionalVideo(welcome) && canPlay && !videoSeen,
+    hasMusic,
+    canFullscreen: onEnterFullscreen !== null,
+  })
+  const labelOf = (id: (typeof buttons)[number]['id']) =>
+    buttons.find((button) => button.id === id)?.label ?? ''
   const inVideo = phase === 'video' && canPlay
 
   return (
@@ -248,16 +270,16 @@ const WelcomeCurtain = ({
               <div className="flex flex-col items-center gap-3 pt-2">
                 <Button ref={primaryRef} variant="secondary" onClick={showPlay ? play : enter}>
                   {showPlay ? <Play size={18} strokeWidth={3} aria-hidden /> : null}
-                  {showPlay ? text.play : text.start}
+                  {labelOf('primary')}
                   {!showPlay && <ArrowRight size={18} strokeWidth={3} aria-hidden />}
                 </Button>
-                {hasOptionalVideo(welcome) && canPlay && !videoSeen && (
+                {labelOf('watch') && (
                   <button
                     type="button"
                     onClick={play}
                     className="min-h-[44px] px-3 text-sm font-bold underline underline-offset-4"
                   >
-                    {text.watchVideo}
+                    {labelOf('watch')}
                   </button>
                 )}
                 {hasMusic && (
@@ -282,13 +304,27 @@ const WelcomeCurtain = ({
             </>
           )}
         </div>
-        {video && (
-          <p
-            className="pointer-events-none px-4 pb-3 text-center text-xs font-semibold text-white/85"
+        {(hostNote || onEnterFullscreen) && (
+          <div
+            className="flex flex-wrap items-center justify-between gap-2 px-4 pb-3"
             style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom, 0px))' }}
           >
-            {text.videoHost(providerName)}
-          </p>
+            <p className="pointer-events-none min-w-0 flex-1 text-xs font-semibold break-words text-white/85">
+              {hostNote}
+            </p>
+            {onEnterFullscreen && (
+              <Button
+                variant="surface"
+                size="sm"
+                dense
+                className="ml-auto shrink-0"
+                onClick={onEnterFullscreen}
+              >
+                <Maximize2 size={16} strokeWidth={2.5} aria-hidden />
+                {labelOf('fullscreen')}
+              </Button>
+            )}
+          </div>
         )}
       </div>
     </div>
