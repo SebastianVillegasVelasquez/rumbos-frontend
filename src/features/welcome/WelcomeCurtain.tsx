@@ -4,6 +4,7 @@ import { Button } from '../../components/ui/Button.tsx'
 import { useDataSaver } from '../../fx/dataSaverStore.ts'
 import { es } from '../../i18n/es.ts'
 import { readAudioPrefs } from '../audio/audioPrefs.ts'
+import { videoFrameAttributes } from '../content/videoFrame.ts'
 import { resolveImageUrl } from '../course-map/data/assets.ts'
 import type { MapWelcome } from '../course-map/data/types.ts'
 import { viewerStorage } from '../quests/viewerStorage.ts'
@@ -234,10 +235,7 @@ const WelcomeCurtain = ({
                   src={src}
                   title={text.videoTitle}
                   className="h-full w-full border-0"
-                  allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-                  allowFullScreen
-                  referrerPolicy="strict-origin-when-cross-origin"
-                  sandbox="allow-scripts allow-same-origin allow-presentation"
+                  {...videoFrameAttributes()}
                   onLoad={() => {
                     for (const message of subscribeMessages(video.provider))
                       frameRef.current?.contentWindow?.postMessage(
