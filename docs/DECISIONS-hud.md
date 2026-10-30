@@ -398,3 +398,12 @@ actually sends them, and anything on a real phone. Treat as unverified.
 - **Mock API tests:** `mockCourseMapApi.ts` cannot be imported under `node --test` (it
   imports an .avif asset), so the cases are tested through the pure helpers. The mock
   answers `?mockAudio=missing` and `?mockAudio=legacy` for manual checks.
+- **One shared set of video iframe attributes** (`content/videoFrame.ts`), used by the curtain,
+  the video blocks and the editor previews. `allow` is exactly `autoplay; fullscreen;
+picture-in-picture`: `encrypted-media` is gone (the embeds play without it, and nothing else
+  is delegated), and the video blocks now carry `autoplay` too so all three frames are alike.
+  The sandbox keeps its three tokens (scripts, same-origin, presentation); popups stay out, so
+  the provider's "watch on ..." links do nothing. Fullscreen has no sandbox token. A unit test
+  pins both strings.
+- **Branch base:** this work builds on `feat/curtain-fullscreen-audio-resilience`, not `main`,
+  because the curtain's fullscreen button and its helpers only exist there.
