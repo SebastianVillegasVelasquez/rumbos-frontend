@@ -407,3 +407,17 @@ picture-in-picture`: `encrypted-media` is gone (the embeds play without it, and 
   pins both strings.
 - **Branch base:** this work builds on `feat/curtain-fullscreen-audio-resilience`, not `main`,
   because the curtain's fullscreen button and its helpers only exist there.
+- **"Ampliar video" fills the app's viewport instead of computing an aspect ratio.** The app
+  does not know a video's ratio (per-video ratio settings are out of scope), so the enlarged
+  panel gives the player the whole viewport and the player letterboxes itself: a square or
+  vertical video ends up limited by height, a 16:9 one by width. The iframe stays in the same
+  place in the React tree (only its wrapper changes class), so the video keeps playing.
+- **"Ampliar video" placement:** under the video, next to "Saltar" in the curtain and at the
+  left under the video in a block, never in the top-right. Enlarged, "Reducir" sits at the
+  top-left in a strip above the player; with the host in fullscreen the strip is 56 px high so
+  the host's exit corner does not cover the player's own top-right buttons. Escape also
+  restores (captured, so a dialog around the video stays open) and focus returns to
+  "Ampliar video". The button is shown always, native fullscreen or not, and is the fallback
+  when the host's iframe does not delegate `fullscreen`.
+- **Enlarged panel focus:** it is `role="dialog"` with its own label but no extra focus trap
+  beyond the curtain's; Tab from inside the player can reach the page behind a video block.
