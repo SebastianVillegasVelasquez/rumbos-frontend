@@ -6,6 +6,7 @@ import { isAssetPath, resolveImageUrl } from '../course-map/data/assets.ts'
 import type { Block } from './contentTypes.ts'
 import { isHttpsUrl } from './validateContent.ts'
 import { videoEmbedUrl } from './video.ts'
+import { videoFrameAttributes } from './videoFrame.ts'
 import { videoPlaceholder } from './videoPlaceholder.ts'
 
 // Blocks are data. Every string below reaches the page as a React text node or
@@ -26,10 +27,7 @@ const VideoBlock = ({ block }: { block: Extract<Block, { type: 'video' }> }) => 
             src={src}
             title={text.videoFrameTitle(block.title)}
             className="absolute inset-0 h-full w-full border-0"
-            allow="fullscreen; picture-in-picture; encrypted-media"
-            allowFullScreen
-            referrerPolicy="strict-origin-when-cross-origin"
-            sandbox="allow-scripts allow-same-origin allow-presentation"
+            {...videoFrameAttributes()}
           />
         ) : (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-4 text-center">
