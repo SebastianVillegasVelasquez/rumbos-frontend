@@ -6,6 +6,7 @@ import { isAssetPath, resolveImageUrl } from '../course-map/data/assets.ts'
 import type { Block } from './contentTypes.ts'
 import { isHttpsUrl } from './validateContent.ts'
 import { videoEmbedUrl } from './video.ts'
+import { EnlargeableVideo } from './EnlargeableVideo.tsx'
 import { videoPlaceholder } from './videoPlaceholder.ts'
 
 // Blocks are data. Every string below reaches the page as a React text node or
@@ -20,18 +21,15 @@ const VideoBlock = ({ block }: { block: Extract<Block, { type: 'video' }> }) => 
   const placeholder = videoPlaceholder(block)
   return (
     <figure className="border-soft overflow-hidden rounded-md bg-surface-muted">
-      <div className="relative aspect-video w-full">
-        {loaded ? (
-          <iframe
-            src={src}
-            title={text.videoFrameTitle(block.title)}
-            className="absolute inset-0 h-full w-full border-0"
-            allow="fullscreen; picture-in-picture; encrypted-media"
-            allowFullScreen
-            referrerPolicy="strict-origin-when-cross-origin"
-            sandbox="allow-scripts allow-same-origin allow-presentation"
-          />
-        ) : (
+      {loaded ? (
+        <EnlargeableVideo
+          src={src}
+          title={text.videoFrameTitle(block.title)}
+          frameClassName="relative aspect-video w-full"
+          actionsClassName="flex justify-start p-2"
+        />
+      ) : (
+        <div className="relative aspect-video w-full">
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 p-4 text-center">
             <p className="font-heading text-base font-bold text-ink">{placeholder.title}</p>
             <Button variant="secondary" onClick={() => setLoaded(true)}>
@@ -42,8 +40,8 @@ const VideoBlock = ({ block }: { block: Extract<Block, { type: 'video' }> }) => 
               <p className="text-xs font-semibold text-ink-soft">{placeholder.note}</p>
             )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </figure>
   )
 }

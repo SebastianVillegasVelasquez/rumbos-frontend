@@ -398,3 +398,26 @@ actually sends them, and anything on a real phone. Treat as unverified.
 - **Mock API tests:** `mockCourseMapApi.ts` cannot be imported under `node --test` (it
   imports an .avif asset), so the cases are tested through the pure helpers. The mock
   answers `?mockAudio=missing` and `?mockAudio=legacy` for manual checks.
+- **One shared set of video iframe attributes** (`content/videoFrame.ts`), used by the curtain,
+  the video blocks and the editor previews. `allow` is exactly `autoplay; fullscreen;
+picture-in-picture`: `encrypted-media` is gone (the embeds play without it, and nothing else
+  is delegated), and the video blocks now carry `autoplay` too so all three frames are alike.
+  The sandbox keeps its three tokens (scripts, same-origin, presentation); popups stay out, so
+  the provider's "watch on ..." links do nothing. Fullscreen has no sandbox token. A unit test
+  pins both strings.
+- **Branch base:** this work builds on `feat/curtain-fullscreen-audio-resilience`, not `main`,
+  because the curtain's fullscreen button and its helpers only exist there.
+- **"Ampliar video" fills the app's viewport instead of computing an aspect ratio.** The app
+  does not know a video's ratio (per-video ratio settings are out of scope), so the enlarged
+  panel gives the player the whole viewport and the player letterboxes itself: a square or
+  vertical video ends up limited by height, a 16:9 one by width. The iframe stays in the same
+  place in the React tree (only its wrapper changes class), so the video keeps playing.
+- **"Ampliar video" placement:** under the video, next to "Saltar" in the curtain and at the
+  left under the video in a block, never in the top-right. Enlarged, "Reducir" sits at the
+  top-left in a strip above the player; with the host in fullscreen the strip is 56 px high so
+  the host's exit corner does not cover the player's own top-right buttons. Escape also
+  restores (captured, so a dialog around the video stays open) and focus returns to
+  "Ampliar video". The button is shown always, native fullscreen or not, and is the fallback
+  when the host's iframe does not delegate `fullscreen`.
+- **Enlarged panel focus:** it is `role="dialog"` with its own label but no extra focus trap
+  beyond the curtain's; Tab from inside the player can reach the page behind a video block.

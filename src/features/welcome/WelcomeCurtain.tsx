@@ -4,6 +4,7 @@ import { Button } from '../../components/ui/Button.tsx'
 import { useDataSaver } from '../../fx/dataSaverStore.ts'
 import { es } from '../../i18n/es.ts'
 import { readAudioPrefs } from '../audio/audioPrefs.ts'
+import { EnlargeableVideo } from '../content/EnlargeableVideo.tsx'
 import { resolveImageUrl } from '../course-map/data/assets.ts'
 import type { MapWelcome } from '../course-map/data/types.ts'
 import { viewerStorage } from '../quests/viewerStorage.ts'
@@ -225,31 +226,31 @@ const WelcomeCurtain = ({
               <h1 id="welcome-title" className="sr-only">
                 {title}
               </h1>
-              <div
-                className="aspect-video w-full overflow-hidden rounded-md bg-black"
-                style={{ maxWidth: 'min(100%, calc((100dvh - 150px) * 16 / 9))' }}
-              >
-                <iframe
-                  ref={frameRef}
-                  src={src}
-                  title={text.videoTitle}
-                  className="h-full w-full border-0"
-                  allow="autoplay; fullscreen; encrypted-media; picture-in-picture"
-                  allowFullScreen
-                  referrerPolicy="strict-origin-when-cross-origin"
-                  sandbox="allow-scripts allow-same-origin allow-presentation"
-                  onLoad={() => {
-                    for (const message of subscribeMessages(video.provider))
-                      frameRef.current?.contentWindow?.postMessage(
-                        message,
-                        playerOrigin(video.provider)
-                      )
-                  }}
-                />
-              </div>
-              <Button ref={skipVideoRef} variant="surface" size="sm" dense onClick={finishVideo}>
-                {text.skipVideo}
-              </Button>
+              <EnlargeableVideo
+                src={src}
+                title={text.videoTitle}
+                frameRef={frameRef}
+                frameClassName="relative aspect-video w-full overflow-hidden rounded-md bg-black"
+                frameStyle={{ maxWidth: 'min(100%, calc((100dvh - 150px) * 16 / 9))' }}
+                onLoad={() => {
+                  for (const message of subscribeMessages(video.provider))
+                    frameRef.current?.contentWindow?.postMessage(
+                      message,
+                      playerOrigin(video.provider)
+                    )
+                }}
+                actions={
+                  <Button
+                    ref={skipVideoRef}
+                    variant="surface"
+                    size="sm"
+                    dense
+                    onClick={finishVideo}
+                  >
+                    {text.skipVideo}
+                  </Button>
+                }
+              />
             </>
           ) : (
             <>
