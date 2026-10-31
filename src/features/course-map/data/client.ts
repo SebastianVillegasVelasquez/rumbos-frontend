@@ -88,9 +88,16 @@ const ifMatchHeader = (ifMatch: number) => `"${ifMatch}"`
 
 export async function apiRequest<T>(
   path: string,
-  options: { method?: string; body?: unknown; ifMatch?: number; auth?: boolean } = {}
+  options: {
+    method?: string
+    body?: unknown
+    ifMatch?: number
+    auth?: boolean
+    // The answer is a file, not JSON (the export archive).
+    blob?: boolean
+  } = {}
 ): Promise<T> {
-  const { method = 'GET', body, ifMatch, auth = true } = options
+  const { method = 'GET', body, ifMatch, auth = true, blob = false } = options
   const attempt = async (): Promise<Response> => {
     const headers: Record<string, string> = {}
     if (body !== undefined) headers['Content-Type'] = 'application/json'
@@ -119,6 +126,8 @@ export async function apiRequest<T>(
   }
 
   if (response.status === 204) return undefined as T
+
+  if (blob && response.ok) return (await response.blob()) as T
 
   const parsed = parseBody(await response.text())
   if (!response.ok) throw new ApiError(response.status, parsed)

@@ -10,6 +10,15 @@ export const installDevHooks = (hostOrigin: string) => {
     if (data?.type === 'rumbos:dev-expire-token') {
       void import('../course-map/data/mockAuth.ts').then((mock) => mock.expireMockTokens())
     }
+    // "Import scenario" select: which branch of export and import the mock
+    // backend plays next.
+    if (data?.type === 'rumbos:dev-transfer-scenario') {
+      const scenario = (data as { scenario?: unknown }).scenario
+      if (typeof scenario === 'string')
+        void import('../course-map/data/mockTransfer.ts').then((mock) =>
+          mock.setTransferScenario(scenario)
+        )
+    }
   }
   window.addEventListener('message', onMessage)
   return () => window.removeEventListener('message', onMessage)

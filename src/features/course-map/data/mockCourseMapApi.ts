@@ -1,5 +1,6 @@
-import { ApiError } from './client.ts'
+import { ApiError, hasAuthHooks } from './client.ts'
 import { mockFeatures, mockLaunch, mockMe, withMockAuth } from './mockAuth.ts'
+import { getTransferScenario, mockArchive, mockStaged } from './mockTransfer.ts'
 import { CONTENT_LIMITS, isContentBubble, type Content } from '../../content/contentTypes.ts'
 import { contentBytes, validateContent } from '../../content/validateContent.ts'
 import { assetObjectUrls } from './mockAssetUrls.ts'
@@ -1396,7 +1397,9 @@ const validateView3d = (map: MockMap, view3d: View3d) => {
   }
 }
 
-const impl: CourseMapApi = {
+type TransferMethods = 'exportMaps' | 'stageImport' | 'getImport' | 'applyImport' | 'discardImport'
+
+const impl: Omit<CourseMapApi, TransferMethods> = {
   async launch(assertion: string) {
     return mockLaunch(assertion)
   },
@@ -2136,6 +2139,101 @@ const seedPublications = async (library: MockAsset[]) => {
   await createPublication(byTitle('Taller en construcción'), null, daysAgo(1))
 }
 
+// ---- Export and import of levels ----------------------------------------------
+
+const MOCK_CMIDS = new Set([101, 102, 103, 104, 105, 106, 107, 108, 109])
+const appliedImports = new Set<string>()
+
+const plainNotFound = () => new ApiError(404, { detail: 'Not Found' })
+
+const requireLiveImport = () => {
+  if (getTransferScenario() === 'expired')
+    throw businessError(410, 'import_expired', 'The import expired.')
+}
+
+const transferImpl: Pick<CourseMapApi, TransferMethods> = {
+  async exportMaps(input) {
+    const scenario = getTransferScenario()
+    if (scenario === 'unsupported') throw plainNotFound()
+    if (input.mapIds.some((id) => !maps.some((map) => map.id === id)))
+      throw notFound('map_not_found', 'Level not found.')
+    if (scenario === 'export-never-saved' && input.source === 'saved')
+      throw businessError(409, 'never_saved', 'A level was never saved.', {
+        mapId: input.mapIds[0],
+      })
+    if (scenario === 'export-too-large')
+      throw businessError(413, 'export_too_large', 'The archive is too large.')
+    return mockArchive(input.includeOwnAudio)
+  },
+
+  async stageImport(file, onProgress) {
+    const scenario = getTransferScenario()
+    if (scenario === 'unsupported') throw plainNotFound()
+    for (const fraction of [0.2, 0.6, 1]) {
+      onProgress?.(fraction)
+      await new Promise((resolve) => setTimeout(resolve, 120))
+    }
+    if (scenario === 'too-large')
+      throw businessError(413, 'archive_too_large', 'The archive is too large.')
+    if (scenario === 'rate-limited') throw businessError(429, 'rate_limited', 'Too many imports.')
+    if (scenario === 'version')
+      throw businessError(422, 'archive_version_unsupported', 'Unsupported format version.')
+    if (scenario === 'invalid' || file.size === 0)
+      throw businessError(422, 'archive_invalid', 'The archive is not valid.', {
+        problems: ['manifest.json: falta el campo "maps"', 'maps/1.json: x fuera de rango'],
+      })
+    return mockStaged()
+  },
+
+  async getImport(importId) {
+    requireLiveImport()
+    if (importId !== mockStaged().importId) throw notFound('import_not_found', 'Not found.')
+    return mockStaged()
+  },
+
+  async applyImport(importId, input) {
+    requireLiveImport()
+    if (appliedImports.has(importId))
+      throw businessError(409, 'import_already_applied', 'Already applied.')
+    const chosen = Object.values(input.mapping).filter((cmid): cmid is number => cmid !== null)
+    if (chosen.some((cmid) => !MOCK_CMIDS.has(cmid)) || new Set(chosen).size !== chosen.length)
+      throw businessError(422, 'mapping_invalid', 'The mapping is not valid.')
+    const courseId = hasAuthHooks() ? mockMe().courseId : (maps[0]?.moodleCourseId ?? 1)
+    const placed = new Set(
+      mapsForCourse(courseId).flatMap((map) => map.bubbles.map((bubble) => bubble.activityId))
+    )
+    const scenario = getTransferScenario()
+    const clash = scenario === 'placed' ? chosen[0] : chosen.find((cmid) => placed.has(cmid))
+    if (clash !== undefined)
+      throw businessError(409, 'activity_already_placed', 'Already placed.', { cmid: clash })
+    if (scenario === 'audio' && !input.audioRightsDeclared)
+      throw businessError(422, 'audio_rights_declaration_required', 'Declare the rights.')
+
+    const position =
+      mapsForCourse(courseId).reduce((max, map) => Math.max(max, map.position), -1) + 1
+    const map = seedMap(
+      'Nivel importado',
+      courseId,
+      chosen.map((activityId, index) => ({
+        activityId,
+        x: 0.15 + 0.2 * index,
+        y: 0.35 + 0.15 * (index % 2),
+        status: 'no_complete' as const,
+      })),
+      { position }
+    )
+    maps = [...maps, map]
+    appliedImports.add(importId)
+    return {
+      maps: [await toSummary(map)],
+      skippedBubbles: Object.values(input.mapping).length - chosen.length,
+      warnings: mockStaged().preview.warnings,
+    }
+  },
+
+  async discardImport() {},
+}
+
 const ready: Promise<void> = (async () => {
   const library = await seedAssets()
   await seedPublications(library)
@@ -2161,7 +2259,7 @@ const withSeedAndLatency = (api: CourseMapApi): CourseMapApi =>
   ) as unknown as CourseMapApi
 
 export const mockCourseMapApi: CourseMapApi = withMockAuth(
-  withSeedAndLatency(impl),
+  withSeedAndLatency({ ...impl, ...transferImpl }),
   (courseMapId) => {
     return maps.find((map) => map.id === courseMapId)?.moodleCourseId ?? null
   }

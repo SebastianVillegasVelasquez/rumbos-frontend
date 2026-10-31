@@ -40,6 +40,12 @@ import type {
   SkinPatch,
   View3d,
 } from './types.ts'
+import type {
+  ExportRequest,
+  ImportApplyInput,
+  ImportApplyResult,
+  ImportStaged,
+} from '../../transfer/types.ts'
 
 // The single seam between components and transport. Components use the query
 // hooks in queries.ts, which call this; nothing else talks to the network.
@@ -111,6 +117,14 @@ export interface CourseMapApi {
     courseMapId: string,
     includeHidden: boolean
   ): Promise<ResolvedCourseMap>
+
+  // Export and import of levels as a `.rumbos` archive. The backend builds,
+  // validates and stages the archive; the app never opens it.
+  exportMaps(input: ExportRequest): Promise<Blob>
+  stageImport(file: File, onProgress?: (fraction: number) => void): Promise<ImportStaged>
+  getImport(importId: string): Promise<ImportStaged>
+  applyImport(importId: string, input: ImportApplyInput): Promise<ImportApplyResult>
+  discardImport(importId: string): Promise<void>
 }
 
 const base = (courseMapId: string) => `/course-maps/${encodeURIComponent(courseMapId)}`
@@ -256,4 +270,25 @@ export const realCourseMapApi: CourseMapApi = {
         `/published/course-maps/${encodeURIComponent(courseMapId)}/resolved${buildQuery({ includeHidden })}`
       )
     ),
+
+  exportMaps: (input) =>
+    apiRequest('/course-maps/export', { method: 'POST', body: input, blob: true }),
+
+  stageImport: async (file, onProgress) => {
+    const form = new FormData()
+    form.set('file', file)
+    const { data } = await apiUpload<ImportStaged>('/course-maps/imports', form, onProgress)
+    return data
+  },
+
+  getImport: (importId) => apiRequest(`/course-maps/imports/${encodeURIComponent(importId)}`),
+
+  applyImport: (importId, input) =>
+    apiRequest(`/course-maps/imports/${encodeURIComponent(importId)}/apply`, {
+      method: 'POST',
+      body: input,
+    }),
+
+  discardImport: (importId) =>
+    apiRequest(`/course-maps/imports/${encodeURIComponent(importId)}`, { method: 'DELETE' }),
 }
