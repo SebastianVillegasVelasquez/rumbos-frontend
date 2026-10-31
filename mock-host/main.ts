@@ -2,6 +2,7 @@
 // iframe and speaks the host side of the postMessage protocol (docs/EMBED.md).
 // It is not part of the production build (it is not a Vite input).
 import { encodeMockAssertion } from '../src/features/embed/mockAssertion.ts'
+import { TRANSFER_SCENARIOS } from '../src/features/course-map/data/mockTransfer.ts'
 
 type Availability = 'available' | 'restricted' | 'hidden' | 'unavailable' | 'missing'
 type Completion = 'none' | 'incomplete' | 'complete' | 'failed'
@@ -16,7 +17,7 @@ interface Row {
   completion: Completion
 }
 
-// The same activities the mock API knows (cmids 101-109).
+// The activities the mock API knows (cmids 101-109, all on a level) and some it does not place.
 const rows: Row[] = [
   [101, 'Quiz de introducción', 'quiz', 1, 'available', 'complete'],
   [102, 'Video de bienvenida', 'url', 1, 'available', 'complete'],
@@ -27,6 +28,13 @@ const rows: Row[] = [
   [107, 'Entrega de proyecto final', 'assign', 4, 'hidden', 'none'],
   [108, 'Certificado del curso', 'customcert', 4, 'unavailable', 'none'],
   [109, 'Contenido SCORM: fundamentos', 'scorm', 2, 'available', 'none'],
+  // Not on any mock level: what an import can be matched to.
+  [110, 'Quiz de introducción', 'quiz', 1, 'available', 'none'],
+  [111, 'Video de bienvenida', 'url', 1, 'available', 'none'],
+  [112, 'Taller 1: configuración del entorno', 'assign', 2, 'available', 'none'],
+  [113, 'Cuestionario de inicio', 'url', 1, 'available', 'none'],
+  [114, 'Taller 1 – configuración del entorno (v2)', 'assign', 2, 'available', 'none'],
+  [115, 'Foro de preguntas', 'forum', 2, 'available', 'none'],
 ].map(([cmid, name, modname, sectionId, availability, completion]) => ({
   cmid: cmid as number,
   name: name as string,
@@ -442,6 +450,13 @@ const buildControls = () => {
         config.courseName = value
         mountFrame()
       })
+    ),
+    // Which outcome the mock backend plays for export and import of levels.
+    labelled(
+      'export/import scenario',
+      select(TRANSFER_SCENARIOS, 'perfect', (value) =>
+        send({ type: 'rumbos:dev-transfer-scenario', v: 1, scenario: value })
+      )
     ),
     labelled(
       'follow preferred-size',

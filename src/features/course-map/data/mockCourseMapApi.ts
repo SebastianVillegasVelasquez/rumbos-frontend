@@ -2141,7 +2141,7 @@ const seedPublications = async (library: MockAsset[]) => {
 
 // ---- Export and import of levels ----------------------------------------------
 
-const MOCK_CMIDS = new Set([101, 102, 103, 104, 105, 106, 107, 108, 109])
+const MOCK_CMIDS = new Set(Array.from({ length: 15 }, (_, index) => 101 + index))
 const appliedImports = new Set<string>()
 
 const plainNotFound = () => new ApiError(404, { detail: 'Not Found' })

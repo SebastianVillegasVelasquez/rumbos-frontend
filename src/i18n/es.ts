@@ -863,6 +863,101 @@ export const es = {
         'Puede que el navegador o tu sitio de Moodle esté bloqueando las descargas desde el mapa. Revisa si el navegador pidió permiso o mostró un aviso de descarga bloqueada; si sigue sin funcionar, pide a quien administra Moodle que permita las descargas dentro del mapa.',
       retryDownload: 'Descargar de nuevo',
     },
+    import: {
+      title: 'Importar niveles',
+      steps: { upload: 'Archivo', preview: 'Contenido', review: 'Actividades', result: 'Listo' },
+      cancel: 'Cancelar',
+      close: 'Cerrar',
+      back: 'Elegir otro archivo',
+      next: 'Continuar',
+      upload: {
+        description: 'Elige un archivo .rumbos exportado desde Rumbos.',
+        drop: 'Suelta aquí el archivo .rumbos',
+        or: 'o',
+        choose: 'Elegir archivo',
+        wrongType: 'Elige un archivo con la extensión .rumbos.',
+        empty: 'El archivo está vacío.',
+        uploading: (name: string) => `Subiendo ${name}…`,
+        progress: (percent: number) => `${percent} %`,
+        checking: 'Revisando el archivo…',
+      },
+      preview: {
+        intro: 'Esto es lo que contiene el archivo.',
+        levels: (n: number) => (n === 1 ? '1 nivel' : `${n} niveles`),
+        bubbles: (n: number) => (n === 1 ? '1 burbuja' : `${n} burbujas`),
+        activities: (n: number) => (n === 1 ? '1 actividad' : `${n} actividades`),
+        content: (n: number) => (n === 1 ? '1 de contenido' : `${n} de contenido`),
+        images: (n: number) => (n === 1 ? '1 imagen' : `${n} imágenes`),
+        skins: (n: number) =>
+          n === 1 ? '1 estilo de burbuja propio' : `${n} estilos de burbuja propios`,
+        welcome: 'Con pantalla de bienvenida',
+        audio: 'Con música',
+        view3d: 'Con vista 3D',
+        warningsTitle: 'Ten en cuenta',
+        ownAudioTitle: 'Audio propio incluido',
+        ownAudioNotice: 'Tendrás que declarar que tienes derecho a usarlo antes de importar.',
+        credit: (credit: string) => `Crédito: ${credit}`,
+        license: (license: string) => `Licencia: ${license}`,
+        noChanges: 'No se cambia nada hasta que confirmes en el último paso.',
+      },
+      warnings: {
+        widgets_disabled:
+          'Tu sitio no tiene activados los widgets: los bloques con widgets se omitirán.',
+        scene_unknown:
+          'La escena 3D del archivo no existe aquí: los niveles afectados quedarán sin vista 3D.',
+        audio_skipped: 'Se omitió el audio del archivo.',
+        library_track_unavailable:
+          'Una pista de la biblioteca ya no está disponible: el nivel quedará sin esa música.',
+        audio_uploads_disabled:
+          'Tu sitio no permite subir audio propio: el audio incluido en el archivo no se importará.',
+      },
+      review: {
+        title: 'Asigna las actividades',
+        intro:
+          'Cada burbuja del archivo apunta a una actividad. Elige a qué actividad de este curso corresponde, u omítela.',
+        tableLabel: 'Actividades del archivo y su equivalente en este curso',
+        inFile: 'En el archivo',
+        inCourse: 'En este curso',
+        rowLabel: (name: string) => `Actividad de este curso para «${name}»`,
+        omit: 'Omitir',
+        inSection: (section: string, position: number) => `${section} · n.º ${position}`,
+        confidence: {
+          exact: 'Coincide',
+          similar: 'Parecido (revisa)',
+          none: 'Sin coincidencia',
+          reviewed: 'Revisada',
+          chosen: 'Elegida por ti',
+          omitted: 'Omitida',
+        },
+        confirm: 'Confirmar',
+        confirmAria: (name: string) => `Confirmar la actividad elegida para «${name}»`,
+        onlyDoubtful: 'Solo dudosas',
+        acceptExact: 'Aceptar las coincidencias exactas',
+        counter: (matched: number, doubtful: number, omitted: number) =>
+          `${matched} coinciden · ${doubtful} dudosas · ${omitted} omitidas`,
+        sharedTarget:
+          'Otra fila usa esta misma actividad. Cada actividad solo puede estar una vez.',
+        placedTarget: 'Esta actividad ya está en otro nivel. Elige otra.',
+        nothingToShow: 'No quedan filas dudosas.',
+        noCandidates: 'No hay actividades libres en este curso.',
+        rightsTitle: 'Audio propio del archivo',
+        rightsLabel: 'Declaro que tengo derecho a usar este audio en este curso.',
+        rightsRequired: 'Marca la declaración para poder importar.',
+        apply: 'Importar niveles',
+        applying: 'Importando…',
+        sharedBlocks: 'Resuelve las actividades repetidas para poder importar.',
+      },
+      result: {
+        title: 'Importación lista',
+        summary: (levels: number, skipped: number) =>
+          `Se crearon ${levels === 1 ? '1 nivel' : `${levels} niveles`}; se omitieron ${
+            skipped === 1 ? '1 burbuja' : `${skipped} burbujas`
+          }.`,
+        reminder:
+          'Los niveles importados están sin guardar: los estudiantes no los verán hasta que pulses Guardar.',
+        openFirst: 'Abrir el primer nivel',
+      },
+    },
     errors: {
       unsupported: 'Esta función aún no está disponible en tu servidor.',
       unreachable: 'No pudimos conectar con el servidor. Revisa tu conexión e inténtalo de nuevo.',
@@ -875,6 +970,21 @@ export const es = {
         'El archivo resultaría demasiado grande. Exporta menos niveles a la vez o no incluyas el audio.',
       exportInvalid:
         'Algo en los niveles impide crear el archivo. Revisa que las imágenes y los datos del nivel estén completos.',
+      archiveTooLarge:
+        'El archivo es demasiado grande. Pide que lo exporten con menos niveles o sin audio.',
+      archiveInvalid: 'Este archivo no es un .rumbos válido o está dañado.',
+      archiveVersion:
+        'Este archivo se creó con una versión de Rumbos que esta no entiende. Vuelve a exportarlo desde una versión actualizada.',
+      audioRights: 'Marca la declaración de derechos del audio para poder importar.',
+      mappingInvalid: 'Las asignaciones no son válidas. Revisa la tabla e inténtalo de nuevo.',
+      rateLimited:
+        'Has hecho muchas importaciones seguidas. Espera unos minutos e inténtalo de nuevo.',
+      importExpired: 'La importación caducó. Sube el archivo de nuevo.',
+      alreadyApplied: 'Esta importación ya se aplicó. Revisa tus niveles.',
+      activityPlaced:
+        'Una de las actividades elegidas ya está en otro nivel. Revisa la fila marcada y elige otra.',
+      quota:
+        'No hay espacio suficiente en tu biblioteca para las imágenes y el audio de estos niveles. Libera espacio e inténtalo de nuevo.',
     },
   },
   publication: {

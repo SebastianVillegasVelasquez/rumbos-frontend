@@ -954,7 +954,12 @@ export function AppShell() {
             viewMode={headerViewMode}
             onViewModeChange={setViewMode}
             transferMenu={
-              isEditor ? <TransferMenu moodleCourseId={route.moodleCourseId} /> : undefined
+              isEditor ? (
+                <TransferMenu
+                  moodleCourseId={route.moodleCourseId}
+                  onOpenLevel={(id) => navigate({ name: 'map', mapId: id })}
+                />
+              ) : undefined
             }
             fullscreenControl={fullscreenControl}
             reserveCorner={isFullscreen}
@@ -1002,7 +1007,10 @@ export function AppShell() {
           }
           transferMenu={
             isEditor && moodleCourseId !== null ? (
-              <TransferMenu moodleCourseId={moodleCourseId} />
+              <TransferMenu
+                moodleCourseId={moodleCourseId}
+                onOpenLevel={(id) => navigate({ name: 'map', mapId: id })}
+              />
             ) : undefined
           }
           activitiesMenu={
