@@ -23,6 +23,9 @@ export interface EmbedContextValue {
   // Contract v5.5. Idempotent: safe to call from an effect on every render.
   reportNoContent: (reason: NoContentReason) => void
   reportPreferredSize: (aspectRatio: number) => void
+  // Contract v5.7, editor mode: ask the host for completion counts (optionally
+  // for one group). Does nothing in a student session.
+  requestStats: (groupId?: number) => void
 }
 
 export const EmbedContext = createContext<EmbedContextValue | null>(null)

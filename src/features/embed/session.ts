@@ -10,6 +10,7 @@ import { describeHttpFailure, REASONS } from './errorReason.ts'
 import { reportToHost, type FailureKind } from './escalation.ts'
 import { startReadyRetry } from './readyRetry.ts'
 import { setHostOverlayOpen } from './hostOverlay.ts'
+import { clearHostStats, setHostStatsResult } from './hostStats.ts'
 import type { EmbedErrorCode, HostInitMessage, HostMessage, HostMode } from './protocol.ts'
 
 export type EmbedPhase =
@@ -65,6 +66,7 @@ export const createEmbedSession = (bridge: HostBridge): EmbedSession => {
   const listeners = new Set<() => void>()
   let token: string | null = null
   let identity: { role: AuthRole; courseId: number } | null = null
+  let hostMode: HostMode = 'student'
   let initHandled = false
   let handshakeTimer: ReturnType<typeof setTimeout> | undefined
   let stopReadyRetry: (() => void) | undefined
@@ -116,6 +118,7 @@ export const createEmbedSession = (bridge: HostBridge): EmbedSession => {
         throw new LaunchFailure('course_mismatch', REASONS.courseMismatch)
       token = result.accessToken
       identity = { role: result.role, courseId: result.courseId }
+      hostMode = message.mode
       setAuthHooks({ getToken: () => token, refresh })
       setHostState(message.state)
       setHostCourseName(message.courseName)
@@ -187,6 +190,10 @@ export const createEmbedSession = (bridge: HostBridge): EmbedSession => {
         // Like the other host state messages, only once launched.
         if (identity) setHostOverlayOpen(message.open)
         return
+      case 'rumbos:host-stats':
+        // Counts are for the editor's UI only; a student session drops them.
+        if (identity?.role === 'editor' && hostMode === 'editor') setHostStatsResult(message)
+        return
       case 'rumbos:host-launch':
         // Only an answer to our own request-launch counts.
         if (relaunchWaiter) {
@@ -221,6 +228,7 @@ export const createEmbedSession = (bridge: HostBridge): EmbedSession => {
         setHostState(null)
         setHostFullscreen(false)
         setHostOverlayOpen(false)
+        clearHostStats()
         initHandled = false
         identity = null
         phase = { name: 'connecting' }
