@@ -29,6 +29,7 @@ import { StudentStage, type ContinueAction } from './features/hud/StudentStage.t
 import { StudentLevelsChrome } from './features/hud/StudentLevelsChrome.tsx'
 import { WriteSyncHost } from './features/course-map/components/WriteSyncHost.tsx'
 import { PublicationBar } from './features/course-map/components/publication/PublicationBar.tsx'
+import { TransferMenu } from './features/transfer/TransferMenu.tsx'
 import { LazyBackgroundPicker } from './features/course-map/components/background/LazyBackgroundPicker.tsx'
 import { useImageSize } from './features/course-map/components/background/useImageSize.ts'
 import { preferredAspectRatio } from './features/embed/preferredSize.ts'
@@ -952,6 +953,9 @@ export function AppShell() {
             onHome={() => navigate({ name: 'home' })}
             viewMode={headerViewMode}
             onViewModeChange={setViewMode}
+            transferMenu={
+              isEditor ? <TransferMenu moodleCourseId={route.moodleCourseId} /> : undefined
+            }
             fullscreenControl={fullscreenControl}
             reserveCorner={isFullscreen}
           />
@@ -995,6 +999,11 @@ export function AppShell() {
           onAppearance={isEditor ? () => setIsAppearanceOpen(true) : undefined}
           publicationBar={
             isEditor && courseMapId ? <PublicationBar courseMapId={courseMapId} /> : null
+          }
+          transferMenu={
+            isEditor && moodleCourseId !== null ? (
+              <TransferMenu moodleCourseId={moodleCourseId} />
+            ) : undefined
           }
           activitiesMenu={
             isEditor ? (
@@ -1266,6 +1275,7 @@ const AppHeader = ({
   onAppearance,
   publicationBar,
   activitiesMenu,
+  transferMenu,
   fullscreenControl,
   reserveCorner,
 }: {
@@ -1283,6 +1293,8 @@ const AppHeader = ({
   onAppearance?: () => void
   publicationBar?: ReactNode
   activitiesMenu?: ReactNode
+  // Export and import of levels (editor only).
+  transferMenu?: ReactNode
   fullscreenControl?: ReactNode
   // Fullscreen: the host's exit control sits in the top-right corner, above
   // the app, so nothing of ours may be placed there.
@@ -1353,6 +1365,7 @@ const AppHeader = ({
         )}
         {publicationBar}
         {activitiesMenu}
+        {transferMenu}
         {onAppearance && (
           <Button variant="surface" size="sm" onClick={onAppearance}>
             {es.studio.open}
