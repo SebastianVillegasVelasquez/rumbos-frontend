@@ -421,3 +421,34 @@ picture-in-picture`: `encrypted-media` is gone (the embeds play without it, and 
   when the host's iframe does not delegate `fullscreen`.
 - **Enlarged panel focus:** it is `role="dialog"` with its own label but no extra focus trap
   beyond the curtain's; Tab from inside the player can reach the page behind a video block.
+
+## Export, import and the teacher heat map
+
+- **Position in section is 1-based, in source order.** The host state carries no
+  `positionInSection`, so the app derives it per section from the order the activities arrive.
+  The plugin must send activities in course order for matching tier 4 to be meaningful.
+- **Export and import live in a "Niveles" menu in the editor header.** A course with one level
+  opens it directly and never shows the carousel, so a carousel-only entry would be unreachable.
+- **Route detection is optimistic.** Both buttons show until a call answers 404/405/501 with
+  `unknown_error`; then they hide for the session (the `contentSupport` pattern).
+- **Matching:** tier 1 (exact name) and tier 2 (same `Qn` code) are "Coincide", but a code match
+  needs the same modname or it is "Parecido (revisa)". Tiers 3 and 4 are always "Parecido".
+  Assignment is greedy and one-to-one; ties break by descriptor, then target order.
+- **All proposals are preselected;** "Aceptar las coincidencias exactas" restores the exact
+  proposal on every row that was changed and marks it reviewed. Editing an exact row stops it
+  counting as exact.
+- **Standalone with zero levels has no activity list** to match against, so the wizard explains
+  that instead of proposing targets.
+- **Heat-map palette: ColorBrewer Blues, six sequential stops** (last two darkened to
+  `#2171b5`, `#08306b` for contrast). One hue changing in lightness survives the common color
+  blindnesses; the percentage is always written, never color alone. Untracked bubbles use a
+  dashed grey ring and text.
+- **Heat map offers no 3D badge.** It is editor-only and editing stays on the 2D map, so a 3D
+  per-pin badge has no audience. Skipped on purpose.
+- **Host silence:** no answer in 8 s means the host predates v5.7; the panel says so rather than
+  spinning. A real error is shown with its own text and, for `unavailable`, a retry.
+- **Stats are never cached.** Not in React Query, storage, logs or error reports; a static scan
+  test enforces it, and the data is dropped when the switch goes off or the page hides.
+- **Heat-map toggle sits in the editor header**, not in the HUD, which has layout rules tested
+  to the pixel. In the editor's preview mode the header is gone, so a small button appears on
+  the map instead.

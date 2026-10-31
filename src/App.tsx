@@ -19,6 +19,7 @@ import {
   Maximize2,
   TriangleAlert,
   RefreshCw,
+  Flame,
 } from 'lucide-react'
 import { ActivitySidebar } from './features/course-map/components/ActivitySidebar.tsx'
 import { ActivityModal } from './features/course-map/components/ActivityModal.tsx'
@@ -29,6 +30,9 @@ import { StudentStage, type ContinueAction } from './features/hud/StudentStage.t
 import { StudentLevelsChrome } from './features/hud/StudentLevelsChrome.tsx'
 import { WriteSyncHost } from './features/course-map/components/WriteSyncHost.tsx'
 import { PublicationBar } from './features/course-map/components/publication/PublicationBar.tsx'
+import { TransferMenu } from './features/transfer/TransferMenu.tsx'
+import { LazyHeatmapPanel } from './features/heatmap/LazyHeatmapPanel.tsx'
+import type { StepInput } from './features/heatmap/insights.ts'
 import { LazyBackgroundPicker } from './features/course-map/components/background/LazyBackgroundPicker.tsx'
 import { useImageSize } from './features/course-map/components/background/useImageSize.ts'
 import { preferredAspectRatio } from './features/embed/preferredSize.ts'
@@ -93,7 +97,10 @@ import { viewerStorage } from './features/quests/viewerStorage.ts'
 import { continueTarget } from './features/course-map/continueTarget.ts'
 import { useCompletionNotices } from './features/course-map/useCompletionNotices.ts'
 import { draftToRenderable, publishedToRenderable } from './features/course-map/renderable.ts'
-import type { MapCanvasControls } from './features/course-map/types/course-props.types.ts'
+import type {
+  BubbleHeat,
+  MapCanvasControls,
+} from './features/course-map/types/course-props.types.ts'
 import type {
   Activity,
   MapInitialView,
@@ -724,6 +731,34 @@ export function AppShell() {
   const show3d = !isEditor && view3d !== null && mapView === '3d'
   const camera3d = useSyncExternalStore(cameraBridge.subscribeState, cameraBridge.getState)
 
+  // The teacher's heat map: completion counts the host computes, drawn over the
+  // 2D map. Only an editor whose host is in editing mode (and so can answer);
+  // never for students. The numbers live in memory while it is on.
+  const heatAvailable =
+    embed?.role === 'editor' && embed.mode === 'editor' && courseMapId !== null && !show3d
+  const [heatWanted, setHeatWanted] = useState(false)
+  const heatOn = heatAvailable && heatWanted
+  const [heatOverlay, setHeatOverlay] = useState<ReadonlyMap<string, BubbleHeat> | null>(null)
+  const heatSteps = useMemo<StepInput[]>(
+    () =>
+      heatOn
+        ? bubbles.flatMap((bubble) =>
+            bubble.activityId === null || isContentBubble(bubble)
+              ? []
+              : [
+                  {
+                    bubbleId: bubble.id,
+                    cmid: bubble.activityId,
+                    name:
+                      resolvedByBubbleId.get(bubble.id)?.activity?.name ?? `#${bubble.activityId}`,
+                    sequence: bubble.sequence,
+                  },
+                ]
+          )
+        : [],
+    [heatOn, bubbles, resolvedByBubbleId]
+  )
+
   const renderMapArea = (layout?: { guardCompact: boolean }) => {
     if (mapQuery.isPending) {
       return (
@@ -817,6 +852,7 @@ export function AppShell() {
                 }
               : undefined
           }
+          heat={heatOn ? (heatOverlay ?? undefined) : undefined}
           hideControls={immersive}
           compactGuard={layout?.guardCompact}
           fit={renderable.settings.fit}
@@ -952,6 +988,14 @@ export function AppShell() {
             onHome={() => navigate({ name: 'home' })}
             viewMode={headerViewMode}
             onViewModeChange={setViewMode}
+            transferMenu={
+              isEditor ? (
+                <TransferMenu
+                  moodleCourseId={route.moodleCourseId}
+                  onOpenLevel={(id) => navigate({ name: 'map', mapId: id })}
+                />
+              ) : undefined
+            }
             fullscreenControl={fullscreenControl}
             reserveCorner={isFullscreen}
           />
@@ -995,6 +1039,27 @@ export function AppShell() {
           onAppearance={isEditor ? () => setIsAppearanceOpen(true) : undefined}
           publicationBar={
             isEditor && courseMapId ? <PublicationBar courseMapId={courseMapId} /> : null
+          }
+          heatToggle={
+            heatAvailable ? (
+              <Button
+                variant="surface"
+                size="sm"
+                aria-pressed={heatOn}
+                onClick={() => setHeatWanted((wanted) => !wanted)}
+              >
+                <Flame size={16} strokeWidth={2.5} aria-hidden />
+                {es.heatmap.toggle}
+              </Button>
+            ) : undefined
+          }
+          transferMenu={
+            isEditor && moodleCourseId !== null ? (
+              <TransferMenu
+                moodleCourseId={moodleCourseId}
+                onOpenLevel={(id) => navigate({ name: 'map', mapId: id })}
+              />
+            ) : undefined
           }
           activitiesMenu={
             isEditor ? (
@@ -1105,6 +1170,34 @@ export function AppShell() {
             </div>
           )}
           <div className="relative min-h-0 flex-1">
+            {heatAvailable && (
+              <div className="pointer-events-none absolute bottom-3 left-3 z-20 flex w-[min(22rem,calc(100%-1.5rem))] flex-col items-start gap-2">
+                {heatOn ? (
+                  <div className="pointer-events-auto w-full">
+                    <LazyHeatmapPanel
+                      steps={heatSteps}
+                      onOverlay={setHeatOverlay}
+                      onHide={() => setHeatWanted(false)}
+                      onConfigure={configureCompletion}
+                    />
+                  </div>
+                ) : (
+                  // The editor's own header has the switch; the preview has no header.
+                  !isEditor && (
+                    <Button
+                      variant="surface"
+                      size="sm"
+                      className="pointer-events-auto"
+                      aria-pressed={false}
+                      onClick={() => setHeatWanted(true)}
+                    >
+                      <Flame size={16} strokeWidth={2.5} aria-hidden />
+                      {es.heatmap.toggle}
+                    </Button>
+                  )
+                )}
+              </div>
+            )}
             {immersive && renderable ? (
               <StudentStage
                 levelTitle={renderable.title}
@@ -1266,6 +1359,8 @@ const AppHeader = ({
   onAppearance,
   publicationBar,
   activitiesMenu,
+  transferMenu,
+  heatToggle,
   fullscreenControl,
   reserveCorner,
 }: {
@@ -1283,6 +1378,10 @@ const AppHeader = ({
   onAppearance?: () => void
   publicationBar?: ReactNode
   activitiesMenu?: ReactNode
+  // Export and import of levels (editor only).
+  transferMenu?: ReactNode
+  // The teacher's heat map switch (editor only).
+  heatToggle?: ReactNode
   fullscreenControl?: ReactNode
   // Fullscreen: the host's exit control sits in the top-right corner, above
   // the app, so nothing of ours may be placed there.
@@ -1353,6 +1452,8 @@ const AppHeader = ({
         )}
         {publicationBar}
         {activitiesMenu}
+        {transferMenu}
+        {heatToggle}
         {onAppearance && (
           <Button variant="surface" size="sm" onClick={onAppearance}>
             {es.studio.open}
