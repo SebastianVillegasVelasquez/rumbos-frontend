@@ -35,7 +35,7 @@ const ALLOWED = new Set([
   'features/course-map/data/mockAuth.ts',
   'features/course-map/moodle/backendMoodleState.ts',
   'features/course-map/components/CourseLevels.tsx',
-  'features/transfer/ExportDialog.tsx',
+  'features/transfer/useCourseTargets.ts',
 ])
 const FORBIDDEN =
   /\b(useActivities|useResolvedCourseMap|usePublishedResolvedCourseMap|getActivities|getResolvedCourseMap|getPublishedResolvedCourseMap)\b/

@@ -1,19 +1,17 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useEffect, useRef, useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { Download, Loader2 } from 'lucide-react'
 import { Button } from '../../components/ui/Button.tsx'
 import { Dialog } from '../../components/ui/Dialog.tsx'
 import { es } from '../../i18n/es.ts'
 import { courseMapApi } from '../course-map/data/index.ts'
 import { fetchDraftConsistently } from '../course-map/data/draftCache.ts'
-import { retryTransient } from '../course-map/data/queryKeys.ts'
 import type { CourseMapSummary } from '../course-map/data/types.ts'
 import { isContentBubble } from '../content/contentTypes.ts'
-import { useEmbed } from '../embed/EmbedContext.ts'
 import { useHostCourseName } from '../embed/hostCourse.ts'
-import { useHostState } from '../embed/hostState.ts'
 import { courseTitleFrom } from '../course-map/courseTitle.ts'
-import { descriptorsFor, targetsFromActivities, targetsFromCourseState } from './courseTargets.ts'
+import { descriptorsFor } from './courseTargets.ts'
+import { useCourseTargets } from './useCourseTargets.ts'
 import { downloadBlob } from './download.ts'
 import { exportFilename } from './exportFilename.ts'
 import { describeExportError } from './transferErrors.ts'
@@ -36,8 +34,6 @@ type Phase = { name: 'form' } | { name: 'working' } | { name: 'done'; blob: Blob
 
 const ExportDialog = ({ open, onOpenChange, levels }: ExportDialogProps) => {
   const queryClient = useQueryClient()
-  const embed = useEmbed()
-  const hostState = useHostState()
   const hostCourseName = useHostCourseName()
   const [selected, setSelected] = useState<Set<string>>(() => new Set(levels.map((l) => l.id)))
   const [source, setSource] = useState<ExportSource>('draft')
@@ -46,20 +42,7 @@ const ExportDialog = ({ open, onOpenChange, levels }: ExportDialogProps) => {
   const [error, setError] = useState<string | null>(null)
   const errorRef = useRef<HTMLParagraphElement>(null)
 
-  // Embedded, the host's state lists the activities; standalone, the backend
-  // does (through any level of the course).
-  const standaloneActivities = useQuery({
-    queryKey: ['transfer', 'activities', levels[0]?.id ?? null],
-    queryFn: () => courseMapApi.getActivities(levels[0].id, true, false),
-    enabled: !embed && open && levels.length > 0,
-    retry: retryTransient,
-    staleTime: 30_000,
-  })
-  const targets = useMemo(() => {
-    if (embed) return hostState ? targetsFromCourseState(hostState) : []
-    return targetsFromActivities(standaloneActivities.data ?? [])
-  }, [embed, hostState, standaloneActivities.data])
-  const targetsPending = embed ? !hostState : standaloneActivities.isPending
+  const { targets, pending: targetsPending } = useCourseTargets(levels[0]?.id ?? null, open)
 
   useEffect(() => {
     if (error) errorRef.current?.focus()
