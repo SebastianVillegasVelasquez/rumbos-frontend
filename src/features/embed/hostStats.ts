@@ -10,7 +10,7 @@ export type HostStatsState =
   | { status: 'idle' }
   // A request is out. `previous` keeps the last numbers on screen during a refresh.
   | { status: 'loading'; previous: CourseStats | null }
-  | { status: 'ready'; stats: CourseStats }
+  | { status: 'ready'; stats: CourseStats; receivedAt: number }
   | { status: 'error'; error: HostStatsError }
   // The host never answered: an older plugin that does not know v5.7.
   | { status: 'silent' }
@@ -36,14 +36,15 @@ export const markStatsRequested = () => {
 }
 
 export const markStatsSilent = () => {
-  if (current.status === 'loading') set({ status: 'silent' })
+  // A refresh that gets no answer keeps the numbers it already has.
+  if (current.status === 'loading' && current.previous === null) set({ status: 'silent' })
 }
 
 export const setHostStatsResult = (result: {
   stats: CourseStats | null
   error: HostStatsError | null
 }) => {
-  if (result.stats) set({ status: 'ready', stats: result.stats })
+  if (result.stats) set({ status: 'ready', stats: result.stats, receivedAt: Date.now() })
   else if (result.error) set({ status: 'error', error: result.error })
 }
 
