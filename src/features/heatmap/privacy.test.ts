@@ -57,6 +57,8 @@ describe('stats code is isolated (static)', () => {
     const allowed = new Set([
       'features/embed/session.ts',
       'features/embed/EmbedRoot.tsx',
+      // Draws a rate and a label, never counts.
+      'features/course-map/components/HeatOverlay.tsx',
       'App.tsx',
     ])
     const importers = files

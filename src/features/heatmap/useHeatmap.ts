@@ -31,6 +31,6 @@ export const useHeatmap = (requestStats: (groupId?: number) => void) => {
   return {
     state: useHostStats(),
     refresh: useCallback(() => controller.refresh(), [controller]),
-    selectGroup: useCallback((groupId: number) => controller.request(groupId), [controller]),
+    selectGroup: useCallback((groupId?: number) => controller.request(groupId), [controller]),
   }
 }

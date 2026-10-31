@@ -169,6 +169,63 @@ const send = (message: Record<string, unknown>) => {
   iframe.contentWindow.postMessage(message, appOrigin())
 }
 
+// Contract v5.7 stand-in. `statsScenario` picks what the host answers.
+const STATS_SCENARIOS = [
+  'groups',
+  'single group',
+  'suppressed',
+  'nobody tracked',
+  'no permission',
+  'unavailable',
+  'older host',
+] as const
+let statsScenario: (typeof STATS_SCENARIOS)[number] = 'groups'
+
+const answerStats = (groupId: number) => {
+  if (statsScenario === 'older host') return
+  if (statsScenario === 'no permission' || statsScenario === 'unavailable') {
+    send({
+      type: 'rumbos:host-stats',
+      v: 1,
+      stats: null,
+      error: statsScenario === 'no permission' ? 'capability' : 'unavailable',
+    })
+    return
+  }
+  const groups =
+    statsScenario === 'single group'
+      ? [{ id: 7, name: 'Grupo A' }]
+      : [
+          { id: 7, name: 'Grupo A' },
+          { id: 8, name: 'Grupo B' },
+        ]
+  const suppressed = statsScenario === 'suppressed'
+  const tracked = suppressed ? 3 : statsScenario === 'nobody tracked' ? 0 : groupId === 8 ? 9 : 19
+  const shape = groupId === 8 ? [8, 6, 5, 2, 1] : [18, 15, 12, 4, 2]
+  const activities = [101, 102, 103, 104, 105].map((cmid, index) => ({
+    cmid,
+    completionTracked: cmid !== 104,
+    complete: cmid === 104 ? 0 : Math.min(shape[index], tracked),
+    failed: cmid === 103 ? 3 : 0,
+  }))
+  send({
+    type: 'rumbos:host-stats',
+    v: 1,
+    error: null,
+    stats: {
+      schemaVersion: 1,
+      generatedAt: new Date(Date.now() - 4 * 60_000).toISOString(),
+      courseId: config.courseId,
+      groupId,
+      groups,
+      tracked,
+      minCohort: 5,
+      suppressed,
+      activities: suppressed || tracked === 0 ? [] : activities,
+    },
+  })
+}
+
 const pushState = () => send({ type: 'rumbos:host-state', v: 1, state: buildState() })
 
 window.addEventListener('message', (event) => {
@@ -194,6 +251,9 @@ window.addEventListener('message', (event) => {
       return
     case 'rumbos:request-state':
       pushState()
+      return
+    case 'rumbos:request-stats':
+      answerStats(typeof data.groupId === 'number' ? data.groupId : 0)
       return
     case 'rumbos:request-launch':
       send({ type: 'rumbos:host-launch', v: 1, assertion: assertion() })
@@ -457,6 +517,11 @@ const buildControls = () => {
       select(TRANSFER_SCENARIOS, 'perfect', (value) =>
         send({ type: 'rumbos:dev-transfer-scenario', v: 1, scenario: value })
       )
+    ),
+    // Which answer the host gives to the teacher heat map (v5.7).
+    labelled(
+      'stats scenario',
+      select(STATS_SCENARIOS, statsScenario, (value) => (statsScenario = value))
     ),
     labelled(
       'follow preferred-size',
