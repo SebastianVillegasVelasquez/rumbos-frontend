@@ -1,29 +1,8 @@
-import type { ApiErrorDetail } from './types.ts'
+import { ApiError } from './apiError.ts'
 
 export const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api/v1'
 
-export class ApiError extends Error {
-  readonly status: number
-  readonly body: unknown
-
-  constructor(status: number, body: unknown) {
-    super(`Request failed with status ${status}`)
-    this.name = 'ApiError'
-    this.status = status
-    this.body = body
-  }
-
-  // Business errors use `detail = { code, message, ...extras }`. Falls back
-  // to a generic code when the body doesn't match that shape (network
-  // errors, plain-text 5xx responses, etc).
-  get detail(): ApiErrorDetail {
-    const body = this.body
-    if (body && typeof body === 'object' && 'code' in body && 'message' in body) {
-      return body as ApiErrorDetail
-    }
-    return { code: 'unknown_error', message: typeof body === 'string' ? body : this.message }
-  }
-}
+export { ApiError }
 
 // Embed mode authenticates with a bearer token held in memory by the embed
 // session (see features/embed). Standalone never installs hooks, so its

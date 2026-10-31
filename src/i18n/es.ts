@@ -829,6 +829,54 @@ export const es = {
     leaveMap: 'Seguir con la página',
     moveMapHint: 'Con un dedo la página se desplaza; toca para mover el mapa.',
   },
+  transfer: {
+    menu: {
+      label: 'Niveles',
+      export: 'Exportar niveles…',
+      import: 'Importar niveles…',
+    },
+    export: {
+      title: 'Exportar niveles',
+      description:
+        'Crea un archivo .rumbos con los niveles que elijas, para llevarlos a otro curso.',
+      levelsLegend: 'Niveles',
+      allLevels: 'Todos los niveles',
+      sourceLegend: 'Qué versión exportar',
+      sourceDraft: 'Lo que estoy editando',
+      sourceDraftHint: 'Incluye los cambios que aún no has guardado.',
+      sourceSaved: 'Lo último guardado',
+      sourceSavedHint: 'Lo que ven tus estudiantes hoy.',
+      audioLabel: 'Incluir mi audio',
+      audioNotice:
+        'El audio está protegido por derechos de autor. Quien importe el archivo tendrá que declarar que tiene derecho a usarlo.',
+      noLevels: 'Elige al menos un nivel.',
+      tooManyLevels: (max: number) => `Puedes exportar hasta ${max} niveles a la vez.`,
+      preparing: 'Preparando los niveles…',
+      submit: 'Exportar',
+      submitting: 'Preparando el archivo…',
+      cancel: 'Cancelar',
+      close: 'Cerrar',
+      doneTitle: 'Archivo listo',
+      done: (file: string) => `Se creó ${file}. Debería haberse descargado ya.`,
+      blockedTitle: '¿No se descargó?',
+      blockedHint:
+        'Puede que el navegador o tu sitio de Moodle esté bloqueando las descargas desde el mapa. Revisa si el navegador pidió permiso o mostró un aviso de descarga bloqueada; si sigue sin funcionar, pide a quien administra Moodle que permita las descargas dentro del mapa.',
+      retryDownload: 'Descargar de nuevo',
+    },
+    errors: {
+      unsupported: 'Esta función aún no está disponible en tu servidor.',
+      unreachable: 'No pudimos conectar con el servidor. Revisa tu conexión e inténtalo de nuevo.',
+      generic: 'Algo salió mal. Inténtalo de nuevo.',
+      forbidden: 'No tienes permiso para hacer esto.',
+      exportNotFound: 'Alguno de los niveles ya no existe. Cierra este cuadro y vuelve a abrirlo.',
+      exportNeverSaved:
+        'Alguno de los niveles todavía no se ha guardado. Elige «Lo que estoy editando» o guarda ese nivel primero.',
+      exportTooLarge:
+        'El archivo resultaría demasiado grande. Exporta menos niveles a la vez o no incluyas el audio.',
+      exportInvalid:
+        'Algo en los niveles impide crear el archivo. Revisa que las imágenes y los datos del nivel estén completos.',
+    },
+  },
   publication: {
     chip: {
       never: 'Sin guardar',
