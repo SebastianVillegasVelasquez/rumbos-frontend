@@ -26,7 +26,7 @@ describe('guardMoodleBackendCall', () => {
 
 // The three Moodle-backed endpoints may only be reached through these files:
 // the backend Moodle source (never installed in embed mode) and the create-level
-// dialog, which skips the query when embedded. Everything else reads Moodle data
+// and export dialogs, which skip the query when embedded. Everything else reads Moodle data
 // from the MoodleState the app gives it.
 const ALLOWED = new Set([
   'features/course-map/data/queries.ts',
@@ -35,6 +35,7 @@ const ALLOWED = new Set([
   'features/course-map/data/mockAuth.ts',
   'features/course-map/moodle/backendMoodleState.ts',
   'features/course-map/components/CourseLevels.tsx',
+  'features/transfer/useCourseTargets.ts',
 ])
 const FORBIDDEN =
   /\b(useActivities|useResolvedCourseMap|usePublishedResolvedCourseMap|getActivities|getResolvedCourseMap|getPublishedResolvedCourseMap)\b/

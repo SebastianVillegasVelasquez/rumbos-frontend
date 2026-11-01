@@ -1,5 +1,5 @@
 // The postMessage protocol between the Moodle plugin (host page) and this app
-// (the iframe). Contract v5 to v5.5, always `v: 1`. Everything crossing the boundary
+// (the iframe). Contract v5 to v5.7, always `v: 1`. Everything crossing the boundary
 // is untrusted: incoming messages are parsed by hand-written guards that
 // either return a clean, size-bounded value or null (ignore the message).
 // Host-provided text is plain text: it is only ever rendered as a React text
@@ -102,7 +102,46 @@ export interface HostOverlayMessage {
   open: boolean
 }
 
+// Contract v5.7, editor mode only: aggregate completion counts for the course,
+// computed by Moodle. Exactly one of `stats` and `error` is set. The numbers
+// are never sent to the backend or stored (see features/heatmap).
+export type HostStatsError = 'capability' | 'unavailable'
+
+export interface HostStatsActivity {
+  cmid: number
+  completionTracked: boolean
+  complete: number
+  failed: number
+}
+
+export interface HostStatsGroup {
+  id: number
+  name: string
+}
+
+export interface CourseStats {
+  schemaVersion: 1
+  generatedAt: string
+  courseId: number
+  groupId: number
+  groups: HostStatsGroup[]
+  // Students counted for the selected group.
+  tracked: number
+  minCohort: number
+  // Too few students to show counts: `activities` is then empty by construction.
+  suppressed: boolean
+  activities: HostStatsActivity[]
+}
+
+export interface HostStatsMessage {
+  type: 'rumbos:host-stats'
+  v: 1
+  stats: CourseStats | null
+  error: HostStatsError | null
+}
+
 export type HostMessage =
+  | HostStatsMessage
   | HostInitMessage
   | HostStateMessage
   | HostLaunchMessage
@@ -166,6 +205,9 @@ export type AppMessage =
   | { type: 'rumbos:no-content'; v: 1; reason: NoContentReason }
   // Contract v5.5: width / height the host may size the area to.
   | { type: 'rumbos:preferred-size'; v: 1; aspectRatio: number }
+  // Contract v5.7, editor mode only: ask for the course's completion counts,
+  // for one group when `groupId` is given.
+  | { type: 'rumbos:request-stats'; v: 1; groupId?: number }
 
 export type NoContentReason = 'no_saved_map' | 'empty_map'
 
@@ -180,6 +222,11 @@ export const clampAspectRatio = (ratio: number): number | null =>
 // What actually crosses the boundary: error codes are mapped to the wire set
 // and the detail is cut to plain text of at most 200 characters.
 export const toWireMessage = (message: AppMessage): unknown => {
+  if (message.type === 'rumbos:request-stats') {
+    return message.groupId !== undefined && isId(message.groupId)
+      ? message
+      : { type: message.type, v: 1 }
+  }
   if (message.type === 'rumbos:preferred-size') {
     const aspectRatio = clampAspectRatio(message.aspectRatio)
     return aspectRatio === null ? null : { ...message, aspectRatio }
@@ -304,6 +351,62 @@ export const parseCourseState = (value: unknown): CourseState | null => {
   return parsed
 }
 
+const MAX_STATS_ACTIVITIES = 3_000
+const MAX_STATS_GROUPS = 200
+
+const parseStatsGroup = (value: unknown): HostStatsGroup | null => {
+  if (!isRecord(value) || !isId(value.id)) return null
+  const name = cleanText(value.name, MAX_NAME_LENGTH)
+  return name === null ? null : { id: value.id, name }
+}
+
+const parseStatsActivity = (value: unknown, tracked: number): HostStatsActivity | null => {
+  if (!isRecord(value) || !isPositiveId(value.cmid)) return null
+  if (typeof value.completionTracked !== 'boolean') return null
+  if (!isId(value.complete) || !isId(value.failed)) return null
+  // More completions than students is a host bug; a percentage over 100 would
+  // be shown as fact.
+  if (value.complete > tracked || value.failed > tracked) return null
+  return {
+    cmid: value.cmid,
+    completionTracked: value.completionTracked,
+    complete: value.complete,
+    failed: value.failed,
+  }
+}
+
+export const parseCourseStats = (value: unknown): CourseStats | null => {
+  if (!isRecord(value) || value.schemaVersion !== 1 || !isPositiveId(value.courseId)) return null
+  const generatedAt = cleanText(value.generatedAt, MAX_SHORT_LENGTH)
+  if (generatedAt === null || !isId(value.groupId)) return null
+  if (!isId(value.tracked) || !isId(value.minCohort)) return null
+  if (typeof value.suppressed !== 'boolean') return null
+  const groups = parseList(value.groups, MAX_STATS_GROUPS, parseStatsGroup)
+  if (!groups) return null
+  const tracked = value.tracked
+  // Suppressed stats carry no counts, whatever else arrives with them.
+  const activities = value.suppressed
+    ? []
+    : parseList(value.activities, MAX_STATS_ACTIVITIES, (item) => parseStatsActivity(item, tracked))
+  if (!activities) return null
+  const seen = new Set<number>()
+  return {
+    schemaVersion: 1,
+    generatedAt,
+    courseId: value.courseId,
+    groupId: value.groupId,
+    groups,
+    tracked,
+    minCohort: value.minCohort,
+    suppressed: value.suppressed,
+    activities: activities.filter((activity) => {
+      if (seen.has(activity.cmid)) return false
+      seen.add(activity.cmid)
+      return true
+    }),
+  }
+}
+
 const parseAssertion = (value: unknown): string | null =>
   typeof value === 'string' && value.length > 0 && value.length <= MAX_ASSERTION_LENGTH
     ? value
@@ -353,6 +456,13 @@ export const parseHostMessage = (data: unknown): HostMessage | null => {
       return typeof data.open === 'boolean'
         ? { type: 'rumbos:host-overlay', v: 1, open: data.open }
         : null
+    case 'rumbos:host-stats': {
+      if (data.error === 'capability' || data.error === 'unavailable')
+        return { type: 'rumbos:host-stats', v: 1, stats: null, error: data.error }
+      if (data.error !== undefined && data.error !== null) return null
+      const stats = parseCourseStats(data.stats)
+      return stats ? { type: 'rumbos:host-stats', v: 1, stats, error: null } : null
+    }
     default:
       return null
   }

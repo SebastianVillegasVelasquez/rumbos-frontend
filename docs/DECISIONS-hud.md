@@ -422,42 +422,33 @@ picture-in-picture`: `encrypted-media` is gone (the embeds play without it, and 
 - **Enlarged panel focus:** it is `role="dialog"` with its own label but no extra focus trap
   beyond the curtain's; Tab from inside the player can reach the page behind a video block.
 
-## The now-playing disc
+## Export, import and the teacher heat map
 
-- **The disc replaces the speaker button.** It is a round 44 px button in the same cluster slot, so
-  `hudMetrics` and `insets` are untouched. Only the image layer turns (CSS `disc-spin`, 12 s,
-  `animation-play-state`), never the button or its focus ring. The animation is paused, never removed,
-  so the angle survives a pause. Reduced motion unsets the animation name.
-- **Playing, paused and muted are also shapes:** muted shows a speaker-off over a dimmed disc, paused
-  (wanted but held by an overlay, a hidden tab or the welcome video) shows a pause mark, and the
-  accessible description starts with the state. Motion is never the only signal.
-- **Accessible name** is "Música: <título>". The description is the state, then credit and license.
-  The pill is `aria-hidden` because everything it says is already in the name and description.
-- **One screen-reader announcement.** The session's existing "Música activada" live message stays
-  the only one; its copy now says "disco de música". It does not carry the title (that would mean
-  touching `audioSession`); the title is read when the disc is focused.
-- **The pill never lives in `hudMetrics`.** It is transient, anchored to the disc and measured at
-  show time: it sits left of the whole cluster (which wraps into columns on short screens), never
-  wider than the room before the next `data-hud-edge` element, and carries `data-layout-watch` so
-  `?debug=layout` compares it like a control. It has no `data-hud-edge`, so the 3D insets ignore it.
-- **Pill placement, a judgment call:** "above the disc below 480 px" would cover the zoom and view
-  buttons that stack above the disc, so the pill stays on the left at every width. When the disc's own
-  row has under 140 px of room (Continuar and the chip share that row on a phone), the pill rises one
-  row (52 px) instead of shrinking away; the three-to-two-to-one line ladder still applies after that.
-  A pill with under 72 px of room is not shown (the popover has the full text).
-- **Timing:** the pill appears once per track and session when `playing` first becomes true (kept in a
-  module set so a 2D/3D remount does not repeat it), for 6 s; hover and focus show it for as long as
-  they last. A resume after an overlay is not a start. It yields to the open popover and to the
-  guided tour while the tour points at the disc (`coachTarget`), and the automatic showing waits
-  for the tour to end. A touch tap opens the popover, which already carries everything, so there is
-  no separate tap pill.
-- **The timer is UI state of the control.** `audioState` and `audioSession` only gained two fields on
-  `AudioTrack` (license and an already-resolved cover URL).
-- **Cover loading:** the cover is requested only after the track has played once, never under data
-  saver (procedural vinyl instead), and a failed image falls back silently. The URL goes through
-  `resolveCoverUrl`, never concatenated by hand. On the curtain the cover is requested (the music is
-  about to start) unless data saver is on.
-- **Curtain:** a non-interactive disc and a one-line title above the unchanged music switch.
-- **Detector:** the panel opts out with `data-layout-ignore`; elements marked `data-layout-watch` are
-  compared like controls.
-- **Mock:** `?mockCover=off|broken`, `?mockText=long` and the dev hook `__rumbosMock.addMusic(mapId)`.
+- **Position in section is 1-based, in source order.** The host state carries no
+  `positionInSection`, so the app derives it per section from the order the activities arrive.
+  The plugin must send activities in course order for matching tier 4 to be meaningful.
+- **Export and import live in a "Niveles" menu in the editor header.** A course with one level
+  opens it directly and never shows the carousel, so a carousel-only entry would be unreachable.
+- **Route detection is optimistic.** Both buttons show until a call answers 404/405/501 with
+  `unknown_error`; then they hide for the session (the `contentSupport` pattern).
+- **Matching:** tier 1 (exact name) and tier 2 (same `Qn` code) are "Coincide", but a code match
+  needs the same modname or it is "Parecido (revisa)". Tiers 3 and 4 are always "Parecido".
+  Assignment is greedy and one-to-one; ties break by descriptor, then target order.
+- **All proposals are preselected;** "Aceptar las coincidencias exactas" restores the exact
+  proposal on every row that was changed and marks it reviewed. Editing an exact row stops it
+  counting as exact.
+- **Standalone with zero levels has no activity list** to match against, so the wizard explains
+  that instead of proposing targets.
+- **Heat-map palette: ColorBrewer Blues, six sequential stops** (last two darkened to
+  `#2171b5`, `#08306b` for contrast). One hue changing in lightness survives the common color
+  blindnesses; the percentage is always written, never color alone. Untracked bubbles use a
+  dashed grey ring and text.
+- **Heat map offers no 3D badge.** It is editor-only and editing stays on the 2D map, so a 3D
+  per-pin badge has no audience. Skipped on purpose.
+- **Host silence:** no answer in 8 s means the host predates v5.7; the panel says so rather than
+  spinning. A real error is shown with its own text and, for `unavailable`, a retry.
+- **Stats are never cached.** Not in React Query, storage, logs or error reports; a static scan
+  test enforces it, and the data is dropped when the switch goes off or the page hides.
+- **Heat-map toggle sits in the editor header**, not in the HUD, which has layout rules tested
+  to the pixel. In the editor's preview mode the header is gone, so a small button appears on
+  the map instead.

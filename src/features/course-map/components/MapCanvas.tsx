@@ -14,6 +14,7 @@ import { dominantAxis, normalizeWheelDelta } from '../viewport/math.ts'
 import { useViewportController } from '../viewport/useViewportController.ts'
 import { sharedTicker } from '../viewport/ticker.ts'
 import BubbleVisual from './BubbleVisual.tsx'
+import { HeatOverlay } from './HeatOverlay.tsx'
 import { IconPickerPopover } from './IconPickerPopover.tsx'
 import { defaultIconForModname, type IconKey, type RenderIconKey } from '../icons.ts'
 import { isContentBubble } from '../../content/contentTypes.ts'
@@ -115,6 +116,7 @@ export const MapCanvas = ({
   compactGuard = false,
   homeView = null,
   onConfigureCompletion,
+  heat,
 }: MapCanvasProps) => {
   // Embedded on a touch screen the page keeps one-finger scrolling until the
   // person opts in to moving the map (see touchGuard).
@@ -131,6 +133,9 @@ export const MapCanvas = ({
   const [background] = useImage(backgroundUrl)
   const [iconPickerBubbleId, setIconPickerBubbleId] = useState<string | null>(null)
   const [hoveredBubbleId, setHoveredBubbleId] = useState<string | null>(null)
+  // The heat map's details stay on the bubble that was tapped, for touch screens
+  // that have no hover.
+  const [pinnedHeatId, setPinnedHeatId] = useState<string | null>(null)
   const [focusPulse, setFocusPulse] = useState<{ bubbleId: string; key: number } | null>(null)
   const pathRef = useRef<Konva.Line>(null)
   const completedPathRef = useRef<Konva.Line>(null)
@@ -581,6 +586,8 @@ export const MapCanvas = ({
   }
 
   const handleBubbleClick = (bubble: BubbleModel) => {
+    if (heat?.has(bubble.id))
+      setPinnedHeatId((current) => (current === bubble.id ? null : bubble.id))
     if (editable) {
       setIconPickerBubbleId((current) => (current === bubble.id ? null : bubble.id))
     } else {
@@ -600,6 +607,29 @@ export const MapCanvas = ({
   const hoveredUnavailableReason = hoveredUnavailableBubble
     ? unavailableReasonFor(hoveredUnavailableBubble)
     : null
+
+  const heatDetailBubble =
+    heat && (heat.has(hoveredBubbleId ?? '') || heat.has(pinnedHeatId ?? ''))
+      ? (bubbles.find(
+          (bubble) =>
+            bubble.id === (heat.has(hoveredBubbleId ?? '') ? hoveredBubbleId : pinnedHeatId)
+        ) ?? null)
+      : null
+  const heatItems = heat
+    ? bubbles.flatMap((bubble) => {
+        const detail = heat.get(bubble.id)
+        if (!detail) return []
+        const skin = resolveSkin({
+          bubbleSkinId: bubble.skinId,
+          modname: getModnameForBubble?.(bubble),
+          skinRules,
+          defaultSkinId,
+          skins,
+        })
+        const at = toDesignSpace({ x: bubble.x, y: bubble.y }, designSize)
+        return [{ id: bubble.id, x: at.x, y: at.y, radius: skin.size / 2, heat: detail }]
+      })
+    : []
 
   const handleIconSelect = (bubbleId: string, icon: IconKey) => {
     onBubbleUpdate?.(bubbleId, { icon })
@@ -808,6 +838,11 @@ export const MapCanvas = ({
               )
             })}
           </Layer>
+          {heat && (
+            <Layer listening={false}>
+              <HeatOverlay items={heatItems} />
+            </Layer>
+          )}
           <Layer ref={burstLayerRef} listening={false} />
         </Stage>
         {showLevelComplete && (
@@ -840,6 +875,27 @@ export const MapCanvas = ({
             }}
           >
             {hoveredUnavailableReason}
+          </div>
+        )}
+        {heatDetailBubble && heat?.get(heatDetailBubble.id) && (
+          <div
+            role="tooltip"
+            className="pointer-events-none absolute z-20 max-w-[min(20rem,calc(100%-1rem))] -translate-x-1/2 -translate-y-[calc(100%+48px)] border-hair rounded-md bg-ink px-2.5 py-1.5 text-xs font-semibold text-white"
+            style={{
+              left: Math.min(
+                Math.max(
+                  stageX + toDesignSpace(heatDetailBubble, designSize).x * scale,
+                  size.width > 0 ? 100 : 0
+                ),
+                size.width > 0 ? size.width - 100 : Infinity
+              ),
+              top: stageY + toDesignSpace(heatDetailBubble, designSize).y * scale,
+            }}
+          >
+            {getResolvedActivity?.(heatDetailBubble)?.name && (
+              <span className="block font-bold">{getResolvedActivity(heatDetailBubble)?.name}</span>
+            )}
+            {heat.get(heatDetailBubble.id)?.detail}
           </div>
         )}
         {iconPickerBubble && (

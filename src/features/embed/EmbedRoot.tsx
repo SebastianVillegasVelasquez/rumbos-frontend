@@ -141,6 +141,15 @@ const EmbedSessionView = ({ hostOrigin, bridge }: { hostOrigin: string; bridge: 
             },
             requestState,
             requestFullscreen: (on) => bridge.send({ type: 'rumbos:request-fullscreen', v: 1, on }),
+            requestStats: (groupId) => {
+              // Editor mode only; the host would refuse a student anyway.
+              if (mode === 'editor')
+                bridge.send({
+                  type: 'rumbos:request-stats',
+                  v: 1,
+                  ...(groupId !== undefined && { groupId }),
+                })
+            },
             reportNoContent: reports.noContent,
             reportPreferredSize: reports.preferredSize,
           }

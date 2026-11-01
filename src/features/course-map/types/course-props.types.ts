@@ -114,4 +114,18 @@ export interface MapCanvasProps {
   homeView?: MapInitialView | null
   // Editor, host speaking v5.4: open the activity's settings page in Moodle.
   onConfigureCompletion?: (bubble: RenderableBubble) => void
+  // The teacher's heat map, by bubble id. Absent when it is off.
+  heat?: ReadonlyMap<string, BubbleHeat>
+}
+
+// What the teacher's heat map draws on one bubble. Plain text and a rate: the
+// canvas never sees the counts behind it.
+export interface BubbleHeat {
+  kind: 'counts' | 'untracked'
+  // 0 to 1; 0 for an untracked bubble, which is drawn neutral.
+  rate: number
+  // Written on the bubble: "63 %", or "Sin seguimiento".
+  badge: string
+  // The hover and tap text.
+  detail: string
 }
