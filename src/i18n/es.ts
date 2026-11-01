@@ -248,6 +248,16 @@ export const es = {
       'El archivo de audio no está disponible. Vuelve a subirlo o elige otra pista de la biblioteca.',
     startedAnnouncement: 'Música activada. Puedes silenciarla con el botón de volumen.',
     credit: (title: string, credit: string) => `Música: ${title} — ${credit}`,
+    // The spinning disc, its pill and the track details (all of it lives here).
+    nowPlaying: {
+      buttonName: (title: string) => `Música: ${title}`,
+      stateLabel: { playing: 'sonando', paused: 'en pausa', muted: 'silenciada' },
+      titleLabel: 'Título',
+      creditLabel: 'Crédito',
+      licenseLabel: 'Licencia',
+      withState: (name: string, state: string) => `${name}, ${state}`,
+      untitled: 'Música del nivel',
+    },
     editor: {
       current: 'Música de este nivel',
       currentUnknown: 'Música elegida',
