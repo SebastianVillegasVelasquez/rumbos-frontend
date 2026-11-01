@@ -74,7 +74,7 @@ import {
   isPreconditionRequired,
   isUnreachable,
 } from './features/course-map/data/client.ts'
-import { resolveImageUrl } from './features/course-map/data/assets.ts'
+import { resolveCoverUrl, resolveImageUrl } from './features/course-map/data/assets.ts'
 import { courseTitleFrom } from './features/course-map/courseTitle.ts'
 import { progressCounts } from './features/course-map/progress.ts'
 import { useResume } from './features/hud/useResume.ts'
@@ -658,6 +658,8 @@ export function AppShell() {
             startAfterInteraction: audio.settings.startAfterInteraction,
             title: audio.info.title,
             credit: audio.info.credit,
+            license: audio.info.license?.trim() || null,
+            coverUrl: audio.info.coverUrl ? resolveCoverUrl(audio.info.coverUrl) : null,
             unavailable: audioMissing,
           }
         : null,
@@ -670,6 +672,8 @@ export function AppShell() {
       audio?.settings.startAfterInteraction,
       audio?.info.title,
       audio?.info.credit,
+      audio?.info.license,
+      audio?.info.coverUrl,
       audioMissing,
       audioDiagnostics,
     ]

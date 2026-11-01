@@ -3,6 +3,7 @@ import { mockFeatures, mockLaunch, mockMe, withMockAuth } from './mockAuth.ts'
 import { CONTENT_LIMITS, isContentBubble, type Content } from '../../content/contentTypes.ts'
 import { contentBytes, validateContent } from '../../content/validateContent.ts'
 import { assetObjectUrls } from './mockAssetUrls.ts'
+import { mockCoverDataUri } from './mockCover.ts'
 import { LIBRARY_TRACKS, makeToneWav, readAudioDuration } from './mockAudio.ts'
 import {
   ASSET_LIMITS,
@@ -1014,14 +1015,31 @@ const toSummary = async (map: MockMap): Promise<CourseMapSummary> => ({
   updatedAt: map.updatedAt,
 })
 
+// ?mockCover=off: a backend that predates covers and licenses (the fields are
+// absent). ?mockCover=broken: a cover URL that does not load. ?mockText=long:
+// a long title, credit and license, to check truncation.
+const mockCoverOverride = () => queryParam('mockCover')
+const LONG = 'Una frase muy larga para comprobar que el texto se recorta con puntos suspensivos'
+
 const audioInfoOf = (settings: MapSettings): AudioInfo | null => {
   const assetId = settings.audio?.assetId
   const asset = assetId ? assets.find((item) => item.id === assetId) : undefined
   if (!asset || asset.kind !== 'audio') return null
+  const long = queryParam('mockText') === 'long'
+  const covers = mockCoverOverride() !== 'off'
   return {
-    title: asset.title,
-    credit: asset.credit ?? '',
+    title: long ? `${LONG} (título)` : asset.title,
+    credit: long ? `${LONG} (crédito)` : (asset.credit ?? ''),
     durationSeconds: asset.durationSeconds ?? 0,
+    ...(covers
+      ? {
+          license: long ? `${LONG} (licencia)` : (asset.license ?? null),
+          coverUrl:
+            mockCoverOverride() === 'broken'
+              ? 'data:image/png;base64,broken'
+              : (asset.coverUrl ?? mockCoverDataUri(asset.id)),
+        }
+      : {}),
     ...availableOf(asset.kind),
   }
 }
@@ -1287,6 +1305,7 @@ const ensureLibraryTracks = (): Promise<void> => {
           durationSeconds: seed.seconds,
           title: seed.title,
           credit: seed.credit,
+          license: seed.license,
           originalFilename: null,
           createdAt: now(),
           sha256: `library-${id}`,
@@ -1332,7 +1351,6 @@ const createAudioAsset = async ({
   if (duration > AUDIO_MAX_SECONDS)
     throw businessError(422, 'audio_too_long', 'El audio dura más de 10 minutos')
   onProgress?.(1)
-  void license
   const asset = await storeAsset(file, {
     kind: 'audio',
     width: 0,
@@ -1342,6 +1360,7 @@ const createAudioAsset = async ({
     originalFilename: file.name || null,
   })
   asset.durationSeconds = duration
+  asset.license = license?.trim() || null
   return { asset: toAsset(asset), created: true }
 }
 
