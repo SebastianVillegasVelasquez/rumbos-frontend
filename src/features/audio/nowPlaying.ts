@@ -45,3 +45,72 @@ const clean = (value: string | null | undefined) => value?.trim() ?? ''
 // The credit and license as the button's description; empty when there is none.
 export const trackDescription = (track: TrackText): string =>
   [clean(track.credit), clean(track.license)].filter(Boolean).join(' · ')
+
+// ---- The pill ---------------------------------------------------------------------
+
+// How long the pill stays after the track starts (or a tap).
+export const PILL_MS = 6000
+
+// The ladder that keeps the pill clear of the other controls, from most to least
+// text: three lines (title, credit, license), two (title; "credit · license"),
+// one (title only; the rest is in the popover).
+export type PillLevel = 3 | 2 | 1
+
+const MIN_ROOM_THREE = 200
+const MIN_ROOM_TWO = 140
+
+export const pillLevelForRoom = (room: number): PillLevel =>
+  room >= MIN_ROOM_THREE ? 3 : room >= MIN_ROOM_TWO ? 2 : 1
+
+export interface PillLine {
+  key: 'title' | 'credit' | 'license' | 'creditLicense'
+  text: string
+}
+
+// The lines for a level; a missing credit or license simply has no line.
+export const pillLines = (track: TrackText, level: PillLevel): PillLine[] => {
+  const title = clean(track.title)
+  const credit = clean(track.credit)
+  const license = clean(track.license)
+  const lines: PillLine[] = [{ key: 'title', text: title }]
+  if (level === 3) {
+    if (credit) lines.push({ key: 'credit', text: credit })
+    if (license) lines.push({ key: 'license', text: license })
+  } else if (level === 2) {
+    const rest = [credit, license].filter(Boolean).join(' · ')
+    if (rest) lines.push({ key: 'creditLicense', text: rest })
+  }
+  return lines
+}
+
+// Once per track and session: when the music first becomes audible, unless the
+// guided tour is pointing at the control (then it waits for the tour to end).
+export const shouldAutoShowPill = ({
+  playing,
+  alreadyShown,
+  tourOnControl,
+}: {
+  playing: boolean
+  alreadyShown: boolean
+  tourOnControl: boolean
+}): boolean => playing && !alreadyShown && !tourOnControl
+
+export const pillVisible = ({
+  timed,
+  hovered,
+  focused,
+  popoverOpen,
+  tourOnControl,
+}: {
+  timed: boolean
+  hovered: boolean
+  focused: boolean
+  popoverOpen: boolean
+  tourOnControl: boolean
+}): boolean => !popoverOpen && !tourOnControl && (timed || hovered || focused)
+
+// Tracks whose pill has already appeared in this page session. It outlives the
+// control, which remounts when the stage does (2D/3D).
+const seen = new Set<string>()
+export const pillSeen = (assetId: string) => seen.has(assetId)
+export const markPillSeen = (assetId: string) => void seen.add(assetId)

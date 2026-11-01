@@ -4,6 +4,7 @@ import { es } from '../../i18n/es.ts'
 import { useHostOverlayOpen } from '../embed/hostOverlay.ts'
 import { viewerStorage } from '../quests/viewerStorage.ts'
 import { coachSteps, readCoachDone, rememberCoachDone } from './coachPreference.ts'
+import { setCoachTarget } from './coachTarget.ts'
 import { GAP, GUTTER, TOUCH_TARGET } from './metrics.ts'
 
 interface CoachMarksProps {
@@ -48,6 +49,13 @@ export const CoachMarks = ({
     if (step === 0) returnFocusTo.current = document.activeElement
     nextRef.current?.focus()
   }, [visible, step])
+
+  // The music disc keeps its pill quiet while this step explains the disc.
+  const onAudioStep = visible && current === 'audio'
+  useEffect(() => {
+    setCoachTarget(onAudioStep ? 'audio' : null)
+    return () => setCoachTarget(null)
+  }, [onAudioStep])
 
   if (!visible) return null
 

@@ -246,7 +246,7 @@ export const es = {
     volume: 'Volumen',
     unavailableWarning:
       'El archivo de audio no está disponible. Vuelve a subirlo o elige otra pista de la biblioteca.',
-    startedAnnouncement: 'Música activada. Puedes silenciarla con el botón de volumen.',
+    startedAnnouncement: 'Música activada. Puedes silenciarla con el disco de música.',
     credit: (title: string, credit: string) => `Música: ${title} — ${credit}`,
     // The spinning disc, its pill and the track details (all of it lives here).
     nowPlaying: {
@@ -375,7 +375,7 @@ export const es = {
       },
       audio: {
         title: 'Aquí puedes silenciar la música',
-        body: 'Es el botón de volumen, abajo a la derecha. Ahí también ajustas el volumen.',
+        body: 'Es el disco de música, abajo a la derecha. Ahí también ajustas el volumen.',
       },
     },
     moveTouch: 'Toca «Mover el mapa» para arrastrarlo; usa + y − (o pellizca) para acercarte.',

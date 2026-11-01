@@ -3,12 +3,23 @@ import { Button } from '../../components/ui/Button.tsx'
 import { Popover } from '../../components/ui/Popover.tsx'
 import { useDataSaver } from '../../fx/dataSaverStore.ts'
 import { es } from '../../i18n/es.ts'
+import { useCoachTarget } from '../hud/coachTarget.ts'
 import { audioSession, type AudioTrack } from './audioSession.ts'
 import { effectiveVolume } from './audioPrefs.ts'
 import { audioControlMode } from './audioAvailability.ts'
 import { wantsMusic } from './audioState.ts'
 import { NowPlayingDisc } from './NowPlayingDisc.tsx'
-import { coverToLoad, discState, trackDescription } from './nowPlaying.ts'
+import { NowPlayingPill } from './NowPlayingPill.tsx'
+import {
+  PILL_MS,
+  coverToLoad,
+  discState,
+  markPillSeen,
+  pillSeen,
+  pillVisible,
+  shouldAutoShowPill,
+  trackDescription,
+} from './nowPlaying.ts'
 
 const text = es.audio.nowPlaying
 
@@ -32,6 +43,19 @@ const AudioControl = ({
   const view = useSyncExternalStore(audioSession.subscribe, audioSession.getView)
   const dataSaver = useDataSaver().active
   const descriptionId = useId()
+  const tourOnControl = useCoachTarget() === 'audio'
+
+  // The pill: UI state of this control only (the session knows nothing of it).
+  const [anchor, setAnchor] = useState<HTMLButtonElement | null>(null)
+  const [autoFor, setAutoFor] = useState<string | null>(null)
+  const [timed, setTimed] = useState(false)
+  const [timerKey, setTimerKey] = useState(0)
+  const [hovered, setHovered] = useState(false)
+  const [focused, setFocused] = useState(false)
+  const showTimed = () => {
+    setTimed(true)
+    setTimerKey((key) => key + 1)
+  }
 
   // The stage is on screen: the music may play. Leaving it pauses (and keeps
   // what the viewer wanted).
@@ -43,9 +67,34 @@ const AudioControl = ({
     audioSession.setTrack(track)
   }, [track])
 
-  if (view.playing && view.track?.assetId === track.assetId && startedFor !== track.assetId) {
+  const here = view.track?.assetId === track.assetId
+  if (view.playing && here && startedFor !== track.assetId) {
     setStartedFor(track.assetId)
   }
+
+  // The first time this track becomes audible: show the pill for a few seconds.
+  // A resume after an overlay or a hidden tab is not a start.
+  if (
+    here &&
+    shouldAutoShowPill({
+      playing: view.playing,
+      alreadyShown: autoFor === track.assetId || pillSeen(track.assetId),
+      tourOnControl,
+    })
+  ) {
+    setAutoFor(track.assetId)
+    showTimed()
+  }
+  // Remembered across remounts (2D/3D) once it has really appeared.
+  useEffect(() => {
+    if (autoFor) markPillSeen(autoFor)
+  }, [autoFor])
+
+  useEffect(() => {
+    if (!timed) return
+    const id = window.setTimeout(() => setTimed(false), PILL_MS)
+    return () => window.clearTimeout(id)
+  }, [timed, timerKey])
 
   const wants = wantsMusic(view.state)
   const volume = Math.round(effectiveVolume(view.prefs, track.volume) * 100)
@@ -77,9 +126,19 @@ const AudioControl = ({
           className="hud-dimmable border-soft pointer-events-auto relative h-11 w-11 min-w-[44px] shrink-0 rounded-pill bg-surface p-0"
           aria-label={name}
           aria-describedby={descriptionId}
-          title={name}
+          ref={setAnchor}
+          onPointerEnter={(event) => event.pointerType !== 'touch' && setHovered(true)}
+          onPointerLeave={() => setHovered(false)}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
         >
           <NowPlayingDisc key={track.assetId} cover={cover} state={state} />
+          {pillVisible({ timed, hovered, focused, popoverOpen: open, tourOnControl }) && (
+            <NowPlayingPill
+              track={{ title, credit: track.credit, license: track.license }}
+              anchor={anchor}
+            />
+          )}
           <span id={descriptionId} className="sr-only">
             {text.withState(text.stateLabel[state.badge], details || es.audio.title)}
           </span>
