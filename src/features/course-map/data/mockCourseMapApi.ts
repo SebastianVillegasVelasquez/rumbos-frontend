@@ -1037,7 +1037,7 @@ const audioInfoOf = (settings: MapSettings): AudioInfo | null => {
           coverUrl:
             mockCoverOverride() === 'broken'
               ? 'data:image/png;base64,broken'
-              : (asset.coverUrl ?? mockCoverDataUri(asset.id)),
+              : (asset.coverUrl ?? null),
         }
       : {}),
     ...availableOf(asset.kind),
@@ -1306,6 +1306,8 @@ const ensureLibraryTracks = (): Promise<void> => {
           title: seed.title,
           credit: seed.credit,
           license: seed.license,
+          coverAssetId: id,
+          coverUrl: mockCoverDataUri(id),
           originalFilename: null,
           createdAt: now(),
           sha256: `library-${id}`,
@@ -1318,16 +1320,28 @@ const ensureLibraryTracks = (): Promise<void> => {
 }
 
 // POST /assets with kind=audio, in the order the contract lists the failures.
+const COVER_MAX_BYTES = 2 * 1024 * 1024
+const COVER_MIMES = new Set(['image/webp', 'image/png', 'image/jpeg'])
+
+// The checks of PUT /assets/{id}/cover, in the contract's order.
+const checkCover = (file: Blob) => {
+  if (file.size > COVER_MAX_BYTES)
+    throw businessError(413, 'cover_too_large', 'La portada pesa más de 2 MB')
+  if (!COVER_MIMES.has(file.type))
+    throw businessError(422, 'cover_invalid', 'La portada no es una imagen válida')
+}
+
 const createAudioAsset = async ({
   file,
   title,
   credit,
   license,
   rightsDeclared,
+  cover,
   onProgress,
 }: Pick<
   AssetCreate,
-  'file' | 'title' | 'credit' | 'license' | 'rightsDeclared' | 'onProgress'
+  'file' | 'title' | 'credit' | 'license' | 'rightsDeclared' | 'cover' | 'onProgress'
 >): Promise<AssetCreateResult> => {
   if (mockAudioOverride() === 'off')
     throw notFound('not_found', 'Este servidor todavía no admite música')
@@ -1343,6 +1357,8 @@ const createAudioAsset = async ({
     throw businessError(422, 'audio_credit_required', 'El crédito del audio es obligatorio')
   if (file.size > AUDIO_MAX_BYTES)
     throw businessError(413, 'asset_too_large', 'El archivo supera el tamaño máximo permitido')
+  if (file.type.startsWith('video/'))
+    throw businessError(422, 'audio_has_video', 'El archivo trae video: sube solo el audio')
   if (!AUDIO_MIMES.has(file.type))
     throw businessError(422, 'audio_invalid', 'El archivo no es un audio válido (MP3 o M4A)')
   const duration = await readAudioDuration(file)
@@ -1361,7 +1377,19 @@ const createAudioAsset = async ({
   })
   asset.durationSeconds = duration
   asset.license = license?.trim() || null
-  return { asset: toAsset(asset), created: true }
+  asset.coverAssetId = null
+  asset.coverUrl = null
+  const warnings: Warning[] = []
+  if (cover) {
+    try {
+      checkCover(cover)
+      asset.coverUrl = URL.createObjectURL(cover)
+      asset.coverAssetId = newId()
+    } catch {
+      warnings.push({ code: 'cover_dropped', message: 'La portada no se pudo usar' })
+    }
+  }
+  return { asset: toAsset(asset), created: true, ...(warnings.length ? { warnings } : {}) }
 }
 
 // ---- Implementation -------------------------------------------------------------
@@ -1841,10 +1869,11 @@ const impl: CourseMapApi = {
     credit,
     license,
     rightsDeclared,
+    cover,
     onProgress,
   }: AssetCreate): Promise<AssetCreateResult> {
     if (kind === 'audio')
-      return createAudioAsset({ file, title, credit, license, rightsDeclared, onProgress })
+      return createAudioAsset({ file, title, credit, license, rightsDeclared, cover, onProgress })
     const override = mockAssetsOverride()
     if (override === 'down')
       throw businessError(503, 'uploads_disabled', 'Las subidas están deshabilitadas temporalmente')
@@ -1892,6 +1921,21 @@ const impl: CourseMapApi = {
       originalFilename: file.name || null,
     })
     return { asset: toAsset(asset), created: true }
+  },
+
+  async setAssetCover(assetId: string, file: File): Promise<Asset> {
+    const asset = assets.find((item) => item.id === assetId && item.kind === 'audio')
+    if (!asset) throw notFound('not_found', 'La pista no existe')
+    checkCover(file)
+    const index = assets.findIndex((item) => item.id === assetId)
+    assets[index] = { ...asset, coverAssetId: newId(), coverUrl: URL.createObjectURL(file) }
+    return toAsset(assets[index])
+  },
+
+  async removeAssetCover(assetId: string): Promise<void> {
+    const index = assets.findIndex((item) => item.id === assetId && item.kind === 'audio')
+    if (index < 0) throw notFound('not_found', 'La pista no existe')
+    assets[index] = { ...assets[index], coverAssetId: null, coverUrl: null }
   },
 
   async patchAsset(assetId: string, input: AssetPatch): Promise<Asset> {

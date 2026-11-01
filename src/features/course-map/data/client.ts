@@ -133,12 +133,13 @@ export async function apiRequest<T>(
 export function apiUpload<T>(
   path: string,
   form: FormData,
-  onProgress?: (fraction: number) => void
+  onProgress?: (fraction: number) => void,
+  method: 'POST' | 'PUT' = 'POST'
 ): Promise<{ data: T; status: number }> {
   const attempt = () =>
     new Promise<{ data: T; status: number }>((resolve, reject) => {
       const request = new XMLHttpRequest()
-      request.open('POST', `${API_BASE_URL}${path}`)
+      request.open(method, `${API_BASE_URL}${path}`)
       const token = authHooks?.getToken()
       if (token) request.setRequestHeader('Authorization', `Bearer ${token}`)
       if (onProgress) {

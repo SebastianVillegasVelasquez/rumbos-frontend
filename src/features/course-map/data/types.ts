@@ -491,6 +491,8 @@ export interface AssetCreate {
 export interface AssetCreateResult {
   asset: Asset
   created: boolean
+  // e.g. cover_dropped: the embedded artwork was unusable. Absent on an older backend.
+  warnings?: Warning[]
 }
 
 export interface AssetPatch {

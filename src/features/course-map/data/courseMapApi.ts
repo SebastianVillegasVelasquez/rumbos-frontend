@@ -8,6 +8,7 @@ import type {
   AssetListParams,
   AssetListResult,
   AssetPatch,
+  Warning,
   Asset,
   Bubble,
   BubbleCreate,
@@ -93,6 +94,9 @@ export interface CourseMapApi {
   listAssets(params: AssetListParams): Promise<AssetListResult>
   createAsset(input: AssetCreate): Promise<AssetCreateResult>
   patchAsset(assetId: string, input: AssetPatch): Promise<Asset>
+  // Audio only: replace (PUT) or remove (DELETE) the track's cover.
+  setAssetCover(assetId: string, file: File): Promise<Asset>
+  removeAssetCover(assetId: string): Promise<void>
   deleteAsset(assetId: string): Promise<void>
 
   getPublicationState(courseMapId: string): Promise<PublicationState>
@@ -207,7 +211,16 @@ export const realCourseMapApi: CourseMapApi = {
       `/assets${buildQuery(params as Record<string, string | number | boolean | undefined>)}`
     ),
 
-  createAsset: async ({ file, kind, title, credit, license, rightsDeclared, onProgress }) => {
+  createAsset: async ({
+    file,
+    kind,
+    title,
+    credit,
+    license,
+    rightsDeclared,
+    cover,
+    onProgress,
+  }) => {
     const form = new FormData()
     form.set('file', file)
     form.set('kind', kind)
@@ -215,9 +228,30 @@ export const realCourseMapApi: CourseMapApi = {
     if (credit) form.set('credit', credit)
     if (license) form.set('license', license)
     if (rightsDeclared) form.set('rightsDeclared', 'true')
-    const { data, status } = await apiUpload<Asset>('/assets', form, onProgress)
-    return { asset: data, created: status !== 200 }
+    if (cover) form.set('cover', cover)
+    const { data, status } = await apiUpload<Asset & { warnings?: Warning[] }>(
+      '/assets',
+      form,
+      onProgress
+    )
+    const { warnings, ...asset } = data
+    return { asset, created: status !== 200, ...(Array.isArray(warnings) ? { warnings } : {}) }
   },
+
+  setAssetCover: async (assetId, file) => {
+    const form = new FormData()
+    form.set('file', file)
+    const { data } = await apiUpload<Asset>(
+      `/assets/${encodeURIComponent(assetId)}/cover`,
+      form,
+      undefined,
+      'PUT'
+    )
+    return data
+  },
+
+  removeAssetCover: (assetId) =>
+    apiRequest(`/assets/${encodeURIComponent(assetId)}/cover`, { method: 'DELETE' }),
 
   patchAsset: (assetId, input) =>
     apiRequest(`/assets/${encodeURIComponent(assetId)}`, { method: 'PATCH', body: input }),
