@@ -1,6 +1,12 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { checkAudioForm, classifyAudioError, formatDuration } from './audioErrors.ts'
+import {
+  checkAudioForm,
+  checkCoverFile,
+  classifyAudioError,
+  coverWasDropped,
+  formatDuration,
+} from './audioErrors.ts'
 
 describe('classifyAudioError', () => {
   it('maps each contract code', () => {
@@ -11,6 +17,9 @@ describe('classifyAudioError', () => {
       'audio_too_long',
       'asset_too_large',
       'audio_uploads_disabled',
+      'cover_too_large',
+      'cover_invalid',
+      'audio_has_video',
     ]) {
       assert.equal(classifyAudioError({ status: 422, code }), code)
     }
@@ -66,5 +75,24 @@ describe('formatDuration', () => {
     assert.equal(formatDuration(600), '10:00')
     assert.equal(formatDuration(null), '')
     assert.equal(formatDuration(-3), '')
+  })
+})
+
+describe('covers', () => {
+  it('maps the cover errors by status when the body has no code', () => {
+    assert.equal(classifyAudioError({ status: 413, code: 'cover_too_large' }), 'cover_too_large')
+    assert.equal(classifyAudioError({ status: 422, code: 'audio_has_video' }), 'audio_has_video')
+  })
+
+  it('checks a cover before sending it', () => {
+    assert.equal(checkCoverFile({ type: 'image/webp', size: 1000 }), null)
+    assert.equal(checkCoverFile({ type: 'image/gif', size: 1000 }), 'notImage')
+    assert.equal(checkCoverFile({ type: 'image/png', size: 3 * 1024 * 1024 }), 'tooLarge')
+  })
+
+  it('spots the cover_dropped warning, and a missing warnings list', () => {
+    assert.equal(coverWasDropped([{ code: 'cover_dropped' }]), true)
+    assert.equal(coverWasDropped([{ code: 'other' }]), false)
+    assert.equal(coverWasDropped(undefined), false)
   })
 })

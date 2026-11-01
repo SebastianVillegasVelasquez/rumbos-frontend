@@ -257,6 +257,21 @@ export const es = {
       licenseLabel: 'Licencia',
       withState: (name: string, state: string) => `${name}, ${state}`,
       untitled: 'Música del nivel',
+      cover: {
+        heading: 'Portada',
+        previewLabel: 'Así se verá',
+        none: 'Esta pista no tiene portada: se mostrará un disco genérico.',
+        add: 'Subir portada',
+        replace: 'Reemplazar',
+        remove: 'Quitar',
+        file: 'Portada (opcional, WebP, PNG o JPG, hasta 2 MB)',
+        notImage: 'La portada debe ser una imagen WebP, PNG o JPG.',
+        tooLarge: 'La portada pesa más de 2 MB.',
+        working: 'Guardando portada…',
+        dropped:
+          'No pudimos usar la imagen que viene dentro del audio. Se mostrará un disco genérico; puedes subir una portada.',
+        libraryNote: 'Las pistas de la biblioteca traen su propia portada.',
+      },
     },
     editor: {
       current: 'Música de este nivel',
@@ -289,7 +304,7 @@ export const es = {
       creditPlaceholder: 'Autor, obra y licencia',
       license: 'Licencia (opcional)',
       declaration:
-        'Declaro que tengo derecho a usar este audio con fines educativos y que el crédito es correcto.',
+        'Declaro que tengo derecho a usar este audio y su imagen con fines educativos y que el crédito es correcto.',
       upload: 'Subir y usar',
       uploading: 'Subiendo…',
       problems: {
@@ -307,6 +322,10 @@ export const es = {
         audio_too_long: 'El audio dura más de 10 minutos.',
         asset_too_large: 'El audio pesa más de 8 MB.',
         audio_uploads_disabled: 'Las subidas de audio no están habilitadas en tu sitio.',
+        cover_too_large: 'La portada pesa más de 2 MB. Usa una imagen más liviana.',
+        cover_invalid: 'La portada no es una imagen válida. Usa WebP, PNG o JPG.',
+        audio_has_video:
+          'Este archivo trae video. Sube solo el audio (MP3 o M4A) y la portada como una imagen aparte.',
         unreachable: 'No pudimos conectar con el servidor. Revisa tu conexión.',
         unknown: 'No se pudo subir el audio. Inténtalo de nuevo.',
       },

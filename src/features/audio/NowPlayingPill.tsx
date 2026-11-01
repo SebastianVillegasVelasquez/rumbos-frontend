@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useState, type CSSProperties } from 'react'
 import { pillLevelForRoom, pillLines, type TrackText } from './nowPlaying.ts'
 
 const GAP = 8
@@ -57,6 +57,42 @@ const measure = (anchor: HTMLElement): Placement | null => {
   return raised && raised.room > level.room ? raised : level
 }
 
+// The card itself, shared with the editor's live preview.
+export const PillSurface = ({
+  lines,
+  className = '',
+  style,
+  watch,
+}: {
+  lines: ReturnType<typeof pillLines>
+  className?: string
+  style?: CSSProperties
+  // Marks the card for the ?debug=layout overlap detector.
+  watch?: string
+}) => (
+  <span
+    aria-hidden
+    data-layout-watch={watch}
+    className={`hud-chip rounded-md px-3 py-1.5 text-left text-white ${className}`}
+    style={{ background: 'var(--hud-scrim)', ...style }}
+  >
+    {lines.map((line) => (
+      <span
+        key={line.key}
+        className={`block truncate ${
+          line.key === 'title'
+            ? 'text-sm font-extrabold'
+            : line.key === 'license'
+              ? 'text-xs font-semibold'
+              : 'text-xs font-bold'
+        }`}
+      >
+        {line.text}
+      </span>
+    ))}
+  </span>
+)
+
 export const NowPlayingPill = ({
   track,
   anchor,
@@ -65,7 +101,6 @@ export const NowPlayingPill = ({
   anchor: HTMLElement | null
 }) => {
   const [placement, setPlacement] = useState<Placement | null>(null)
-  const ref = useRef<HTMLSpanElement>(null)
 
   useLayoutEffect(() => {
     if (!anchor) return
@@ -80,33 +115,16 @@ export const NowPlayingPill = ({
   const lines = pillLines(track, level)
 
   return (
-    <span
-      ref={ref}
-      aria-hidden
-      data-layout-watch="now-playing-pill"
-      className="pill-in hud-chip pointer-events-none absolute z-10 rounded-md px-3 py-1.5 text-left text-white"
+    <PillSurface
+      lines={lines}
+      className="pill-in pointer-events-none absolute z-10"
       style={{
         right: placement.offset,
         bottom: placement.lift,
         width: 'max-content',
         maxWidth: placement.room,
-        background: 'var(--hud-scrim)',
       }}
-    >
-      {lines.map((line) => (
-        <span
-          key={line.key}
-          className={`block truncate ${
-            line.key === 'title'
-              ? 'text-sm font-extrabold'
-              : line.key === 'license'
-                ? 'text-xs font-semibold'
-                : 'text-xs font-bold'
-          }`}
-        >
-          {line.text}
-        </span>
-      ))}
-    </span>
+      watch="now-playing-pill"
+    />
   )
 }
