@@ -239,7 +239,7 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .disc-spin {
-    animation: none;
+    animation-name: none;
     will-change: auto;
   }
 }
