@@ -63,7 +63,7 @@ export const NowPlayingPill = ({
     <span
       ref={ref}
       aria-hidden
-      data-layout-check="now-playing-pill"
+      data-layout-watch="now-playing-pill"
       className="pill-in hud-chip pointer-events-none absolute top-1/2 z-10 -translate-y-1/2 rounded-md px-3 py-1.5 text-left text-white"
       style={{
         right: placement.offset,

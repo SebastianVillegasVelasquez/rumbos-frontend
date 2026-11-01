@@ -20,6 +20,10 @@ const INTERACTIVE = [
 // Anything covering this share of the viewport is a surface (the map), not a control.
 const SURFACE_SHARE = 0.4
 const PANEL_ID = 'layout-check-panel'
+// Transient surfaces that are not interactive but must still never cover a
+// control (the now-playing pill). A watched element inside a control (the pill
+// sits inside the disc button) is contained by it, not a collision with it.
+const WATCHED = '[data-layout-watch]'
 
 const describe = (el: Element, prefix: string) => {
   const name =
@@ -69,7 +73,7 @@ const isShown = (el: Element, view: Window) => {
   for (let node: Element | null = el; node; node = node.parentElement) {
     const style = view.getComputedStyle(node)
     if (style.display === 'none' || style.visibility === 'hidden') return false
-    if (node.hasAttribute('hidden') || node.hasAttribute('data-layout-check')) return false
+    if (node.hasAttribute('hidden') || node.hasAttribute('data-layout-ignore')) return false
   }
   return true
 }
@@ -91,7 +95,7 @@ const collect = (
 ) => {
   const view = doc.defaultView
   if (!view) return
-  for (const el of doc.querySelectorAll(INTERACTIVE)) {
+  for (const el of doc.querySelectorAll(`${INTERACTIVE}, ${WATCHED}`)) {
     // The map is a focusable image the controls float on, not a control.
     if (el.matches('[role="img"]') || !isShown(el, view)) continue
     const box = visibleBox(el, view, origin)
@@ -132,7 +136,7 @@ const render = (collisions: Collision[]) => {
   if (!panel) {
     panel = document.createElement('div')
     panel.id = PANEL_ID
-    panel.setAttribute('data-layout-check', '')
+    panel.setAttribute('data-layout-ignore', '')
     panel.style.cssText =
       'position:fixed;left:8px;top:8px;z-index:99999;max-width:min(420px,70vw);max-height:40vh;overflow:auto;' +
       'font:11px/1.35 monospace;background:#fff;color:#111;border:2px solid #b3261e;padding:6px 8px;pointer-events:none;white-space:pre-wrap;'
@@ -165,7 +169,7 @@ export const startLayoutCheck = () => {
   }
   // The report panel changes the DOM too; ignore its own mutations.
   new MutationObserver((records) => {
-    if (records.every((record) => (record.target as Element).closest?.('[data-layout-check]')))
+    if (records.every((record) => (record.target as Element).closest?.('[data-layout-ignore]')))
       return
     schedule()
   }).observe(document.body, { subtree: true, childList: true, attributes: true })
