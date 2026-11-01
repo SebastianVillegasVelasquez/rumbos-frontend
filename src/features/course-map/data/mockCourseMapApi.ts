@@ -2190,6 +2190,7 @@ export const mockCourseMapApi: CourseMapApi = withMockAuth(
 //   __rumbosMock.editBubbleElsewhere(mapId, bubbleId)  bumps that bubble's version and nudges it
 //   __rumbosMock.editMapElsewhere(mapId)               bumps the map revision and renames it
 //   __rumbosMock.maps() / .bubbles(mapId)              ids and current revisions/versions
+//   __rumbosMock.addMusic(mapId)                       gives the map a library track (draft and published)
 if (import.meta.env.DEV && typeof window !== 'undefined') {
   ;(window as unknown as { __rumbosMock: unknown }).__rumbosMock = {
     editBubbleElsewhere: (mapId: string, bubbleId: string) => {
@@ -2215,6 +2216,26 @@ if (import.meta.env.DEV && typeof window !== 'undefined') {
         title: `${map.title.replace(/ \(otra persona\)$/, '')} (otra persona)`,
         revision: map.revision + 1,
         updatedAt: now(),
+      })
+    },
+    // Gives a map (draft and every publication) the first library track, so the
+    // student view has music to show without going through the editor.
+    addMusic: async (mapId: string) => {
+      await ensureLibraryTracks()
+      const track = assets.find((asset) => asset.kind === 'audio' && asset.library)
+      if (!track) return
+      const audio = { assetId: track.id, volume: 0.4, loop: true, startAfterInteraction: true }
+      const map = requireMap(mapId)
+      replaceMap({
+        ...map,
+        settings: { ...map.settings, audio },
+        publications: map.publications.map((publication) => ({
+          ...publication,
+          snapshot: {
+            ...publication.snapshot,
+            settings: { ...publication.snapshot.settings, audio },
+          },
+        })),
       })
     },
     maps: () => maps.map(({ id, title, revision }) => ({ id, title, revision })),
