@@ -692,6 +692,7 @@ export function AppShell() {
         })}
         imageUrl={renderable.imageUrl}
         hasMusic={audioTrack !== null}
+        track={audioTrack ? { title: audioTrack.title, coverUrl: audioTrack.coverUrl } : null}
         onEnterFullscreen={curtainFullscreen}
         showSkip={exitPreview !== null}
         onDone={welcomeState.dismiss}
