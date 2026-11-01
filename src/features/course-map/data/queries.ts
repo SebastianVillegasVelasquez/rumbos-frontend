@@ -275,6 +275,27 @@ export const usePatchAsset = () => {
   })
 }
 
+export const useSetAssetCover = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: ({ assetId, file }: { assetId: string; file: File }) =>
+      courseMapApi.setAssetCover(assetId, file),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: assetKeys.all() })
+    },
+  })
+}
+
+export const useRemoveAssetCover = () => {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: (assetId: string) => courseMapApi.removeAssetCover(assetId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: assetKeys.all() })
+    },
+  })
+}
+
 export const useDeleteAsset = () => {
   const queryClient = useQueryClient()
   return useMutation({

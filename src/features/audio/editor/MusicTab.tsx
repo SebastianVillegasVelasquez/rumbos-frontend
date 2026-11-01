@@ -4,28 +4,41 @@ import { Button } from '../../../components/ui/Button.tsx'
 import { Input } from '../../../components/ui/Input.tsx'
 import { SegmentedControl } from '../../../components/ui/SegmentedControl.tsx'
 import { es } from '../../../i18n/es.ts'
-import { resolveImageUrl } from '../../course-map/data/assets.ts'
+import { resolveCoverUrl, resolveImageUrl } from '../../course-map/data/assets.ts'
 import { ApiError, isUnreachable } from '../../course-map/data/client.ts'
-import { useAssets, useCreateAsset } from '../../course-map/data/queries.ts'
+import {
+  useAssets,
+  useCreateAsset,
+  useRemoveAssetCover,
+  useSetAssetCover,
+} from '../../course-map/data/queries.ts'
 import {
   DEFAULT_MAP_AUDIO,
   type Asset,
+  type AssetListItem,
   type AssetListParams,
   type MapAudio,
   type MapSettings,
 } from '../../course-map/data/types.ts'
 import { isAvailable } from '../audioAvailability.ts'
+import { NowPlayingDisc } from '../NowPlayingDisc.tsx'
+import { PillSurface } from '../NowPlayingPill.tsx'
+import { pillLines } from '../nowPlaying.ts'
 import {
   AUDIO_LIBRARY_PARAMS,
   AUDIO_MIME_TYPES,
+  COVER_MIME_TYPES,
   checkAudioForm,
+  checkCoverFile,
   classifyAudioError,
+  coverWasDropped,
   formatDuration,
   type AudioErrorKey,
   type AudioFieldProblem,
 } from './audioErrors.ts'
 
 const text = es.audio.editor
+const coverText = es.audio.nowPlaying.cover
 
 const TENANT_PARAMS: AssetListParams = { kind: 'audio', scope: 'tenant', limit: 100 }
 
@@ -47,6 +60,8 @@ export const MusicTab = ({ settings, onChange }: MusicTabProps) => {
   const [source, setSource] = useState<'library' | 'own'>('library')
   // A 503 audio_uploads_disabled hides the upload tab and says why.
   const [uploadsDisabled, setUploadsDisabled] = useState(false)
+  // Said after an upload whose embedded artwork the backend could not use.
+  const [coverDropped, setCoverDropped] = useState(false)
   const library = useAssets(AUDIO_LIBRARY_PARAMS)
   const own = useAssets(TENANT_PARAMS, !uploadsDisabled)
   const audio = settings.audio ?? null
@@ -116,6 +131,12 @@ export const MusicTab = ({ settings, onChange }: MusicTabProps) => {
     audio !== null &&
     ((chosen !== null && !isAvailable(chosen)) || brokenPreviews.has(audio.assetId))
   const activeQuery = source === 'library' ? library : own
+  // An older backend sends no coverUrl at all: then there are no cover controls,
+  // only the generic disc. With nothing listed yet, assume covers are supported.
+  const known = [...(library.data?.items ?? []), ...(own.data?.items ?? [])]
+  const coversSupported = known.length === 0 || known.some((item) => item.coverUrl !== undefined)
+  const chosenIsOwn =
+    chosen !== null && (own.data?.items ?? []).some((item) => item.id === chosen.id)
 
   return (
     <div className="space-y-4">
@@ -135,6 +156,18 @@ export const MusicTab = ({ settings, onChange }: MusicTabProps) => {
               <p className="break-words text-xs font-semibold text-ink-soft">{chosen.credit}</p>
             )}
           </div>
+          {chosen && (
+            <CoverSection
+              asset={chosen}
+              editable={chosenIsOwn}
+              supported={coversSupported && chosen.coverUrl !== undefined}
+            />
+          )}
+          {coverDropped && (
+            <p role="status" className="text-xs font-bold text-sun-dark">
+              {coverText.dropped}
+            </p>
+          )}
           {currentBroken && (
             <p role="alert" className="text-xs font-bold text-danger">
               {es.audio.unavailableWarning}
@@ -211,7 +244,9 @@ export const MusicTab = ({ settings, onChange }: MusicTabProps) => {
 
       {source === 'own' && !uploadsDisabled && (
         <UploadForm
-          onUploaded={(asset) => {
+          coversSupported={coversSupported}
+          onUploaded={(asset, dropped) => {
+            setCoverDropped(dropped)
             choose(asset)
             setSource('own')
           }}
@@ -297,17 +332,133 @@ export const MusicTab = ({ settings, onChange }: MusicTabProps) => {
   )
 }
 
+const CoverSection = ({
+  asset,
+  editable,
+  supported,
+}: {
+  asset: AssetListItem
+  editable: boolean
+  supported: boolean
+}) => {
+  const setCover = useSetAssetCover()
+  const removeCover = useRemoveAssetCover()
+  const [failure, setFailure] = useState<AudioErrorKey | 'notImage' | 'tooLarge' | null>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+  const busy = setCover.isPending || removeCover.isPending
+  const cover = supported && asset.coverUrl ? resolveCoverUrl(asset.coverUrl) : null
+
+  const fail = (error: unknown) =>
+    setFailure(
+      classifyAudioError({
+        status: isUnreachable(error) ? 0 : error instanceof ApiError ? error.status : -1,
+        code: error instanceof ApiError ? (error.detail.code as string | undefined) : undefined,
+      })
+    )
+  const pick = (file: File | undefined) => {
+    if (!file) return
+    const problem = checkCoverFile(file)
+    if (problem) return setFailure(problem)
+    setFailure(null)
+    setCover.mutate({ assetId: asset.id, file }, { onError: fail })
+  }
+
+  return (
+    <div className="space-y-2" aria-label={coverText.heading} role="group">
+      <h4 className="text-xs font-bold uppercase tracking-wide text-ink-soft">
+        {coverText.heading}
+      </h4>
+      <div className="flex items-end justify-end gap-2">
+        <PillSurface
+          lines={pillLines(
+            { title: asset.title, credit: asset.credit ?? '', license: asset.license ?? null },
+            3
+          )}
+          className="min-w-0 max-w-[14rem]"
+        />
+        <span className="border-soft block h-11 w-11 shrink-0 overflow-hidden rounded-pill bg-surface">
+          <NowPlayingDisc
+            cover={cover}
+            state={{ spinning: true, muted: false, badge: 'playing' }}
+          />
+        </span>
+      </div>
+      <p className="text-xs font-semibold text-ink-soft">{coverText.previewLabel}</p>
+      {supported && editable && (
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            ref={inputRef}
+            type="file"
+            accept={COVER_MIME_TYPES.join(',')}
+            className="sr-only"
+            tabIndex={-1}
+            aria-hidden
+            onChange={(event) => {
+              pick(event.target.files?.[0])
+              event.target.value = ''
+            }}
+          />
+          <Button
+            variant="surface"
+            dense
+            size="sm"
+            disabled={busy}
+            onClick={() => inputRef.current?.click()}
+          >
+            {asset.coverUrl ? coverText.replace : coverText.add}
+          </Button>
+          {asset.coverUrl && (
+            <Button
+              variant="dangerGhost"
+              dense
+              size="sm"
+              disabled={busy}
+              onClick={() => {
+                setFailure(null)
+                removeCover.mutate(asset.id, { onError: fail })
+              }}
+            >
+              {coverText.remove}
+            </Button>
+          )}
+          {busy && (
+            <span role="status" className="text-xs font-semibold text-ink-soft">
+              {coverText.working}
+            </span>
+          )}
+        </div>
+      )}
+      {supported && !editable && (
+        <p className="text-xs font-semibold text-ink-soft">{coverText.libraryNote}</p>
+      )}
+      {supported && editable && !asset.coverUrl && (
+        <p className="text-xs font-semibold text-ink-soft">{coverText.none}</p>
+      )}
+      {failure && (
+        <p role="alert" className="text-xs font-bold text-danger">
+          {failure === 'notImage' || failure === 'tooLarge'
+            ? coverText[failure]
+            : text.errors[failure]}
+        </p>
+      )}
+    </div>
+  )
+}
+
 const UploadForm = ({
+  coversSupported,
   onUploaded,
   onDisabled,
 }: {
-  onUploaded: (asset: Asset) => void
+  coversSupported: boolean
+  onUploaded: (asset: Asset, coverDropped: boolean) => void
   onDisabled: () => void
 }) => {
   const [file, setFile] = useState<File | null>(null)
   const [title, setTitle] = useState('')
   const [credit, setCredit] = useState('')
   const [license, setLicense] = useState('')
+  const [cover, setCover] = useState<File | null>(null)
   const [declared, setDeclared] = useState(false)
   const [problem, setProblem] = useState<AudioFieldProblem | null>(null)
   const [failure, setFailure] = useState<AudioErrorKey | null>(null)
@@ -319,6 +470,11 @@ const UploadForm = ({
     const found = checkAudioForm({ file, title, credit, declared })
     setProblem(found)
     if (found || !file) return
+    const coverProblem = cover ? checkCoverFile(cover) : null
+    if (coverProblem) {
+      setFailure(coverProblem === 'tooLarge' ? 'cover_too_large' : 'cover_invalid')
+      return
+    }
     create.mutate(
       {
         file,
@@ -327,6 +483,7 @@ const UploadForm = ({
         credit: credit.trim(),
         license: license.trim() || undefined,
         rightsDeclared: true,
+        ...(cover ? { cover } : {}),
       },
       {
         onSuccess: (result) => {
@@ -334,8 +491,9 @@ const UploadForm = ({
           setTitle('')
           setCredit('')
           setLicense('')
+          setCover(null)
           setDeclared(false)
-          onUploaded(result.asset)
+          onUploaded(result.asset, coverWasDropped(result.warnings))
         },
         onError: (error) => {
           const key = classifyAudioError({
@@ -392,6 +550,17 @@ const UploadForm = ({
           maxLength={120}
         />
       </label>
+      {coversSupported && (
+        <label className="block space-y-1 text-xs font-bold uppercase tracking-wide text-ink-soft">
+          {coverText.file}
+          <input
+            type="file"
+            accept={COVER_MIME_TYPES.join(',')}
+            onChange={(event) => setCover(event.target.files?.[0] ?? null)}
+            className="block min-h-[44px] w-full text-sm font-semibold normal-case text-ink"
+          />
+        </label>
+      )}
       <label className="flex min-h-[44px] items-start gap-3 text-sm font-semibold text-ink">
         <input
           type="checkbox"

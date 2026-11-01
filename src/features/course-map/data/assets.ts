@@ -28,3 +28,11 @@ export const resolveThumbUrl = (url: string): string => {
   if (USE_MOCK) return getMockAssetObjectUrl(assetId(url)) ?? url
   return `${API_BASE_URL}${url}/thumb`
 }
+
+// A track's cover is "/assets/{uuid}/cover" on the real backend. The mock hands
+// out self-contained data: URIs instead, which pass through untouched.
+const COVER_PATH =
+  /^\/assets\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/cover$/i
+
+export const resolveCoverUrl = (url: string): string =>
+  COVER_PATH.test(url) && !USE_MOCK ? `${API_BASE_URL}${url}` : url

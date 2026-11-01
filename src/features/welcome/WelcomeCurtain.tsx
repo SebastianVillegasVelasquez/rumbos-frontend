@@ -4,6 +4,8 @@ import { Button } from '../../components/ui/Button.tsx'
 import { useDataSaver } from '../../fx/dataSaverStore.ts'
 import { es } from '../../i18n/es.ts'
 import { readAudioPrefs } from '../audio/audioPrefs.ts'
+import { NowPlayingDisc } from '../audio/NowPlayingDisc.tsx'
+import { coverToLoad } from '../audio/nowPlaying.ts'
 import { EnlargeableVideo } from '../content/EnlargeableVideo.tsx'
 import { resolveImageUrl } from '../course-map/data/assets.ts'
 import type { MapWelcome } from '../course-map/data/types.ts'
@@ -24,6 +26,8 @@ interface WelcomeCurtainProps {
   // The map's background, blurred under the scrim.
   imageUrl: string
   hasMusic: boolean
+  // The track that will play, for the disc beside the music switch.
+  track?: { title: string; coverUrl: string | null } | null
   // The editor's own look at the curtain: it touches neither the music nor
   // anything remembered.
   isolated?: boolean
@@ -50,6 +54,7 @@ const WelcomeCurtain = ({
   title,
   imageUrl,
   hasMusic,
+  track = null,
   isolated = false,
   showSkip = false,
   onEnterFullscreen = null,
@@ -282,6 +287,26 @@ const WelcomeCurtain = ({
                   >
                     {labelOf('watch')}
                   </button>
+                )}
+                {hasMusic && track && (
+                  <p className="flex max-w-full items-center gap-2 text-sm font-bold">
+                    <span className="block h-11 w-11 shrink-0 overflow-hidden rounded-pill border border-white/60">
+                      <NowPlayingDisc
+                        cover={coverToLoad({
+                          coverUrl: track.coverUrl,
+                          dataSaver,
+                          startedOnce: true,
+                          failed: false,
+                        })}
+                        state={{
+                          spinning: false,
+                          muted: !musicOn,
+                          badge: musicOn ? 'playing' : 'muted',
+                        }}
+                      />
+                    </span>
+                    <span className="min-w-0 truncate">{track.title}</span>
+                  </p>
                 )}
                 {hasMusic && (
                   <button

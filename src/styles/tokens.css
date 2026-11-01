@@ -220,3 +220,41 @@
 [data-hud-dim='true'] .hud-dimmable:focus-within {
   opacity: 1;
 }
+
+/* The now-playing disc: one turn every 12 s, only while the music is audible.
+   The animation is never switched off, only paused, so the disc keeps its angle
+   when the music resumes. Reduced motion removes it altogether. */
+@keyframes disc-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.disc-spin {
+  animation: disc-spin 12s linear infinite;
+  animation-play-state: paused;
+  will-change: transform;
+}
+.disc-spin[data-spinning='true'] {
+  animation-play-state: running;
+}
+@media (prefers-reduced-motion: reduce) {
+  .disc-spin {
+    animation-name: none;
+    will-change: auto;
+  }
+}
+
+/* The now-playing pill fades in; with reduced motion it simply appears. */
+@keyframes pill-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .pill-in {
+    animation: pill-in 200ms ease-out both;
+  }
+}

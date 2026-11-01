@@ -3,7 +3,9 @@ import type { AssetListParams } from '../../course-map/data/types.ts'
 // Why an audio upload or a checked field failed, in Spanish. The codes are the
 // contract's: 422 audio_rights_declaration_required, audio_credit_required,
 // audio_invalid, audio_too_long; 413 asset_too_large (audio is at most 8 MB);
-// 503 audio_uploads_disabled.
+// 503 audio_uploads_disabled. Covers add 413 cover_too_large, 422 cover_invalid and
+// 422 audio_has_video (the file carries a video track), and the cover_dropped
+// warning (the artwork embedded in the audio was unusable).
 
 export const AUDIO_MAX_BYTES = 8 * 1024 * 1024
 export const AUDIO_MIME_TYPES = ['audio/mpeg', 'audio/mp4'] as const
@@ -15,6 +17,9 @@ export type AudioErrorKey =
   | 'audio_too_long'
   | 'asset_too_large'
   | 'audio_uploads_disabled'
+  | 'cover_too_large'
+  | 'cover_invalid'
+  | 'audio_has_video'
   | 'unreachable'
   | 'unknown'
 
@@ -25,6 +30,9 @@ const CODES: readonly string[] = [
   'audio_too_long',
   'asset_too_large',
   'audio_uploads_disabled',
+  'cover_too_large',
+  'cover_invalid',
+  'audio_has_video',
 ]
 
 // What the failure is, from the HTTP status and the error code in the body.
@@ -39,6 +47,23 @@ export const classifyAudioError = (failure: {
   if (failure.status === 503) return 'audio_uploads_disabled'
   return 'unknown'
 }
+
+export const COVER_MAX_BYTES = 2 * 1024 * 1024
+export const COVER_MIME_TYPES = ['image/webp', 'image/png', 'image/jpeg'] as const
+
+// A cover the client can reject before sending it.
+export const checkCoverFile = (file: {
+  type: string
+  size: number
+}): 'notImage' | 'tooLarge' | null => {
+  if (!(COVER_MIME_TYPES as readonly string[]).includes(file.type)) return 'notImage'
+  if (file.size > COVER_MAX_BYTES) return 'tooLarge'
+  return null
+}
+
+// Whether an upload's warnings say the embedded artwork was dropped.
+export const coverWasDropped = (warnings: readonly { code: string }[] | undefined): boolean =>
+  Boolean(warnings?.some((warning) => warning.code === 'cover_dropped'))
 
 // Problems the client can see before sending anything.
 export type AudioFieldProblem =

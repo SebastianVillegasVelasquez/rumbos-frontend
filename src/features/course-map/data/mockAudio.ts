@@ -39,6 +39,7 @@ export interface LibraryTrackSeed {
   credit: string
   frequency: number
   seconds: number
+  license: string
 }
 
 export const LIBRARY_TRACKS: LibraryTrackSeed[] = [
@@ -47,12 +48,14 @@ export const LIBRARY_TRACKS: LibraryTrackSeed[] = [
     credit: 'OBJ Digital · tono generado para pruebas',
     frequency: 220,
     seconds: 4,
+    license: 'CC BY 4.0',
   },
   {
     title: 'Camino al faro (tono de prueba)',
     credit: 'OBJ Digital · tono generado para pruebas',
     frequency: 330,
     seconds: 6,
+    license: 'Dominio público',
   },
 ]
 

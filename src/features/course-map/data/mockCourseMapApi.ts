@@ -4,6 +4,7 @@ import { getTransferScenario, mockArchive, mockStaged } from './mockTransfer.ts'
 import { CONTENT_LIMITS, isContentBubble, type Content } from '../../content/contentTypes.ts'
 import { contentBytes, validateContent } from '../../content/validateContent.ts'
 import { assetObjectUrls } from './mockAssetUrls.ts'
+import { mockCoverDataUri } from './mockCover.ts'
 import { LIBRARY_TRACKS, makeToneWav, readAudioDuration } from './mockAudio.ts'
 import {
   ASSET_LIMITS,
@@ -1015,14 +1016,31 @@ const toSummary = async (map: MockMap): Promise<CourseMapSummary> => ({
   updatedAt: map.updatedAt,
 })
 
+// ?mockCover=off: a backend that predates covers and licenses (the fields are
+// absent). ?mockCover=broken: a cover URL that does not load. ?mockText=long:
+// a long title, credit and license, to check truncation.
+const mockCoverOverride = () => queryParam('mockCover')
+const LONG = 'Una frase muy larga para comprobar que el texto se recorta con puntos suspensivos'
+
 const audioInfoOf = (settings: MapSettings): AudioInfo | null => {
   const assetId = settings.audio?.assetId
   const asset = assetId ? assets.find((item) => item.id === assetId) : undefined
   if (!asset || asset.kind !== 'audio') return null
+  const long = queryParam('mockText') === 'long'
+  const covers = mockCoverOverride() !== 'off'
   return {
-    title: asset.title,
-    credit: asset.credit ?? '',
+    title: long ? `${LONG} (título)` : asset.title,
+    credit: long ? `${LONG} (crédito)` : (asset.credit ?? ''),
     durationSeconds: asset.durationSeconds ?? 0,
+    ...(covers
+      ? {
+          license: long ? `${LONG} (licencia)` : (asset.license ?? null),
+          coverUrl:
+            mockCoverOverride() === 'broken'
+              ? 'data:image/png;base64,broken'
+              : (asset.coverUrl ?? null),
+        }
+      : {}),
     ...availableOf(asset.kind),
   }
 }
@@ -1288,6 +1306,9 @@ const ensureLibraryTracks = (): Promise<void> => {
           durationSeconds: seed.seconds,
           title: seed.title,
           credit: seed.credit,
+          license: seed.license,
+          coverAssetId: id,
+          coverUrl: mockCoverDataUri(id),
           originalFilename: null,
           createdAt: now(),
           sha256: `library-${id}`,
@@ -1300,16 +1321,28 @@ const ensureLibraryTracks = (): Promise<void> => {
 }
 
 // POST /assets with kind=audio, in the order the contract lists the failures.
+const COVER_MAX_BYTES = 2 * 1024 * 1024
+const COVER_MIMES = new Set(['image/webp', 'image/png', 'image/jpeg'])
+
+// The checks of PUT /assets/{id}/cover, in the contract's order.
+const checkCover = (file: Blob) => {
+  if (file.size > COVER_MAX_BYTES)
+    throw businessError(413, 'cover_too_large', 'La portada pesa más de 2 MB')
+  if (!COVER_MIMES.has(file.type))
+    throw businessError(422, 'cover_invalid', 'La portada no es una imagen válida')
+}
+
 const createAudioAsset = async ({
   file,
   title,
   credit,
   license,
   rightsDeclared,
+  cover,
   onProgress,
 }: Pick<
   AssetCreate,
-  'file' | 'title' | 'credit' | 'license' | 'rightsDeclared' | 'onProgress'
+  'file' | 'title' | 'credit' | 'license' | 'rightsDeclared' | 'cover' | 'onProgress'
 >): Promise<AssetCreateResult> => {
   if (mockAudioOverride() === 'off')
     throw notFound('not_found', 'Este servidor todavía no admite música')
@@ -1325,6 +1358,8 @@ const createAudioAsset = async ({
     throw businessError(422, 'audio_credit_required', 'El crédito del audio es obligatorio')
   if (file.size > AUDIO_MAX_BYTES)
     throw businessError(413, 'asset_too_large', 'El archivo supera el tamaño máximo permitido')
+  if (file.type.startsWith('video/'))
+    throw businessError(422, 'audio_has_video', 'El archivo trae video: sube solo el audio')
   if (!AUDIO_MIMES.has(file.type))
     throw businessError(422, 'audio_invalid', 'El archivo no es un audio válido (MP3 o M4A)')
   const duration = await readAudioDuration(file)
@@ -1333,7 +1368,6 @@ const createAudioAsset = async ({
   if (duration > AUDIO_MAX_SECONDS)
     throw businessError(422, 'audio_too_long', 'El audio dura más de 10 minutos')
   onProgress?.(1)
-  void license
   const asset = await storeAsset(file, {
     kind: 'audio',
     width: 0,
@@ -1343,7 +1377,20 @@ const createAudioAsset = async ({
     originalFilename: file.name || null,
   })
   asset.durationSeconds = duration
-  return { asset: toAsset(asset), created: true }
+  asset.license = license?.trim() || null
+  asset.coverAssetId = null
+  asset.coverUrl = null
+  const warnings: Warning[] = []
+  if (cover) {
+    try {
+      checkCover(cover)
+      asset.coverUrl = URL.createObjectURL(cover)
+      asset.coverAssetId = newId()
+    } catch {
+      warnings.push({ code: 'cover_dropped', message: 'La portada no se pudo usar' })
+    }
+  }
+  return { asset: toAsset(asset), created: true, ...(warnings.length ? { warnings } : {}) }
 }
 
 // ---- Implementation -------------------------------------------------------------
@@ -1825,10 +1872,11 @@ const impl: Omit<CourseMapApi, TransferMethods> = {
     credit,
     license,
     rightsDeclared,
+    cover,
     onProgress,
   }: AssetCreate): Promise<AssetCreateResult> {
     if (kind === 'audio')
-      return createAudioAsset({ file, title, credit, license, rightsDeclared, onProgress })
+      return createAudioAsset({ file, title, credit, license, rightsDeclared, cover, onProgress })
     const override = mockAssetsOverride()
     if (override === 'down')
       throw businessError(503, 'uploads_disabled', 'Las subidas están deshabilitadas temporalmente')
@@ -1876,6 +1924,21 @@ const impl: Omit<CourseMapApi, TransferMethods> = {
       originalFilename: file.name || null,
     })
     return { asset: toAsset(asset), created: true }
+  },
+
+  async setAssetCover(assetId: string, file: File): Promise<Asset> {
+    const asset = assets.find((item) => item.id === assetId && item.kind === 'audio')
+    if (!asset) throw notFound('not_found', 'La pista no existe')
+    checkCover(file)
+    const index = assets.findIndex((item) => item.id === assetId)
+    assets[index] = { ...asset, coverAssetId: newId(), coverUrl: URL.createObjectURL(file) }
+    return toAsset(assets[index])
+  },
+
+  async removeAssetCover(assetId: string): Promise<void> {
+    const index = assets.findIndex((item) => item.id === assetId && item.kind === 'audio')
+    if (index < 0) throw notFound('not_found', 'La pista no existe')
+    assets[index] = { ...assets[index], coverAssetId: null, coverUrl: null }
   },
 
   async patchAsset(assetId: string, input: AssetPatch): Promise<Asset> {
@@ -2269,6 +2332,7 @@ export const mockCourseMapApi: CourseMapApi = withMockAuth(
 //   __rumbosMock.editBubbleElsewhere(mapId, bubbleId)  bumps that bubble's version and nudges it
 //   __rumbosMock.editMapElsewhere(mapId)               bumps the map revision and renames it
 //   __rumbosMock.maps() / .bubbles(mapId)              ids and current revisions/versions
+//   __rumbosMock.addMusic(mapId)                       gives the map a library track (draft and published)
 if (import.meta.env.DEV && typeof window !== 'undefined') {
   ;(window as unknown as { __rumbosMock: unknown }).__rumbosMock = {
     editBubbleElsewhere: (mapId: string, bubbleId: string) => {
@@ -2294,6 +2358,26 @@ if (import.meta.env.DEV && typeof window !== 'undefined') {
         title: `${map.title.replace(/ \(otra persona\)$/, '')} (otra persona)`,
         revision: map.revision + 1,
         updatedAt: now(),
+      })
+    },
+    // Gives a map (draft and every publication) the first library track, so the
+    // student view has music to show without going through the editor.
+    addMusic: async (mapId: string) => {
+      await ensureLibraryTracks()
+      const track = assets.find((asset) => asset.kind === 'audio' && asset.library)
+      if (!track) return
+      const audio = { assetId: track.id, volume: 0.4, loop: true, startAfterInteraction: true }
+      const map = requireMap(mapId)
+      replaceMap({
+        ...map,
+        settings: { ...map.settings, audio },
+        publications: map.publications.map((publication) => ({
+          ...publication,
+          snapshot: {
+            ...publication.snapshot,
+            settings: { ...publication.snapshot.settings, audio },
+          },
+        })),
       })
     },
     maps: () => maps.map(({ id, title, revision }) => ({ id, title, revision })),

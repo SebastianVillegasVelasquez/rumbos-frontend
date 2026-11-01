@@ -143,6 +143,10 @@ export interface AudioInfo {
   title: string
   credit: string
   durationSeconds: number
+  // Absent on an older backend: that means "no license" and "no cover", never an
+  // error. `coverUrl` is a path for the asset URL resolver (resolveCoverUrl).
+  license?: string | null
+  coverUrl?: string | null
   // Absent on an older backend: that means "unknown", never "false".
   available?: boolean
 }
@@ -429,6 +433,10 @@ export interface Asset {
   thumbUrl: string | null
   // Audio only.
   durationSeconds?: number | null
+  // Audio only; absent on an older backend (no covers, no license field).
+  license?: string | null
+  coverAssetId?: string | null
+  coverUrl?: string | null
   title: string
   credit: string | null
   originalFilename: string | null
@@ -472,6 +480,8 @@ export interface AssetCreate {
   // rightsDeclared="true".
   license?: string
   rightsDeclared?: boolean
+  // Audio only. Optional artwork; without it the backend extracts any embedded one.
+  cover?: File
   // Upload progress as a 0..1 fraction (real client only).
   onProgress?: (fraction: number) => void
 }
@@ -481,6 +491,8 @@ export interface AssetCreate {
 export interface AssetCreateResult {
   asset: Asset
   created: boolean
+  // e.g. cover_dropped: the embedded artwork was unusable. Absent on an older backend.
+  warnings?: Warning[]
 }
 
 export interface AssetPatch {

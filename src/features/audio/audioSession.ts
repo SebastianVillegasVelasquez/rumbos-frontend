@@ -38,6 +38,10 @@ export interface AudioTrack {
   startAfterInteraction: boolean
   title: string
   credit: string
+  // Absent on an older backend: no license, no cover.
+  license: string | null
+  // Already resolved with resolveCoverUrl; null when the track has no cover.
+  coverUrl: string | null
   // The backend says the file is gone: do not even try to download it.
   unavailable?: boolean
 }
