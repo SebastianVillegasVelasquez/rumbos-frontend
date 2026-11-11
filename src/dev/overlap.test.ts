@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { findCollisions, type Item } from './overlap.ts'
+import { findCollisions, undersizedPanel, type Item } from './overlap.ts'
 
 const item = (
   label: string,
@@ -52,5 +52,23 @@ describe('findCollisions', () => {
       ]),
       []
     )
+  })
+})
+
+describe('undersizedPanel', () => {
+  it('accepts the minimum and anything bigger', () => {
+    assert.equal(undersizedPanel('video panel', { width: 280, height: 158 }), null)
+    assert.equal(undersizedPanel('video panel', { width: 640, height: 360 }), null)
+  })
+
+  it('reports a panel under the minimum in either side', () => {
+    assert.deepEqual(undersizedPanel('video panel', { width: 267.4, height: 150.2 }), {
+      a: 'video panel',
+      b: 'minimum size 280x158',
+      width: 267,
+      height: 150,
+    })
+    assert.notEqual(undersizedPanel('video panel', { width: 640, height: 100 }), null)
+    assert.notEqual(undersizedPanel('video panel', { width: 100, height: 360 }), null)
   })
 })

@@ -196,3 +196,20 @@ test.describe('the way out of the video', () => {
     await expect(app(page).getByRole('dialog').getByRole('status')).toHaveCount(0)
   })
 })
+
+test('?debug=layout reports no undersized video panel on a short viewport', async ({
+  page,
+  context,
+}) => {
+  await routeProvider(context, 'small')
+  await openLevel(page, 'video', '&debug=layout')
+  await app(page).getByRole('button', { name: 'Reproducir' }).click()
+  await setFrameSize(page, 1100, 240)
+  const frame = page.frames().find((f) => f !== page.mainFrame() && f.url().includes('/embed'))!
+  const report = await frame.evaluate(() =>
+    (
+      window as unknown as { __layoutReport: () => Array<{ a: string; b: string }> }
+    ).__layoutReport()
+  )
+  expect(report.filter((entry) => entry.a === 'video panel')).toEqual([])
+})

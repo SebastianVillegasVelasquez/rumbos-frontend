@@ -51,3 +51,20 @@ export const findCollisions = (items: readonly Item[]): Collision[] => {
   }
   return found
 }
+
+// The welcome video panel must stay usable (about 280x158). A smaller one is
+// reported next to the overlaps so a scripted run fails on it too.
+export const MIN_VIDEO_PANEL = { width: 280, height: 158 } as const
+
+export const undersizedPanel = (
+  label: string,
+  size: { width: number; height: number }
+): Collision | null =>
+  size.width < MIN_VIDEO_PANEL.width || size.height < MIN_VIDEO_PANEL.height
+    ? {
+        a: label,
+        b: `minimum size ${MIN_VIDEO_PANEL.width}x${MIN_VIDEO_PANEL.height}`,
+        width: Math.round(size.width),
+        height: Math.round(size.height),
+      }
+    : null

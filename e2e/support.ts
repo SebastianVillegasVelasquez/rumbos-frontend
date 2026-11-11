@@ -70,12 +70,16 @@ export interface Probe {
 
 export const app = (page: Page): FrameLocator => page.frameLocator('#frame-wrap iframe')
 
-export const openLevel = async (page: Page, welcome: 'video' | 'video-optional' = 'video') => {
+export const openLevel = async (
+  page: Page,
+  welcome: 'video' | 'video-optional' = 'video',
+  extraQuery = ''
+) => {
   await page.goto('/mock-host/index.html')
   // The "app URL" field holds the iframe address; add the demo welcome to it.
   const input = page.locator('label:has-text("app URL") input')
   const current = await input.inputValue()
-  await input.fill(`${current.split('?')[0]}?mockWelcome=${welcome}`)
+  await input.fill(`${current.split('?')[0]}?mockWelcome=${welcome}${extraQuery}`)
   await page.getByRole('button', { name: '(Re)load app' }).click()
   // The level cards are buttons whose text starts with the level number.
   await app(page).getByRole('button', { name: /^1/ }).first().click()

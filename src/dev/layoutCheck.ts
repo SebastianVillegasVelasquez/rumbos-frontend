@@ -1,4 +1,4 @@
-import { findCollisions, type Collision, type Item } from './overlap.ts'
+import { findCollisions, undersizedPanel, type Collision, type Item } from './overlap.ts'
 
 // Development-only (?debug=layout): walks every visible interactive element of
 // the app, the HUD and the 3D page inside its iframe, reports the pairs whose
@@ -113,6 +113,15 @@ const collect = (
   }
 }
 
+// The welcome video panel (.video-panel) must be at least the minimum size.
+const undersizedVideoPanels = (): Collision[] =>
+  [...document.querySelectorAll('.video-panel')].flatMap((panel) => {
+    if (!isShown(panel, window)) return []
+    const rect = panel.getBoundingClientRect()
+    const found = undersizedPanel('video panel', rect)
+    return found ? [found] : []
+  })
+
 export const runLayoutCheck = (): Collision[] => {
   const items: Item[] = []
   collect(document, { x: 0, y: 0 }, '', items, 0)
@@ -128,7 +137,7 @@ export const runLayoutCheck = (): Collision[] => {
     collect(inner, { x: rect.left, y: rect.top }, '3d:', items, index + 1)
   })
   ;(window as unknown as { __layoutItems: number }).__layoutItems = items.length
-  return findCollisions(items)
+  return [...findCollisions(items), ...undersizedVideoPanels()]
 }
 
 const render = (collisions: Collision[]) => {
