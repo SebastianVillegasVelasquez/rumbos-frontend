@@ -248,7 +248,11 @@ has no verified license.
 `pnpm test` runs `node --test` over `src/**/*.test.ts` (Node 24 strips types, no
 new dependency). It covers the pure logic only: the write queue (ordering,
 collapsing, conflicts), canonical JSON hashing, upload limits and the change
-sentences. Component behaviour is checked by hand.
+sentences. Component behaviour is mostly checked by hand.
+
+`pnpm test:e2e` runs the browser tests (Playwright, Chromium and WebKit) that measure
+the welcome video box across a viewport matrix. They are not in the required CI yet;
+see [docs/E2E.md](docs/E2E.md). Playwright's WebKit is not Safari.
 
 ## Running without a backend
 
@@ -301,9 +305,11 @@ image-skin/background upload error states:
 
 ### Debug flags
 
-| Flag         | Effect                                                                                                            |
-| ------------ | ----------------------------------------------------------------------------------------------------------------- |
-| `?debug=fps` | Shows a dev-only rolling FPS counter (top-left), independent of the shared ticker so it measures real frame time. |
+| Flag            | Effect                                                                                                                                                                 |
+| --------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `?debug=fps`    | Shows a dev-only rolling FPS counter (top-left), independent of the shared ticker so it measures real frame time.                                                      |
+| `?debug=layout` | Dev-only: lists overlapping controls and a welcome video panel under 280x158.                                                                                          |
+| `?diag=1`       | Also in production: a read-only panel (window, pixel ratio, browser, video box sizes, CSS support, last error) to screenshot when a screen looks wrong. Sends nothing. |
 
 ## Procedural animation and quality tiers
 
@@ -359,6 +365,14 @@ component) is ~417 KB (~128 KB gzipped) and never touches Konva. Run
 - `pnpm build`: type-check and production build.
 - `pnpm lint`: ESLint.
 - `pnpm test`: unit tests for the pure logic (Node's built-in runner).
+- `pnpm test:e2e`: browser layout tests (Playwright; see docs/E2E.md).
+
+## Browser support (provisional)
+
+Provisional, to be confirmed with the client: the current and previous Chrome, and
+Safari 16.4 or newer (the floor of the Tailwind v4 stylesheet the app ships). It is not a
+commitment yet. The welcome video box degrades gracefully before that; the rest of the
+app is not promised there.
 
 ## Structure
 

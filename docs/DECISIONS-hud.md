@@ -452,3 +452,58 @@ picture-in-picture`: `encrypted-media` is gone (the embeds play without it, and 
 - **Heat-map toggle sits in the editor header**, not in the HUD, which has layout rules tested
   to the pixel. In the editor's preview mode the header is gone, so a small button appears on
   the map instead.
+
+## The welcome video box (robust sizing)
+
+- **Reproduced before changing anything.** In Chromium and in Playwright's WebKit the
+  video panel only collapsed when the app's viewport was under about 307 px high
+  (a Moodle iframe that short needs a site minimum under 307 px, or a phone in
+  landscape): the `max-width: min(100%, calc((100dvh - 150px) * 16/9))` cap shrank it
+  to 267x150, 178x100 and 89x50, always keeping 16:9. The flat strip in the user's
+  photos (width near 640, height far under 360) did **not** reproduce in either engine,
+  in video mode, in host fullscreen, with a 300x150 or a tall stand-in iframe, or with
+  the provider blocked. The `flex-shrink` / `min-height: auto` hypothesis was not
+  confirmed: the panel computes `flex-shrink: 1`, but its column has no fixed height,
+  so nothing squeezes it. Open: Safari itself (see the hand-test list).
+- **The panel is sized from the measured boxes of the curtain**, width first, capped by
+  the room left in height (`fitVideoPanel`), never under 280x158. The minimum wins over
+  the height cap: the curtain scrolls instead. A container narrower than the minimum is
+  not overflowed by it, and a zero or non-finite first measurement returns null so the
+  CSS fallback keeps the panel (`styles/video-panel.css`: `flex: none`, explicit width,
+  `min-width`, `aspect-ratio` with the padding-top fallback, `vh` then `dvh` as a
+  maximum only).
+- **The reserved height is 160 px** (column padding 32, gap and button row 64, footer
+  56), not the old unexplained 150. In video mode the column's padding drops from 56 to
+  16 px and the footnote is hidden; the title and message were already hidden.
+- **"Ampliar video"** keeps the same floor (280x158) and scrolls when the viewport is
+  smaller. It fills the viewport by CSS, so a resize or a host fullscreen change needs
+  no new measurement.
+- **"Empezar viaje" sits next to "Saltar" during the video.** Before, the only way in
+  while the video was up was "Saltar" and then a second click. It stays in every state.
+  The music toggle stays out of video mode as before (it is set before the click).
+- **Load failure uses only what a cross-origin iframe gives:** its `load` event and a
+  10 s timeout after the click. A provider page that loads and shows its own error (a
+  removed video, a blocked embed) still fires `load`, so it counts as loaded; Chromium
+  also fires `load` for its own error page when a request is blocked, while WebKit does
+  not. The message "No pudimos cargar el video." therefore means "no load event in 10 s",
+  and only that. It never replaces the button.
+- **Playback is not assumed.** The curtain reads play, pause and end from the player
+  (Vimeo now also subscribes to `play` and `pause`). The music is held on the click and
+  while the video plays, and released on pause and end, so an autoplay the browser
+  refused leaves the player's own play button usable and the music audible. It never
+  waits for an `ended` to offer the way in. Not verified in real Safari.
+- **Provider stand-ins are served by `context.route`, not by the dev server**, at the
+  provider's own origin, so the origin checks in the curtain stay real.
+- **`?diag=1` works in production, lazily, read-only.** One tiny listener in `main.tsx`
+  keeps the last uncaught error in memory; the panel is its own chunk, measures the DOM
+  every second and sends nothing (a source scan test and an e2e request check enforce
+  it). Inside a real Moodle the iframe address is set by the plugin, so a viewer cannot
+  append the flag there: ask them to open the app's own address with `?diag=1`, or have
+  the plugin forward a flag from the Moodle page (a plugin change, out of scope).
+- **Browser-support floor (provisional, to be confirmed with the client):** current and
+  previous Chrome, Safari 16.4 or newer. 15.4 was the first proposal, from the video
+  box's own CSS (`aspect-ratio` 15, `dvh` 15.4); the shipped stylesheet is higher:
+  Tailwind v4 emits `@property` (Safari 16.4) and `color-mix()` (16.2). The video box
+  keeps working before 16.4 by its own fallbacks (`vh` where there is no `dvh`, the
+  padding-top trick where there is no `aspect-ratio`), but the rest of the app is not
+  promised there.

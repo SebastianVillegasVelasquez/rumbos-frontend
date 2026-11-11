@@ -333,6 +333,32 @@ These need a human on real hardware, inside a real Moodle page:
 - The real assertion (RS256), `hostOrigin` registration and token expiry against the
   real backend; completion changes made in Moodle showing up on return.
 
+### The welcome video box
+
+Playwright's WebKit (`pnpm test:e2e`) is not Safari. These need a real Mac. Write down the
+Safari version (Safari > About Safari) and the macOS version, and repeat in Chrome on the
+same Mac. Open the app with `?diag=1` first and keep a screenshot of the panel.
+
+On a MacBook, in Safari and in Chrome, at the browser's own zoom 100, 125 and 150 %, with
+and without the window in macOS fullscreen:
+
+- The curtain's video, after "Reproducir": a 16:9 panel at least 280 x 158 px, never a flat
+  strip; compare the panel size in the diagnostic panel with what you see.
+- Autoplay: does the video start by itself after the click? If not, is the player's own play
+  button visible and usable, and is "Empezar viaje" still there? Does the music come back?
+- The player's own fullscreen button, "Ampliar video" and "Reducir", and Escape.
+- The curtain's "Pantalla completa" (the host's fullscreen) with the video up, and coming back.
+- Keyboard: Tab reaches "Saltar" and "Empezar viaje".
+
+Inside a real Moodle, for each height mode of the Rumbos iframe (auto, viewport, fixed 500,
+fixed 600, fixed 700, and a site minimum under 307 px if the admin allows it): the same
+checks, and no horizontal page scroll. On a phone: portrait and landscape.
+
+With a network that blocks the provider (a corporate proxy, or the provider's host blocked
+in the browser's content blockers): after the click, the box stays 16:9, "Empezar viaje" is
+visible and works; "No pudimos cargar el video." may or may not appear (see
+docs/DECISIONS-hud.md: only the load event and a 10 s timeout are used).
+
 ### Added by content bubbles and never-empty states (v5.5)
 
 On an iPhone with Safari, a mid-range Android, and inside a real Moodle:
