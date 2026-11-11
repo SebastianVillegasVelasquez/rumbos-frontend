@@ -71,7 +71,9 @@ export const EnlargeableVideo = ({
       role={enlarged ? 'dialog' : undefined}
       aria-modal={enlarged ? true : undefined}
       aria-label={enlarged ? title : undefined}
-      className={enlarged ? 'fixed inset-0 z-[80] flex flex-col gap-2 bg-black' : 'contents'}
+      className={
+        enlarged ? 'fixed inset-0 z-[80] flex flex-col gap-2 overflow-auto bg-black' : 'contents'
+      }
       style={
         enlarged
           ? {
@@ -97,7 +99,7 @@ export const EnlargeableVideo = ({
         </div>
       )}
       <div
-        className={enlarged ? 'relative min-h-0 w-full flex-1' : frameClassName}
+        className={enlarged ? 'relative min-h-[158px] w-full min-w-[280px] flex-1' : frameClassName}
         style={enlarged ? undefined : frameStyle}
       >
         <iframe

@@ -1,0 +1,40 @@
+/* The welcome video panel: the pure-CSS floor of the sizing in
+   features/content/videoPanelFit.ts, valid before any script runs.
+   - flex: none, so a flex column never squeezes its height;
+   - explicit width, capped by the viewport height only as a maximum;
+   - min-width keeps it usable (about 280x158) and always wins over the cap,
+     so the curtain scrolls instead of the video shrinking;
+   - aspect-ratio keeps 16:9, with the padding-top trick where it is missing. */
+.video-panel {
+  --video-reserve: 176px; /* keep in sync with PANEL_RESERVE_PX */
+  position: relative;
+  box-sizing: border-box;
+  flex: none;
+  width: 100%;
+  max-width: 100%;
+  min-width: min(280px, 100%);
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: var(--radius-md, 0.375rem);
+  background: #000;
+}
+
+/* Where viewport units exist the cap uses them (vh first, then dvh). */
+@supports (width: 1vh) {
+  .video-panel {
+    width: min(100%, calc((100vh - var(--video-reserve)) * 16 / 9));
+  }
+}
+
+@supports (width: 1dvh) {
+  .video-panel {
+    width: min(100%, calc((100dvh - var(--video-reserve)) * 16 / 9));
+  }
+}
+
+@supports not (aspect-ratio: 1) {
+  .video-panel {
+    height: 0;
+    padding-top: 56.25%; /* the player inside is absolutely positioned */
+  }
+}

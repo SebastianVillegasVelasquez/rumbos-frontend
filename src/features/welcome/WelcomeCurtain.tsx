@@ -7,6 +7,7 @@ import { readAudioPrefs } from '../audio/audioPrefs.ts'
 import { NowPlayingDisc } from '../audio/NowPlayingDisc.tsx'
 import { coverToLoad } from '../audio/nowPlaying.ts'
 import { EnlargeableVideo } from '../content/EnlargeableVideo.tsx'
+import { useVideoPanelWidth } from '../content/useVideoPanelWidth.ts'
 import { resolveImageUrl } from '../course-map/data/assets.ts'
 import type { MapWelcome } from '../course-map/data/types.ts'
 import { viewerStorage } from '../quests/viewerStorage.ts'
@@ -69,6 +70,8 @@ const WelcomeCurtain = ({
   const primaryRef = useRef<HTMLButtonElement>(null)
   const skipVideoRef = useRef<HTMLButtonElement>(null)
   const frameRef = useRef<HTMLIFrameElement>(null)
+  const viewRef = useRef<HTMLDivElement>(null)
+  const columnRef = useRef<HTMLDivElement>(null)
   const sessionRef = useRef<AudioSessionModule | null>(null)
 
   const video = welcome.video
@@ -172,6 +175,9 @@ const WelcomeCurtain = ({
   const labelOf = (id: (typeof buttons)[number]['id']) =>
     buttons.find((button) => button.id === id)?.label ?? ''
   const inVideo = phase === 'video' && canPlay
+  // The panel's width from the measured boxes; null until there is a real one
+  // (the CSS in styles/video-panel.css holds the size meanwhile).
+  const panelWidth = useVideoPanelWidth(viewRef, columnRef, inVideo)
 
   return (
     <div
@@ -215,6 +221,7 @@ const WelcomeCurtain = ({
       )}
 
       <div
+        ref={viewRef}
         className="relative flex h-full flex-col overflow-y-auto"
         style={{
           paddingTop: 'env(safe-area-inset-top, 0px)',
@@ -222,6 +229,7 @@ const WelcomeCurtain = ({
         }}
       >
         <div
+          ref={columnRef}
           className={`m-auto flex w-full max-w-2xl flex-col items-center gap-5 px-4 py-14 text-center ${
             dataSaver ? '' : 'welcome-in'
           }`}
@@ -235,8 +243,8 @@ const WelcomeCurtain = ({
                 src={src}
                 title={text.videoTitle}
                 frameRef={frameRef}
-                frameClassName="relative aspect-video w-full overflow-hidden rounded-md bg-black"
-                frameStyle={{ maxWidth: 'min(100%, calc((100dvh - 150px) * 16 / 9))' }}
+                frameClassName="video-panel"
+                frameStyle={panelWidth === null ? undefined : { width: panelWidth }}
                 onLoad={() => {
                   for (const message of subscribeMessages(video.provider))
                     frameRef.current?.contentWindow?.postMessage(
