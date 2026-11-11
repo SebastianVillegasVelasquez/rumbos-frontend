@@ -213,3 +213,33 @@ test('?debug=layout reports no undersized video panel on a short viewport', asyn
   )
   expect(report.filter((entry) => entry.a === 'video panel')).toEqual([])
 })
+
+test.describe('?diag=1', () => {
+  test('shows the figures and makes no request at all', async ({ page, context }) => {
+    await routeProvider(context, 'small')
+    await openLevel(page, 'video', '&diag=1')
+    await app(page).getByRole('button', { name: 'Reproducir' }).click()
+    const panel = app(page).getByRole('region', { name: 'Diagnóstico' })
+    await expect(panel).toBeVisible()
+    await expect(
+      panel.getByText('Panel del video').locator('xpath=following-sibling::dd[1]')
+    ).toContainText('(proporción 1.78)')
+    await expect(panel).toContainText('Navegador')
+    await expect(panel).toContainText('Soporta aspect-ratio')
+
+    // From here on the panel refreshes every second: it must not touch the network.
+    const requests: string[] = []
+    context.on('request', (request) => requests.push(request.url()))
+    await page.waitForTimeout(3500)
+    await setFrameSize(page, 900, 500)
+    await page.waitForTimeout(1500)
+    expect(requests).toEqual([])
+  })
+
+  test('is absent without the flag', async ({ page, context }) => {
+    await routeProvider(context, 'small')
+    await openLevel(page)
+    await app(page).getByRole('button', { name: 'Reproducir' }).click()
+    await expect(app(page).getByRole('region', { name: 'Diagnóstico' })).toHaveCount(0)
+  })
+})

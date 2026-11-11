@@ -14,6 +14,18 @@ if (import.meta.env.DEV && new URLSearchParams(window.location.search).get('debu
   void import('./dev/layoutCheck.ts').then((module) => module.startLayoutCheck())
 }
 
+// ?diag=1: a read-only panel with what a viewer's screenshot needs (production
+// too). Loaded lazily; the listeners below only remember the last uncaught
+// error in memory, so the panel can show it. Nothing is sent anywhere.
+if (new URLSearchParams(window.location.search).get('diag') === '1') {
+  const remember = (message: unknown) => {
+    window.__rumbosDiagError = String(message).slice(0, 300)
+  }
+  window.addEventListener('error', (event) => remember(event.message))
+  window.addEventListener('unhandledrejection', (event) => remember(event.reason))
+  void import('./diag/startDiag.tsx').then((module) => module.startDiag())
+}
+
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <QueryClientProvider client={queryClient}>

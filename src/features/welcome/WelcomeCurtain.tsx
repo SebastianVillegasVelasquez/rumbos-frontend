@@ -211,6 +211,7 @@ const WelcomeCurtain = ({
       ref={rootRef}
       role="dialog"
       aria-modal="true"
+      data-video-load={inVideo ? videoLoad : undefined}
       aria-labelledby="welcome-title"
       aria-describedby={welcome.message ? 'welcome-message' : undefined}
       onKeyDown={trapFocus}
