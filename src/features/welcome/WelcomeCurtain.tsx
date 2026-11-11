@@ -165,7 +165,9 @@ const WelcomeCurtain = ({
     }
   }
 
-  const hostNote = video ? videoHostNote(video.provider) : ''
+  // In video mode the footnote gives way: the video gets the room.
+  const inVideo = phase === 'video' && canPlay
+  const hostNote = video && !inVideo ? videoHostNote(video.provider) : ''
   const buttons = curtainButtons({
     showPlay,
     offerOptionalVideo: hasOptionalVideo(welcome) && canPlay && !videoSeen,
@@ -174,7 +176,6 @@ const WelcomeCurtain = ({
   })
   const labelOf = (id: (typeof buttons)[number]['id']) =>
     buttons.find((button) => button.id === id)?.label ?? ''
-  const inVideo = phase === 'video' && canPlay
   // The panel's width from the measured boxes; null until there is a real one
   // (the CSS in styles/video-panel.css holds the size meanwhile).
   const panelWidth = useVideoPanelWidth(viewRef, columnRef, inVideo)
@@ -222,7 +223,7 @@ const WelcomeCurtain = ({
 
       <div
         ref={viewRef}
-        className="relative flex h-full flex-col overflow-y-auto"
+        className="relative flex h-full flex-col overflow-y-auto overscroll-contain"
         style={{
           paddingTop: 'env(safe-area-inset-top, 0px)',
           paddingBottom: 'env(safe-area-inset-bottom, 0px)',
@@ -230,9 +231,9 @@ const WelcomeCurtain = ({
       >
         <div
           ref={columnRef}
-          className={`m-auto flex w-full max-w-2xl flex-col items-center gap-5 px-4 py-14 text-center ${
-            dataSaver ? '' : 'welcome-in'
-          }`}
+          className={`m-auto flex w-full max-w-2xl flex-col items-center gap-5 px-4 text-center ${
+            inVideo ? 'py-4' : 'py-14'
+          } ${dataSaver ? '' : 'welcome-in'}`}
         >
           {inVideo && src && video ? (
             <>

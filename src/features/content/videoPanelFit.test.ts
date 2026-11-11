@@ -22,12 +22,12 @@ describe('fitVideoPanel', () => {
       availHeight: 640,
       expected: { width: 328, height: 185 },
     },
-    // Capped by the room left in height: (500 - 176) * 16/9 = 576.
+    // Capped by the room left in height: (500 - 160) * 16/9 = 604.
     {
       name: 'a 500 px tall iframe',
       availWidth: 640,
       availHeight: 500,
-      expected: { width: 576, height: 324 },
+      expected: { width: 604, height: 340 },
     },
     // The minimum wins over the height cap; the curtain scrolls instead.
     {

@@ -9,10 +9,11 @@ export const PANEL_RATIO = 16 / 9
 // The smallest panel that is still usable (about 280x158).
 export const PANEL_MIN_WIDTH = 280
 export const PANEL_MIN_HEIGHT = 158
-// Height the curtain keeps for what is around the panel in video mode: its
-// vertical padding and the row with "Ampliar video". Keep in sync with
+// Height the curtain keeps for what is around the panel in video mode: the
+// column's padding (32), the gap and the row with "Ampliar video" (64) and the
+// footer with the fullscreen button (56), rounded up. Keep in sync with
 // --video-reserve in styles/video-panel.css.
-export const PANEL_RESERVE_PX = 176
+export const PANEL_RESERVE_PX = 160
 
 export interface PanelSize {
   width: number

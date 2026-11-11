@@ -6,7 +6,7 @@
      so the curtain scrolls instead of the video shrinking;
    - aspect-ratio keeps 16:9, with the padding-top trick where it is missing. */
 .video-panel {
-  --video-reserve: 176px; /* keep in sync with PANEL_RESERVE_PX */
+  --video-reserve: 160px; /* keep in sync with PANEL_RESERVE_PX */
   position: relative;
   box-sizing: border-box;
   flex: none;

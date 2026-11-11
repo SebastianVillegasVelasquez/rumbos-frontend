@@ -89,3 +89,54 @@ for (const [w, h] of VIEWPORTS) {
     expect(problem(p), describeProbe(p)).toBeNull()
   })
 }
+
+test.describe('video mode on a short viewport', () => {
+  test('the curtain scrolls instead of squeezing and keeps its controls', async ({
+    page,
+    context,
+  }) => {
+    await routeProvider(context, 'small')
+    await openLevel(page)
+    await app(page).getByRole('button', { name: 'Reproducir' }).click()
+    await expect(app(page).locator('[role=dialog] iframe')).toBeAttached()
+    await setFrameSize(page, 1100, 240)
+
+    const dialog = app(page).getByRole('dialog')
+    // The footnote ("Video alojado en ...") gives way to the video...
+    await expect(dialog.getByText(/Video alojado/)).toHaveCount(0)
+    // ...but the controls that are always needed stay reachable.
+    const skip = dialog.getByRole('button', { name: 'Saltar' })
+    await skip.scrollIntoViewIfNeeded()
+    await expect(skip).toBeInViewport()
+    const fullscreen = dialog.getByRole('button', { name: 'Pantalla completa' })
+    await fullscreen.scrollIntoViewIfNeeded()
+    await expect(fullscreen).toBeInViewport()
+
+    const scroller = await dialog.locator(':scope > div.relative').evaluate((el) => {
+      const style = getComputedStyle(el)
+      return {
+        overflowY: style.overflowY,
+        supported: CSS.supports('overscroll-behavior', 'contain'),
+        overscroll:
+          style.getPropertyValue('overscroll-behavior-y') ||
+          style.getPropertyValue('overscroll-behavior'),
+        scrollable: el.scrollHeight > el.clientHeight,
+      }
+    })
+    expect(scroller.overflowY).toBe('auto')
+    // Progressive enhancement: an engine without it simply scrolls the page behind.
+    if (scroller.supported) expect(scroller.overscroll).toBe('contain')
+    expect(scroller.scrollable).toBe(true)
+  })
+
+  test('the enlarged player never goes below the minimum size', async ({ page, context }) => {
+    await routeProvider(context, 'small')
+    await openLevel(page)
+    await app(page).getByRole('button', { name: 'Reproducir' }).click()
+    await setFrameSize(page, 1100, 240)
+    await app(page).getByRole('button', { name: 'Ampliar video' }).click()
+    const box = await app(page).locator('[role=dialog][aria-label] iframe').boundingBox()
+    expect(box!.width).toBeGreaterThanOrEqual(280)
+    expect(box!.height).toBeGreaterThanOrEqual(158)
+  })
+})
