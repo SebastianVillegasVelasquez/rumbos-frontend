@@ -12,7 +12,15 @@ import { resolveImageUrl } from '../course-map/data/assets.ts'
 import type { MapWelcome } from '../course-map/data/types.ts'
 import { viewerStorage } from '../quests/viewerStorage.ts'
 import { WelcomeSparkles } from './WelcomeSparkles.tsx'
-import { isEndedMessage, playerOrigin, playerUrl, subscribeMessages } from './videoPlayer.ts'
+import {
+  nextVideoLoad,
+  playbackOf,
+  playerOrigin,
+  playerUrl,
+  subscribeMessages,
+  VIDEO_LOAD_TIMEOUT_MS,
+  type VideoLoad,
+} from './videoPlayer.ts'
 import { curtainButtons, videoHostNote } from './videoControls.ts'
 import { hasOptionalVideo, primaryAction } from './welcome.ts'
 
@@ -65,6 +73,7 @@ const WelcomeCurtain = ({
   const dataSaver = useDataSaver().active
   const [phase, setPhase] = useState<Phase>('intro')
   const [videoSeen, setVideoSeen] = useState(false)
+  const [videoLoad, setVideoLoad] = useState<VideoLoad>('loading')
   const [musicOn, setMusicOn] = useState(() => !readAudioPrefs(viewerStorage()).muted)
   const rootRef = useRef<HTMLDivElement>(null)
   const primaryRef = useRef<HTMLButtonElement>(null)
@@ -127,11 +136,27 @@ const WelcomeCurtain = ({
     const onMessage = (event: MessageEvent) => {
       if (event.origin !== playerOrigin(video.provider)) return
       if (event.source === null || event.source !== frameRef.current?.contentWindow) return
-      if (isEndedMessage(video.provider, event.data)) finishVideo()
+      // The music yields while the video plays and comes back when it does not:
+      // an autoplay the browser refused leaves the player at its own play button.
+      const playback = playbackOf(video.provider, event.data)
+      if (playback === 'ended') finishVideo()
+      else if (playback === 'playing') sessionRef.current?.audioSession.hold(true)
+      else if (playback === 'paused') sessionRef.current?.audioSession.hold(false)
     }
     window.addEventListener('message', onMessage)
     return () => window.removeEventListener('message', onMessage)
   }, [phase, video])
+
+  // An iframe that has not fired its load event in time: say so quietly. This
+  // is all a cross-origin frame can tell us, and nothing else waits for it.
+  useEffect(() => {
+    if (phase !== 'video') return
+    const timer = window.setTimeout(
+      () => setVideoLoad((state) => nextVideoLoad(state, 'timeout')),
+      VIDEO_LOAD_TIMEOUT_MS
+    )
+    return () => window.clearTimeout(timer)
+  }, [phase])
 
   const startMusic = () => {
     const session = sessionRef.current?.audioSession
@@ -147,6 +172,7 @@ const WelcomeCurtain = ({
   const play = () => {
     startMusic()
     sessionRef.current?.audioSession.hold(true)
+    setVideoLoad('loading')
     setPhase('video')
   }
 
@@ -247,6 +273,7 @@ const WelcomeCurtain = ({
                 frameClassName="video-panel"
                 frameStyle={panelWidth === null ? undefined : { width: panelWidth }}
                 onLoad={() => {
+                  setVideoLoad((state) => nextVideoLoad(state, 'load'))
                   for (const message of subscribeMessages(video.provider))
                     frameRef.current?.contentWindow?.postMessage(
                       message,
@@ -254,15 +281,28 @@ const WelcomeCurtain = ({
                     )
                 }}
                 actions={
-                  <Button
-                    ref={skipVideoRef}
-                    variant="surface"
-                    size="sm"
-                    dense
-                    onClick={finishVideo}
-                  >
-                    {text.skipVideo}
-                  </Button>
+                  <>
+                    {videoLoad === 'failed' && (
+                      <p role="status" className="w-full text-sm font-semibold text-white/90">
+                        {text.videoFailed}
+                      </p>
+                    )}
+                    <Button
+                      ref={skipVideoRef}
+                      variant="surface"
+                      size="sm"
+                      dense
+                      onClick={finishVideo}
+                    >
+                      {text.skipVideo}
+                    </Button>
+                    {/* Always there, whatever the video does: loading, playing,
+                        paused by the browser, blocked or failed. */}
+                    <Button variant="secondary" size="sm" dense onClick={enter}>
+                      {text.start}
+                      <ArrowRight size={16} strokeWidth={3} aria-hidden />
+                    </Button>
+                  </>
                 }
               />
             </>

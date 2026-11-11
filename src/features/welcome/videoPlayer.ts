@@ -28,7 +28,9 @@ export const subscribeMessages = (provider: VideoProvider): string[] =>
         JSON.stringify({ event: 'listening', id: 1, channel: 'widget' }),
         JSON.stringify({ event: 'command', func: 'addEventListener', args: ['onStateChange'] }),
       ]
-    : [JSON.stringify({ method: 'addEventListener', value: 'finish' })]
+    : ['finish', 'play', 'pause'].map((value) =>
+        JSON.stringify({ method: 'addEventListener', value })
+      )
 
 const asObject = (data: unknown): Record<string, unknown> | null => {
   if (typeof data === 'string') {
@@ -59,4 +61,45 @@ export const isEndedMessage = (provider: VideoProvider, data: unknown): boolean 
     )
   }
   return false
+}
+
+export type Playback = 'playing' | 'paused' | 'ended'
+
+const YOUTUBE_STATES: Record<number, Playback> = { 0: 'ended', 1: 'playing', 2: 'paused' }
+
+// What a message from the player says about playback, or null when it says
+// nothing about it. The curtain never assumes the video plays: autoplay may be
+// refused (Safari is stricter), and then the player waits behind its own play
+// button.
+export const playbackOf = (provider: VideoProvider, data: unknown): Playback | null => {
+  const message = asObject(data)
+  if (!message) return null
+  if (provider === 'vimeo') {
+    if (message.event === 'play') return 'playing'
+    if (message.event === 'pause') return 'paused'
+    return message.event === 'finish' ? 'ended' : null
+  }
+  const state =
+    message.event === 'onStateChange'
+      ? message.info
+      : message.event === 'infoDelivery' &&
+          typeof message.info === 'object' &&
+          message.info !== null
+        ? (message.info as { playerState?: unknown }).playerState
+        : undefined
+  return typeof state === 'number' ? (YOUTUBE_STATES[state] ?? null) : null
+}
+
+// How long after the click the iframe may take to fire its load event.
+export const VIDEO_LOAD_TIMEOUT_MS = 10_000
+
+export type VideoLoad = 'loading' | 'loaded' | 'failed'
+
+// The only signals a cross-origin iframe gives: its load event and our own
+// timeout. A player page that loads but shows its own error (a removed video,
+// a blocked embed) still fires load, so it counts as loaded: that is a known
+// limit, see docs/DECISIONS-hud.md.
+export const nextVideoLoad = (state: VideoLoad, event: 'load' | 'timeout'): VideoLoad => {
+  if (event === 'load') return 'loaded'
+  return state === 'loading' ? 'failed' : state
 }

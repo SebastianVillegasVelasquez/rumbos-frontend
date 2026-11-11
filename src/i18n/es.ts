@@ -354,6 +354,7 @@ export const es = {
     start: 'Empezar viaje',
     watchVideo: 'Ver video de bienvenida',
     skipVideo: 'Saltar',
+    videoFailed: 'No pudimos cargar el video.',
     skipPreview: 'Saltar bienvenida',
     musicOn: 'Con música',
     musicOff: 'Sin música',

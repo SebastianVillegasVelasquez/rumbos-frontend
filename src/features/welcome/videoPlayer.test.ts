@@ -1,6 +1,13 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { isEndedMessage, playerUrl, subscribeMessages } from './videoPlayer.ts'
+import {
+  isEndedMessage,
+  nextVideoLoad,
+  playbackOf,
+  playerUrl,
+  subscribeMessages,
+  type VideoLoad,
+} from './videoPlayer.ts'
 
 describe('playerUrl', () => {
   it('builds the address from a validated id only', () => {
@@ -48,4 +55,37 @@ describe('subscribeMessages', () => {
     assert.ok(subscribeMessages('youtube').some((m) => m.includes('onStateChange')))
     assert.ok(subscribeMessages('vimeo').some((m) => m.includes('finish')))
   })
+
+  it('asks Vimeo to report play and pause too', () => {
+    const messages = subscribeMessages('vimeo').join(' ')
+    assert.ok(messages.includes('play') && messages.includes('pause'))
+  })
+})
+
+describe('playbackOf', () => {
+  const cases: Array<[string, 'youtube' | 'vimeo', unknown, string | null]> = [
+    ['YouTube playing', 'youtube', '{"event":"onStateChange","info":1}', 'playing'],
+    ['YouTube paused', 'youtube', { event: 'onStateChange', info: 2 }, 'paused'],
+    ['YouTube ended', 'youtube', '{"event":"infoDelivery","info":{"playerState":0}}', 'ended'],
+    ['YouTube buffering says nothing', 'youtube', { event: 'onStateChange', info: 3 }, null],
+    ['Vimeo play', 'vimeo', '{"event":"play"}', 'playing'],
+    ['Vimeo pause', 'vimeo', { event: 'pause' }, 'paused'],
+    ['Vimeo finish', 'vimeo', { event: 'finish' }, 'ended'],
+    ['junk', 'youtube', '{bad', null],
+    ['null', 'vimeo', null, null],
+  ]
+  for (const [name, provider, data, expected] of cases)
+    it(name, () => assert.equal(playbackOf(provider, data), expected))
+})
+
+describe('nextVideoLoad', () => {
+  const cases: Array<[VideoLoad, 'load' | 'timeout', VideoLoad]> = [
+    ['loading', 'load', 'loaded'],
+    ['loading', 'timeout', 'failed'],
+    ['loaded', 'timeout', 'loaded'],
+    ['failed', 'load', 'loaded'],
+    ['failed', 'timeout', 'failed'],
+  ]
+  for (const [from, event, to] of cases)
+    it(from + ' + ' + event + ' = ' + to, () => assert.equal(nextVideoLoad(from, event), to))
 })

@@ -140,3 +140,59 @@ test.describe('video mode on a short viewport', () => {
     expect(box!.height).toBeGreaterThanOrEqual(158)
   })
 })
+
+// The curtain never traps the viewer: "Empezar viaje" is reachable with the
+// video loading, playing or blocked, at the smallest viewport, by keyboard.
+test.describe('the way out of the video', () => {
+  for (const surrogate of ['small', 'blocked'] as const satisfies Surrogate[]) {
+    test(`provider ${surrogate}: Empezar viaje is visible and reachable by keyboard at 360x640`, async ({
+      page,
+      context,
+    }) => {
+      await routeProvider(context, surrogate)
+      await openLevel(page)
+      await app(page).getByRole('button', { name: 'Reproducir' }).click()
+      await setFrameSize(page, 360, 640)
+      const start = app(page).getByRole('dialog').getByRole('button', { name: 'Empezar viaje' })
+      await start.scrollIntoViewIfNeeded()
+      await expect(start).toBeInViewport()
+
+      let reached = false
+      for (let i = 0; i < 8 && !reached; i++) {
+        await page.keyboard.press('Tab')
+        reached = await start.evaluate((el) => el === el.ownerDocument.activeElement)
+      }
+      expect(reached, 'Tab never reached "Empezar viaje"').toBe(true)
+
+      await page.keyboard.press('Enter')
+      await expect(app(page).getByRole('dialog')).toHaveCount(0)
+    })
+  }
+
+  test('provider blocked: the message shows where the iframe never loads, the button always stays', async ({
+    page,
+    context,
+    browserName,
+  }) => {
+    await routeProvider(context, 'blocked')
+    await openLevel(page)
+    await app(page).getByRole('button', { name: 'Reproducir' }).click()
+    const dialog = app(page).getByRole('dialog')
+    await page.waitForTimeout(11_000)
+    // Known limit of a cross-origin frame: Chromium fires its load event for its own
+    // error page, so a blocked provider looks loaded there and no message is
+    // shown. WebKit fires nothing, so the timeout speaks. Either way the way
+    // out must be there.
+    if (browserName === 'webkit')
+      await expect(dialog.getByRole('status')).toHaveText('No pudimos cargar el video.')
+    await expect(dialog.getByRole('button', { name: 'Empezar viaje' })).toBeVisible()
+  })
+
+  test('a provider that loads shows no failure message', async ({ page, context }) => {
+    await routeProvider(context, 'small')
+    await openLevel(page)
+    await app(page).getByRole('button', { name: 'Reproducir' }).click()
+    await page.waitForTimeout(11_000)
+    await expect(app(page).getByRole('dialog').getByRole('status')).toHaveCount(0)
+  })
+})
