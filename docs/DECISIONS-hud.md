@@ -559,3 +559,34 @@ picture-in-picture`: `encrypted-media` is gone (the embeds play without it, and 
   `paused` and `src` only; nothing is downloaded or decoded, the session, the reducer,
   the storage and the component are real. Playwright's WebKit has no media codecs, so
   without neutralising `src` it fires a real `error` and fails the track.
+
+## Welcome flow (branch feat/welcome-flow)
+
+- **Stacked on the corrections.** This branch starts from tip `b3f1535` of
+  `fix/video-enlarge-and-curtain-music`, which is not yet on `main`. If the corrections
+  are integrated with a squash, the rebase is `git rebase --onto main b3f1535`.
+- **Build to the brief, not to a server.** The backend and the plugin are built in
+  parallel; no running server has the new contract. Every field below is taken from the
+  brief and marked as an assumption where the brief is silent. A contract test reads a
+  local `openapi.json` (path in `OPENAPI_JSON`, skipped when absent) and checks the
+  fields this feature uses.
+- **Legacy welcome becomes steps with fixed keys.** `legacywelcome` (a `welcome` step
+  from title and message) and `legacyvideo` (a `video` step). The derived video step is
+  `mandatory: false` because today's curtain never forces the video. Only steps the
+  editor creates or changes explicitly start with `mandatory: true`. The old "seen" flag
+  is ignored by the flow: viewers of an old map see the derived flow once more.
+- **Video fallback rule (corrects the brief).** "Problemas con el video?" shows only when
+  no start signal (ready or play) arrives within one timeout from the click, or the
+  player reports an error. Playing for a long time never shows it: with working events the
+  only way to complete a mandatory video is `ended`. If events never arrive, the exit
+  records `fallback`. One constant, `VIDEO_LOAD_TIMEOUT_MS` (10 s, `videoPlayer.ts`),
+  serves the curtain and the flow; the brief's 12 s is replaced by it on purpose.
+- **Quiz result races.** The host closes its overlay, then sends a fresh `host-state`
+  (or the app asks after 1.5 s). The result request must not run before the state is
+  fresh, and an attempt that finishes while the overlay is open is only visible after
+  the refresh. The step therefore asks for the result on three triggers while it is
+  active: the overlay closing, every new `host-state`, and the tab regaining focus. The
+  asks are idempotent and coalesced; the latest answer wins.
+- **PDF viewer needs framing.** `/assets` must allow being framed (`frame-ancestors`
+  with the app origin and the Moodle origin). If it does not, the inline viewer stays
+  blank and "Abrir documento" (a new tab) is the only way; it is always shown.
