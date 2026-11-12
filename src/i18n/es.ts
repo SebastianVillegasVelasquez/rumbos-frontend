@@ -455,6 +455,24 @@ export const es = {
     containerQueries: 'Soporta container queries',
     has: 'Soporta :has()',
     lastError: 'Último error',
+    // "Probar eventos de video": loads the real player after a click and lists the
+    // messages it sends, with the time, to test a browser or a phone.
+    probe: {
+      title: 'Probar eventos de video',
+      hint: 'Pega un enlace o un código y pulsa «Probar». Solo se conecta con el reproductor después de tu clic y no guarda nada.',
+      provider: 'Proveedor',
+      video: 'Enlace o código del video',
+      invalid: 'No reconocemos ese video.',
+      start: 'Probar',
+      again: 'Probar otro',
+      copy: 'Copiar registro',
+      copied: 'Registro copiado.',
+      copyFailed: 'No se pudo copiar. Selecciona el texto de abajo y cópialo a mano.',
+      frameTitle: 'Reproductor de prueba',
+      empty: 'Aún no llegó ningún mensaje.',
+      noStart: (seconds: number) =>
+        `Sin señal de inicio (ready o play) en ${seconds} s: aquí el flujo ofrecería «¿Problemas con el video?».`,
+    },
   },
   completion: {
     untracked: 'Sin finalización configurada',
