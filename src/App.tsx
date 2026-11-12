@@ -85,6 +85,7 @@ import { useResume } from './features/hud/useResume.ts'
 import { readResume } from './features/hud/resume.ts'
 import { useHostCourseName } from './features/embed/hostCourse.ts'
 import { LazyWelcomeCurtain } from './features/welcome/LazyWelcomeCurtain.tsx'
+import { LazyWelcomeFlow } from './features/welcome/flow/LazyWelcomeFlow.tsx'
 import { useWelcome } from './features/welcome/useWelcome.ts'
 import { welcomeTitle } from './features/welcome/welcome.ts'
 import { cameraBridge } from './features/view3d/cameraBridge.ts'
@@ -688,8 +689,39 @@ export function AppShell() {
   // The welcome curtain: once per viewer and map; never to an editor editing.
   const hostCourseName = useHostCourseName()
   const curtainFullscreen = useFullscreenEntry(embed)
+  const flowGate = welcomeState.flow
+  const flowSteps = welcomeState.welcome.steps
+  const audioForWelcome = audioTrack
+    ? {
+        title: audioTrack.title,
+        coverUrl: audioTrack.coverUrl,
+        startAfterInteraction: audioTrack.startAfterInteraction,
+      }
+    : null
+  // A configured flow takes the place of the legacy curtain. While the host is
+  // asked where the progress is (up to 3 s) the stage is covered, so the map does
+  // not flash before the flow.
   const welcomeCurtain =
-    welcomeState.open && renderable ? (
+    flowGate && flowSteps && renderable ? (
+      flowGate.state.status === 'run' ? (
+        <LazyWelcomeFlow
+          key={`${renderable.id}:${flowGate.state.mode}`}
+          steps={flowSteps}
+          mode={flowGate.state.mode}
+          entries={flowGate.state.entries}
+          persistence={flowGate.state.persistence}
+          documents={renderable.welcomeDocuments ?? []}
+          courseName={hostCourseName?.trim() || renderable.title}
+          imageUrl={renderable.imageUrl}
+          hasMusic={audioTrack !== null}
+          track={audioForWelcome}
+          onEnterFullscreen={curtainFullscreen}
+          onFinish={flowGate.finish}
+        />
+      ) : flowGate.state.status === 'checking' ? (
+        <div className="absolute inset-0 z-50 bg-ink" />
+      ) : null
+    ) : welcomeState.open && renderable ? (
       <LazyWelcomeCurtain
         key={renderable.id}
         welcome={welcomeState.welcome}

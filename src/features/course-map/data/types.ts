@@ -118,9 +118,92 @@ export interface MapWelcome {
   // Start the video when the viewer enters (default true).
   playOnEnter: boolean
   show: WelcomeShow
+  // The welcome flow (contract: steps 1..12). When present the four legacy
+  // fields above must be null; the editor converts a legacy welcome on its
+  // first save. Absent or null: the curtain of the legacy fields.
+  steps?: WelcomeStep[] | null
 }
 
 export const WELCOME_LIMITS = { titleMax: 120, messageMax: 300 } as const
+
+// ---- Welcome flow steps -----------------------------------------------------
+
+export type WelcomeStepType = 'welcome' | 'video' | 'html' | 'pdf' | 'quiz'
+
+// "I have read it": a checkbox with its label. Null: no acknowledgement.
+export interface StepAck {
+  label: string
+}
+
+interface StepCommon {
+  // ^[a-z0-9]{6,16}$, unique in the flow and stable: progress is keyed by it.
+  key: string
+  title: string
+  mandatory: boolean
+  // Raised by the editor to ask again of those who already completed the step.
+  revision: number
+}
+
+export interface WelcomeMessageStep extends StepCommon {
+  type: 'welcome'
+  message: string | null
+  buttonLabel: string | null
+}
+
+export interface WelcomeVideoStep extends StepCommon {
+  type: 'video'
+  video: { provider: 'youtube' | 'vimeo'; videoId: string }
+  // Offer a way out when the player's events never arrive (recorded as fallback).
+  allowFallback: boolean
+}
+
+export interface WelcomeHtmlStep extends StepCommon {
+  type: 'html'
+  html: string
+  css: string | null
+  ack: StepAck | null
+  minSeconds: number
+}
+
+export interface WelcomePdfStep extends StepCommon {
+  type: 'pdf'
+  assetId: string
+  ack: StepAck | null
+  minSeconds: number
+}
+
+export interface WelcomeQuizStep extends StepCommon {
+  type: 'quiz'
+  // The Moodle course module of the quiz; null: not linked yet.
+  cmid: number | null
+  intro: string | null
+  outcomeAbove: string | null
+  outcomeBelow: string | null
+}
+
+export type WelcomeStep =
+  WelcomeMessageStep | WelcomeVideoStep | WelcomeHtmlStep | WelcomePdfStep | WelcomeQuizStep
+
+export const FLOW_LIMITS = {
+  stepsMax: 12,
+  stepTitleMax: 120,
+  htmlMaxBytes: 100 * 1024,
+  cssMaxBytes: 50 * 1024,
+  minSecondsMax: 600,
+  quizMax: 3,
+  keyPattern: /^[a-z0-9]{6,16}$/,
+} as const
+
+// Read-only on the map reads: the documents the steps use.
+export interface WelcomeDocument {
+  assetId: string
+  url: string
+  title: string
+  pageCount: number
+  bytes: number
+  // False when the file can no longer be served.
+  available: boolean
+}
 
 export interface MapAudio {
   assetId: string
@@ -202,6 +285,8 @@ export interface CourseMapRead {
   // null: the map has no 3D view (and students get no 2D/3D selector).
   view3d: View3d | null
   audioInfo?: AudioInfo | null
+  // Absent on a backend that predates the welcome flow.
+  welcomeDocuments?: WelcomeDocument[]
   bubbles: Bubble[]
   revision: number
   createdAt: string
@@ -414,7 +499,7 @@ export type ImageAssetKind = 'background' | 'bubble' | 'image'
 
 // Contract: audio assets (background music). Their `url` is "/assets/{id}" and
 // supports HTTP Range requests (iOS Safari will not play audio without them).
-export type AssetKind = ImageAssetKind | 'audio'
+export type AssetKind = ImageAssetKind | 'audio' | 'document'
 
 export type AudioMime = 'audio/mpeg' | 'audio/mp4'
 
@@ -617,6 +702,7 @@ export interface PublishedMapRead {
   // What students see in 3D; frozen at publish time like everything below.
   view3d: View3d | null
   audioInfo?: AudioInfo | null
+  welcomeDocuments?: WelcomeDocument[]
   // Frozen copies taken at publish time.
   skins: Record<string, PublishedSkin>
   bubbles: PublishedBubble[]

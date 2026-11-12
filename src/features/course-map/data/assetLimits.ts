@@ -9,6 +9,23 @@ export const ASSET_LIMITS: Record<ImageAssetKind, { maxBytes: number; maxSide: n
   image: { maxBytes: 4 * 1024 * 1024, maxSide: 2048 },
 }
 
+// Welcome documents: PDF only, 10 MB. The backend inspects the file (encrypted,
+// active content, page count); the client only catches the obvious.
+export const DOCUMENT_MAX_BYTES = 10 * 1024 * 1024
+export const DOCUMENT_MIME = 'application/pdf'
+
+export type DocumentCheckError = 'notPdf' | 'tooLarge'
+
+export const checkDocumentBasics = (file: {
+  type: string
+  size: number
+  name?: string
+}): DocumentCheckError | null => {
+  const looksPdf = file.type === DOCUMENT_MIME || (!file.type && /\.pdf$/i.test(file.name ?? ''))
+  if (!looksPdf) return 'notPdf'
+  return file.size > DOCUMENT_MAX_BYTES ? 'tooLarge' : null
+}
+
 export const ALLOWED_IMAGE_MIME = ['image/png', 'image/jpeg', 'image/webp', 'image/avif'] as const
 export const TITLE_MAX_LENGTH = 120
 export const CREDIT_MAX_LENGTH = 300

@@ -92,6 +92,9 @@ const handledThisSession = new Set<string>()
 export const markWelcomeHandled = (mapId: string, hash: string) =>
   void handledThisSession.add(`${mapId}:${hash}`)
 
+export const wasWelcomeHandled = (mapId: string, hash: string): boolean =>
+  handledThisSession.has(`${mapId}:${hash}`)
+
 export interface ShowInput {
   welcome: MapWelcome
   mapId: string

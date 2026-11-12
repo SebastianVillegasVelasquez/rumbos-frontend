@@ -150,6 +150,23 @@ const EmbedSessionView = ({ hostOrigin, bridge }: { hostOrigin: string; bridge: 
                   ...(groupId !== undefined && { groupId }),
                 })
             },
+            requestFlowProgress: (mapId) =>
+              bridge.send({ type: 'rumbos:request-flow-progress', v: 1, mapId }),
+            reportFlowStepDone: (mapId, stepKey, revision, method) =>
+              bridge.send({
+                type: 'rumbos:flow-step-done',
+                v: 1,
+                mapId,
+                stepKey,
+                revision,
+                method,
+              }),
+            requestQuizResult: (cmid) =>
+              bridge.send({ type: 'rumbos:request-quiz-result', v: 1, cmid }),
+            resetFlowProgress: (mapId) => {
+              // Editor mode only; the host would answer readonly otherwise.
+              if (mode === 'editor') bridge.send({ type: 'rumbos:flow-reset', v: 1, mapId })
+            },
             reportNoContent: reports.noContent,
             reportPreferredSize: reports.preferredSize,
           }

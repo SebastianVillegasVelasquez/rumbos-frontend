@@ -559,3 +559,66 @@ picture-in-picture`: `encrypted-media` is gone (the embeds play without it, and 
   `paused` and `src` only; nothing is downloaded or decoded, the session, the reducer,
   the storage and the component are real. Playwright's WebKit has no media codecs, so
   without neutralising `src` it fires a real `error` and fails the track.
+
+## Welcome flow (branch feat/welcome-flow)
+
+- **Stacked on the corrections.** This branch starts from tip `b3f1535` of
+  `fix/video-enlarge-and-curtain-music`, which is not yet on `main`. If the corrections
+  are integrated with a squash, the rebase is `git rebase --onto main b3f1535`.
+- **Build to the brief, not to a server.** The backend and the plugin are built in
+  parallel; no running server has the new contract. Every field below is taken from the
+  brief and marked as an assumption where the brief is silent. A contract test reads a
+  local `openapi.json` (path in `OPENAPI_JSON`, skipped when absent) and checks the
+  fields this feature uses.
+- **Legacy welcome becomes steps with fixed keys.** `legacywelcome` (a `welcome` step
+  from title and message) and `legacyvideo` (a `video` step). The derived video step is
+  `mandatory: false` because today's curtain never forces the video. Only steps the
+  editor creates or changes explicitly start with `mandatory: true`. The old "seen" flag
+  is ignored by the flow: viewers of an old map see the derived flow once more.
+- **Video fallback rule (corrects the brief).** "Problemas con el video?" shows only when
+  no start signal (ready or play) arrives within one timeout from the click, or the
+  player reports an error. Playing for a long time never shows it: with working events the
+  only way to complete a mandatory video is `ended`. If events never arrive, the exit
+  records `fallback`. One constant, `VIDEO_LOAD_TIMEOUT_MS` (10 s, `videoPlayer.ts`),
+  serves the curtain and the flow; the brief's 12 s is replaced by it on purpose.
+- **Quiz result races.** The host closes its overlay, then sends a fresh `host-state`
+  (or the app asks after 1.5 s). The result request must not run before the state is
+  fresh, and an attempt that finishes while the overlay is open is only visible after
+  the refresh. The step therefore asks for the result on three triggers while it is
+  active: the overlay closing, every new `host-state`, and the tab regaining focus. The
+  asks are idempotent and coalesced; the latest answer wins.
+- **PDF viewer needs framing.** `/assets` must allow being framed (`frame-ancestors`
+  with the app origin and the Moodle origin). If it does not, the inline viewer stays
+  blank and "Abrir documento" (a new tab) is the only way; it is always shown.
+- **A flow with no mandatory step still leaves one presence mark.** On finishing, the
+  last step is recorded with the method `completed`, so "show: first visit" has
+  something to remember. Without it a flow made only of optional steps would reopen on
+  every visit.
+- **Legacy maps keep the legacy curtain at runtime.** The derivation (`legacywelcome`,
+  `legacyvideo`) is used by the editor's first save, which converts the old welcome to
+  steps. A map without `steps` renders exactly as before; no student sees a changed
+  curtain until an editor saves a flow.
+- **`readonly` and `unavailable` behave like silence.** The host cannot keep progress
+  right now, so the flow falls back to the per-viewer flag, as it does for a guest or
+  an older plugin. A student is never stuck because Moodle cannot write.
+- **PDF unavailable is non-blocking and records `unavailable`.** A document the backend
+  reports as missing must not trap a student; the step offers "Continuar" with an
+  explanation.
+- **A silent host stops the quiz wait after 6 s** and the step records `unavailable`.
+  An older plugin never answers `request-quiz-result`; waiting forever would trap the
+  student.
+- **`flow-step-done` only for mandatory steps.** Optional steps leave no trace in
+  Moodle; the per-viewer flag is used only when Moodle does not keep progress.
+- **Video load timeout is 10 s, not the brief's 12 s.** One constant serves the curtain
+  and the flow, so the two cannot disagree.
+- **A plain cover while the host is asked (up to 3 s).** The student sees an empty dark
+  screen rather than the map, then either the flow or nothing; otherwise the map would
+  flash before the flow covers it.
+- **Writes go out at once under a 28-a-minute window.** A fixed gap between writes lost
+  the last completions when a quick viewer left; a flow has 12 steps at most, far under
+  the plugin's 30 a minute.
+- **The client mirror of the HTML and CSS rules is a convenience, not a security
+  boundary.** The sandbox (no scripts) and the server validation are the boundary.
+- **The diag video probe may post one message.** The read-only test for `?diag=1` now
+  allows `postMessage` in `VideoEventProbe.tsx` only, to the player origin, after the
+  click: YouTube and Vimeo send events only once the embedder subscribes.

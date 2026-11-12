@@ -98,6 +98,7 @@ describe('diagRows', () => {
 describe('the diagnostic panel stays read-only', () => {
   const FORBIDDEN =
     /\b(fetch|XMLHttpRequest|sendBeacon|WebSocket|EventSource|postMessage|localStorage|sessionStorage|indexedDB|new Image)\b/
+  const FORBIDDEN_NO_POST_MESSAGE = new RegExp(FORBIDDEN.source.replace('|postMessage', ''))
   const dir = import.meta.dirname
   const sources = readdirSync(dir).filter(
     (name) => /\.(ts|tsx)$/.test(name) && !name.endsWith('.test.ts')
@@ -108,6 +109,15 @@ describe('the diagnostic panel stays read-only', () => {
       const code = readFileSync(join(dir, name), 'utf8')
         .replace(/\/\*[\s\S]*?\*\//g, '')
         .replace(/^\s*\/\/.*$/gm, '')
-      assert.doesNotMatch(code, FORBIDDEN)
+      // The video probe talks to the player it embeds, after a click, and only
+      // by postMessage to that player's origin: the one allowed exception.
+      const rule = name === 'VideoEventProbe.tsx' ? FORBIDDEN_NO_POST_MESSAGE : FORBIDDEN
+      assert.doesNotMatch(code, rule)
     })
+  it('only the video probe posts a message, and only to the player origin', () => {
+    const code = readFileSync(join(dir, 'VideoEventProbe.tsx'), 'utf8')
+    const posts = code.match(/postMessage\(/g) ?? []
+    assert.equal(posts.length, 1)
+    assert.match(code, /postMessage\(\s*message,\s*playerOrigin\(running\.provider\)\s*\)/)
+  })
 })

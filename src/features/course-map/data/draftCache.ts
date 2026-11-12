@@ -58,6 +58,8 @@ export const applyMapLevel = (queryClient: QueryClient, mapId: string, response:
           view3d: response.view3d,
           // Read-only, derived by the server from settings.audio.
           audioInfo: response.audioInfo,
+          // Read-only, derived by the server from the welcome steps.
+          welcomeDocuments: response.welcomeDocuments,
           revision: response.revision,
           updatedAt: response.updatedAt,
         }

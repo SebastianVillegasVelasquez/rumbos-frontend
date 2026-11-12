@@ -7,6 +7,7 @@ import type {
   SkinRule,
   View3d,
   AudioInfo,
+  WelcomeDocument,
 } from './data/types.ts'
 
 // One normalized shape for everything that draws a map (canvas, FX engine,
@@ -27,6 +28,8 @@ export interface RenderableMap {
   // Background music: the editor's settings and the credit to show. Null when
   // the map has none (or the credit is missing, so it cannot be credited).
   audio: { settings: NonNullable<MapSettings['audio']>; info: AudioInfo } | null
+  // The documents the welcome flow's PDF steps use; absent on an older backend.
+  welcomeDocuments?: WelcomeDocument[]
   // Skins to resolve against: the live /skins list for a draft, the frozen
   // copies stored in the snapshot for a publication.
   skins: Skin[]
@@ -51,6 +54,7 @@ export const draftToRenderable = (map: CourseMapRead, skins: Skin[]): Renderable
   skinRules: map.skinRules,
   view3d: map.view3d,
   audio: audioOf(map.settings, map.audioInfo),
+  welcomeDocuments: map.welcomeDocuments,
   skins,
   bubbles: map.bubbles,
   source: 'draft',
@@ -68,6 +72,7 @@ export const publishedToRenderable = (map: PublishedMapRead): RenderableMap => (
   skinRules: map.skinRules,
   view3d: map.view3d,
   audio: audioOf(map.settings, map.audioInfo),
+  welcomeDocuments: map.welcomeDocuments,
   skins: Object.entries(map.skins).map(([id, skin]) => ({
     id,
     name: skin.name,

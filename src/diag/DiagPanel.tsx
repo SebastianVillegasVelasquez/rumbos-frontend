@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { es } from '../i18n/es.ts'
 import { diagRows, type DiagEnv } from './diagSnapshot.ts'
 import { readEnv } from './readEnv.ts'
+import VideoEventProbe from './VideoEventProbe.tsx'
 
 const text = es.diag
 
@@ -46,6 +47,7 @@ const DiagPanel = () => {
           </div>
         ))}
       </dl>
+      <VideoEventProbe />
     </section>
   )
 }
