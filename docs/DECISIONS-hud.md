@@ -590,3 +590,35 @@ picture-in-picture`: `encrypted-media` is gone (the embeds play without it, and 
 - **PDF viewer needs framing.** `/assets` must allow being framed (`frame-ancestors`
   with the app origin and the Moodle origin). If it does not, the inline viewer stays
   blank and "Abrir documento" (a new tab) is the only way; it is always shown.
+- **A flow with no mandatory step still leaves one presence mark.** On finishing, the
+  last step is recorded with the method `completed`, so "show: first visit" has
+  something to remember. Without it a flow made only of optional steps would reopen on
+  every visit.
+- **Legacy maps keep the legacy curtain at runtime.** The derivation (`legacywelcome`,
+  `legacyvideo`) is used by the editor's first save, which converts the old welcome to
+  steps. A map without `steps` renders exactly as before; no student sees a changed
+  curtain until an editor saves a flow.
+- **`readonly` and `unavailable` behave like silence.** The host cannot keep progress
+  right now, so the flow falls back to the per-viewer flag, as it does for a guest or
+  an older plugin. A student is never stuck because Moodle cannot write.
+- **PDF unavailable is non-blocking and records `unavailable`.** A document the backend
+  reports as missing must not trap a student; the step offers "Continuar" with an
+  explanation.
+- **A silent host stops the quiz wait after 6 s** and the step records `unavailable`.
+  An older plugin never answers `request-quiz-result`; waiting forever would trap the
+  student.
+- **`flow-step-done` only for mandatory steps.** Optional steps leave no trace in
+  Moodle; the per-viewer flag is used only when Moodle does not keep progress.
+- **Video load timeout is 10 s, not the brief's 12 s.** One constant serves the curtain
+  and the flow, so the two cannot disagree.
+- **A plain cover while the host is asked (up to 3 s).** The student sees an empty dark
+  screen rather than the map, then either the flow or nothing; otherwise the map would
+  flash before the flow covers it.
+- **Writes go out at once under a 28-a-minute window.** A fixed gap between writes lost
+  the last completions when a quick viewer left; a flow has 12 steps at most, far under
+  the plugin's 30 a minute.
+- **The client mirror of the HTML and CSS rules is a convenience, not a security
+  boundary.** The sandbox (no scripts) and the server validation are the boundary.
+- **The diag video probe may post one message.** The read-only test for `?diag=1` now
+  allows `postMessage` in `VideoEventProbe.tsx` only, to the player origin, after the
+  click: YouTube and Vimeo send events only once the embedder subscribes.

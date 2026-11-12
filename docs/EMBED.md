@@ -316,6 +316,38 @@ Widgets run in a sandboxed frame, see [`WIDGET-SANDBOX.md`](WIDGET-SANDBOX.md).
   and falls back to the map's title when it is absent. The mock host can send it or omit
   it ("courseName (v5.6)").
 
+## Contract v5.8 (welcome flow)
+
+Four app messages and two host messages, all validated strictly (an invalid one is
+dropped). See [`WELCOME-FLOW.md`](WELCOME-FLOW.md) for what the app does with them.
+
+App to host:
+
+- `request-flow-progress { mapId }`: answered with `host-flow-progress`.
+- `flow-step-done { mapId, stepKey, revision, method }`: sent only for mandatory steps;
+  `method` is `completed`, `fallback` or `unavailable`.
+- `request-quiz-result { cmid }`: answered with `host-quiz-result`.
+- `flow-reset { mapId }`: editor mode only; Moodle needs editing mode on, otherwise the
+  host answers `host-flow-progress` with `error: 'readonly'`.
+
+Host to app:
+
+- `host-flow-progress { mapId, items: [{ stepKey, revision, method, completedAt }],
+persistent, config: { quizThreshold } }` or `{ mapId, error }` with `readonly` or
+  `unavailable`. `persistent: false` means Moodle does not keep it (guest, preview).
+- `host-quiz-result { cmid, result }` with `attempts`, `finishedAttempts`, `inProgress`,
+  `percent`, `pendingGrading`, `passedThreshold`, or `{ cmid, error }` with `not_found`,
+  `unavailable` or `capability`. A hidden grade sends `percent` and `passedThreshold`
+  as null.
+
+Limits: `stepKey` is `[A-Za-z0-9_-]{1,16}`, `revision` is 0..1000000, `completedAt` is
+ISO-8601 UTC, and the plugin allows 30 writes a minute per user (the app caps itself at
+28). An older plugin that ignores these messages is treated as silence: the flow falls
+back to the local flag.
+
+The mock host plays the plugin side: flow modes (persistent, guest, readonly,
+unavailable, older plugin), the quiz scenarios, and a "Quiz attempt finished" button.
+
 ## Testing by hand (needs real devices)
 
 Automated and mock-host checks cover the protocol, derivation and access matrix.
