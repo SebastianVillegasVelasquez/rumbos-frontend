@@ -19,7 +19,7 @@ test('the video probe is silent until the click, then logs the player messages',
   })
   await page.goto('/?diag=1')
   const panel = page.getByRole('region', { name: 'Diagnóstico' })
-  await expect(panel.getByText('Probar eventos de video')).toBeVisible()
+  await panel.getByText('Probar eventos de video').click()
   await page.waitForTimeout(500)
   expect(providerRequests).toEqual([])
 

@@ -91,8 +91,8 @@ const VideoEventProbe = () => {
   }
 
   return (
-    <div className="mt-2 border-t-2 border-black pt-2 font-sans">
-      <strong>{text.title}</strong>
+    <details className="mt-2 border-t-2 border-black pt-2 font-sans">
+      <summary className="min-h-[28px] cursor-pointer font-bold">{text.title}</summary>
       <p className="my-1">{text.hint}</p>
       {!running ? (
         <form
@@ -195,7 +195,7 @@ const VideoEventProbe = () => {
           )}
         </div>
       )}
-    </div>
+    </details>
   )
 }
 
