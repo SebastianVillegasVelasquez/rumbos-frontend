@@ -24,8 +24,8 @@ and the video iframe in every cell of a matrix and fails when either is under
 - with a stand-in provider (a 300x150 intrinsic page, a page asking for 2400 px of
   height) and with the provider blocked.
 
-Also covered: the curtain scrolls instead of squeezing, "Ampliar video" never goes
-below the minimum, "Empezar viaje" is visible and reachable by keyboard at 360x640
+Also covered: the curtain scrolls instead of squeezing, there is no "Ampliar video"
+button, "Empezar viaje" is visible and reachable by keyboard at 360x640
 (video loading, loaded and blocked), the load-failure message, `?debug=layout`
 and `?diag=1` (which must make no request).
 

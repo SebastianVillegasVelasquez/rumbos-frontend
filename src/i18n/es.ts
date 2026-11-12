@@ -341,11 +341,6 @@ export const es = {
     backToAuto: 'Volver a automático',
     showWelcome: 'Ver bienvenida',
   },
-  // Buttons shared by every video the app shows.
-  video: {
-    enlarge: 'Ampliar video',
-    shrink: 'Reducir',
-  },
   // The welcome curtain students see when they enter a map.
   welcome: {
     label: 'Bienvenida',

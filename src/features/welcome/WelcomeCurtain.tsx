@@ -6,7 +6,7 @@ import { es } from '../../i18n/es.ts'
 import { readAudioPrefs } from '../audio/audioPrefs.ts'
 import { NowPlayingDisc } from '../audio/NowPlayingDisc.tsx'
 import { coverToLoad } from '../audio/nowPlaying.ts'
-import { EnlargeableVideo } from '../content/EnlargeableVideo.tsx'
+import { VideoFrame } from '../content/VideoFrame.tsx'
 import { useVideoPanelWidth } from '../content/useVideoPanelWidth.ts'
 import { resolveImageUrl } from '../course-map/data/assets.ts'
 import type { MapWelcome } from '../course-map/data/types.ts'
@@ -267,7 +267,7 @@ const WelcomeCurtain = ({
               <h1 id="welcome-title" className="sr-only">
                 {title}
               </h1>
-              <EnlargeableVideo
+              <VideoFrame
                 src={src}
                 title={text.videoTitle}
                 frameRef={frameRef}

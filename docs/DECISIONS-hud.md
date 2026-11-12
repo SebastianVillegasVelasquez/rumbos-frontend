@@ -407,20 +407,21 @@ picture-in-picture`: `encrypted-media` is gone (the embeds play without it, and 
   pins both strings.
 - **Branch base:** this work builds on `feat/curtain-fullscreen-audio-resilience`, not `main`,
   because the curtain's fullscreen button and its helpers only exist there.
-- **"Ampliar video" fills the app's viewport instead of computing an aspect ratio.** The app
-  does not know a video's ratio (per-video ratio settings are out of scope), so the enlarged
-  panel gives the player the whole viewport and the player letterboxes itself: a square or
-  vertical video ends up limited by height, a 16:9 one by width. The iframe stays in the same
-  place in the React tree (only its wrapper changes class), so the video keeps playing.
-- **"Ampliar video" placement:** under the video, next to "Saltar" in the curtain and at the
-  left under the video in a block, never in the top-right. Enlarged, "Reducir" sits at the
-  top-left in a strip above the player; with the host in fullscreen the strip is 56 px high so
-  the host's exit corner does not cover the player's own top-right buttons. Escape also
-  restores (captured, so a dialog around the video stays open) and focus returns to
-  "Ampliar video". The button is shown always, native fullscreen or not, and is the fallback
-  when the host's iframe does not delegate `fullscreen`.
-- **Enlarged panel focus:** it is `role="dialog"` with its own label but no extra focus trap
-  beyond the curtain's; Tab from inside the player can reach the page behind a video block.
+- **"Ampliar video" was removed, from the curtain and from the video blocks** (root cause
+  below). The shared component is now `content/VideoFrame.tsx`: an iframe in a box the caller
+  sizes plus an optional row of actions. Fullscreen is the player's own button (the iframe
+  attributes delegate it); the host's fullscreen button stays in the curtain.
+- **Root cause of the tiny enlarged box (reproduced in Playwright's Chromium and WebKit by
+  pressing the button, at 1100x240 up to 1800x1100).** The enlarged wrapper was
+  `position: fixed; inset: 0`, but it sat inside the curtain's column, which carries
+  `animation: welcome-in 450ms ease-out both`. With `fill-mode: both` the animation keeps
+  applying `transform` after it ends (`matrix(1,0,0,1,0,0)`), and an element with a transform
+  is the containing block of its fixed descendants. So `inset: 0` resolved against the 672x32
+  column, not the viewport, and the player got only its floor, `min-h-[158px]`: a 656x158
+  strip. Control runs with the animation absent (reduced motion, or the class removed) gave
+  1440x800 with a 1424x732 player. Reduced-motion and data-saver viewers never saw it. **Rule
+  for later: never put a `position: fixed` element under `.welcome-in`.** The earlier
+  "Ampliar video keeps the 280x158 floor" decision below no longer applies.
 
 ## Export, import and the teacher heat map
 
@@ -475,9 +476,6 @@ picture-in-picture`: `encrypted-media` is gone (the embeds play without it, and 
 - **The reserved height is 160 px** (column padding 32, gap and button row 64, footer
   56), not the old unexplained 150. In video mode the column's padding drops from 56 to
   16 px and the footnote is hidden; the title and message were already hidden.
-- **"Ampliar video"** keeps the same floor (280x158) and scrolls when the viewport is
-  smaller. It fills the viewport by CSS, so a resize or a host fullscreen change needs
-  no new measurement.
 - **"Empezar viaje" sits next to "Saltar" during the video.** Before, the only way in
   while the video was up was "Saltar" and then a second click. It stays in every state.
   The music toggle stays out of video mode as before (it is set before the click).
