@@ -5,6 +5,7 @@ import {
   nextVideoLoad,
   playbackOf,
   playerUrl,
+  signalOf,
   subscribeMessages,
   type VideoLoad,
 } from './videoPlayer.ts'
@@ -88,4 +89,28 @@ describe('nextVideoLoad', () => {
   ]
   for (const [from, event, to] of cases)
     it(from + ' + ' + event + ' = ' + to, () => assert.equal(nextVideoLoad(from, event), to))
+})
+
+describe('signalOf', () => {
+  const cases: Array<[string, 'youtube' | 'vimeo', unknown, string | null]> = [
+    ['YouTube ready', 'youtube', '{"event":"onReady"}', 'ready'],
+    ['YouTube error', 'youtube', { event: 'onError', info: 150 }, 'error'],
+    ['YouTube playing', 'youtube', '{"event":"onStateChange","info":1}', 'playing'],
+    ['YouTube ended', 'youtube', '{"event":"infoDelivery","info":{"playerState":0}}', 'ended'],
+    ['YouTube unrelated', 'youtube', '{"event":"initialDelivery","info":{}}', null],
+    ['Vimeo ready', 'vimeo', '{"event":"ready","player_id":"x"}', 'ready'],
+    ['Vimeo play', 'vimeo', { event: 'play' }, 'playing'],
+    ['Vimeo finish', 'vimeo', { event: 'finish' }, 'ended'],
+    ['Vimeo error', 'vimeo', '{"event":"error","data":{"message":"x"}}', 'error'],
+    ['a YouTube event on Vimeo is nothing', 'vimeo', '{"event":"onReady"}', null],
+    ['a Vimeo event on YouTube is nothing', 'youtube', '{"event":"ready"}', null],
+    ['not JSON', 'youtube', 'hello', null],
+    ['a number', 'vimeo', 7, null],
+  ]
+  for (const [name, provider, data, expected] of cases)
+    it(name, () => assert.equal(signalOf(provider, data), expected))
+
+  it('asks Vimeo to report errors too', () => {
+    assert.ok(subscribeMessages('vimeo').join(' ').includes('error'))
+  })
 })

@@ -28,7 +28,7 @@ export const subscribeMessages = (provider: VideoProvider): string[] =>
         JSON.stringify({ event: 'listening', id: 1, channel: 'widget' }),
         JSON.stringify({ event: 'command', func: 'addEventListener', args: ['onStateChange'] }),
       ]
-    : ['finish', 'play', 'pause'].map((value) =>
+    : ['finish', 'play', 'pause', 'error'].map((value) =>
         JSON.stringify({ method: 'addEventListener', value })
       )
 
@@ -90,7 +90,32 @@ export const playbackOf = (provider: VideoProvider, data: unknown): Playback | n
   return typeof state === 'number' ? (YOUTUBE_STATES[state] ?? null) : null
 }
 
-// How long after the click the iframe may take to fire its load event.
+// Everything a player may tell us, for the welcome flow: it needs the start
+// signal (ready or play) and the error, not only the playback state.
+export type VideoSignal = 'ready' | 'playing' | 'paused' | 'ended' | 'error'
+
+// Written from the providers documentation, with no SDK:
+// - YouTube (enablejsapi=1): `onReady`, `onStateChange` (info: playerState),
+//   `infoDelivery` (info.playerState) and `onError` (info: error code).
+// - Vimeo: `ready`, `play`, `pause`, `finish` and `error`, the last four only
+//   after addEventListener (see subscribeMessages).
+export const signalOf = (provider: VideoProvider, data: unknown): VideoSignal | null => {
+  const message = asObject(data)
+  if (!message) return null
+  if (provider === 'vimeo') {
+    if (message.event === 'ready') return 'ready'
+    if (message.event === 'error') return 'error'
+  } else {
+    if (message.event === 'onReady') return 'ready'
+    if (message.event === 'onError') return 'error'
+  }
+  return playbackOf(provider, data)
+}
+
+// How long after the click the iframe may take to give a start signal (ready or
+// play) or fire its load event. ONE constant for the curtain and the welcome flow:
+// when it passes without a start signal the video counts as not working (the flow
+// then offers its way out). It never limits how long a working video plays.
 export const VIDEO_LOAD_TIMEOUT_MS = 10_000
 
 export type VideoLoad = 'loading' | 'loaded' | 'failed'
