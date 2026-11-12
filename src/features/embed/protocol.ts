@@ -1,5 +1,5 @@
 // The postMessage protocol between the Moodle plugin (host page) and this app
-// (the iframe). Contract v5 to v5.7, always `v: 1`. Everything crossing the boundary
+// (the iframe). Contract v5 to v5.8, always `v: 1`. Everything crossing the boundary
 // is untrusted: incoming messages are parsed by hand-written guards that
 // either return a clean, size-bounded value or null (ignore the message).
 // Host-provided text is plain text: it is only ever rendered as a React text
@@ -140,7 +140,57 @@ export interface HostStatsMessage {
   error: HostStatsError | null
 }
 
+// Contract v5.8: the progress of the viewer through the welcome flow of a map,
+// kept by Moodle. The app never sends progress anywhere else.
+export type FlowMethod = 'completed' | 'fallback' | 'unavailable'
+
+export interface FlowProgressItem {
+  stepKey: string
+  revision: number
+  method: FlowMethod
+  // ISO-8601 UTC.
+  completedAt: string
+}
+
+export type FlowProgressError = 'readonly' | 'unavailable'
+
+export type HostFlowProgressMessage = {
+  type: 'rumbos:host-flow-progress'
+  v: 1
+  mapId: string
+} & (
+  | {
+      items: FlowProgressItem[]
+      // False: Moodle does not keep it (a guest, a preview): memory only.
+      persistent: boolean
+      config: { quizThreshold: number }
+      error?: undefined
+    }
+  | { error: FlowProgressError; items?: undefined }
+)
+
+// What Moodle says about the attempts of the viewer at a quiz. A hidden grade
+// arrives as percent null and passedThreshold null: a neutral result.
+export interface QuizResult {
+  attempts: number
+  finishedAttempts: number
+  inProgress: boolean
+  percent: number | null
+  pendingGrading: boolean
+  passedThreshold: boolean | null
+}
+
+export type QuizResultError = 'not_found' | 'unavailable' | 'capability'
+
+export type HostQuizResultMessage = {
+  type: 'rumbos:host-quiz-result'
+  v: 1
+  cmid: number
+} & ({ result: QuizResult; error?: undefined } | { error: QuizResultError; result?: undefined })
+
 export type HostMessage =
+  | HostFlowProgressMessage
+  | HostQuizResultMessage
   | HostStatsMessage
   | HostInitMessage
   | HostStateMessage
@@ -208,6 +258,20 @@ export type AppMessage =
   // Contract v5.7, editor mode only: ask for the course's completion counts,
   // for one group when `groupId` is given.
   | { type: 'rumbos:request-stats'; v: 1; groupId?: number }
+  // Contract v5.8, the welcome flow. request-flow-progress and flow-step-done
+  // are answered with a host-flow-progress; flow-reset is editor mode only and
+  // resets the own progress of the current user on that map.
+  | { type: 'rumbos:request-flow-progress'; v: 1; mapId: string }
+  | {
+      type: 'rumbos:flow-step-done'
+      v: 1
+      mapId: string
+      stepKey: string
+      revision: number
+      method: FlowMethod
+    }
+  | { type: 'rumbos:request-quiz-result'; v: 1; cmid: number }
+  | { type: 'rumbos:flow-reset'; v: 1; mapId: string }
 
 export type NoContentReason = 'no_saved_map' | 'empty_map'
 
@@ -222,6 +286,19 @@ export const clampAspectRatio = (ratio: number): number | null =>
 // What actually crosses the boundary: error codes are mapped to the wire set
 // and the detail is cut to plain text of at most 200 characters.
 export const toWireMessage = (message: AppMessage): unknown => {
+  // The flow messages carry ids only, never anything typed by the viewer; a
+  // value that does not fit the contract is not sent.
+  if (message.type === 'rumbos:request-flow-progress' || message.type === 'rumbos:flow-reset')
+    return isMapId(message.mapId) ? message : null
+  if (message.type === 'rumbos:flow-step-done')
+    return isMapId(message.mapId) &&
+      isStepKey(message.stepKey) &&
+      isRevision(message.revision) &&
+      FLOW_METHODS.includes(message.method)
+      ? message
+      : null
+  if (message.type === 'rumbos:request-quiz-result')
+    return isPositiveId(message.cmid) ? message : null
   if (message.type === 'rumbos:request-stats') {
     return message.groupId !== undefined && isId(message.groupId)
       ? message
@@ -251,6 +328,20 @@ const isId = (value: unknown): value is number =>
   typeof value === 'number' && Number.isSafeInteger(value) && value >= 0
 
 const isPositiveId = (value: unknown): value is number => isId(value) && value > 0
+
+// Limits of the plugin (v5.8): step keys [A-Za-z0-9_-]{1,16}, revisions
+// 0..1000000. A map id is an opaque id of the backend.
+const isMapId = (value: unknown): value is string =>
+  typeof value === 'string' && /^[A-Za-z0-9_-]{1,64}$/.test(value)
+const isStepKey = (value: unknown): value is string =>
+  typeof value === 'string' && /^[A-Za-z0-9_-]{1,16}$/.test(value)
+const isRevision = (value: unknown): value is number =>
+  typeof value === 'number' && Number.isInteger(value) && value >= 0 && value <= 1_000_000
+const FLOW_METHODS: readonly string[] = ['completed', 'fallback', 'unavailable']
+// 2026-01-31T12:00:00Z or with fractional seconds; UTC only.
+const ISO_UTC = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,6})?Z$/
+const MAX_FLOW_ITEMS = 100
+const MAX_QUIZ_COUNT = 100_000
 
 // Drops control characters (keeps tab and newline) and caps the length, so a
 // hostile or buggy host cannot flood the UI. The result is still just text.
@@ -419,6 +510,34 @@ const parseCourseName = (value: unknown): string | null => {
   return name ? name : null
 }
 
+const parseFlowItem = (value: unknown): FlowProgressItem | null =>
+  isRecord(value) &&
+  isStepKey(value.stepKey) &&
+  isRevision(value.revision) &&
+  typeof value.method === 'string' &&
+  FLOW_METHODS.includes(value.method) &&
+  typeof value.completedAt === 'string' &&
+  ISO_UTC.test(value.completedAt)
+    ? {
+        stepKey: value.stepKey,
+        revision: value.revision,
+        method: value.method as FlowMethod,
+        completedAt: value.completedAt,
+      }
+    : null
+
+const parseQuizResult = (value: unknown): QuizResult | null => {
+  if (!isRecord(value)) return null
+  const { attempts, finishedAttempts, inProgress, percent, pendingGrading, passedThreshold } = value
+  if (!isId(attempts) || !isId(finishedAttempts)) return null
+  if (attempts > MAX_QUIZ_COUNT || finishedAttempts > attempts) return null
+  if (typeof inProgress !== 'boolean' || typeof pendingGrading !== 'boolean') return null
+  if (percent !== null && !(typeof percent === 'number' && percent >= 0 && percent <= 100))
+    return null
+  if (passedThreshold !== null && typeof passedThreshold !== 'boolean') return null
+  return { attempts, finishedAttempts, inProgress, percent, pendingGrading, passedThreshold }
+}
+
 export const parseHostMessage = (data: unknown): HostMessage | null => {
   if (!isRecord(data) || data.v !== EMBED_PROTOCOL_VERSION) return null
   switch (data.type) {
@@ -456,6 +575,33 @@ export const parseHostMessage = (data: unknown): HostMessage | null => {
       return typeof data.open === 'boolean'
         ? { type: 'rumbos:host-overlay', v: 1, open: data.open }
         : null
+    case 'rumbos:host-flow-progress': {
+      if (!isMapId(data.mapId)) return null
+      if (data.error === 'readonly' || data.error === 'unavailable')
+        return { type: 'rumbos:host-flow-progress', v: 1, mapId: data.mapId, error: data.error }
+      if (data.error !== undefined && data.error !== null) return null
+      if (typeof data.persistent !== 'boolean' || !isRecord(data.config)) return null
+      const threshold = data.config.quizThreshold
+      if (!isId(threshold) || threshold > 100) return null
+      const items = parseList(data.items, MAX_FLOW_ITEMS, parseFlowItem)
+      if (!items) return null
+      return {
+        type: 'rumbos:host-flow-progress',
+        v: 1,
+        mapId: data.mapId,
+        items,
+        persistent: data.persistent,
+        config: { quizThreshold: threshold },
+      }
+    }
+    case 'rumbos:host-quiz-result': {
+      if (!isPositiveId(data.cmid)) return null
+      if (data.error === 'not_found' || data.error === 'unavailable' || data.error === 'capability')
+        return { type: 'rumbos:host-quiz-result', v: 1, cmid: data.cmid, error: data.error }
+      if (data.error !== undefined && data.error !== null) return null
+      const result = parseQuizResult(data.result)
+      return result ? { type: 'rumbos:host-quiz-result', v: 1, cmid: data.cmid, result } : null
+    }
     case 'rumbos:host-stats': {
       if (data.error === 'capability' || data.error === 'unavailable')
         return { type: 'rumbos:host-stats', v: 1, stats: null, error: data.error }

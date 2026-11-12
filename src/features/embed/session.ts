@@ -10,6 +10,7 @@ import { describeHttpFailure, REASONS } from './errorReason.ts'
 import { reportToHost, type FailureKind } from './escalation.ts'
 import { startReadyRetry } from './readyRetry.ts'
 import { setHostOverlayOpen } from './hostOverlay.ts'
+import { clearHostFlow, setHostFlowProgress, setHostQuizResult } from './hostFlow.ts'
 import { clearHostStats, setHostStatsResult } from './hostStats.ts'
 import type { EmbedErrorCode, HostInitMessage, HostMessage, HostMode } from './protocol.ts'
 
@@ -194,6 +195,13 @@ export const createEmbedSession = (bridge: HostBridge): EmbedSession => {
         // Counts are for the editor's UI only; a student session drops them.
         if (identity?.role === 'editor' && hostMode === 'editor') setHostStatsResult(message)
         return
+      case 'rumbos:host-flow-progress':
+        // Contract v5.8; like the other host state, only once launched.
+        if (identity) setHostFlowProgress(message)
+        return
+      case 'rumbos:host-quiz-result':
+        if (identity) setHostQuizResult(message)
+        return
       case 'rumbos:host-launch':
         // Only an answer to our own request-launch counts.
         if (relaunchWaiter) {
@@ -229,6 +237,7 @@ export const createEmbedSession = (bridge: HostBridge): EmbedSession => {
         setHostFullscreen(false)
         setHostOverlayOpen(false)
         clearHostStats()
+        clearHostFlow()
         initHandled = false
         identity = null
         phase = { name: 'connecting' }

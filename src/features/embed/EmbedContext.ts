@@ -1,6 +1,6 @@
 import { createContext, useContext } from 'react'
 import type { AuthRole } from '../course-map/data/types.ts'
-import type { HostMode, NoContentReason } from './protocol.ts'
+import type { FlowMethod, HostMode, NoContentReason } from './protocol.ts'
 
 // Present only under the /embed route; null means the standalone app.
 export interface EmbedContextValue {
@@ -26,6 +26,14 @@ export interface EmbedContextValue {
   // Contract v5.7, editor mode: ask the host for completion counts (optionally
   // for one group). Does nothing in a student session.
   requestStats: (groupId?: number) => void
+  // Contract v5.8, the welcome flow. The progress lives in Moodle: these only
+  // ask and tell, and a host that predates v5.8 ignores them (the player then
+  // falls back to its local flag after a timeout).
+  requestFlowProgress: (mapId: string) => void
+  reportFlowStepDone: (mapId: string, stepKey: string, revision: number, method: FlowMethod) => void
+  requestQuizResult: (cmid: number) => void
+  // Editor mode only: resets the own progress of the current user on that map.
+  resetFlowProgress: (mapId: string) => void
 }
 
 export const EmbedContext = createContext<EmbedContextValue | null>(null)
