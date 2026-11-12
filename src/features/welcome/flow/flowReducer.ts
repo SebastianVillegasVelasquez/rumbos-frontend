@@ -1,5 +1,9 @@
 import type { WelcomeStep, WelcomeStepType } from '../../course-map/data/types.ts'
 import type { FlowMethod, FlowProgressItem, QuizResult } from '../../embed/protocol.ts'
+
+// What the flow needs of a progress record: the host also sends when it was
+// completed, a local flag does not.
+export type ProgressEntry = Omit<FlowProgressItem, 'completedAt'>
 import {
   initialVideoState,
   takeVideoFallback,
@@ -90,7 +94,7 @@ const firstPending = (steps: FlowStepInfo[], done: FlowState['done']): number =>
   return index
 }
 
-export const doneFromProgress = (items: readonly FlowProgressItem[]): FlowState['done'] => {
+export const doneFromProgress = (items: readonly ProgressEntry[]): FlowState['done'] => {
   const done: FlowState['done'] = {}
   for (const item of items) {
     const previous = done[item.stepKey]
@@ -107,7 +111,7 @@ export const isFlowComplete = (steps: FlowStepInfo[], done: FlowState['done']): 
 
 export const createFlowState = (
   steps: FlowStepInfo[],
-  items: readonly FlowProgressItem[],
+  items: readonly ProgressEntry[],
   mode: FlowMode
 ): FlowState => {
   const done = mode === 'normal' ? doneFromProgress(items) : {}
@@ -229,7 +233,7 @@ export type FlowEvent =
   | { type: 'goto'; index: number }
   // Progress that arrives after the flow started (a late host answer): it can
   // only add completions, never undo one.
-  | { type: 'progress'; items: readonly FlowProgressItem[] }
+  | { type: 'progress'; items: readonly ProgressEntry[] }
   // A review, a preview or a finished flow closed: the player can unmount.
   | { type: 'close' }
 
@@ -341,7 +345,7 @@ export const newCompletions = (previous: FlowState, next: FlowState): NewComplet
 
 // What the host must remember about a finished flow: complete when every
 // mandatory step is done, or (no mandatory step) the last step has its mark.
-export const isComplete = (steps: FlowStepInfo[], items: readonly FlowProgressItem[]): boolean => {
+export const isComplete = (steps: FlowStepInfo[], items: readonly ProgressEntry[]): boolean => {
   const done = doneFromProgress(items)
   if (steps.some((step) => step.mandatory)) return isFlowComplete(steps, done)
   const last = steps[steps.length - 1]
