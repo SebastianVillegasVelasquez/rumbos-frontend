@@ -622,3 +622,37 @@ picture-in-picture`: `encrypted-media` is gone (the embeds play without it, and 
 - **The diag video probe may post one message.** The read-only test for `?diag=1` now
   allows `postMessage` in `VideoEventProbe.tsx` only, to the player origin, after the
   click: YouTube and Vimeo send events only once the embedder subscribes.
+
+## Welcome flow editor (branch feat/welcome-editor)
+
+- **Stacked on `feat/welcome-flow`.** It needs the flow types, validation and player. If
+  that branch is squash-merged, rebase with `git rebase --onto main <tip of feat/welcome-flow>`.
+- **Feature detection by `welcomeDocuments`.** ASSUMPTION: a backend that supports flows
+  always returns `welcomeDocuments` (an array, possibly empty) on map reads. When it is
+  absent, the tab is the old Bienvenida form and offers no conversion; sending `steps`
+  to such a backend would be refused. Replace with the real signal once `/openapi.json`
+  exists.
+- **Legacy maps keep their form until the author converts.** "Convertir en pasos" runs
+  `convertLegacyToSteps` (message and video become steps, the legacy fields are cleared
+  because the backend refuses both at once). Nothing converts by itself.
+- **The reset button lives in the flow tab, not a settings popover.** The app has no
+  settings popover; the studio tab is where an editor looks for it. It is shown only
+  inside Moodle (the progress lives there) and says, before the click, that Moodle only
+  allows it with editing mode on. A `readonly` answer is reported in text.
+- **The import to-do is derived, not stored.** `flow_quiz_unlinked` and `document_dropped`
+  are computed from the flow (a quiz step with no cmid, a pdf step with no servable
+  document), so they also catch a step left unlinked by hand and clear themselves when
+  fixed. The import wizard additionally words the two warning codes.
+- **The welcome step has no "obligatorio" checkbox.** It is a message with one button; its
+  completion is the press. Other steps start mandatory when the editor creates them.
+- **Duplicating resets the revision to 1** and gives a new key: a copy is a new step for
+  progress purposes. A welcome step is never duplicated (only one, only first).
+- **The secure-window warning is fixed text on every quiz step**, shown whether or not a
+  quiz is linked (the editor cannot know the quiz setting).
+- **PDF picker lists the tenant's documents** and uploads through the generic asset
+  endpoint with `kind=document`; the rights declaration must be ticked before the file
+  is sent, and the confidentiality warning is always visible there.
+- **HTML starter templates** are plain markup inside the allowed tags and are tested to
+  pass the same validation as author text.
+- **Embed initial JS +2.4 KB** (308.6 -> 311.0 KB): only the Spanish strings, which live in
+  the dictionary; the editor stays in the lazy studio chunk.

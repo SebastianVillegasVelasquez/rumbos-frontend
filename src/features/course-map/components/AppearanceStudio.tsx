@@ -7,7 +7,7 @@ import { SegmentedControl } from '../../../components/ui/SegmentedControl.tsx'
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog.tsx'
 import { SkinStudio } from './SkinStudio.tsx'
 import { AUDIO_LIBRARY_PARAMS } from '../../audio/editor/audioErrors.ts'
-import { WelcomeTab } from '../../welcome/editor/WelcomeTab.tsx'
+import { FlowTab } from '../../welcome/editor/FlowTab.tsx'
 import { ApiError } from '../data/client.ts'
 import { MusicTab } from '../../audio/editor/MusicTab.tsx'
 import { View3dTab } from '../../view3d/editor/View3dTab.tsx'
@@ -155,7 +155,9 @@ export const AppearanceStudio = ({
                     : 'border-hair bg-surface font-bold text-ink-soft hover:bg-primary-tint hover:text-ink'
                 }`}
               >
-                {es.studio.tabs[t]}
+                {t === 'welcome' && courseMap.welcomeDocuments !== undefined
+                  ? es.studio.flow.tab
+                  : es.studio.tabs[t]}
               </button>
             ))}
         </div>
@@ -197,12 +199,15 @@ export const AppearanceStudio = ({
           <MusicTab settings={settings} onChange={setSettings} />
         )}
         {tab === 'welcome' && welcomeSupported && (
-          <WelcomeTab
+          <FlowTab
             settings={settings}
             onChange={setSettings}
+            mapId={courseMap.id}
             mapTitle={courseMap.title}
             imageUrl={courseMap.imageUrl}
             hasMusic={Boolean(settings.audio)}
+            activities={activities}
+            documents={courseMap.welcomeDocuments}
           />
         )}
       </div>

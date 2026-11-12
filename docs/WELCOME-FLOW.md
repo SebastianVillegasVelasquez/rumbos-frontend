@@ -137,3 +137,21 @@ PDF page limit (200).
 - Real Mac (Safari and Chrome) and an iPhone: YouTube and Vimeo ready/play/ended (use
   `?diag=1`), autoplay, fullscreen, the PDF viewer and "Abrir documento".
 - The contract against the real `/openapi.json` once it exists.
+
+## The editor
+
+The studio tab "Flujo de bienvenida" (replacing "Bienvenida" on a backend with flows):
+
+- Add, duplicate, delete and move steps with buttons (so the keyboard works). The
+  welcome step is always first and unique; at most 12 steps and 3 quizzes.
+- A form per type. HTML has starter templates (Reglas, Acuerdo, Instrucciones) and a live
+  preview in the same sandboxed frame students get. PDF needs the rights declaration and
+  warns about confidentiality. The quiz picker lists the course quizzes, has a
+  "Sin vincular" state, and always shows the secure-window warning.
+- "Pedir de nuevo a quienes ya lo completaron" raises the step revision.
+- "Probar el flujo" runs the player in preview mode: nothing is saved, nothing is asked
+  of the host.
+- Problems found by the client mirror of the backend validation are shown by step and
+  block nothing by themselves; the backend answer wins.
+- "Reiniciar mi progreso de bienvenida" (inside Moodle only) resets the editor's own
+  progress, and only works with Moodle editing mode on.
