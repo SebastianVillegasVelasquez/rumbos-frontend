@@ -24,10 +24,21 @@ and the video iframe in every cell of a matrix and fails when either is under
 - with a stand-in provider (a 300x150 intrinsic page, a page asking for 2400 px of
   height) and with the provider blocked.
 
-Also covered: the curtain scrolls instead of squeezing, "Ampliar video" never goes
-below the minimum, "Empezar viaje" is visible and reachable by keyboard at 360x640
+Also covered: the curtain scrolls instead of squeezing, there is no "Ampliar video"
+button, "Empezar viaje" is visible and reachable by keyboard at 360x640
 (video loading, loaded and blocked), the load-failure message, `?debug=layout`
 and `?diag=1` (which must make no request).
+
+## The curtain's music control
+
+`e2e/curtain-music.spec.ts` runs in both engines against the real audio session. Autoplay
+policies make real playback unreliable in CI, so `e2e/audioStub.ts` stubs the media
+element (`play`, `pause`, `load`, `paused`, `src`): a test asserts what the session asked
+the element to do, not what a browser would let through. It covers: a click on the switch
+does not start the music, off stays off at the button, on starts at the button, the disc
+and the title are one switch, Space and Enter, the video hold and its release on skip,
+switching while music plays, the HUD control agreeing afterwards, and a click that
+arrives before the lazy audio chunk.
 
 ## How the cells are made
 

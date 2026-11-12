@@ -6,7 +6,7 @@ import { isAssetPath, resolveImageUrl } from '../course-map/data/assets.ts'
 import type { Block } from './contentTypes.ts'
 import { isHttpsUrl } from './validateContent.ts'
 import { videoEmbedUrl } from './video.ts'
-import { EnlargeableVideo } from './EnlargeableVideo.tsx'
+import { VideoFrame } from './VideoFrame.tsx'
 import { videoPlaceholder } from './videoPlaceholder.ts'
 
 // Blocks are data. Every string below reaches the page as a React text node or
@@ -22,11 +22,10 @@ const VideoBlock = ({ block }: { block: Extract<Block, { type: 'video' }> }) => 
   return (
     <figure className="border-soft overflow-hidden rounded-md bg-surface-muted">
       {loaded ? (
-        <EnlargeableVideo
+        <VideoFrame
           src={src}
           title={text.videoFrameTitle(block.title)}
           frameClassName="relative aspect-video w-full"
-          actionsClassName="flex justify-start p-2"
         />
       ) : (
         <div className="relative aspect-video w-full">

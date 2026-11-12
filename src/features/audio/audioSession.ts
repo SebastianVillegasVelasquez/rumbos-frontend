@@ -189,6 +189,9 @@ const autostartAllowed = () =>
 // First user activation anywhere on the page.
 const GESTURES = ['pointerup', 'touchend', 'click', 'keydown'] as const
 const onGesture = () => {
+  // The waiting welcome curtain is not the start: its own button is, and it
+  // calls startFromGesture. Keep listening for a later gesture.
+  if (state.curtainWaiting) return
   GESTURES.forEach((name) => document.removeEventListener(name, onGesture, true))
   dispatch({ type: 'gesture', autostart: autostartAllowed() })
 }
@@ -258,14 +261,19 @@ export const audioSession = {
   },
 
   // The curtain's "Sin música" switch: the viewer's mute, remembered, which
-  // wins over the editor's setting. Called from a click, so it may start the
-  // music when the viewer turns it back on.
+  // wins over the editor's setting. `prefs.muted` is the one source of truth:
+  // off stops the music at once (with the usual short fade), on makes it start
+  // at the curtain's button or, if that already happened, resume right away.
   setMuted: (muted: boolean) => {
     prefs = { ...prefs, muted }
     rememberAudioPrefs(prefs, viewerStorage())
-    if (muted && state.wants === true) dispatch({ type: 'toggle' })
-    else if (!muted && state.wants === false) dispatch({ type: 'toggle' })
-    else notify()
+    dispatch({ type: 'mute', muted })
+  },
+
+  // The curtain's life, for the audio rules (see audioState.ts).
+  welcome: (phase: 'waiting' | 'started' | 'closed') => {
+    attach()
+    dispatch({ type: 'welcome', phase })
   },
 
   // The welcome video plays over a track that should not talk across it.

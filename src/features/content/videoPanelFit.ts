@@ -10,7 +10,7 @@ export const PANEL_RATIO = 16 / 9
 export const PANEL_MIN_WIDTH = 280
 export const PANEL_MIN_HEIGHT = 158
 // Height the curtain keeps for what is around the panel in video mode: the
-// column's padding (32), the gap and the row with "Ampliar video" (64) and the
+// column's padding (32), the gap and the row with "Saltar" and "Empezar viaje" (64) and the
 // footer with the fullscreen button (56), rounded up. Keep in sync with
 // --video-reserve in styles/video-panel.css.
 export const PANEL_RESERVE_PX = 160

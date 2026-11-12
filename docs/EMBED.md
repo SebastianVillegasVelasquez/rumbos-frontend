@@ -346,7 +346,11 @@ and without the window in macOS fullscreen:
   strip; compare the panel size in the diagnostic panel with what you see.
 - Autoplay: does the video start by itself after the click? If not, is the player's own play
   button visible and usable, and is "Empezar viaje" still there? Does the music come back?
-- The player's own fullscreen button, "Ampliar video" and "Reducir", and Escape.
+- The curtain's music switch (disc, title and state are one control) in Safari and in Chrome:
+  off before the button gives silence; on gives music at the button (or, with the video, as
+  soon as it ends or is skipped); never music and video together; the HUD's music button
+  shows the same state after the curtain.
+- The player's own fullscreen button and Escape (there is no "Ampliar video" any more).
 - The curtain's "Pantalla completa" (the host's fullscreen) with the video up, and coming back.
 - Keyboard: Tab reaches "Saltar" and "Empezar viaje".
 

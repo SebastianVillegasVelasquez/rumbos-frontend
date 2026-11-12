@@ -407,20 +407,21 @@ picture-in-picture`: `encrypted-media` is gone (the embeds play without it, and 
   pins both strings.
 - **Branch base:** this work builds on `feat/curtain-fullscreen-audio-resilience`, not `main`,
   because the curtain's fullscreen button and its helpers only exist there.
-- **"Ampliar video" fills the app's viewport instead of computing an aspect ratio.** The app
-  does not know a video's ratio (per-video ratio settings are out of scope), so the enlarged
-  panel gives the player the whole viewport and the player letterboxes itself: a square or
-  vertical video ends up limited by height, a 16:9 one by width. The iframe stays in the same
-  place in the React tree (only its wrapper changes class), so the video keeps playing.
-- **"Ampliar video" placement:** under the video, next to "Saltar" in the curtain and at the
-  left under the video in a block, never in the top-right. Enlarged, "Reducir" sits at the
-  top-left in a strip above the player; with the host in fullscreen the strip is 56 px high so
-  the host's exit corner does not cover the player's own top-right buttons. Escape also
-  restores (captured, so a dialog around the video stays open) and focus returns to
-  "Ampliar video". The button is shown always, native fullscreen or not, and is the fallback
-  when the host's iframe does not delegate `fullscreen`.
-- **Enlarged panel focus:** it is `role="dialog"` with its own label but no extra focus trap
-  beyond the curtain's; Tab from inside the player can reach the page behind a video block.
+- **"Ampliar video" was removed, from the curtain and from the video blocks** (root cause
+  below). The shared component is now `content/VideoFrame.tsx`: an iframe in a box the caller
+  sizes plus an optional row of actions. Fullscreen is the player's own button (the iframe
+  attributes delegate it); the host's fullscreen button stays in the curtain.
+- **Root cause of the tiny enlarged box (reproduced in Playwright's Chromium and WebKit by
+  pressing the button, at 1100x240 up to 1800x1100).** The enlarged wrapper was
+  `position: fixed; inset: 0`, but it sat inside the curtain's column, which carries
+  `animation: welcome-in 450ms ease-out both`. With `fill-mode: both` the animation keeps
+  applying `transform` after it ends (`matrix(1,0,0,1,0,0)`), and an element with a transform
+  is the containing block of its fixed descendants. So `inset: 0` resolved against the 672x32
+  column, not the viewport, and the player got only its floor, `min-h-[158px]`: a 656x158
+  strip. Control runs with the animation absent (reduced motion, or the class removed) gave
+  1440x800 with a 1424x732 player. Reduced-motion and data-saver viewers never saw it. **Rule
+  for later: never put a `position: fixed` element under `.welcome-in`.** The earlier
+  "Ampliar video keeps the 280x158 floor" decision below no longer applies.
 
 ## Export, import and the teacher heat map
 
@@ -475,9 +476,6 @@ picture-in-picture`: `encrypted-media` is gone (the embeds play without it, and 
 - **The reserved height is 160 px** (column padding 32, gap and button row 64, footer
   56), not the old unexplained 150. In video mode the column's padding drops from 56 to
   16 px and the footnote is hidden; the title and message were already hidden.
-- **"Ampliar video"** keeps the same floor (280x158) and scrolls when the viewport is
-  smaller. It fills the viewport by CSS, so a resize or a host fullscreen change needs
-  no new measurement.
 - **"Empezar viaje" sits next to "Saltar" during the video.** Before, the only way in
   while the video was up was "Saltar" and then a second click. It stays in every state.
   The music toggle stays out of video mode as before (it is set before the click).
@@ -507,3 +505,57 @@ picture-in-picture`: `encrypted-media` is gone (the embeds play without it, and 
   keeps working before 16.4 by its own fallbacks (`vh` where there is no `dvh`, the
   padding-top trick where there is no `aspect-ratio`), but the rest of the app is not
   promised there.
+
+## The welcome curtain's music control
+
+- **Root cause (reproduced with the real audio session in Playwright Chromium and WebKit,
+  with the media element stubbed).** The curtain's "Sin música" switch was local
+  `useState`; the audio session, the single owner of `prefs.muted`, only heard about it
+  when the primary button was pressed. Meanwhile the session's own global first-gesture
+  listener (capture phase on `document`) counted the click on the switch as the viewer's
+  first gesture and autostarted the music with `prefs.muted` still false. Measured before
+  the fix: click "Sin música" gave `wants=true playing=true el.paused=false` (it started
+  the music), after the video ended and the music resumed, toggling the switch changed
+  nothing (`playing` stayed true until the primary button), a click on the disc or the
+  title started the music, and a click made before the lazy audio chunk arrived was
+  dropped (nothing stored), so the next click anywhere started music the viewer had
+  switched off. Not the cause: no overlay or `pointer-events` covering it, no `disabled`
+  (only in the editor preview, on purpose), no re-render resetting the state; the HUD
+  and the curtain agreed afterwards because the primary button forced `setMuted`.
+- **`prefs.muted` is the single source of truth.** The switch no longer holds state. It
+  shows `wants`, or, while the viewer has not chosen, what the autostart rule will do at
+  the button (editor's "Iniciar al empezar", data saver, remembered mute). A click calls
+  `audioSession.setMuted`, which stores the mute and dispatches a new `mute` event.
+- **The reducer owns the rules.** New `curtainWaiting` state with a `welcome` event
+  (`waiting`, `started`, `closed`): while the curtain waits for its primary button a
+  gesture neither starts nor decides anything, so no click inside the curtain starts the
+  music; the session's global listener also keeps listening instead of removing itself.
+  `closed` releases the video hold. Audio focus: `held` (the video) and `curtainWaiting`
+  both make `isPlaying` false, so held music and a playing video are never heard
+  together; tests pin every transition, including a noise sequence while held.
+- **Judgment: the viewer's explicit "on" beats the editor's "Iniciar al empezar".** The
+  switch left alone follows the editor and data saver (and then shows "Sin música"); a
+  viewer who turns it on on that very screen gets music at the button. Data saver still
+  blocks the default start only.
+- **Judgment: the disc, the title and the state are one switch.** The disc looked
+  tappable and was not; it is now inside the switch's button (decorative, `aria-hidden`),
+  so there is no dead control. Still a native button: Space and Enter work, `aria-checked`
+  is what a screen reader announces, the track title is its description.
+- **Judgment: "stops immediately" means the fade starts at once.** The 400 ms fade
+  (`fade.ts`) stays so the music never cuts with a click; the element is paused when it
+  ends. The switch changes in the same frame.
+- **A choice that races the lazy chunk is replayed, even if the curtain closes first.**
+  `createCurtainMusic` (framework-free, `welcome/curtainMusic.ts`) remembers what the
+  viewer did and applies it when the session arrives. A start replayed that late is not
+  inside a gesture, so a browser that insists on one will start it at the next click.
+- **No video-mode switch.** The switch stays out of the video phase (the curtain's video
+  mode is dense); the music is held there, and the choice is made before or after.
+- **Test limits, stated plainly.** The repo has no DOM test library and no new
+  dependency was allowed, so the "component test with a fake session" is the controller
+  that carries all of the component's logic, run against a fake session that uses the
+  real reducer and autostart rule (`curtainMusic.test.ts`), plus Playwright
+  (`e2e/curtain-music.spec.ts`, Chromium and WebKit) on the real component. What the
+  Playwright stub fakes (`e2e/audioStub.ts`): `HTMLMediaElement.play`, `pause`, `load`,
+  `paused` and `src` only; nothing is downloaded or decoded, the session, the reducer,
+  the storage and the component are real. Playwright's WebKit has no media codecs, so
+  without neutralising `src` it fires a real `error` and fails the track.

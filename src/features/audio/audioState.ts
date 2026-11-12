@@ -8,6 +8,12 @@
 //   - The viewer's own button always wins afterwards.
 //   - It pauses under a host overlay (an activity popup) and while the tab is
 //     hidden, and resumes when they end, if it was playing.
+//   - The welcome curtain owns the start: until its primary button is pressed
+//     no click (the music switch, the disc, anywhere) starts anything. The
+//     switch itself is the viewer's choice and is applied at once.
+//   - Audio focus: while the welcome video plays the music is held; it comes
+//     back, if the viewer wants it, when the video ends, is skipped, or the
+//     curtain closes. Held music and a playing video are never heard together.
 
 export interface AudioState {
   // What the viewer wants: null until they or an autostart decide.
@@ -19,6 +25,9 @@ export interface AudioState {
   hidden: boolean
   // The welcome video is playing: the music waits for it.
   held: boolean
+  // The welcome curtain is up and its primary button has not been pressed yet:
+  // nothing may start, and the clicks inside the curtain are not the start.
+  curtainWaiting: boolean
   // The control is on screen. Leaving the stage (the level picker) pauses the
   // music without forgetting what the viewer wanted.
   active: boolean
@@ -38,6 +47,13 @@ export type AudioEvent =
   | { type: 'overlay'; open: boolean }
   | { type: 'visibility'; hidden: boolean }
   | { type: 'hold'; held: boolean }
+  // The welcome curtain's life: it is up and waiting for its primary button
+  // ('waiting'), the button was pressed ('started'), or the curtain is gone
+  // ('closed', which also lets go of any video hold).
+  | { type: 'welcome'; phase: 'waiting' | 'started' | 'closed' }
+  // The viewer's own choice on the curtain's switch. It wins over the editor's
+  // autostart setting because the viewer made it on that very screen.
+  | { type: 'mute'; muted: boolean }
   | { type: 'active'; active: boolean }
   | { type: 'failed' }
   // A different track was loaded: forget the failure, keep what the viewer wants.
@@ -49,6 +65,7 @@ export const initialAudioState: AudioState = {
   overlayOpen: false,
   hidden: false,
   held: false,
+  curtainWaiting: false,
   active: false,
   failed: false,
   autostarted: false,
@@ -57,6 +74,8 @@ export const initialAudioState: AudioState = {
 export const audioReducer = (state: AudioState, event: AudioEvent): AudioState => {
   switch (event.type) {
     case 'gesture': {
+      // A click inside the waiting curtain is not the start.
+      if (state.curtainWaiting) return state
       const starts = state.wants === null && event.autostart
       return {
         ...state,
@@ -74,6 +93,14 @@ export const audioReducer = (state: AudioState, event: AudioEvent): AudioState =
       return { ...state, hidden: event.hidden }
     case 'hold':
       return { ...state, held: event.held }
+    case 'welcome':
+      return {
+        ...state,
+        curtainWaiting: event.phase === 'waiting',
+        held: event.phase === 'closed' ? false : state.held,
+      }
+    case 'mute':
+      return { ...state, wants: !event.muted, failed: event.muted ? state.failed : false }
     case 'active':
       return { ...state, active: event.active }
     case 'failed':
@@ -91,6 +118,7 @@ export const isPlaying = (state: AudioState): boolean =>
   !state.overlayOpen &&
   !state.hidden &&
   !state.held &&
+  !state.curtainWaiting &&
   !state.failed
 
 // The button's state: the viewer wants music, even if something is holding it

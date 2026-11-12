@@ -129,15 +129,19 @@ test.describe('video mode on a short viewport', () => {
     expect(scroller.scrollable).toBe(true)
   })
 
-  test('the enlarged player never goes below the minimum size', async ({ page, context }) => {
+  test('there is no "Ampliar video" button; fullscreen is the native player fullscreen', async ({
+    page,
+    context,
+  }) => {
     await routeProvider(context, 'small')
     await openLevel(page)
     await app(page).getByRole('button', { name: 'Reproducir' }).click()
-    await setFrameSize(page, 1100, 240)
-    await app(page).getByRole('button', { name: 'Ampliar video' }).click()
-    const box = await app(page).locator('[role=dialog][aria-label] iframe').boundingBox()
-    expect(box!.width).toBeGreaterThanOrEqual(280)
-    expect(box!.height).toBeGreaterThanOrEqual(158)
+    await expect(app(page).locator('[role=dialog] iframe')).toBeAttached()
+    await expect(app(page).getByRole('button', { name: /Ampliar video|Reducir/ })).toHaveCount(0)
+    // Same single sizing path after a wait longer than the entrance animation.
+    await page.waitForTimeout(700)
+    const p = await probe(page)
+    expect(problem(p), describeProbe(p)).toBeNull()
   })
 })
 
