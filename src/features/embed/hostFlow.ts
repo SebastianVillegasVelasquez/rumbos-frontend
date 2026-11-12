@@ -27,9 +27,10 @@ export type HostQuizView =
 
 let progress = new Map<string, HostFlowProgress>()
 let quizzes = new Map<number, HostQuizView>()
-// How many answers have arrived, of either kind: lets a waiter tell "answered"
-// from "silent" without comparing contents.
-let received = 0
+// How many quiz answers have arrived: lets a waiter tell "answered" from "silent"
+// without comparing contents. Progress answers do not count: the host sends one
+// after every write, which says nothing about whether it answers quiz requests.
+let quizReceived = 0
 const listeners = new Set<() => void>()
 const emit = () => listeners.forEach((listener) => listener())
 
@@ -38,10 +39,9 @@ export const getHostFlowProgress = (mapId: string): HostFlowProgress | null =>
 
 export const getHostQuizView = (cmid: number): HostQuizView | null => quizzes.get(cmid) ?? null
 
-export const getHostFlowReceivedCount = () => received
+export const getHostQuizReceivedCount = () => quizReceived
 
 export const setHostFlowProgress = (message: HostFlowProgressMessage) => {
-  received++
   progress = new Map(progress).set(
     message.mapId,
     message.error !== undefined
@@ -58,7 +58,7 @@ export const setHostFlowProgress = (message: HostFlowProgressMessage) => {
 }
 
 export const setHostQuizResult = (message: HostQuizResultMessage) => {
-  received++
+  quizReceived++
   quizzes = new Map(quizzes).set(
     message.cmid,
     message.error !== undefined

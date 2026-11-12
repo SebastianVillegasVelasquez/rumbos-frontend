@@ -71,3 +71,46 @@ requests that touch `src/**`, `e2e/**` or `index.html`:
   (the browsers are about 150 MB; a warm cache makes the install a few seconds);
 - `pnpm test:e2e`: about 2 minutes locally for both engines;
 - start as non-blocking, and make it required once it has run clean for a while.
+
+## Welcome flow
+
+`e2e/welcome-flow.spec.ts` and `e2e/welcome-flow-more.spec.ts` (Chromium and WebKit) run the
+real player, reducer, persistence and host messages against the mock host, which plays the
+plugin v5.8 side. Only the media element and the provider pages are stubbed. They use
+`?mockStableIds=1` (map ids from a counter) so a reload is the same map; progress is keyed
+by map id. `?mockWelcomeJson=<url-encoded MapWelcome>` loads any flow without the editor.
+
+Covered: every step type and its gating; the host log; review mode writes nothing; a changed
+`revision` and a step added later are asked alone; the local flag for `readonly` and a silent
+host; a guest is memory only; the video way out (provider blocked: not before 10 s, then it
+appears and records `fallback`; player ready: never; player error: at once; option off:
+never); the quiz outcomes (passed, failed, hidden grade, pending grading, not found,
+unavailable, no permission, silent host after 6 s); reduced motion; the fullscreen button;
+controls inside the frame at 360x640, 640x360, 768x1024, 1024x768, 1280x720, 1920x1080.
+`e2e/welcome-editor.spec.ts` covers the editor, `e2e/diag-probe.spec.ts` the video probe.
+
+### What these do not cover
+
+Playwright's WebKit is not Safari: no codecs, no real autoplay policy, no real fullscreen,
+no ITP. The YouTube and Vimeo pages are replaced by pages that post the events, so the real
+providers' events are untested. The PDF viewer is not exercised (no PDF engine in CI).
+
+### By hand, in a real Moodle (plugin v5.8)
+
+- A student: the flow shows, each step gates, the completions are in Moodle, the flow does not
+  come back, and it does after "Pedir de nuevo".
+- A guest and "log in as": nothing is kept; the flow comes back on the next visit.
+- A quiz attempt finished inside the overlay: the result appears after the overlay closes
+  (the race the watcher covers). Also a hidden quiz, a restricted quiz, a hidden grade, and
+  a quiz with a secure window (it must not be linkable in practice).
+- Editor: "Reiniciar mi progreso" with editing mode on and off.
+- 30 writes a minute: finish a 12-step flow quickly and check nothing is lost.
+
+### By hand, on a real Mac (Safari and Chrome) and an iPhone
+
+- Open `?diag=1`, "Probar eventos de video" with a YouTube id and a Vimeo id: the log must show
+  ready, play, pause and ended. Copy it ("Copiar registro") and keep it.
+- A video step: autoplay after the click, fullscreen, ended completes the step, and with the
+  network blocked the way out appears after 10 s.
+- The PDF step: the embedded viewer (needs `/assets` to allow framing) and "Abrir documento".
+- Reduced motion on in the system settings.

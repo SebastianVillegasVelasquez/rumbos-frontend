@@ -23,7 +23,7 @@ import { VideoFrame } from '../../content/VideoFrame.tsx'
 import { useVideoPanelWidth } from '../../content/useVideoPanelWidth.ts'
 import { useEmbed } from '../../embed/EmbedContext.ts'
 import {
-  getHostFlowReceivedCount,
+  getHostQuizReceivedCount,
   getHostQuizView,
   subscribeHostFlow,
 } from '../../embed/hostFlow.ts'
@@ -334,7 +334,7 @@ export const StepQuiz = ({ step, state, dispatch }: StepContext & { step: Welcom
     if (availability !== null || cmid === null || !requestQuizResult) return
     const watcher = createQuizWatcher({
       ask: () => requestQuizResult(cmid),
-      answeredCount: getHostFlowReceivedCount,
+      answeredCount: getHostQuizReceivedCount,
       now: clock,
       schedule: timers,
       onSilent: () => {

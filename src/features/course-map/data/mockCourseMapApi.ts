@@ -103,10 +103,16 @@ const TITLE_MAX = TITLE_MAX_LENGTH
 const CREDIT_MAX = CREDIT_MAX_LENGTH
 const NOTE_MAX = 200
 
+// ?mockStableIds=1: ids come from a counter, so the same seed gives the same ids on
+// every load. Progress is keyed by map id, and a test that reloads the app needs the
+// map to be the same map.
+let idCounter = 0
 const newId = () =>
-  typeof crypto !== 'undefined' && 'randomUUID' in crypto
-    ? crypto.randomUUID()
-    : `mock-${Date.now()}-${Math.random().toString(16).slice(2)}`
+  typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('mockStableIds')
+    ? `00000000-0000-4000-8000-${(++idCounter).toString(16).padStart(12, '0')}`
+    : typeof crypto !== 'undefined' && 'randomUUID' in crypto
+      ? crypto.randomUUID()
+      : `mock-${Date.now()}-${Math.random().toString(16).slice(2)}`
 
 const now = () => new Date().toISOString()
 
