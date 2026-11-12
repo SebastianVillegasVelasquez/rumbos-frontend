@@ -10,6 +10,7 @@ import {
   ASSET_LIMITS,
   ALLOWED_IMAGE_MIME,
   CREDIT_MAX_LENGTH,
+  DOCUMENT_MAX_BYTES,
   TITLE_MAX_LENGTH,
   checkDimensions,
 } from './assetLimits.ts'
@@ -17,6 +18,7 @@ import { canonicalJson, sha256Hex } from './canonicalJson.ts'
 import { DESCRIPTION3D_MAX_LENGTH, TITLE3D_MAX_LENGTH } from './view3dLimits.ts'
 import { DEFAULT_BACKGROUND_URL } from '../../../assets/backgrounds/index.ts'
 import { validateWelcome } from '../../welcome/welcome.ts'
+import { inspectPdf } from './pdfInspect.ts'
 import type { CourseMapApi } from './courseMapApi.ts'
 import type {
   Activity,
@@ -72,6 +74,7 @@ import type {
   View3d,
   View3dBinding,
   Warning,
+  WelcomeDocument,
 } from './types.ts'
 
 // In-memory stand-in for the backend, enabled with VITE_USE_MOCK_API=true so
@@ -166,9 +169,10 @@ const mockWelcomeSeed = (): MapSettings['welcome'] | undefined => {
   }
 }
 
-const mockAssetsOverride = (): 'quota' | 'down' | null => {
+// ?mockAssets=document-missing: the welcome documents report available:false.
+const mockAssetsOverride = (): 'quota' | 'down' | 'document-missing' | null => {
   const value = queryParam('mockAssets')
-  return value === 'quota' || value === 'down' ? value : null
+  return value === 'quota' || value === 'down' || value === 'document-missing' ? value : null
 }
 
 const mockLatency = () => {
@@ -644,6 +648,8 @@ interface MockAsset extends Asset {
   sha256: string
   // Curated by OBJ Digital, global (audio only).
   library?: boolean
+  // Documents only.
+  pageCount?: number
 }
 
 let assets: MockAsset[] = []
@@ -1045,6 +1051,24 @@ const audioInfoOf = (settings: MapSettings): AudioInfo | null => {
   }
 }
 
+// The documents the welcome flow's PDF steps use (contract: welcomeDocuments).
+const welcomeDocumentsOf = (settings: MapSettings): WelcomeDocument[] => {
+  const documents: WelcomeDocument[] = []
+  for (const step of settings.welcome?.steps ?? []) {
+    if (step.type !== 'pdf' || documents.some((item) => item.assetId === step.assetId)) continue
+    const asset = assets.find((item) => item.id === step.assetId && item.kind === 'document')
+    documents.push({
+      assetId: step.assetId,
+      url: asset?.url ?? `/assets/${step.assetId}`,
+      title: asset?.title ?? '',
+      pageCount: asset?.pageCount ?? 0,
+      bytes: asset?.bytes ?? 0,
+      available: asset !== undefined && mockAssetsOverride() !== 'document-missing',
+    })
+  }
+  return documents
+}
+
 const toRead = (map: MockMap): CourseMapRead => ({
   id: map.id,
   title: map.title,
@@ -1057,6 +1081,7 @@ const toRead = (map: MockMap): CourseMapRead => ({
   skinRules: map.skinRules,
   view3d: map.view3d,
   audioInfo: audioInfoOf(map.settings),
+  welcomeDocuments: welcomeDocumentsOf(map.settings),
   bubbles: wireBubbles(map.bubbles),
   revision: map.revision,
   createdAt: map.createdAt,
@@ -1107,6 +1132,7 @@ const toPublishedRead = (map: MockMap, publication: MockPublication): PublishedM
   skinRules: publication.snapshot.skinRules,
   view3d: publication.snapshot.view3d ?? null,
   audioInfo: audioInfoOf(publication.snapshot.settings),
+  welcomeDocuments: welcomeDocumentsOf(publication.snapshot.settings),
   skins: publication.snapshot.skins,
   bubbles: wireBubbles(
     publication.snapshot.bubbles.map((bubble) => ({
@@ -1330,6 +1356,46 @@ const checkCover = (file: Blob) => {
     throw businessError(413, 'cover_too_large', 'La portada pesa más de 2 MB')
   if (!COVER_MIMES.has(file.type))
     throw businessError(422, 'cover_invalid', 'La portada no es una imagen válida')
+}
+
+// POST /assets with kind=document, in the order the contract lists the failures.
+const createDocumentAsset = async ({
+  file,
+  title,
+  rightsDeclared,
+  onProgress,
+}: Pick<
+  AssetCreate,
+  'file' | 'title' | 'rightsDeclared' | 'onProgress'
+>): Promise<AssetCreateResult> => {
+  if (!rightsDeclared)
+    throw businessError(
+      422,
+      'document_rights_declaration_required',
+      'Debes declarar que tienes derecho a usar este documento'
+    )
+  if (file.size > DOCUMENT_MAX_BYTES)
+    throw businessError(413, 'asset_too_large', 'El archivo supera el tamaño máximo permitido')
+  validateAssetMetadata(title, null)
+  const inspection = inspectPdf(new Uint8Array(await file.arrayBuffer()))
+  if (!inspection.ok)
+    throw businessError(422, 'document_invalid', 'El documento no es válido', {
+      reason: inspection.reason,
+    })
+  onProgress?.(1)
+  const digest = await sha256Hex(await file.arrayBuffer())
+  const existing = assets.find((item) => item.kind === 'document' && item.sha256 === digest)
+  if (existing) return { asset: toAsset(existing), created: false }
+  const asset = await storeAsset(file, {
+    kind: 'document',
+    width: 0,
+    height: 0,
+    title: title?.trim() || file.name.replace(/\.[^.]+$/, '').slice(0, TITLE_MAX) || 'Documento',
+    credit: null,
+    originalFilename: file.name || null,
+  })
+  asset.pageCount = inspection.pageCount
+  return { asset: toAsset(asset), created: true }
 }
 
 const createAudioAsset = async ({
@@ -1877,6 +1943,7 @@ const impl: Omit<CourseMapApi, TransferMethods> = {
   }: AssetCreate): Promise<AssetCreateResult> {
     if (kind === 'audio')
       return createAudioAsset({ file, title, credit, license, rightsDeclared, cover, onProgress })
+    if (kind === 'document') return createDocumentAsset({ file, title, rightsDeclared, onProgress })
     const override = mockAssetsOverride()
     if (override === 'down')
       throw businessError(503, 'uploads_disabled', 'Las subidas están deshabilitadas temporalmente')
