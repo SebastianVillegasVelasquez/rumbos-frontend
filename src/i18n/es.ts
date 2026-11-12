@@ -741,6 +741,185 @@ export const es = {
         unreachable: 'No se pudo guardar la bienvenida. Revisa tu conexión.',
       },
     },
+    // The welcome flow editor (the "Flujo de bienvenida" tab).
+    flow: {
+      tab: 'Flujo de bienvenida',
+      title: 'Flujo de bienvenida',
+      intro:
+        'Una secuencia de pasos que tus estudiantes recorren al entrar al mapa: mensaje, video, texto, documento y evaluación.',
+      enable: 'Mostrar el flujo de bienvenida',
+      showLabel: 'Mostrar',
+      showOptions: { first_visit: 'Solo la primera vez', always: 'Cada vez que entre' },
+      convertTitle: 'Usar pasos',
+      convertHint:
+        'Esta bienvenida usa el formato anterior (un mensaje y un video). Puedes convertirla en pasos: tu mensaje y tu video pasan a ser los primeros pasos.',
+      convert: 'Convertir en pasos',
+      empty: 'Todavía no hay pasos. Agrega el primero.',
+      add: 'Agregar paso',
+      types: {
+        welcome: 'Mensaje de bienvenida',
+        video: 'Video',
+        html: 'Texto con formato',
+        pdf: 'Documento PDF',
+        quiz: 'Evaluación de Moodle',
+      },
+      newTitles: {
+        welcome: 'Bienvenida',
+        video: 'Video',
+        html: 'Texto',
+        pdf: 'Documento',
+        quiz: 'Evaluación',
+      },
+      copySuffix: '(copia)',
+      refusals: {
+        too_many: 'Un flujo puede tener hasta 12 pasos.',
+        quiz_too_many: 'Un flujo puede tener hasta 3 evaluaciones.',
+        welcome_exists: 'Ya hay un mensaje de bienvenida; es el primer paso.',
+      },
+      stepLabel: (n: number, type: string, title: string) => `Paso ${n}: ${type}, ${title}`,
+      moveUp: 'Subir paso',
+      moveDown: 'Bajar paso',
+      duplicate: 'Duplicar paso',
+      remove: 'Eliminar paso',
+      removeConfirm: {
+        title: 'Eliminar este paso',
+        description:
+          'Se quita del flujo. Quienes ya lo completaron conservan su avance en Moodle, pero no se volverá a pedir.',
+        confirm: 'Eliminar',
+        cancel: 'Cancelar',
+      },
+      expand: 'Editar',
+      collapse: 'Cerrar',
+      stepTitle: 'Título del paso',
+      mandatory: 'Obligatorio',
+      mandatoryHint:
+        'Obligatorio significa que el botón Continuar espera a que se complete el paso. No es un candado: quien cierre la ventana sigue pudiendo usar el curso. El acceso real lo controlan las restricciones de Moodle.',
+      askAgain: 'Pedir de nuevo a quienes ya lo completaron',
+      askAgainHint:
+        'Sube la versión del paso: quienes lo habían completado lo verán otra vez. Úsalo cuando cambies algo que deban volver a leer.',
+      askAgainDone: (revision: number) => `Se pedirá de nuevo (versión ${revision}).`,
+      revision: (revision: number) => `Versión ${revision}`,
+      welcome: {
+        message: 'Mensaje',
+        buttonLabel: 'Texto del botón (opcional)',
+        buttonHint: 'Si lo dejas vacío dice «Empezar viaje».',
+      },
+      video: {
+        link: 'Video de YouTube o de Vimeo',
+        hint: 'Pega un enlace o solo el código del video.',
+        invalid: 'No reconocemos ese video. Pega un enlace de YouTube o de Vimeo.',
+        found: (provider: string) => `Video de ${provider} reconocido.`,
+        allowFallback: 'Ofrecer «¿Problemas con el video?»',
+        allowFallbackHint:
+          'Si el reproductor no responde, el estudiante podrá continuar sin ver el video.',
+        allowFallbackWarning:
+          'Atención: con esta opción, un estudiante cuyo reproductor falle (o que lo bloquee) puede continuar sin haber visto el video. Se registra como «continuó sin ver».',
+      },
+      html: {
+        template: 'Empezar desde una plantilla',
+        templateNone: 'Elige una plantilla…',
+        templates: { rules: 'Reglas', agreement: 'Acuerdo', instructions: 'Instrucciones' },
+        templateReplace: 'La plantilla reemplaza el texto, el estilo y la casilla de este paso.',
+        html: 'Contenido (HTML)',
+        htmlHint:
+          'Solo etiquetas de texto, listas, tablas e imágenes incrustadas. No se permiten scripts, formularios ni recursos externos.',
+        css: 'Estilo (CSS, opcional)',
+        ack: 'Pedir una casilla de confirmación',
+        ackLabel: 'Texto de la casilla',
+        minSeconds: 'Segundos mínimos antes de continuar',
+        preview: 'Así se verá',
+        sandboxNote:
+          'La vista previa usa el mismo marco aislado que verán tus estudiantes: sin scripts.',
+        sizeUsed: (kb: number, max: number) => `${kb} KB de ${max} KB`,
+      },
+      pdf: {
+        title: 'Documento',
+        choose: 'Elige un documento ya subido',
+        none: 'Sin documento',
+        upload: 'Subir un PDF',
+        uploading: 'Subiendo…',
+        rights: 'Declaro que tengo derecho a usar este documento.',
+        confidentiality:
+          'El documento se podrá abrir desde una dirección que no exige iniciar sesión. No subas documentos confidenciales ni con datos personales.',
+        pages: (count: number) => (count === 1 ? '1 página' : `${count} páginas`),
+        ack: 'Pedir una casilla de confirmación',
+        ackLabel: 'Texto de la casilla',
+        minSeconds: 'Segundos mínimos antes de continuar',
+        missing: 'Este documento ya no está disponible. Elige otro o súbelo de nuevo.',
+        errors: {
+          document_invalid: 'El archivo no es un PDF válido.',
+          not_pdf: 'El archivo no es un PDF.',
+          encrypted:
+            'El PDF está protegido con contraseña. Quita la protección y vuelve a subirlo.',
+          active_content:
+            'El PDF contiene scripts o acciones activas. Expórtalo de nuevo como un PDF simple.',
+          too_many_pages: 'El PDF tiene demasiadas páginas.',
+          corrupt: 'El PDF está dañado.',
+          asset_too_large: 'El archivo supera el tamaño máximo (10 MB).',
+          rights: 'Debes declarar que tienes derecho a usar el documento.',
+          generic: 'No se pudo subir el documento. Inténtalo de nuevo.',
+        },
+      },
+      quiz: {
+        activity: 'Evaluación de Moodle',
+        unlinked: 'Sin vincular',
+        unlinkedHint:
+          'Mientras no vincules una evaluación, este paso no bloquea a nadie y se muestra un aviso.',
+        none: 'Este curso no tiene evaluaciones (quiz) visibles para vincular.',
+        secureWindow:
+          'Las evaluaciones con ventana segura de Moodle no funcionan en este visor: usa una evaluación sin esa opción.',
+        intro: 'Texto antes de empezar (opcional)',
+        outcomeAbove: 'Mensaje si aprueba (opcional)',
+        outcomeBelow: 'Mensaje si no aprueba (opcional)',
+        outcomeHint:
+          'Si Moodle oculta la calificación, se muestra un resultado neutro sin estos mensajes.',
+      },
+      problems: {
+        legacy_fields_with_steps: 'El formato anterior y los pasos no pueden usarse a la vez.',
+        step_key_duplicate: 'Dos pasos comparten el mismo identificador.',
+        step_type_invalid: 'El tipo de paso no es válido.',
+        welcome_step_position:
+          'El mensaje de bienvenida debe ser el primer paso y solo puede haber uno.',
+        html_forbidden_markup: 'El contenido tiene etiquetas o atributos que no se permiten.',
+        css_forbidden:
+          'El estilo tiene reglas que no se permiten (importaciones o recursos externos).',
+        document_unavailable: 'Elige un documento disponible.',
+        steps_too_many: 'Un flujo puede tener hasta 12 pasos.',
+        flow_too_large: 'El texto o el estilo es demasiado grande.',
+        video_invalid: 'Falta un video válido.',
+        quiz_too_many: 'Un flujo puede tener hasta 3 evaluaciones.',
+        step_key_invalid: 'El identificador del paso no es válido.',
+        step_title_invalid: 'El título debe tener entre 1 y 120 caracteres.',
+        step_field_invalid: 'Hay un valor que no es válido en este paso.',
+      },
+      problemSummary: (count: number) =>
+        count === 1
+          ? 'Hay 1 problema por corregir antes de guardar.'
+          : `Hay ${count} problemas por corregir antes de guardar.`,
+      preview: 'Probar el flujo',
+      previewHint: 'Recorre el flujo como lo verá un estudiante. No se guarda nada.',
+      previewEmpty: 'Agrega al menos un paso para probar el flujo.',
+      helpTitle: 'Cómo funciona',
+      help: [
+        'Los estudiantes ven los pasos en orden, a pantalla completa.',
+        'Su avance lo guarda Moodle, no Rumbos. Si Moodle no puede guardarlo, queda solo en ese navegador.',
+        'Cambiar un paso no vuelve a pedirlo; para eso usa «Pedir de nuevo».',
+      ],
+      reset: 'Reiniciar mi progreso de bienvenida',
+      resetHint:
+        'Borra solo tu propio avance, para que puedas ver el flujo como un estudiante. Moodle solo lo permite con el modo de edición activado; si no, no se borra nada y te lo avisamos.',
+      resetSent: 'Pedimos a Moodle que reinicie tu progreso.',
+      resetReadonly:
+        'Moodle no lo permitió. Activa el modo de edición del curso e inténtalo de nuevo.',
+      resetOnlyEditor: 'Solo está disponible dentro de Moodle.',
+      flagsTitle: 'Pendientes de la importación',
+      flags: {
+        flow_quiz_unlinked:
+          'Hay pasos de evaluación sin vincular: elige la evaluación de este curso.',
+        document_dropped:
+          'Se omitió un documento al importar: súbelo de nuevo y elígelo en su paso.',
+      },
+    },
     view3d: {
       enable: 'Habilitar vista 3D',
       enableHint: 'Los estudiantes podrán alternar entre el mapa 2D y el mundo 3D.',
@@ -1100,6 +1279,10 @@ export const es = {
           'Una pista de la biblioteca ya no está disponible: el nivel quedará sin esa música.',
         audio_uploads_disabled:
           'Tu sitio no permite subir audio propio: el audio incluido en el archivo no se importará.',
+        flow_quiz_unlinked:
+          'Hay pasos de evaluación sin vincular: elige la evaluación de este curso en la pestaña «Flujo de bienvenida».',
+        document_dropped:
+          'Se omitió un documento del flujo de bienvenida: súbelo de nuevo y elígelo en su paso.',
       },
       review: {
         title: 'Asigna las actividades',
