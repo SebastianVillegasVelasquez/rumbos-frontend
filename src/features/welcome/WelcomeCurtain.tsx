@@ -1,16 +1,14 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
-import { ArrowRight, Maximize2, Play, Volume2, VolumeX } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react'
+import { ArrowRight, Maximize2, Play } from 'lucide-react'
 import { Button } from '../../components/ui/Button.tsx'
 import { useDataSaver } from '../../fx/dataSaverStore.ts'
 import { es } from '../../i18n/es.ts'
-import { readAudioPrefs } from '../audio/audioPrefs.ts'
-import { NowPlayingDisc } from '../audio/NowPlayingDisc.tsx'
-import { coverToLoad } from '../audio/nowPlaying.ts'
 import { VideoFrame } from '../content/VideoFrame.tsx'
 import { useVideoPanelWidth } from '../content/useVideoPanelWidth.ts'
 import { resolveImageUrl } from '../course-map/data/assets.ts'
 import type { MapWelcome } from '../course-map/data/types.ts'
-import { viewerStorage } from '../quests/viewerStorage.ts'
+import { CurtainMusicSwitch } from './CurtainMusicSwitch.tsx'
+import { useCurtainMusic } from './useCurtainMusic.ts'
 import { WelcomeSparkles } from './WelcomeSparkles.tsx'
 import {
   nextVideoLoad,
@@ -26,8 +24,6 @@ import { hasOptionalVideo, primaryAction } from './welcome.ts'
 
 const text = es.welcome
 
-type AudioSessionModule = typeof import('../audio/audioSession.ts')
-
 interface WelcomeCurtainProps {
   welcome: MapWelcome
   // Already resolved (the {curso} placeholder replaced).
@@ -36,7 +32,9 @@ interface WelcomeCurtainProps {
   imageUrl: string
   hasMusic: boolean
   // The track that will play, for the disc beside the music switch.
-  track?: { title: string; coverUrl: string | null } | null
+  // `startAfterInteraction` is the editor's "Iniciar al empezar": what the
+  // switch starts at when the viewer leaves it alone.
+  track?: { title: string; coverUrl: string | null; startAfterInteraction: boolean } | null
   // The editor's own look at the curtain: it touches neither the music nor
   // anything remembered.
   isolated?: boolean
@@ -74,14 +72,12 @@ const WelcomeCurtain = ({
   const [phase, setPhase] = useState<Phase>('intro')
   const [videoSeen, setVideoSeen] = useState(false)
   const [videoLoad, setVideoLoad] = useState<VideoLoad>('loading')
-  const [musicOn, setMusicOn] = useState(() => !readAudioPrefs(viewerStorage()).muted)
   const rootRef = useRef<HTMLDivElement>(null)
   const primaryRef = useRef<HTMLButtonElement>(null)
   const skipVideoRef = useRef<HTMLButtonElement>(null)
   const frameRef = useRef<HTMLIFrameElement>(null)
   const viewRef = useRef<HTMLDivElement>(null)
   const columnRef = useRef<HTMLDivElement>(null)
-  const sessionRef = useRef<AudioSessionModule | null>(null)
 
   const video = welcome.video
   const src = video ? playerUrl(video.provider, video.videoId) : null
@@ -89,26 +85,12 @@ const WelcomeCurtain = ({
   const canPlay = Boolean(video && src)
   const showPlay = action === 'play' && canPlay
 
-  // The audio session loads while the viewer reads, so the click can start the
-  // music in the same call stack (iOS Safari only allows that).
-  useEffect(() => {
-    if (!hasMusic || isolated) return
-    let alive = true
-    void import('../audio/audioSession.ts').then((module) => {
-      if (alive) sessionRef.current = module
-    })
-    return () => {
-      alive = false
-    }
-  }, [hasMusic, isolated])
-
-  // Whatever way the curtain closes, the music is no longer held.
-  useEffect(
-    () => () => {
-      sessionRef.current?.audioSession.hold(false)
-    },
-    []
-  )
+  // The music switch and the music rules of the curtain. `prefs.muted` in the
+  // audio session is the one truth; this only asks it and shows its answer.
+  const music = useCurtainMusic({
+    enabled: hasMusic && !isolated,
+    startAfterInteraction: track?.startAfterInteraction ?? false,
+  })
 
   // The button leaves while fullscreen is on, possibly with focus on it: keep
   // the focus inside the dialog.
@@ -124,11 +106,12 @@ const WelcomeCurtain = ({
     else primaryRef.current?.focus()
   }, [phase])
 
-  const finishVideo = () => {
-    sessionRef.current?.audioSession.hold(false)
+  const holdMusic = music.hold
+  const finishVideo = useCallback(() => {
+    holdMusic(false)
     setVideoSeen(true)
     setPhase('intro')
-  }
+  }, [holdMusic])
 
   // The player says when the video ends.
   useEffect(() => {
@@ -140,12 +123,12 @@ const WelcomeCurtain = ({
       // an autoplay the browser refused leaves the player at its own play button.
       const playback = playbackOf(video.provider, event.data)
       if (playback === 'ended') finishVideo()
-      else if (playback === 'playing') sessionRef.current?.audioSession.hold(true)
-      else if (playback === 'paused') sessionRef.current?.audioSession.hold(false)
+      else if (playback === 'playing') holdMusic(true)
+      else if (playback === 'paused') holdMusic(false)
     }
     window.addEventListener('message', onMessage)
     return () => window.removeEventListener('message', onMessage)
-  }, [phase, video])
+  }, [phase, video, finishVideo, holdMusic])
 
   // An iframe that has not fired its load event in time: say so quietly. This
   // is all a cross-origin frame can tell us, and nothing else waits for it.
@@ -158,20 +141,15 @@ const WelcomeCurtain = ({
     return () => window.clearTimeout(timer)
   }, [phase])
 
-  const startMusic = () => {
-    const session = sessionRef.current?.audioSession
-    if (!hasMusic || isolated || !session) return
-    session.setMuted(!musicOn)
-    session.startFromGesture()
-  }
-
+  // The primary button is the viewer's gesture: the music starts here if the
+  // switch is on. While the video plays it is held (audio focus).
   const enter = () => {
-    startMusic()
+    music.begin()
     onDone()
   }
   const play = () => {
-    startMusic()
-    sessionRef.current?.audioSession.hold(true)
+    music.begin()
+    music.hold(true)
     setVideoLoad('loading')
     setPhase('video')
   }
@@ -338,43 +316,14 @@ const WelcomeCurtain = ({
                     {labelOf('watch')}
                   </button>
                 )}
-                {hasMusic && track && (
-                  <p className="flex max-w-full items-center gap-2 text-sm font-bold">
-                    <span className="block h-11 w-11 shrink-0 overflow-hidden rounded-pill border border-white/60">
-                      <NowPlayingDisc
-                        cover={coverToLoad({
-                          coverUrl: track.coverUrl,
-                          dataSaver,
-                          startedOnce: true,
-                          failed: false,
-                        })}
-                        state={{
-                          spinning: false,
-                          muted: !musicOn,
-                          badge: musicOn ? 'playing' : 'muted',
-                        }}
-                      />
-                    </span>
-                    <span className="min-w-0 truncate">{track.title}</span>
-                  </p>
-                )}
                 {hasMusic && (
-                  <button
-                    type="button"
-                    role="switch"
-                    aria-checked={musicOn}
-                    aria-label={text.musicLabel}
+                  <CurtainMusicSwitch
+                    on={music.on}
                     disabled={isolated}
-                    onClick={() => setMusicOn((value) => !value)}
-                    className="flex min-h-[44px] items-center gap-2 rounded-pill border border-white/60 px-4 text-sm font-bold"
-                  >
-                    {musicOn ? (
-                      <Volume2 size={16} strokeWidth={2.5} aria-hidden />
-                    ) : (
-                      <VolumeX size={16} strokeWidth={2.5} aria-hidden />
-                    )}
-                    {musicOn ? text.musicOn : text.musicOff}
-                  </button>
+                    track={track}
+                    dataSaver={dataSaver}
+                    onToggle={music.toggle}
+                  />
                 )}
               </div>
             </>

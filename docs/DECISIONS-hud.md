@@ -505,3 +505,57 @@ picture-in-picture`: `encrypted-media` is gone (the embeds play without it, and 
   keeps working before 16.4 by its own fallbacks (`vh` where there is no `dvh`, the
   padding-top trick where there is no `aspect-ratio`), but the rest of the app is not
   promised there.
+
+## The welcome curtain's music control
+
+- **Root cause (reproduced with the real audio session in Playwright Chromium and WebKit,
+  with the media element stubbed).** The curtain's "Sin música" switch was local
+  `useState`; the audio session, the single owner of `prefs.muted`, only heard about it
+  when the primary button was pressed. Meanwhile the session's own global first-gesture
+  listener (capture phase on `document`) counted the click on the switch as the viewer's
+  first gesture and autostarted the music with `prefs.muted` still false. Measured before
+  the fix: click "Sin música" gave `wants=true playing=true el.paused=false` (it started
+  the music), after the video ended and the music resumed, toggling the switch changed
+  nothing (`playing` stayed true until the primary button), a click on the disc or the
+  title started the music, and a click made before the lazy audio chunk arrived was
+  dropped (nothing stored), so the next click anywhere started music the viewer had
+  switched off. Not the cause: no overlay or `pointer-events` covering it, no `disabled`
+  (only in the editor preview, on purpose), no re-render resetting the state; the HUD
+  and the curtain agreed afterwards because the primary button forced `setMuted`.
+- **`prefs.muted` is the single source of truth.** The switch no longer holds state. It
+  shows `wants`, or, while the viewer has not chosen, what the autostart rule will do at
+  the button (editor's "Iniciar al empezar", data saver, remembered mute). A click calls
+  `audioSession.setMuted`, which stores the mute and dispatches a new `mute` event.
+- **The reducer owns the rules.** New `curtainWaiting` state with a `welcome` event
+  (`waiting`, `started`, `closed`): while the curtain waits for its primary button a
+  gesture neither starts nor decides anything, so no click inside the curtain starts the
+  music; the session's global listener also keeps listening instead of removing itself.
+  `closed` releases the video hold. Audio focus: `held` (the video) and `curtainWaiting`
+  both make `isPlaying` false, so held music and a playing video are never heard
+  together; tests pin every transition, including a noise sequence while held.
+- **Judgment: the viewer's explicit "on" beats the editor's "Iniciar al empezar".** The
+  switch left alone follows the editor and data saver (and then shows "Sin música"); a
+  viewer who turns it on on that very screen gets music at the button. Data saver still
+  blocks the default start only.
+- **Judgment: the disc, the title and the state are one switch.** The disc looked
+  tappable and was not; it is now inside the switch's button (decorative, `aria-hidden`),
+  so there is no dead control. Still a native button: Space and Enter work, `aria-checked`
+  is what a screen reader announces, the track title is its description.
+- **Judgment: "stops immediately" means the fade starts at once.** The 400 ms fade
+  (`fade.ts`) stays so the music never cuts with a click; the element is paused when it
+  ends. The switch changes in the same frame.
+- **A choice that races the lazy chunk is replayed, even if the curtain closes first.**
+  `createCurtainMusic` (framework-free, `welcome/curtainMusic.ts`) remembers what the
+  viewer did and applies it when the session arrives. A start replayed that late is not
+  inside a gesture, so a browser that insists on one will start it at the next click.
+- **No video-mode switch.** The switch stays out of the video phase (the curtain's video
+  mode is dense); the music is held there, and the choice is made before or after.
+- **Test limits, stated plainly.** The repo has no DOM test library and no new
+  dependency was allowed, so the "component test with a fake session" is the controller
+  that carries all of the component's logic, run against a fake session that uses the
+  real reducer and autostart rule (`curtainMusic.test.ts`), plus Playwright
+  (`e2e/curtain-music.spec.ts`, Chromium and WebKit) on the real component. What the
+  Playwright stub fakes (`e2e/audioStub.ts`): `HTMLMediaElement.play`, `pause`, `load`,
+  `paused` and `src` only; nothing is downloaded or decoded, the session, the reducer,
+  the storage and the component are real. Playwright's WebKit has no media codecs, so
+  without neutralising `src` it fires a real `error` and fails the track.
