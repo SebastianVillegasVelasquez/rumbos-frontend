@@ -152,6 +152,17 @@ const mockWelcomeSeed = (): MapSettings['welcome'] | undefined => {
     show: 'first_visit' as const,
   }
   const video = { provider: 'youtube' as const, videoId: 'jNQXAC9IVRw' }
+  // ?mockWelcomeJson=<url-encoded MapWelcome>: any welcome, flow included (the e2e
+  // suite builds its flows this way). Its steps may use the seeded document
+  // MOCK_SEED_DOCUMENT_ID.
+  const custom = queryParam('mockWelcomeJson')
+  if (custom) {
+    try {
+      return JSON.parse(custom) as MapSettings['welcome']
+    } catch {
+      return null
+    }
+  }
   switch (mockWelcomeOverride()) {
     case 'off':
       return undefined
@@ -1053,11 +1064,24 @@ const audioInfoOf = (settings: MapSettings): AudioInfo | null => {
 }
 
 // The documents the welcome flow's PDF steps use (contract: welcomeDocuments).
+export const MOCK_SEED_DOCUMENT_ID = '00000000-0000-4000-8000-0000000000d0'
+
 const welcomeDocumentsOf = (settings: MapSettings): WelcomeDocument[] => {
   const documents: WelcomeDocument[] = []
   for (const step of settings.welcome?.steps ?? []) {
     if (step.type !== 'pdf' || documents.some((item) => item.assetId === step.assetId)) continue
     const asset = assets.find((item) => item.id === step.assetId && item.kind === 'document')
+    if (!asset && step.assetId === MOCK_SEED_DOCUMENT_ID) {
+      documents.push({
+        assetId: step.assetId,
+        url: `/assets/${step.assetId}`,
+        title: 'Reglamento del curso',
+        pageCount: 3,
+        bytes: 1200,
+        available: mockAssetsOverride() !== 'document-missing',
+      })
+      continue
+    }
     documents.push({
       assetId: step.assetId,
       url: asset?.url ?? `/assets/${step.assetId}`,
@@ -2456,6 +2480,32 @@ if (import.meta.env.DEV && typeof window !== 'undefined') {
           },
         })),
       })
+    },
+    // Sets the welcome settings of a map, draft and every publication: the
+    // student view and the e2e suite get any flow without the editor.
+    setWelcome: (mapId: string, welcome: MapSettings['welcome']) => {
+      const map = requireMap(mapId)
+      replaceMap({
+        ...map,
+        settings: { ...map.settings, welcome },
+        publications: map.publications.map((publication) => ({
+          ...publication,
+          snapshot: {
+            ...publication.snapshot,
+            settings: { ...publication.snapshot.settings, welcome },
+          },
+        })),
+      })
+    },
+    // A small valid PDF as a document asset; resolves to its asset id.
+    addDocument: async (title = 'Reglamento del curso', pages = 3) => {
+      const body =
+        '%PDF-1.4\n1 0 obj<</Type/Pages>>endobj\n' +
+        Array.from({ length: pages }, () => '2 0 obj<</Type /Page>>endobj\n').join('') +
+        '%%EOF'
+      const file = new File([body], `${title}.pdf`, { type: 'application/pdf' })
+      const { asset } = await createDocumentAsset({ file, title, rightsDeclared: true })
+      return asset.id
     },
     maps: () => maps.map(({ id, title, revision }) => ({ id, title, revision })),
     bubbles: (mapId: string) =>

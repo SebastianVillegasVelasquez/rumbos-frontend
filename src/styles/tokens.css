@@ -111,6 +111,22 @@
   }
 }
 
+@keyframes flow-step-in {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+}
+
+/* Slide between the steps of the welcome flow. No fill mode on purpose: nothing
+   keeps a transform after it ends (a filled transform would make the column the
+   containing block of any fixed descendant). Absent under reduced motion. */
+@media (prefers-reduced-motion: no-preference) {
+  .flow-step-in {
+    animation: flow-step-in 220ms ease-out;
+  }
+}
+
 /* "Cliente" theme: proves white-labelling by swapping the palette only. */
 :root[data-theme='cliente'] {
   --color-ink: #3c1a28;

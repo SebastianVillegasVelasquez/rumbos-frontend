@@ -187,6 +187,18 @@ describe('quiz steps', () => {
   })
 })
 
+describe('content that cannot be served', () => {
+  it('does not block and records unavailable', () => {
+    let state = start([pdf, welcome])
+    assert.equal(gateOf(state).canContinue, false)
+    state = play(state, { type: 'unavailable' })
+    assert.equal(gateOf(state).canContinue, true)
+    assert.equal(gateOf(state).method, 'unavailable')
+    state = play(state, { type: 'next' })
+    assert.deepEqual(state.done.pdf00001, { revision: 1, method: 'unavailable' })
+  })
+})
+
 describe('resume and revisions', () => {
   const steps = [welcome, video, html, quiz]
   it('starts at the first mandatory step not done', () => {

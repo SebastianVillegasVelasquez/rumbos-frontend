@@ -26,8 +26,20 @@ export const getHostState = () => current
 let receivedCount = 0
 export const getHostStateReceivedCount = () => receivedCount
 
+// Told on EVERY state the host sends, changed or not: the welcome flow asks for a
+// quiz result after each one, because a refresh that changed nothing in the course
+// state can still follow an attempt that finished.
+const receivedListeners = new Set<() => void>()
+export const subscribeHostStateReceived = (listener: () => void) => {
+  receivedListeners.add(listener)
+  return () => void receivedListeners.delete(listener)
+}
+
 export const setHostState = (next: CourseState | null) => {
-  if (next) receivedCount++
+  if (next) {
+    receivedCount++
+    receivedListeners.forEach((listener) => listener())
+  }
   if (next && current && contentKey(next) === contentKey(current)) return
   current = next
   listeners.forEach((listener) => listener())

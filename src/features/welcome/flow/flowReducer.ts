@@ -77,6 +77,9 @@ export interface FlowState {
   acked: Record<string, boolean>
   video: Record<string, VideoState>
   quiz: Record<string, QuizGate>
+  // Steps whose content cannot be served (a document that is gone): they do not
+  // block and record `unavailable`.
+  unavailable: Record<string, boolean>
   // The viewer went past the last step (or closed a review): the flow is over.
   finished: boolean
 }
@@ -129,6 +132,7 @@ export const createFlowState = (
     acked: {},
     video: {},
     quiz: {},
+    unavailable: {},
     finished: false,
   }
 }
@@ -199,6 +203,12 @@ export const gateOf = (state: FlowState, index: number = state.index): Gate => {
     }
   }
 
+  if (state.unavailable[step.key]) {
+    satisfied = true
+    method = 'unavailable'
+    waitingFor = null
+    secondsLeft = 0
+  }
   // A step already completed (at its revision) stays open when it is revisited.
   if (done) {
     satisfied = true
@@ -226,6 +236,8 @@ export type FlowEvent =
   | { type: 'video'; event: VideoEvent }
   | { type: 'video-fallback' }
   | { type: 'quiz'; gate: QuizGate }
+  // The content of the current step cannot be served.
+  | { type: 'unavailable' }
   | { type: 'next' }
   // "Saltar": leave an optional step without completing it.
   | { type: 'skip' }
@@ -277,6 +289,8 @@ export const flowReducer = (state: FlowState, event: FlowEvent): FlowState => {
       return step.type === 'quiz'
         ? { ...state, quiz: replaceRecord(state.quiz, step.key, event.gate) }
         : state
+    case 'unavailable':
+      return { ...state, unavailable: replaceRecord(state.unavailable, step.key, true) }
     case 'next':
     case 'skip': {
       const gate = gateOf(state)

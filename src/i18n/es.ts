@@ -360,6 +360,76 @@ export const es = {
     videoHost: (provider: string) => `Video alojado en ${provider}`,
     providers: { youtube: 'YouTube', vimeo: 'Vimeo' },
   },
+  // The welcome flow: the steps a viewer goes through when a level opens.
+  flow: {
+    dialog: 'Bienvenida',
+    stepOf: (current: number, total: number) => `Paso ${current} de ${total}`,
+    announce: (current: number, total: number, title: string) =>
+      `Paso ${current} de ${total}: ${title}`,
+    progress: 'Pasos de la bienvenida',
+    dot: (n: number, title: string, state: 'done' | 'current' | 'locked') =>
+      `Paso ${n}: ${title}${state === 'done' ? ' (hecho)' : state === 'locked' ? ' (aún no disponible)' : ''}`,
+    optionalTag: 'Opcional',
+    back: 'Atrás',
+    next: 'Continuar',
+    finish: 'Terminar',
+    skip: 'Saltar este paso',
+    close: 'Cerrar',
+    review: 'Estás repasando la bienvenida. Nada de lo que hagas aquí se guarda.',
+    preview: 'Vista previa: no se guarda nada.',
+    skipPreview: 'Saltar vista previa',
+    loading: 'Preparando la bienvenida…',
+    waiting: {
+      time: (seconds: number) => `Podrás continuar en ${seconds} s.`,
+      ack: 'Marca la casilla para continuar.',
+      timeAndAck: (seconds: number) =>
+        `Podrás continuar en ${seconds} s y cuando marques la casilla.`,
+      video: 'Podrás continuar cuando termine el video.',
+      quiz: 'Podrás continuar cuando termines la evaluación.',
+    },
+    video: {
+      play: 'Reproducir video',
+      frameTitle: 'Video del paso',
+      trouble: '¿Problemas con el video?',
+      troubleHint: 'Si el video no se ve o no responde, puedes continuar sin verlo.',
+      continueAnyway: 'Continuar sin ver el video',
+      fallbackTaken: 'Continuaste sin ver el video.',
+      captions: 'Activa los subtítulos en el reproductor si los necesitas.',
+    },
+    html: { frameTitle: (title: string) => `Contenido: ${title}` },
+    pdf: {
+      pages: (count: number) => (count === 1 ? '1 página' : `${count} páginas`),
+      open: 'Abrir documento',
+      download: 'Descargar',
+      viewerTitle: (title: string) => `Documento: ${title}`,
+      touchHint: 'En este dispositivo el documento se lee mejor en una pestaña nueva.',
+      unavailable: 'Este documento no está disponible ahora. Puedes continuar.',
+    },
+    quiz: {
+      start: 'Realizar la evaluación',
+      resume: 'Continuar el intento',
+      checking: 'Comprobando tu resultado…',
+      checkAgain: 'Comprobar de nuevo',
+      done: 'Completaste la evaluación.',
+      percent: (value: number) => `Tu resultado: ${Math.round(value)} %.`,
+      pendingGrading: 'Tu resultado está pendiente de revisión.',
+      attempts: (finished: number) =>
+        finished === 1 ? 'Llevas 1 intento terminado.' : `Llevas ${finished} intentos terminados.`,
+      unavailable: {
+        unlinked: 'A este paso todavía no se le ha vinculado una evaluación. Puedes continuar.',
+        restricted:
+          'La evaluación aún no está disponible para ti. Puedes continuar y hacerla después desde el curso.',
+        hidden: 'No encontramos la evaluación para tu cuenta. Puedes continuar.',
+        missing: 'No encontramos la evaluación en el curso. Puedes continuar.',
+        not_found: 'No encontramos la evaluación para tu cuenta. Puedes continuar.',
+        unavailable: 'No pudimos consultar la evaluación ahora. Puedes continuar.',
+        silent: 'No pudimos consultar la evaluación ahora. Puedes continuar.',
+      },
+    },
+    reset: 'Reiniciar mi progreso de bienvenida',
+    resetHint:
+      'Solo funciona con la edición de Moodle activada. Borra tu propio progreso en este nivel, no el de otras personas.',
+  },
   // The ?diag=1 panel: a screenshot of it is what a viewer sends when a screen
   // looks wrong. Read-only; it shows what the page already knows.
   diag: {
