@@ -82,11 +82,13 @@ export const writeLocalFlag = (store: LocalStore, mapId: string, completion: New
 
 // ---- The write queue --------------------------------------------------------------
 
-// The plugin allows 30 writes a minute per user. The queue spaces its sends
-// beyond that, retries what the host has not confirmed with growing delays, and
-// gives up after a few attempts: a failure never blocks the viewer, and it never
-// loops.
-export const MIN_SEND_GAP_MS = 2_100
+// The plugin allows 30 writes a minute per user. The queue sends at once while it
+// is under a sliding window of 28 a minute (a flow has 12 steps at most, so a
+// viewer who clicks through quickly loses none), retries what the host has not
+// confirmed with growing delays, and gives up after a few attempts: a failure
+// never blocks the viewer, and it never loops.
+export const MAX_WRITES_PER_MINUTE = 28
+export const WRITE_WINDOW_MS = 60_000
 export const RETRY_BASE_MS = 3_000
 export const RETRY_MAX_MS = 60_000
 export const MAX_ATTEMPTS = 6
@@ -120,7 +122,7 @@ export const createWriteQueue = (deps: WriteQueueDeps): WriteQueue => {
     notBefore: number
   }
   let queue: Entry[] = []
-  let lastSentAt = -Infinity
+  let sentAt: number[] = []
   let cancelTimer: (() => void) | null = null
   let disposed = false
 
@@ -140,21 +142,25 @@ export const createWriteQueue = (deps: WriteQueueDeps): WriteQueue => {
     // After its last attempt an entry gets one more retry window to be confirmed.
     queue = queue.filter((entry) => entry.attempts < MAX_ATTEMPTS || entry.notBefore > now)
     if (queue.length === 0) return
+    sentAt = sentAt.filter((at) => now - at < WRITE_WINDOW_MS)
     const ready = queue.find((entry) => entry.attempts < MAX_ATTEMPTS && entry.notBefore <= now)
-    if (ready && now - lastSentAt >= MIN_SEND_GAP_MS) {
+    if (ready && sentAt.length < MAX_WRITES_PER_MINUTE) {
       ready.attempts += 1
       ready.notBefore = now + retryDelay(ready.attempts)
-      lastSentAt = now
+      sentAt.push(now)
       deps.send(ready.completion)
       // Back for the next entry, or to check this one is confirmed.
-      cancelTimer = deps.schedule(pump, MIN_SEND_GAP_MS)
+      cancelTimer = deps.schedule(pump, 0)
       return
     }
-    const earliest = Math.max(
-      Math.min(...queue.map((entry) => entry.notBefore)),
-      lastSentAt + MIN_SEND_GAP_MS
+    // Nothing can go now: wait for the earliest entry, and for the window to
+    // free a slot if it is full.
+    const entryAt = Math.min(...queue.map((entry) => entry.notBefore))
+    const slotAt = sentAt.length >= MAX_WRITES_PER_MINUTE ? sentAt[0] + WRITE_WINDOW_MS : 0
+    cancelTimer = deps.schedule(
+      pump,
+      Math.max(entryAt, slotAt) - now > 0 ? Math.max(entryAt, slotAt) - now : 1
     )
-    cancelTimer = deps.schedule(pump, Math.max(earliest - now, 1))
   }
 
   return {
@@ -192,6 +198,9 @@ export interface PersistenceDeps {
   // Called whenever the host sends anything about the flow.
   subscribeHost: (listener: () => void) => () => void
   store: LocalStore
+  // False in the standalone app: there is no host to ask, so the local flag is
+  // used at once instead of waiting for a silence that cannot end otherwise.
+  hasHost?: boolean
   now: () => number
   schedule: (run: () => void, delayMs: number) => () => void
 }
@@ -290,6 +299,10 @@ export const createFlowPersistence = (deps: PersistenceDeps): FlowPersistence =>
             } else queue?.onHostAnswer()
           }
         })
+        if (deps.hasHost === false) {
+          finish(toLocal())
+          return
+        }
         // An answer may already be there (the flow reopened in the same session).
         deps.requestProgress()
         check()

@@ -3,7 +3,8 @@ import { describe, it } from 'node:test'
 import type { HostFlowProgress } from '../../embed/hostFlow.ts'
 import {
   MAX_ATTEMPTS,
-  MIN_SEND_GAP_MS,
+  MAX_WRITES_PER_MINUTE,
+  WRITE_WINDOW_MS,
   PROGRESS_TIMEOUT_MS,
   createFlowPersistence,
   createWriteQueue,
@@ -106,14 +107,23 @@ describe('the write queue', () => {
     assert.equal(queue.pending(), 0)
   })
 
-  it('stays well under 30 writes a minute whatever the burst', () => {
+  it('a flow of 12 steps clicked through at once loses nothing', () => {
     const { time, sent, queue } = setup(1)
     for (let i = 0; i < 12; i++) queue.enqueue(done(`step${i}`))
-    time.advance(60_000)
-    assert.equal(sent.length, 12)
-    for (let i = 1; i < sent.length; i++) assert.ok(sent[i][0] - sent[i - 1][0] >= MIN_SEND_GAP_MS)
-    const inAnyMinute = sent.filter(([at]) => at < 60_000).length
-    assert.ok(inAnyMinute <= 28)
+    assert.equal(sent.length, 12, 'all sent at once')
+    assert.ok(sent.every(([at]) => at === 0))
+    time.advance(WRITE_WINDOW_MS)
+    assert.equal(queue.pending(), 0)
+  })
+
+  it('never more than 28 writes in any minute, even when nothing is confirmed', () => {
+    const { time, sent, queue } = setup()
+    for (let i = 0; i < 40; i++) queue.enqueue(done(`step${i}`))
+    time.advance(20 * 60_000)
+    for (const [start] of sent) {
+      const inWindow = sent.filter(([at]) => at >= start && at < start + WRITE_WINDOW_MS).length
+      assert.ok(inWindow <= MAX_WRITES_PER_MINUTE, `${inWindow} writes in a minute`)
+    }
   })
 
   it('the same step queued twice is one write', () => {
@@ -141,7 +151,7 @@ describe('the write queue', () => {
 })
 
 describe('loading and recording the progress', () => {
-  const setup = (view: () => HostFlowProgress | null = () => null) => {
+  const setup = (view: () => HostFlowProgress | null = () => null, hasHost = true) => {
     const time = clock()
     const store = memoryStore()
     const sent: NewCompletion[] = []
@@ -162,6 +172,7 @@ describe('loading and recording the progress', () => {
         return () => void listeners.delete(listener)
       },
       store,
+      hasHost,
       now: time.now,
       schedule: time.schedule,
     })
@@ -210,6 +221,15 @@ describe('loading and recording the progress', () => {
     const loaded = await loading
     assert.equal(loaded.source, 'local')
     assert.deepEqual(loaded.entries, [{ stepKey: 'welcome1', revision: 1, method: 'completed' }])
+  })
+
+  it('without a host the local flag is used at once, with no request', async () => {
+    const t = setup(() => null, false)
+    t.store.set(localFlagKey('map1', 'welcome1', 1), 'completed')
+    const loaded = await t.persistence.load()
+    assert.equal(loaded.source, 'local')
+    assert.equal(loaded.entries.length, 1)
+    assert.equal(t.requests(), 0)
   })
 
   it('a late answer after the fallback changes nothing', async () => {
