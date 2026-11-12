@@ -228,6 +228,100 @@ const answerStats = (groupId: number) => {
 
 const pushState = () => send({ type: 'rumbos:host-state', v: 1, state: buildState() })
 
+// ---- Welcome flow (contract v5.8) ----------------------------------------------------
+// Progress is kept here, like Moodle would. `flowMode` picks what the plugin does.
+const FLOW_MODES = [
+  'persistent',
+  'guest (not persistent)',
+  'readonly',
+  'unavailable',
+  'older plugin (silent)',
+] as const
+let flowMode: (typeof FLOW_MODES)[number] = 'persistent'
+interface FlowItem {
+  stepKey: string
+  revision: number
+  method: string
+  completedAt: string
+}
+let flowItems: FlowItem[] = []
+const FLOW_QUIZ_THRESHOLD = 70
+
+const isoNow = () => new Date().toISOString().replace(/\.\d{3}Z$/, 'Z')
+
+const answerFlowProgress = (mapId: unknown) => {
+  if (flowMode === 'older plugin (silent)') return
+  if (flowMode === 'readonly' || flowMode === 'unavailable') {
+    send({ type: 'rumbos:host-flow-progress', v: 1, mapId, error: flowMode })
+    return
+  }
+  send({
+    type: 'rumbos:host-flow-progress',
+    v: 1,
+    mapId,
+    items: flowMode === 'persistent' ? flowItems : [],
+    persistent: flowMode === 'persistent',
+    config: { quizThreshold: FLOW_QUIZ_THRESHOLD },
+  })
+}
+
+// What Moodle would say about the quiz attempts of this user. "interactive" is
+// driven by the buttons below (a quiz handed in inside the overlay).
+const QUIZ_SCENARIOS = [
+  'no attempts',
+  'in progress',
+  'passed (85%)',
+  'failed (40%)',
+  'hidden grade',
+  'pending grading',
+  'not found',
+  'unavailable',
+  'no permission',
+  'older plugin (silent)',
+] as const
+let quizScenario: (typeof QUIZ_SCENARIOS)[number] = 'no attempts'
+let quizAttempts = { attempts: 0, finished: 0, inProgress: false, percent: null as number | null }
+
+const quizResultFor = (cmid: number) => {
+  const row = rows.find((item) => item.cmid === cmid)
+  const visible =
+    row &&
+    row.modname === 'quiz' &&
+    !['hidden', 'unavailable', 'missing'].includes(row.availability)
+  if (quizScenario === 'older plugin (silent)') return null
+  if (quizScenario === 'no permission') return { error: 'capability' }
+  if (quizScenario === 'unavailable') return { error: 'unavailable' }
+  if (!visible || quizScenario === 'not found') return { error: 'not_found' }
+  const base = (finished: number, inProgress: boolean, percent: number | null) => ({
+    attempts: finished + (inProgress ? 1 : 0),
+    finishedAttempts: finished,
+    inProgress,
+    percent,
+    pendingGrading: false,
+    passedThreshold: percent === null ? null : percent >= FLOW_QUIZ_THRESHOLD,
+  })
+  switch (quizScenario) {
+    case 'in progress':
+      return { result: base(0, true, null) }
+    case 'passed (85%)':
+      return { result: base(1, false, 85) }
+    case 'failed (40%)':
+      return { result: base(1, false, 40) }
+    case 'hidden grade':
+      return { result: base(1, false, null) }
+    case 'pending grading':
+      return { result: { ...base(1, false, null), pendingGrading: true } }
+    default:
+      return { result: base(quizAttempts.finished, quizAttempts.inProgress, quizAttempts.percent) }
+  }
+}
+
+const answerQuizResult = (cmid: unknown) => {
+  if (typeof cmid !== 'number') return
+  const answer = quizResultFor(cmid)
+  if (answer) send({ type: 'rumbos:host-quiz-result', v: 1, cmid, ...answer })
+}
+
 window.addEventListener('message', (event) => {
   if (!iframe || event.source !== iframe.contentWindow || event.origin !== appOrigin()) return
   const data = event.data as Record<string, unknown> | null
@@ -255,6 +349,48 @@ window.addEventListener('message', (event) => {
     case 'rumbos:request-stats':
       answerStats(typeof data.groupId === 'number' ? data.groupId : 0)
       return
+    case 'rumbos:request-flow-progress':
+      answerFlowProgress(data.mapId)
+      return
+    case 'rumbos:flow-step-done': {
+      // The plugin validates the key (A-Za-z0-9_-, 1..16), the revision
+      // (0..1000000) and the method, and answers with the refreshed progress.
+      const valid =
+        typeof data.stepKey === 'string' &&
+        /^[A-Za-z0-9_-]{1,16}$/.test(data.stepKey) &&
+        Number.isInteger(data.revision) &&
+        (data.revision as number) >= 0 &&
+        (data.revision as number) <= 1_000_000 &&
+        ['completed', 'fallback', 'unavailable'].includes(String(data.method))
+      if (!valid) {
+        log('host', { type: 'note', text: 'Refused flow-step-done (invalid fields)' })
+        return
+      }
+      if (flowMode === 'persistent') {
+        flowItems = [
+          ...flowItems.filter((item) => item.stepKey !== data.stepKey),
+          {
+            stepKey: data.stepKey as string,
+            revision: data.revision as number,
+            method: String(data.method),
+            completedAt: isoNow(),
+          },
+        ]
+      }
+      answerFlowProgress(data.mapId)
+      return
+    }
+    case 'rumbos:request-quiz-result':
+      answerQuizResult(data.cmid)
+      return
+    case 'rumbos:flow-reset': {
+      // Own progress only, and only while Moodle editing mode is on.
+      if (config.role === 'editor' && config.editing && flowMode === 'persistent') {
+        flowItems = []
+        answerFlowProgress(data.mapId)
+      } else send({ type: 'rumbos:host-flow-progress', v: 1, mapId: data.mapId, error: 'readonly' })
+      return
+    }
     case 'rumbos:request-launch':
       send({ type: 'rumbos:host-launch', v: 1, assertion: assertion() })
       return
@@ -608,6 +744,29 @@ const buildControls = () => {
         send({ type: 'rumbos:host-overlay', v: 1, open: false })
         pushState()
       }, 600)
+    }),
+    // The welcome flow (v5.8): what the plugin does with progress, and the quiz.
+    labelled(
+      'flow progress (v5.8)',
+      select(FLOW_MODES, flowMode, (value) => (flowMode = value))
+    ),
+    labelled(
+      'quiz result (v5.8)',
+      select(QUIZ_SCENARIOS, quizScenario, (value) => (quizScenario = value))
+    ),
+    button('Reset flow progress (host side)', () => {
+      flowItems = []
+      quizAttempts = { attempts: 0, finished: 0, inProgress: false, percent: null }
+    }),
+    // A quiz handed in inside the overlay: the attempt finishes, the overlay
+    // closes, the state refreshes. Use with the quiz result "no attempts".
+    button('Quiz attempt finished (85%), overlay close + state', () => {
+      quizAttempts = { attempts: 1, finished: 1, inProgress: false, percent: 85 }
+      send({ type: 'rumbos:host-overlay', v: 1, open: true })
+      setTimeout(() => {
+        send({ type: 'rumbos:host-overlay', v: 1, open: false })
+        pushState()
+      }, 300)
     }),
     labelled(
       'courseCompletionEnabled',
