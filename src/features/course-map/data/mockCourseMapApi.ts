@@ -18,6 +18,7 @@ import { canonicalJson, sha256Hex } from './canonicalJson.ts'
 import { DESCRIPTION3D_MAX_LENGTH, TITLE3D_MAX_LENGTH } from './view3dLimits.ts'
 import { DEFAULT_BACKGROUND_URL } from '../../../assets/backgrounds/index.ts'
 import { validateWelcome } from '../../welcome/welcome.ts'
+import { validateFlow } from '../../welcome/flow/flowSteps.ts'
 import { inspectPdf } from './pdfInspect.ts'
 import type { CourseMapApi } from './courseMapApi.ts'
 import type {
@@ -1633,6 +1634,15 @@ const impl: Omit<CourseMapApi, TransferMethods> = {
     if (input.defaultSkinId !== null) requireSkin(input.defaultSkinId)
     if (validateWelcome(input.settings.welcome).length > 0)
       throw businessError(422, 'welcome_invalid', 'La bienvenida no es válida')
+    const flowProblems = validateFlow(input.settings.welcome, {
+      availableDocuments: new Set(
+        assets.filter((asset) => asset.kind === 'document').map((asset) => asset.id)
+      ),
+    })
+    if (flowProblems.length > 0)
+      throw businessError(422, 'welcome_invalid', 'La bienvenida no es válida', {
+        problems: flowProblems.map((problem) => ({ ...problem, message: problem.code })),
+      })
     const seenModnames = new Set<string>()
     for (const rule of input.skinRules) {
       if (seenModnames.has(rule.modname)) {
