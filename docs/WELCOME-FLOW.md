@@ -85,9 +85,10 @@ overlay is only visible after that. Asks are coalesced (800 ms apart at most).
 
 ## Persistence and privacy
 
-Progress lives in Moodle (plugin v5.8) and nowhere in the Rumbos backend. When Moodle
-does not keep it (guest, preview, an older plugin, `readonly`, `unavailable`, no answer
-within 3 s) the app writes a per-viewer flag to `localStorage`
+Progress lives in Moodle (plugin v5.8) and nowhere in the Rumbos backend. A guest or a
+preview (`persistent: false`) is kept in memory only: nothing is stored, so the flow comes
+back on the next visit. When Moodle cannot keep it (an older plugin, `readonly`,
+`unavailable`, no answer within 3 s) the app writes a per-viewer flag to `localStorage`
 (`rumbos.welcome.flow.<mapId>.<stepKey>.<revision>`) holding only the method
 (`completed`, `fallback`, `unavailable`). No grade, attempt count or timestamp is
 stored.

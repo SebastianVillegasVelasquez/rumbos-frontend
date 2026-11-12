@@ -56,12 +56,16 @@ const open = async (page: Page, context: BrowserContext, welcome: object) => {
   const input = page.locator('label:has-text("app URL") input')
   const current = await input.inputValue()
   await input.fill(
-    `${current.split('?')[0]}?mockWelcomeJson=${encodeURIComponent(JSON.stringify(welcome))}`
+    `${current.split('?')[0]}?mockStableIds=1&mockWelcomeJson=${encodeURIComponent(JSON.stringify(welcome))}`
   )
   await page.getByRole('button', { name: '(Re)load app' }).click()
   const level = app(page).getByRole('button', { name: /^1/ }).first()
-  await level.waitFor()
-  await level.click()
+  // With stable ids the app reopens the last map by itself: click the level only
+  // when the list is what is showing.
+  await level
+    .waitFor({ timeout: 5000 })
+    .then(() => level.click())
+    .catch(() => undefined)
 }
 
 const dialog = (page: Page) => app(page).getByRole('dialog', { name: 'Bienvenida', exact: true })
@@ -123,8 +127,12 @@ test.describe('welcome flow', () => {
     // Same host (it keeps the progress), the app reloads: nothing to show.
     await page.getByRole('button', { name: '(Re)load app' }).click()
     const level = app(page).getByRole('button', { name: /^1/ }).first()
-    await level.waitFor()
-    await level.click()
+    // With stable ids the app reopens the last map by itself: click the level only
+    // when the list is what is showing.
+    await level
+      .waitFor({ timeout: 5000 })
+      .then(() => level.click())
+      .catch(() => undefined)
     // The host answers within a moment; give the gate time to decide.
     await page.waitForTimeout(1500)
     await expect(dialog(page)).toHaveCount(0)
@@ -161,8 +169,12 @@ test.describe('welcome flow', () => {
     // Reload the app: "always" opens it again, now in review mode.
     await page.getByRole('button', { name: '(Re)load app' }).click()
     const level = app(page).getByRole('button', { name: /^1/ }).first()
-    await level.waitFor()
-    await level.click()
+    // With stable ids the app reopens the last map by itself: click the level only
+    // when the list is what is showing.
+    await level
+      .waitFor({ timeout: 5000 })
+      .then(() => level.click())
+      .catch(() => undefined)
     await expect(dialog(page)).toBeVisible()
     await expect(dialog(page).getByText(/Estás repasando la bienvenida/)).toBeVisible()
     await expect(next(page)).toHaveAttribute('aria-disabled', 'false')
