@@ -708,7 +708,8 @@ Layout and look only: no contract, state machine, backend or plugin change.
 - **The music choice is a new component; the old curtain switch is untouched.** It reuses
   `NowPlayingDisc` and the same `useCurtainMusic` state (`prefs.muted` stays the only source of
   truth). It shows only on the first step and only when the map has a track.
-- **Widths.** 720 px for welcome and HTML, 960 px for video, quiz and PDF.
+- **Widths.** 720 px for welcome and HTML, 960 px for video, quiz and PDF. (Changed in the
+  corrections below: text and HTML are now 840 px.)
 - **The top-right 64 px corner stays free** (the host puts its exit there): below 1100 px the
   card header keeps 64 px of right padding.
 - **Fullscreen button is icon-only below 480 px**, to give the first rows back to the content;
@@ -716,3 +717,52 @@ Layout and look only: no contract, state machine, backend or plugin change.
 - **Visual baselines are per engine, not per OS.** Fonts render slightly differently between
   Windows and Linux, so the comparison allows 3% of pixels to differ. They were generated on
   Windows; regenerate them on the CI image if a pipeline is added.
+
+## Welcome flow: corrections
+
+- **Segments: the dashed look was the locked state.** `.flow-seg[data-kind='locked']` was a
+  `dotted` border at 70% opacity on a transparent fill, on an 8 px pill: it renders as dashes and
+  shimmers when the bar is scaled. Every state is now a solid shape: a track (white mixed 40% into
+  the header ink, 3.57:1 against it, computed in `flowContrast.test.ts` from the CSS), a white
+  outline on the track for a visited step, the accent for done and a taller white bar for the
+  current one. No animation, so reduced motion is identical. The states differ by height, fill and
+  outline, plus the "Paso N de M" text and `aria-current="step"`.
+- **Widths: 840 px for welcome and HTML** (from 720, +17%). Video, PDF and quiz stay at 960. The
+  prose measure stays 65ch, so the extra width goes to the author's own layout. Checked at 1280,
+  1366 and 1920 (margins of at least 200 px) and at 768 and 360 (unchanged).
+- **The music switch in the editor preview works, in memory only.** The preview used to disable
+  it (dimmed, no response) because it mounts no audio session. It now keeps its own state and
+  starts where a student's would (the editor's "start on interaction" and data saver, never the
+  editor's saved mute). It never reads or writes `prefs.muted`, and **the preview plays no sound**:
+  the editor already has the music tab to listen to the track. Ask if the preview should play.
+- **The three music failures: not one cause.** Curtain and HUD failures were state bugs in the
+  audio session that the stubbed-media tests could not see. This one was a deliberate `disabled`
+  in preview, plus a spec that only covered the legacy curtain's "Música de fondo", never the
+  flow's "Música de ambiente". What they share is the test gap, now closed with real-audio e2e
+  and a 50-toggle agreement test on the real session.
+- **Fixture honesty.** The mock labels its WAV tone `audio/mpeg` in the asset metadata; the blob
+  itself is typed `audio/wav`, so the mime was never what stopped WebKit. The e2e now serves a
+  real WAV and a real MP3 (MPEG-1 Layer III frames, silent: a valid stream, not music) over http
+  with the right Content-Type and Range support.
+- **WebKit playback in CI.** Playwright's WebKit on this machine fails every media load
+  (MEDIA_ERR_SRC_NOT_SUPPORTED), even a data: WAV, so the earlier "session playing, element
+  paused" was the element failing to load, not a defect. The real-audio spec detects this at run
+  time and, only then, relaxes `currentTime advancing` to "the session wants playback, is not
+  muted and created the element with the file", with a `relaxed` annotation on the run. Where the
+  engine plays, the full assertions run.
+- **Video fullscreen: not reproduced.** Against the real player.vimeo.com/video/1236382396, with
+  the host iframe at `allow="fullscreen; autoplay"` and the app's own video attributes, Chromium's
+  fullscreen worked in the student view and in the editor preview (the embedder's
+  `document.fullscreenElement` became the iframe). The DOM chains differ only in the preview's
+  wrappers (a Radix portal over the studio drawer); none has `inert`, `aria-hidden`,
+  `pointer-events`, `transform` or `contain`, and the video iframe's `allow`, `allowfullscreen`
+  and `sandbox` are identical in both. Control: without `allow`, Vimeo hides its fullscreen
+  button. In a 390 px player the button sits behind the chevron ("Show controls"). So the cause
+  is outside what this repo and a mock host can show; the `?diag=1` panel now reports the
+  deciding values from the real Moodle session.
+- **No behavior change for fullscreen without evidence.** Nothing was altered in the video frame:
+  a guess at "the flow's fullscreen wins" would have no test that could fail. The e2e
+  (`welcome-video-fullscreen.spec.ts`) stubs player.vimeo.com with a local page that requests
+  fullscreen and reports back, and guards the attributes and the policy.
+- **Quiz notice reworded**: secure-window quizzes open in a separate window; "permite las ventanas
+  emergentes". The text stays fixed on every quiz step.

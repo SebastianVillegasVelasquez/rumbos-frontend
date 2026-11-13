@@ -80,8 +80,9 @@ overlay is only visible after that. Asks are coalesced (800 ms apart at most).
   or unlinked does not block; the step records `unavailable`.
 - If the host never answers (an older plugin) the step stops waiting after 6 s and
   records `unavailable`.
-- **Quizzes with a secure window do not work in the viewer.** The editor shows a fixed
-  warning when a quiz is linked: use a quiz without the secure-window browser setting.
+- **Quizzes with a secure window open in a separate window.** The editor shows a fixed
+  notice on every quiz step: "Los cuestionarios con ventana segura se abren en una ventana
+  aparte; permite las ventanas emergentes." (It used to say they do not work.)
 
 ## Persistence and privacy
 
@@ -137,6 +138,15 @@ PDF page limit (200).
   overlay, a hidden quiz, grade hidden.
 - Real Mac (Safari and Chrome) and an iPhone: YouTube and Vimeo ready/play/ended (use
   `?diag=1`), autoplay, fullscreen, the PDF viewer and "Abrir documento".
+- Fullscreen from the real Vimeo/YouTube player: Chrome on Windows and a Mac (Safari and
+  Chrome), an iPhone, inside real Moodle, in the student view and in the editor preview, with
+  the flow inline and with the host's own "Pantalla completa". Open the app with `?diag=1`
+  first: the panel now lists fullscreenEnabled, the Permissions Policy answer, the video
+  frame's allow/allowfullscreen/sandbox and any inert or pointer-blocked ancestor. In
+  Vimeo's small player the fullscreen button hides under the chevron ("Show controls").
+- Music: the switch on the welcome step and the HUD control with a real MP3 on a Mac, an
+  iPhone and inside Moodle (autoplay policy and iOS gestures are not reproducible in CI);
+  the editor preview's switch answers but plays nothing, by design.
 - The contract against the real `/openapi.json` once it exists.
 
 ## The editor

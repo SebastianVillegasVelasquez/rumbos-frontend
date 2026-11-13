@@ -40,6 +40,15 @@ and the title are one switch, Space and Enter, the video hold and its release on
 switching while music plays, the HUD control agreeing afterwards, and a click that
 arrives before the lazy audio chunk.
 
+## The flow corrections
+
+`e2e/welcome-flow-corrections.spec.ts` (solid segments in every state, card widths at 1280,
+1366, 1920, 768 and 360), `e2e/welcome-music-real.spec.ts` (the flow's switch with a real
+`<audio>`, a WAV and an MP3 made in `e2e/audioFixture.ts`, and the editor preview) and
+`e2e/welcome-video-fullscreen.spec.ts` (a stubbed player.vimeo.com that requests
+fullscreen; student and preview). Where an engine cannot decode audio the music spec says so
+in a `relaxed` annotation.
+
 ## How the cells are made
 
 - The host's iframe is sized so the app's own viewport is exactly the cell. A zoom
