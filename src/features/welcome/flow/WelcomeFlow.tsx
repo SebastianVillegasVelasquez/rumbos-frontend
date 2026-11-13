@@ -245,7 +245,8 @@ const WelcomeFlow = ({
                 {onEnterFullscreen && (
                   <Button variant="surface" size="sm" dense onClick={onEnterFullscreen}>
                     <Maximize2 size={16} strokeWidth={2.5} aria-hidden />
-                    {es.welcome.fullscreen}
+                    {/* Icon only on a narrow window; the name stays for assistive tech. */}
+                    <span className="max-[480px]:sr-only">{es.welcome.fullscreen}</span>
                   </Button>
                 )}
                 {(mode === 'review' || skipVisible) && (
