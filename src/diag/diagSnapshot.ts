@@ -29,6 +29,18 @@ export interface DiagEnv {
   // 'loading' | 'loaded' | 'failed' as the curtain tracks it, null when none.
   videoLoad: string | null
   lastError: string | null
+  // What decides whether the player's own fullscreen button can work, as this
+  // page sees it. Null parts mean the page has no video iframe or no way to ask.
+  fullscreen: {
+    enabled: boolean
+    policyAllows: boolean | null
+    element: string | null
+    frameAllow: string | null
+    frameAllowFullscreen: boolean | null
+    frameSandbox: string | null
+    // Ancestors of the video frame that are inert, aria-hidden or ignore the pointer.
+    blockedAncestors: string[]
+  }
 }
 
 export interface DiagBrowser {
@@ -85,6 +97,26 @@ export const diagRows = (env: DiagEnv): Array<[string, string]> => {
     [text.dvh, yesNo(env.supports.dvh)],
     [text.containerQueries, yesNo(env.supports.containerQueries)],
     [text.has, yesNo(env.supports.has)],
+    [text.fullscreenEnabled, yesNo(env.fullscreen.enabled)],
+    [
+      text.fullscreenPolicy,
+      env.fullscreen.policyAllows === null ? text.unknown : yesNo(env.fullscreen.policyAllows),
+    ],
+    [text.fullscreenElement, env.fullscreen.element ?? text.none],
+    [text.frameAllow, env.fullscreen.frameAllow ?? text.none],
+    [
+      text.frameAllowFullscreen,
+      env.fullscreen.frameAllowFullscreen === null
+        ? text.none
+        : yesNo(env.fullscreen.frameAllowFullscreen),
+    ],
+    [text.frameSandbox, env.fullscreen.frameSandbox ?? text.none],
+    [
+      text.blockedAncestors,
+      env.fullscreen.blockedAncestors.length
+        ? env.fullscreen.blockedAncestors.join(', ')
+        : text.none,
+    ],
     [text.lastError, env.lastError ?? text.none],
   ]
   return rows

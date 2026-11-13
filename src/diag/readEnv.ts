@@ -7,6 +7,33 @@ declare global {
   }
 }
 
+const readFullscreen = (): DiagEnv['fullscreen'] => {
+  const frame = document.querySelector<HTMLIFrameElement>(
+    'iframe[src*="player.vimeo.com"], iframe[src*="youtube"]'
+  )
+  const policy = (
+    document as Document & { permissionsPolicy?: { allowsFeature: (name: string) => boolean } }
+  ).permissionsPolicy
+  const blockedAncestors: string[] = []
+  for (let node: Element | null = frame; node; node = node.parentElement) {
+    const reasons = [
+      node.hasAttribute('inert') ? 'inert' : '',
+      node.getAttribute('aria-hidden') === 'true' ? 'aria-hidden' : '',
+      getComputedStyle(node).pointerEvents === 'none' ? 'pointer-events:none' : '',
+    ].filter(Boolean)
+    if (reasons.length) blockedAncestors.push(`${node.tagName.toLowerCase()}(${reasons.join('+')})`)
+  }
+  return {
+    enabled: document.fullscreenEnabled === true,
+    policyAllows: policy ? policy.allowsFeature('fullscreen') : null,
+    element: document.fullscreenElement ? document.fullscreenElement.tagName.toLowerCase() : null,
+    frameAllow: frame ? frame.getAttribute('allow') : null,
+    frameAllowFullscreen: frame ? frame.hasAttribute('allowfullscreen') : null,
+    frameSandbox: frame ? frame.getAttribute('sandbox') : null,
+    blockedAncestors,
+  }
+}
+
 const supports = (property: string, value: string) =>
   typeof CSS !== 'undefined' && typeof CSS.supports === 'function' && CSS.supports(property, value)
 
@@ -47,5 +74,6 @@ export const readEnv = (): DiagEnv => {
     videoFrame: box(frame),
     videoLoad: dialog?.dataset.videoLoad ?? null,
     lastError: window.__rumbosDiagError ?? null,
+    fullscreen: readFullscreen(),
   }
 }

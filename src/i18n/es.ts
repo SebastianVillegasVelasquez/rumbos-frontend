@@ -493,6 +493,13 @@ export const es = {
     containerQueries: 'Soporta container queries',
     has: 'Soporta :has()',
     lastError: 'Último error',
+    fullscreenEnabled: 'Pantalla completa permitida aquí',
+    fullscreenPolicy: 'Política de permisos: pantalla completa',
+    fullscreenElement: 'Elemento en pantalla completa',
+    frameAllow: 'Permisos (allow) del marco del video',
+    frameAllowFullscreen: 'allowfullscreen del marco del video',
+    frameSandbox: 'Sandbox del marco del video',
+    blockedAncestors: 'Contenedores del video que bloquean',
     // "Probar eventos de video": loads the real player after a click and lists the
     // messages it sends, with the time, to test a browser or a phone.
     probe: {
