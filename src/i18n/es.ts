@@ -699,6 +699,26 @@ export const es = {
     save: 'Guardar',
     saving: 'Guardando…',
     saveError: 'No se pudo guardar. Intenta de nuevo.',
+    // Specific save failures: always with the server's code or the path of the
+    // problem, so a report from production says what happened.
+    saveFailure: {
+      network:
+        'No se pudo guardar: no hay conexión con el servidor. Revisa tu red e inténtalo de nuevo.',
+      conflict: (code: string) =>
+        `No se pudo guardar: alguien más cambió este mapa mientras lo editabas. Recarga la página para ver la versión actual. (${code})`,
+      stale: (code: string) =>
+        `No se pudo guardar: tu copia del mapa está desactualizada. Recarga la página e inténtalo de nuevo. (${code})`,
+      server: (status: number, code: string) =>
+        `No se pudo guardar por un error del servidor (${status}, ${code}). Inténtalo de nuevo en un momento.`,
+      other: (status: number, code: string) => `No se pudo guardar (${status}, ${code}).`,
+      welcomeInvalid: 'La bienvenida no es válida.',
+      problem: (text: string, path: string) => `${text} (${path})`,
+      // Spanish for the codes the server sends in problems[].
+      welcomeProblems: {
+        legacy_fields_with_steps:
+          'Con pasos definidos, el título, el mensaje, el video y «reproducir al entrar» de la bienvenida anterior deben quedar vacíos.',
+      } as Record<string, string>,
+    },
     discardConfirm: {
       title: 'Descartar cambios',
       description: 'Tienes cambios sin guardar en la apariencia. ¿Quieres descartarlos?',

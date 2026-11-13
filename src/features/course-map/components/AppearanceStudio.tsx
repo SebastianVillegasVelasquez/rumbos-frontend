@@ -8,7 +8,7 @@ import { ConfirmDialog } from '../../../components/ui/ConfirmDialog.tsx'
 import { SkinStudio } from './SkinStudio.tsx'
 import { AUDIO_LIBRARY_PARAMS } from '../../audio/editor/audioErrors.ts'
 import { FlowTab } from '../../welcome/editor/FlowTab.tsx'
-import { ApiError } from '../data/client.ts'
+import { describeSaveFailure } from './appearanceErrors.ts'
 import { MusicTab } from '../../audio/editor/MusicTab.tsx'
 import { View3dTab } from '../../view3d/editor/View3dTab.tsx'
 import { useAnimationQuality, type QualitySetting } from '../../../fx/quality.ts'
@@ -224,10 +224,7 @@ export const AppearanceStudio = ({
       )}
       {updateAppearance.isError && (
         <p role="alert" className="px-4 pb-3 text-xs font-bold text-danger">
-          {updateAppearance.error instanceof ApiError &&
-          updateAppearance.error.detail.code === 'welcome_invalid'
-            ? es.studio.welcome.errors.welcome_invalid
-            : es.studio.saveError}
+          {describeSaveFailure(updateAppearance.error, es.studio.saveFailure)}
         </p>
       )}
 
