@@ -2,6 +2,16 @@ import type { ApiErrorDetail } from './types.ts'
 
 // Kept apart from client.ts, which reads the build environment when it loads, so
 // pure modules (and their tests) can recognize an API failure without it.
+// The backend answers `{ "detail": { code, message, ... } }` (FastAPI); the mock
+// and older code paths put the business error at the top level. Accept both.
+const unwrapDetail = (body: unknown): unknown => {
+  if (body && typeof body === 'object' && 'detail' in body) {
+    const inner = (body as { detail: unknown }).detail
+    if (inner && typeof inner === 'object') return inner
+  }
+  return body
+}
+
 export class ApiError extends Error {
   readonly status: number
   readonly body: unknown
@@ -17,7 +27,7 @@ export class ApiError extends Error {
   // to a generic code when the body doesn't match that shape (network
   // errors, plain-text 5xx responses, etc).
   get detail(): ApiErrorDetail {
-    const body = this.body
+    const body = unwrapDetail(this.body)
     if (body && typeof body === 'object' && 'code' in body && 'message' in body) {
       return body as ApiErrorDetail
     }
