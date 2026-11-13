@@ -217,7 +217,7 @@ test.describe('what is remembered', () => {
     await load(page, flowOf(welcomeStep, { ...htmlStep, revision: 2 }))
     await expect(dialog(page)).toBeVisible()
     await expect(dialog(page).getByRole('heading', { name: 'Reglas' })).toBeVisible()
-    await expect(dialog(page).getByText('Paso 2 de 2', { exact: true })).toBeVisible()
+    await expect(dialog(page).getByText('Paso 2 de 2 · Lectura', { exact: true })).toBeVisible()
   })
 
   test('a step added later is asked alone', async ({ page, context }) => {

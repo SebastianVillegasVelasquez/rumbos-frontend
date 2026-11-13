@@ -80,7 +80,7 @@ test.describe('welcome flow', () => {
   }) => {
     await open(page, context, steps)
     await expect(dialog(page)).toBeVisible()
-    await expect(dialog(page).getByText('Paso 1 de 3', { exact: true })).toBeVisible()
+    await expect(dialog(page).getByText('Paso 1 de 3 · Bienvenida', { exact: true })).toBeVisible()
     await expect(dialog(page).getByRole('heading', { name: 'Bienvenida al curso' })).toBeFocused()
 
     await dialog(page).getByRole('button', { name: 'Empezar viaje' }).click()

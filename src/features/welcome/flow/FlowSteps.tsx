@@ -5,9 +5,8 @@ import {
   useSyncExternalStore,
   type Dispatch,
   type ReactNode,
-  type RefObject,
 } from 'react'
-import { ExternalLink, Download, Play } from 'lucide-react'
+import { CheckCircle2, Download, ExternalLink, Hourglass, Info, Play } from 'lucide-react'
 import { Button } from '../../../components/ui/Button.tsx'
 import { es } from '../../../i18n/es.ts'
 import { API_BASE_URL } from '../../course-map/data/client.ts'
@@ -20,7 +19,6 @@ import type {
   WelcomeVideoStep,
 } from '../../course-map/data/types.ts'
 import { VideoFrame } from '../../content/VideoFrame.tsx'
-import { useVideoPanelWidth } from '../../content/useVideoPanelWidth.ts'
 import { useEmbed } from '../../embed/EmbedContext.ts'
 import {
   getHostQuizReceivedCount,
@@ -37,8 +35,8 @@ import {
   subscribeMessages,
 } from '../videoPlayer.ts'
 import { quizOf, videoOf, type FlowEvent, type FlowState } from './flowReducer.ts'
+import { FlowStatus } from './FlowStatus.tsx'
 import { assetsOrigin, htmlStepFrameAttributes } from './htmlStepDocument.ts'
-import { showTroubleAction } from './videoStepState.ts'
 import { createQuizWatcher, gateFromView, quizAvailability } from './quizWatcher.ts'
 
 const text = es.flow
@@ -51,8 +49,8 @@ interface StepContext {
 // ---- welcome ---------------------------------------------------------------------
 
 export const StepWelcome = ({ message, extra }: { message: string | null; extra?: ReactNode }) => (
-  <div className="space-y-4">
-    {message && <p className="text-lg whitespace-pre-line break-words">{message}</p>}
+  <div className="flow-pad space-y-4">
+    {message && <p className="flow-prose whitespace-pre-line">{message}</p>}
     {extra}
   </div>
 )
@@ -63,14 +61,10 @@ export const StepVideo = ({
   step,
   state,
   dispatch,
-  viewRef,
-  columnRef,
   onStart,
   onHold,
 }: StepContext & {
   step: WelcomeVideoStep
-  viewRef: RefObject<HTMLElement | null>
-  columnRef: RefObject<HTMLElement | null>
   // The click that starts the video is the first gesture of the viewer: the music
   // may start with it. Held while the video is heard.
   onStart: () => void
@@ -81,7 +75,6 @@ export const StepVideo = ({
   const frameRef = useRef<HTMLIFrameElement>(null)
   // Nothing of the provider loads before the click.
   const src = started ? playerUrl(step.video.provider, step.video.videoId) : null
-  const width = useVideoPanelWidth(viewRef, columnRef, started)
 
   // Strict origin and source: only the player frame we created counts.
   useEffect(() => {
@@ -113,11 +106,9 @@ export const StepVideo = ({
   // Leaving the step lets the music go back.
   useEffect(() => () => onHold(false), [onHold])
 
-  const trouble = showTroubleAction(video, step.allowFallback)
-
   if (!started || !src) {
     return (
-      <div className="flex flex-col items-start gap-3">
+      <div className="flow-pad flex flex-col items-start gap-3">
         <Button
           variant="secondary"
           onClick={() => {
@@ -134,35 +125,17 @@ export const StepVideo = ({
     )
   }
   return (
-    <div className="flex flex-col items-center gap-3" data-video-phase={video.phase}>
+    <div className="flow-pad flex flex-col items-center gap-3" data-video-phase={video.phase}>
       <VideoFrame
         src={src}
         title={text.video.frameTitle}
         frameRef={frameRef}
-        frameClassName="video-panel"
-        frameStyle={width === null ? undefined : { width }}
+        frameClassName="video-panel flow-video-box"
         onLoad={() => {
           for (const message of subscribeMessages(step.video.provider))
             frameRef.current?.contentWindow?.postMessage(message, playerOrigin(step.video.provider))
         }}
       />
-      {trouble && (
-        <div className="flex flex-col items-center gap-1 text-center">
-          <p className="text-sm text-ink-soft">{text.video.troubleHint}</p>
-          <button
-            type="button"
-            onClick={() => dispatch({ type: 'video-fallback' })}
-            className="min-h-[44px] px-3 text-sm font-bold text-primary underline underline-offset-4"
-          >
-            {text.video.trouble}
-          </button>
-        </div>
-      )}
-      {video.usedFallback && video.phase !== 'ended' && (
-        <p role="status" className="text-sm font-semibold text-ink">
-          {text.video.fallbackTaken}
-        </p>
-      )}
     </div>
   )
 }
@@ -202,7 +175,7 @@ export const StepHtml = ({ step, state, dispatch }: StepContext & { step: Welcom
     origin: assetsOrigin(API_BASE_URL, window.location.origin),
   })
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3">
+    <div className="flex flex-col gap-4 pt-[var(--flow-pad)]">
       <iframe
         title={text.html.frameTitle(step.title)}
         sandbox={attributes.sandbox}
@@ -213,14 +186,16 @@ export const StepHtml = ({ step, state, dispatch }: StepContext & { step: Welcom
         {...({ csp: attributes.csp } as object)}
         // Focusable, so the keyboard can scroll its content.
         tabIndex={0}
-        className="border-soft min-h-[40vh] w-full flex-1 rounded-md bg-white"
+        className="flow-frame"
       />
       {step.ack && (
-        <AckCheckbox
-          label={step.ack.label}
-          checked={state.acked[step.key] === true}
-          onChange={(checked) => dispatch({ type: 'ack', checked })}
-        />
+        <div className="px-[var(--flow-pad)] pb-[var(--flow-pad)]">
+          <AckCheckbox
+            label={step.ack.label}
+            checked={state.acked[step.key] === true}
+            onChange={(checked) => dispatch({ type: 'ack', checked })}
+          />
+        </div>
       )}
     </div>
   )
@@ -248,7 +223,7 @@ export const StepPdf = ({
 
   if (!doc || !available) {
     return (
-      <p role="status" className="text-base font-semibold">
+      <p role="status" className="flow-pad text-base font-semibold">
         {text.pdf.unavailable}
       </p>
     )
@@ -256,11 +231,11 @@ export const StepPdf = ({
   const url = resolveImageUrl(doc.url)
   const inline = inlinePdfSupported()
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-3">
-      <p className="text-sm font-semibold text-ink-soft">
+    <div className="flex flex-col gap-4 pt-[var(--flow-pad)]">
+      <p className="px-[var(--flow-pad)] text-sm font-semibold text-ink-soft">
         {doc.title} · {text.pdf.pages(doc.pageCount)}
       </p>
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3 px-[var(--flow-pad)]">
         <a
           href={url}
           target="_blank"
@@ -284,17 +259,19 @@ export const StepPdf = ({
           title={text.pdf.viewerTitle(doc.title)}
           src={url}
           referrerPolicy="no-referrer"
-          className="border-soft min-h-[50vh] w-full flex-1 rounded-md bg-white"
+          className="flow-frame"
         />
       ) : (
-        <p className="text-sm text-ink-soft">{text.pdf.touchHint}</p>
+        <p className="px-[var(--flow-pad)] text-sm text-ink-soft">{text.pdf.touchHint}</p>
       )}
       {step.ack && (
-        <AckCheckbox
-          label={step.ack.label}
-          checked={state.acked[step.key] === true}
-          onChange={(checked) => dispatch({ type: 'ack', checked })}
-        />
+        <div className="px-[var(--flow-pad)] pb-[var(--flow-pad)]">
+          <AckCheckbox
+            label={step.ack.label}
+            checked={state.acked[step.key] === true}
+            onChange={(checked) => dispatch({ type: 'ack', checked })}
+          />
+        </div>
       )}
     </div>
   )
@@ -371,11 +348,11 @@ export const StepQuiz = ({ step, state, dispatch }: StepContext & { step: Welcom
   if (availability !== null || gate.kind === 'unavailable') {
     const reason = gate.kind === 'unavailable' ? gate.reason : (availability ?? 'unavailable')
     return (
-      <div className="space-y-3">
-        {step.intro && <p className="text-lg whitespace-pre-line break-words">{step.intro}</p>}
-        <p role="status" className="border-soft rounded-md bg-surface p-3 text-base font-semibold">
+      <div className="flow-pad space-y-4">
+        {step.intro && <p className="flow-prose whitespace-pre-line">{step.intro}</p>}
+        <FlowStatus role="status" icon={<Info size={18} strokeWidth={2.5} />} className="text-base">
           {text.quiz.unavailable[reason]}
-        </p>
+        </FlowStatus>
       </div>
     )
   }
@@ -390,23 +367,31 @@ export const StepQuiz = ({ step, state, dispatch }: StepContext & { step: Welcom
         : null
 
   return (
-    <div className="space-y-4">
-      {step.intro && <p className="text-lg whitespace-pre-line break-words">{step.intro}</p>}
+    <div className="flow-pad space-y-4">
+      {step.intro && <p className="flow-prose whitespace-pre-line">{step.intro}</p>}
       {finished && (
-        <div role="status" className="border-soft space-y-1 rounded-md bg-surface p-3">
-          <p className="text-base font-bold break-words whitespace-pre-line">
-            {outcome ?? text.quiz.done}
-          </p>
+        <FlowStatus
+          role="status"
+          icon={<CheckCircle2 size={20} strokeWidth={2.5} className="text-leaf-dark" />}
+          className="border-soft rounded-md bg-leaf-tint p-3 text-base text-ink"
+        >
+          <span className="block font-bold whitespace-pre-line">{outcome ?? text.quiz.done}</span>
           {result.percent !== null && (
-            <p className="text-base">{text.quiz.percent(result.percent)}</p>
+            <span className="block font-medium">{text.quiz.percent(result.percent)}</span>
           )}
-          {result.pendingGrading && <p className="text-base">{text.quiz.pendingGrading}</p>}
-        </div>
+          {result.pendingGrading && (
+            <span className="block font-medium">{text.quiz.pendingGrading}</span>
+          )}
+        </FlowStatus>
       )}
       {!finished && gate.kind === 'pending' && !result && (
-        <p role="status" className="text-sm text-ink-soft">
+        <FlowStatus
+          role="status"
+          icon={<Hourglass size={16} strokeWidth={2.5} />}
+          className="text-ink-soft"
+        >
           {text.quiz.checking}
-        </p>
+        </FlowStatus>
       )}
       <div className="flex flex-wrap items-center gap-3">
         <Button
