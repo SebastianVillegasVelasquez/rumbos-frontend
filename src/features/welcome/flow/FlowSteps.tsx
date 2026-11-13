@@ -109,19 +109,27 @@ export const StepVideo = ({
 
   if (!started || !src) {
     return (
-      <div className="flow-pad flex flex-col items-start gap-3">
-        <Button
-          variant="secondary"
+      <div className="flow-pad flex flex-col items-center gap-3">
+        {/* The poster has the size the player will have, so nothing jumps on play.
+            Nothing of the provider loads before the click: it is a dark frame
+            (no thumbnail request) with a large play button. */}
+        <button
+          type="button"
+          className="video-panel flow-poster"
           onClick={() => {
             onStart()
             onHold(true)
             dispatch({ type: 'video', event: { type: 'click' } })
           }}
         >
-          <Play size={18} strokeWidth={3} aria-hidden />
-          {text.video.play}
-        </Button>
-        <p className="text-sm text-ink-soft">{text.video.captions}</p>
+          <span className="flex flex-col items-center gap-3">
+            <span aria-hidden className="flow-poster-play">
+              <Play size={36} strokeWidth={3} fill="currentColor" />
+            </span>
+            <span className="text-base font-extrabold">{text.video.play}</span>
+          </span>
+        </button>
+        <p className="text-center text-sm text-ink-soft">{text.video.captions}</p>
       </div>
     )
   }
