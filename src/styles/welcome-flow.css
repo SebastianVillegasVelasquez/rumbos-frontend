@@ -272,10 +272,6 @@
   color: var(--color-ink);
   cursor: pointer;
 }
-.flow-music:disabled {
-  cursor: default;
-  opacity: 0.6;
-}
 .flow-music-disc {
   display: block;
   flex: none;

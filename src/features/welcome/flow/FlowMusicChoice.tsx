@@ -11,13 +11,11 @@ import { musicChoiceView } from './musicChoice.ts'
 // single source of truth).
 export const FlowMusicChoice = ({
   on,
-  disabled,
   track,
   dataSaver,
   onToggle,
 }: {
   on: boolean
-  disabled: boolean
   track: { title: string; coverUrl: string | null } | null
   dataSaver: boolean
   onToggle: () => void
@@ -31,7 +29,6 @@ export const FlowMusicChoice = ({
       aria-checked={on}
       aria-label={view.label}
       aria-describedby={detailId}
-      disabled={disabled}
       onClick={onToggle}
       className="flow-music border-soft"
     >
