@@ -52,6 +52,7 @@
 .flow-card-scroll {
   flex: 1 1 auto;
   min-height: 0;
+  overflow-x: hidden; /* the step entrance slides 16 px sideways: never a scrollbar */
   overflow-y: auto;
   overscroll-behavior: contain;
 }
