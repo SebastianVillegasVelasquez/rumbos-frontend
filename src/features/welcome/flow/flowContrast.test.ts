@@ -46,6 +46,17 @@ const lightestStage = [Number(overlay[1]), Number(overlay[2]), Number(overlay[3]
   (value) => value * Number(overlay[4]) + 255 * (1 - Number(overlay[4]))
 )
 
+// The track of the segments not done: surface mixed into ink by the percentage in
+// welcome-flow.css, against the header (ink) it sits on.
+const css = readFileSync(new URL('../../../styles/welcome-flow.css', import.meta.url), 'utf8')
+const mix = css.match(
+  /--flow-track:\s*color-mix\(in srgb,\s*var\(--color-surface\)\s*(\d+)%,\s*var\(--color-ink\)\)/
+)
+assert.ok(mix, 'the progress track token is missing')
+const track = ink.map((value, i) =>
+  Math.round(value + (surface[i] - value) * (Number(mix[1]) / 100))
+)
+
 const TEXT = 4.5
 const SHAPE = 3
 
@@ -60,6 +71,8 @@ const cases: Array<[string, readonly number[], readonly number[], number]> = [
   ['step line on the header: white on ink', surface, ink, TEXT],
   ['progress, current segment: white on the header', surface, ink, SHAPE],
   ['progress, done segment: yellow on the header', accent, ink, SHAPE],
+  ['progress, upcoming track: mixed white on the header', track, ink, SHAPE],
+  ['progress, current segment on the track', surface, track, 1.5],
   ['primary button: ink on yellow', ink, accent, TEXT],
   ['the card edge against the lightest stage', surface, lightestStage, SHAPE],
 ]
