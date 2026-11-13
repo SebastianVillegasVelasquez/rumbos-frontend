@@ -5,7 +5,6 @@ import { useDataSaver } from '../../../fx/dataSaverStore.ts'
 import { es } from '../../../i18n/es.ts'
 import { resolveImageUrl } from '../../course-map/data/assets.ts'
 import type { WelcomeDocument, WelcomeStep } from '../../course-map/data/types.ts'
-import { CurtainMusicSwitch } from '../CurtainMusicSwitch.tsx'
 import { useCurtainMusic } from '../useCurtainMusic.ts'
 import { PLACEHOLDER } from '../welcome.ts'
 import {
@@ -20,9 +19,11 @@ import {
 } from './flowReducer.ts'
 import type { FlowPersistence } from './flowPersistence.ts'
 import { StepHtml, StepPdf, StepQuiz, StepVideo, StepWelcome } from './FlowSteps.tsx'
+import { FlowMusicChoice } from './FlowMusicChoice.tsx'
 import { FlowStatus } from './FlowStatus.tsx'
 import { FlowStepper } from './FlowStepper.tsx'
 import { showTroubleAction } from './videoStepState.ts'
+import { offersMusicChoice } from './musicChoice.ts'
 import { waitingText } from './waitingText.ts'
 
 const text = es.flow
@@ -158,8 +159,8 @@ const WelcomeFlow = ({
           <StepWelcome
             message={step.message}
             extra={
-              hasMusic && state.index === 0 ? (
-                <CurtainMusicSwitch
+              offersMusicChoice({ hasMusic, stepIndex: state.index }) ? (
+                <FlowMusicChoice
                   on={music.on}
                   disabled={mode === 'preview'}
                   track={track}
@@ -273,7 +274,7 @@ const WelcomeFlow = ({
 
           <div className="flow-card-scroll">
             <div key={step.key} className={`flex flex-col ${dataSaver ? '' : 'flow-step-in'}`}>
-              <div className={`flow-pad pb-0 ${hero ? 'text-center' : ''}`}>
+              <div className={`flow-title-zone ${hero ? 'text-center' : ''}`}>
                 {hero && (
                   <p className="mb-2 text-sm font-extrabold tracking-wide text-primary uppercase">
                     {text.stage.eyebrow}

@@ -453,6 +453,13 @@ export const es = {
         silent: 'No pudimos consultar la evaluación ahora. Puedes continuar.',
       },
     },
+    // The music choice on the welcome step.
+    music: {
+      label: 'Música de ambiente',
+      on: 'Activada',
+      off: 'Desactivada',
+      hint: 'Puedes cambiarla más tarde en el control de audio.',
+    },
     stage: {
       eyebrow: 'Tu viaje comienza aquí',
       defaultMessage: 'Te acompañaremos paso a paso. Solo te tomará unos minutos.',

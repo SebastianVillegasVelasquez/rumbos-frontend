@@ -67,8 +67,12 @@
   background: var(--color-surface-muted);
 }
 
+/* The title zone has no bottom padding: the body under it brings a smaller top. */
+.flow-title-zone {
+  padding: var(--flow-pad) var(--flow-pad) 0;
+}
 .flow-pad {
-  padding: var(--flow-pad);
+  padding: 16px var(--flow-pad) var(--flow-pad);
 }
 
 .flow-title {
@@ -148,7 +152,7 @@
 /* ---- video poster ------------------------------------------------------------------ */
 
 .flow-poster {
-  --video-reserve: 330px; /* the card's chrome around the video */
+  --video-reserve: 420px; /* the card chrome around the video */
   position: relative;
   display: flex;
   align-items: center;
@@ -177,7 +181,7 @@
   transform: scale(1.06);
 }
 .flow-video-box {
-  --video-reserve: 330px;
+  --video-reserve: 420px;
 }
 
 /* ---- embedded documents ------------------------------------------------------------ */
@@ -191,11 +195,11 @@
   width: 100%;
   border: 0;
   background: #fff;
-  height: clamp(240px, calc(100vh - 400px), 640px);
+  height: clamp(220px, calc(100vh - 480px), 640px);
 }
 @supports (height: 1dvh) {
   .flow-frame {
-    height: clamp(240px, calc(100dvh - 400px), 640px);
+    height: clamp(220px, calc(100dvh - 480px), 640px);
   }
 }
 
@@ -247,5 +251,76 @@
     border-color: ButtonText;
     background: ButtonFace;
     color: ButtonText;
+  }
+}
+
+/* ---- the music choice on the welcome step ------------------------------------------- */
+
+.flow-music {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 44px;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  background: var(--color-surface-muted);
+  color: var(--color-ink);
+  cursor: pointer;
+}
+.flow-music:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+.flow-music-disc {
+  display: block;
+  flex: none;
+  width: 48px;
+  height: 48px;
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  border: var(--bw-soft) solid var(--color-ink);
+  background: var(--color-primary-tint);
+}
+.flow-music-disc > svg {
+  margin: 10px;
+}
+/* The switch position and its word say the state; the colors only help. */
+.flow-switch {
+  position: relative;
+  display: block;
+  box-sizing: border-box;
+  width: 46px;
+  height: 26px;
+  border: var(--bw-soft) solid var(--color-ink);
+  border-radius: var(--radius-pill);
+  background: var(--color-slate-tint);
+}
+.flow-switch > span {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-pill);
+  background: var(--color-ink);
+  transition: transform var(--duration-fast) ease;
+}
+.flow-switch[data-on='true'] {
+  background: var(--color-primary);
+}
+.flow-switch[data-on='true'] > span {
+  transform: translateX(20px);
+  background: var(--color-surface);
+}
+@media (forced-colors: active) {
+  .flow-switch > span {
+    background: CanvasText;
+  }
+  .flow-switch[data-on='true'] {
+    background: Highlight;
+  }
+  .flow-switch[data-on='true'] > span {
+    background: HighlightText;
   }
 }

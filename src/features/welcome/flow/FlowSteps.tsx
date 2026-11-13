@@ -49,8 +49,9 @@ interface StepContext {
 // ---- welcome ---------------------------------------------------------------------
 
 export const StepWelcome = ({ message, extra }: { message: string | null; extra?: ReactNode }) => (
-  <div className="flow-pad space-y-4">
-    {message && <p className="flow-prose whitespace-pre-line">{message}</p>}
+  <div className="flow-pad mx-auto flex w-full max-w-xl flex-col items-center gap-6 text-center">
+    {/* Never a bare screen: the editor message, else a neutral line. */}
+    <p className="flow-prose whitespace-pre-line">{message?.trim() || text.stage.defaultMessage}</p>
     {extra}
   </div>
 )
@@ -175,7 +176,7 @@ export const StepHtml = ({ step, state, dispatch }: StepContext & { step: Welcom
     origin: assetsOrigin(API_BASE_URL, window.location.origin),
   })
   return (
-    <div className="flex flex-col gap-4 pt-[var(--flow-pad)]">
+    <div className="flex flex-col gap-4 pt-4">
       <iframe
         title={text.html.frameTitle(step.title)}
         sandbox={attributes.sandbox}
@@ -231,7 +232,7 @@ export const StepPdf = ({
   const url = resolveImageUrl(doc.url)
   const inline = inlinePdfSupported()
   return (
-    <div className="flex flex-col gap-4 pt-[var(--flow-pad)]">
+    <div className="flex flex-col gap-4 pt-4">
       <p className="px-[var(--flow-pad)] text-sm font-semibold text-ink-soft">
         {doc.title} · {text.pdf.pages(doc.pageCount)}
       </p>
