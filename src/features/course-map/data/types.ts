@@ -115,8 +115,9 @@ export interface MapWelcome {
   // At most 300 characters.
   message: string | null
   video: { provider: 'youtube' | 'vimeo'; videoId: string } | null
-  // Start the video when the viewer enters (default true).
-  playOnEnter: boolean
+  // Start the video when the viewer enters (default true). Null when the
+  // welcome has steps: the contract wants it empty then (see welcomeWire.ts).
+  playOnEnter: boolean | null
   show: WelcomeShow
   // The welcome flow (contract: steps 1..12). When present the four legacy
   // fields above must be null; the editor converts a legacy welcome on its

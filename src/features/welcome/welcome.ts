@@ -41,10 +41,10 @@ export type PrimaryAction = 'play' | 'start'
 // With a video that plays on entering, the button is "Reproducir"; otherwise
 // "Empezar viaje" (with a secondary "Ver video" when there is a video).
 export const primaryAction = (welcome: MapWelcome): PrimaryAction =>
-  welcome.video && welcome.playOnEnter ? 'play' : 'start'
+  welcome.video && welcome.playOnEnter !== false ? 'play' : 'start'
 
 export const hasOptionalVideo = (welcome: MapWelcome): boolean =>
-  welcome.video !== null && !welcome.playOnEnter
+  welcome.video !== null && welcome.playOnEnter === false
 
 // FNV-1a over the canonical settings: a changed welcome is a new welcome, so
 // viewers who saw the old one see the new one once.

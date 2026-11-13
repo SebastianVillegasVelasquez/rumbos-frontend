@@ -162,7 +162,7 @@ export const WelcomeTab = ({
             <input
               className={`${checkboxClass} mt-0.5`}
               type="checkbox"
-              checked={welcome.playOnEnter}
+              checked={welcome.playOnEnter !== false}
               onChange={(event) => patch({ playOnEnter: event.target.checked })}
             />
             <span>

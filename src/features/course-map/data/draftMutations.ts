@@ -1,3 +1,4 @@
+import { serializeAppearance } from '../../welcome/welcomeWire.ts'
 import { useMutation, useQueryClient, type QueryClient } from '@tanstack/react-query'
 import { courseMapApi } from './index.ts'
 import {
@@ -168,7 +169,11 @@ export const useUpdateAppearance = (courseMapId: string) => {
         target: 'map',
         run: async () => {
           const revision = await currentMapRevision(queryClient, courseMapId)
-          const map = await courseMapApi.updateAppearance(courseMapId, input, revision)
+          const map = await courseMapApi.updateAppearance(
+            courseMapId,
+            serializeAppearance(input),
+            revision
+          )
           applyMapLevel(queryClient, courseMapId, map)
           return map
         },
