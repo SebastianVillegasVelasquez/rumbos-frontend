@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { musicChoiceView, offersMusicChoice } from './musicChoice.ts'
+import { musicChoiceView, offersMusicChoice, previewSwitchStart } from './musicChoice.ts'
 
 describe('welcome music choice', () => {
   it('words the state as text, both ways', () => {
@@ -21,5 +21,11 @@ describe('welcome music choice', () => {
     assert.equal(offersMusicChoice({ hasMusic: true, stepIndex: 0 }), true)
     assert.equal(offersMusicChoice({ hasMusic: false, stepIndex: 0 }), false)
     assert.equal(offersMusicChoice({ hasMusic: true, stepIndex: 1 }), false)
+  })
+
+  it('the preview switch starts like a student switch would, without the saved mute', () => {
+    assert.equal(previewSwitchStart({ startAfterInteraction: true, dataSaver: false }), true)
+    assert.equal(previewSwitchStart({ startAfterInteraction: false, dataSaver: false }), false)
+    assert.equal(previewSwitchStart({ startAfterInteraction: true, dataSaver: true }), false)
   })
 })

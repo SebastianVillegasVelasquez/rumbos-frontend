@@ -54,6 +54,15 @@ const env = (over: Partial<DiagEnv> = {}): DiagEnv => ({
   videoFrame: { width: 281, height: 158 },
   videoLoad: 'loaded',
   lastError: null,
+  fullscreen: {
+    enabled: true,
+    policyAllows: true,
+    element: null,
+    frameAllow: 'autoplay; fullscreen; picture-in-picture',
+    frameAllowFullscreen: true,
+    frameSandbox: 'allow-scripts allow-same-origin allow-presentation',
+    blockedAncestors: [],
+  },
   ...over,
 })
 

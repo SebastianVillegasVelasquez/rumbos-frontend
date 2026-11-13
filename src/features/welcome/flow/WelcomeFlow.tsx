@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useId, useReducer, useRef, type KeyboardEvent } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useReducer,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from 'react'
 import { ArrowLeft, ArrowRight, Hourglass, Info, Lock, Maximize2 } from 'lucide-react'
 import { Button } from '../../../components/ui/Button.tsx'
 import { useDataSaver } from '../../../fx/dataSaverStore.ts'
@@ -23,7 +31,7 @@ import { FlowMusicChoice } from './FlowMusicChoice.tsx'
 import { FlowStatus } from './FlowStatus.tsx'
 import { FlowStepper } from './FlowStepper.tsx'
 import { showTroubleAction } from './videoStepState.ts'
-import { offersMusicChoice } from './musicChoice.ts'
+import { offersMusicChoice, previewSwitchStart } from './musicChoice.ts'
 import { waitingText } from './waitingText.ts'
 
 const text = es.flow
@@ -78,6 +86,15 @@ const WelcomeFlow = ({
     enabled: hasMusic && mode !== 'preview',
     startAfterInteraction: track?.startAfterInteraction ?? false,
   })
+  // The editor's preview: the switch answers from memory only (nothing plays, the
+  // saved mute is neither read nor written).
+  const preview = mode === 'preview'
+  const [previewOn, setPreviewOn] = useState(() =>
+    previewSwitchStart({
+      startAfterInteraction: track?.startAfterInteraction ?? false,
+      dataSaver,
+    })
+  )
   const beganRef = useRef(false)
   const beginMusic = useCallback(() => {
     // The first primary button is the gesture that starts the music.
@@ -161,11 +178,10 @@ const WelcomeFlow = ({
             extra={
               offersMusicChoice({ hasMusic, stepIndex: state.index }) ? (
                 <FlowMusicChoice
-                  on={music.on}
-                  disabled={mode === 'preview'}
+                  on={preview ? previewOn : music.on}
                   track={track}
                   dataSaver={dataSaver}
-                  onToggle={music.toggle}
+                  onToggle={preview ? () => setPreviewOn((value) => !value) : music.toggle}
                 />
               ) : null
             }

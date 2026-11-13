@@ -493,6 +493,13 @@ export const es = {
     containerQueries: 'Soporta container queries',
     has: 'Soporta :has()',
     lastError: 'Último error',
+    fullscreenEnabled: 'Pantalla completa permitida aquí',
+    fullscreenPolicy: 'Política de permisos: pantalla completa',
+    fullscreenElement: 'Elemento en pantalla completa',
+    frameAllow: 'Permisos (allow) del marco del video',
+    frameAllowFullscreen: 'allowfullscreen del marco del video',
+    frameSandbox: 'Sandbox del marco del video',
+    blockedAncestors: 'Contenedores del video que bloquean',
     // "Probar eventos de video": loads the real player after a click and lists the
     // messages it sends, with the time, to test a browser or a phone.
     probe: {
@@ -925,7 +932,7 @@ export const es = {
           'Mientras no vincules una evaluación, este paso no bloquea a nadie y se muestra un aviso.',
         none: 'Este curso no tiene evaluaciones (quiz) visibles para vincular.',
         secureWindow:
-          'Las evaluaciones con ventana segura de Moodle no funcionan en este visor: usa una evaluación sin esa opción.',
+          'Los cuestionarios con ventana segura se abren en una ventana aparte; permite las ventanas emergentes.',
         intro: 'Texto antes de empezar (opcional)',
         outcomeAbove: 'Mensaje si aprueba (opcional)',
         outcomeBelow: 'Mensaje si no aprueba (opcional)',

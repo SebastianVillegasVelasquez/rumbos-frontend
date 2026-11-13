@@ -35,3 +35,15 @@ export const offersMusicChoice = ({
   hasMusic: boolean
   stepIndex: number
 }): boolean => hasMusic && stepIndex === 0
+
+// The editor's preview plays nothing and stores nothing, but its switch must still
+// answer. It keeps its own state in memory, starting where a student's switch
+// would start (the editor's "start on interaction" and data saver, never the
+// editor's own saved mute), and never reads or writes `prefs.muted`.
+export const previewSwitchStart = ({
+  startAfterInteraction,
+  dataSaver,
+}: {
+  startAfterInteraction: boolean
+  dataSaver: boolean
+}): boolean => startAfterInteraction && !dataSaver
