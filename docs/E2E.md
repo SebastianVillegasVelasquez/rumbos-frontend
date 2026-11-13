@@ -89,6 +89,16 @@ unavailable, no permission, silent host after 6 s); reduced motion; the fullscre
 controls inside the frame at 360x640, 640x360, 768x1024, 1024x768, 1280x720, 1920x1080.
 `e2e/welcome-editor.spec.ts` covers the editor, `e2e/diag-probe.spec.ts` the video probe.
 
+`e2e/welcome-flow-layout.spec.ts` checks the flow at 14 window sizes and text scales (320 to
+1920 px wide, a phone in landscape, 130% and 200% text) with a long title: no sideways scroll,
+the card never taller than the window, the primary action inside the window and at least
+44 px tall. `e2e/welcome-flow-visual.spec.ts` keeps screenshot baselines of the five step
+types at 1366, 768 and 412 px in both engines (`e2e/__screenshots__/<spec>/<engine>/`; the
+path has no operating system, and 3% of pixels may differ). After an intended visual change
+run `pnpm exec playwright test e2e/welcome-flow-visual.spec.ts --update-snapshots` and look
+at the pictures before committing them. `src/features/welcome/flow/flowContrast.test.ts`
+computes the contrast of the flow from the tokens.
+
 ### What these do not cover
 
 Playwright's WebKit is not Safari: no codecs, no real autoplay policy, no real fullscreen,
@@ -114,3 +124,15 @@ providers' events are untested. The PDF viewer is not exercised (no PDF engine i
   network blocked the way out appears after 10 s.
 - The PDF step: the embedded viewer (needs `/assets` to allow framing) and "Abrir documento".
 - Reduced motion on in the system settings.
+- Look at the flow in fullscreen and inline: the card is centered and never taller than the
+  window, the primary action is always visible, and the step transition is a short fade and
+  slide (none with reduced motion on).
+- iPhone Safari: the card against the home indicator and the notch, the address bar growing
+  and shrinking (`dvh`), the music switch (first tap starts the music), the video poster and
+  the player's own fullscreen. A mid-range Android Chrome: the same, and scroll performance
+  of the card.
+- A very long course name in the title; browser zoom 200% and 400%; large text in the system
+  settings; forced colors (Windows high contrast) and "increase contrast".
+- In the real Moodle as a student, a guest and a teacher, with the course's iframe height set
+  to auto, viewport, 500, 600 and 700: the stage fills the iframe, the card centers in it and
+  scrolls inside when short.

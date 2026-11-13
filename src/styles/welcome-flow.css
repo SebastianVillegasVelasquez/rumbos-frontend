@@ -1,0 +1,327 @@
+/* The welcome flow's stage and card. Colors, radii and spacing come from
+   tokens.css; this file only arranges them.
+   - The stage fills the host box and centers one card in it.
+   - The card sizes to its content, never to the viewport: it grows up to the
+     stage's height and then scrolls inside (header and footer stay put), so the
+     primary action is always reachable.
+   - Text steps are 720 px wide, video, document and quiz steps 960 px. */
+
+.flow-stage {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 0;
+  flex: 1 1 auto;
+  box-sizing: border-box;
+  padding: max(12px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px))
+    max(12px, env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px));
+}
+
+.flow-card {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  width: min(92vw, 720px);
+  max-width: 100%;
+  max-height: 100%;
+  overflow: hidden;
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  box-shadow: var(--shadow-flow);
+}
+.flow-card[data-wide='true'] {
+  width: min(92vw, 960px);
+}
+
+/* Brand header zone: navy with a yellow edge, holding the progress. */
+.flow-card-head {
+  flex: none;
+  padding: 14px var(--flow-pad) 12px;
+  border-top: 6px solid var(--color-accent);
+  background: var(--color-ink);
+  color: var(--color-surface);
+}
+/* The host puts its exit in the top-right 64x64 corner of the window. */
+@media (max-width: 1100px) {
+  .flow-card-head {
+    padding-right: max(var(--flow-pad), 64px);
+  }
+}
+
+.flow-card-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-x: hidden; /* the step entrance slides 16 px sideways: never a scrollbar */
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.flow-card-foot {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  padding: 14px var(--flow-pad);
+  border-top: var(--bw-soft) solid var(--color-ink);
+  background: var(--color-surface-muted);
+}
+
+/* The title zone has no bottom padding: the body under it brings a smaller top. */
+.flow-title-zone {
+  padding: var(--flow-pad) var(--flow-pad) 0;
+}
+.flow-pad {
+  padding: 16px var(--flow-pad) var(--flow-pad);
+}
+
+.flow-title {
+  font-size: clamp(1.5rem, 1.1rem + 1.6vw, 2.25rem);
+  line-height: 1.15;
+  overflow-wrap: anywhere;
+}
+
+/* Reading text: 16 px at least, 1.6 line height, 65 characters per line. */
+.flow-prose {
+  max-width: 65ch;
+  font-size: max(1rem, 1.0625rem);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+/* ---- progress bar: one segment per step ------------------------------------------ */
+
+.flow-seg {
+  display: flex;
+  align-items: center;
+  flex: 1 1 0;
+  min-width: 0;
+  height: 24px;
+  padding: 0 2px;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+.flow-seg:disabled {
+  cursor: default;
+}
+.flow-seg > span {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  height: 8px;
+  border: 2px solid var(--color-surface);
+  border-radius: var(--radius-pill);
+  background: transparent;
+}
+/* The kinds differ by shape (height, fill, border style), not only by color. */
+.flow-seg[data-kind='done'] > span {
+  border-color: var(--color-accent);
+  background: var(--color-accent);
+}
+.flow-seg[data-kind='current'] > span {
+  height: 14px;
+  background: var(--color-surface);
+}
+.flow-seg[data-kind='visited'] > span {
+  border-style: solid;
+}
+.flow-seg[data-kind='locked'] > span {
+  border-style: dotted;
+  opacity: 0.7;
+}
+.flow-seg:focus-visible {
+  outline-color: var(--color-accent);
+  outline-offset: 1px;
+}
+
+/* ---- the primary button while the step is not done --------------------------------- */
+
+/* Reads as "waiting", not "broken": the brand yellow in its tint, a dashed edge,
+   a lock and the reason beside it. sun-dark on sun-tint is 7.2:1. */
+.flow-next-waiting {
+  border: var(--bw-soft) dashed var(--color-ink);
+  background: var(--color-sun-tint);
+  color: var(--color-sun-dark);
+  box-shadow: none;
+}
+.flow-next-waiting:hover {
+  background: var(--color-sun-tint);
+}
+
+/* ---- video poster ------------------------------------------------------------------ */
+
+.flow-poster {
+  --video-reserve: 420px; /* the card chrome around the video */
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-inline: auto;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  color: var(--color-surface);
+  background: radial-gradient(circle at 50% 40%, var(--color-ink-soft), var(--color-ink) 70%);
+}
+.flow-poster-play {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: clamp(64px, 14%, 96px);
+  aspect-ratio: 1;
+  border-radius: var(--radius-pill);
+  border: var(--bw-strong) solid var(--color-ink);
+  background: var(--color-accent);
+  color: var(--color-ink);
+  box-shadow: var(--shadow-sm);
+  transition: transform var(--duration-fast) ease;
+}
+.flow-poster:hover .flow-poster-play {
+  transform: scale(1.06);
+}
+.flow-video-box {
+  --video-reserve: 420px;
+}
+
+/* ---- embedded documents ------------------------------------------------------------ */
+
+/* The author's text and the PDF fill the card edge to edge: the card is the only
+   frame, so a step is never a card inside a card. A sandboxed frame without
+   scripts cannot report its content height, so the height comes from the room
+   the window leaves (never under 240 px; the frame scrolls its own content). */
+.flow-frame {
+  display: block;
+  width: 100%;
+  border: 0;
+  background: #fff;
+  height: clamp(220px, calc(100vh - 480px), 640px);
+}
+@supports (height: 1dvh) {
+  .flow-frame {
+    height: clamp(220px, calc(100dvh - 480px), 640px);
+  }
+}
+
+/* ---- preferences ------------------------------------------------------------------- */
+
+@media (max-height: 480px) {
+  .flow-card-head {
+    padding-top: 8px;
+    padding-bottom: 6px;
+  }
+  .flow-card-foot {
+    padding-top: 8px;
+    padding-bottom: 8px;
+  }
+}
+
+@media (prefers-contrast: more) {
+  .flow-card {
+    outline: 3px solid var(--color-ink);
+  }
+  .flow-card-foot {
+    border-top-width: var(--bw-strong);
+  }
+  .flow-seg > span {
+    border-width: 3px;
+  }
+}
+
+/* Forced colors drop backgrounds: the segments keep their shapes with borders and
+   system colors, and the card gets a border of its own. */
+@media (forced-colors: active) {
+  .flow-card {
+    border: 2px solid CanvasText;
+  }
+  .flow-seg > span {
+    border-color: CanvasText;
+  }
+  .flow-seg[data-kind='done'] > span,
+  .flow-seg[data-kind='current'] > span {
+    background: CanvasText;
+  }
+  .flow-seg:focus-visible {
+    outline-color: Highlight;
+  }
+  .flow-next-waiting {
+    border: 2px dashed ButtonText;
+  }
+  .flow-poster-play {
+    border-color: ButtonText;
+    background: ButtonFace;
+    color: ButtonText;
+  }
+}
+
+/* ---- the music choice on the welcome step ------------------------------------------- */
+
+.flow-music {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  min-height: 44px;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  background: var(--color-surface-muted);
+  color: var(--color-ink);
+  cursor: pointer;
+}
+.flow-music:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+.flow-music-disc {
+  display: block;
+  flex: none;
+  width: 48px;
+  height: 48px;
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  border: var(--bw-soft) solid var(--color-ink);
+  background: var(--color-primary-tint);
+}
+.flow-music-disc > svg {
+  margin: 10px;
+}
+/* The switch position and its word say the state; the colors only help. */
+.flow-switch {
+  position: relative;
+  display: block;
+  box-sizing: border-box;
+  width: 46px;
+  height: 26px;
+  border: var(--bw-soft) solid var(--color-ink);
+  border-radius: var(--radius-pill);
+  background: var(--color-slate-tint);
+}
+.flow-switch > span {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-pill);
+  background: var(--color-ink);
+  transition: transform var(--duration-fast) ease;
+}
+.flow-switch[data-on='true'] {
+  background: var(--color-primary);
+}
+.flow-switch[data-on='true'] > span {
+  transform: translateX(20px);
+  background: var(--color-surface);
+}
+@media (forced-colors: active) {
+  .flow-switch > span {
+    background: CanvasText;
+  }
+  .flow-switch[data-on='true'] {
+    background: Highlight;
+  }
+  .flow-switch[data-on='true'] > span {
+    background: HighlightText;
+  }
+}

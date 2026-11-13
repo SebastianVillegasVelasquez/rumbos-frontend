@@ -90,6 +90,18 @@
   /* Welcome curtain: white text over this scrim on the blurred map; contrast is
      measured over the worst backgrounds in welcome/contrast.test.ts. */
   --welcome-scrim: rgb(10 15 30 / 0.82);
+  /* Welcome flow stage: the scrim, darker toward the edges so a light card always
+     sits on a dark ground. The card's own text never sits on it. */
+  --flow-stage-overlay: linear-gradient(
+    to bottom,
+    rgb(10 15 30 / 0.7),
+    rgb(10 15 30 / 0.86) 60%,
+    rgb(10 15 30 / 0.92)
+  );
+  /* The one soft, layered shadow: hard ink shadows vanish on the dark stage. */
+  --shadow-flow:
+    0 1px 2px rgb(0 0 0 / 0.3), 0 8px 24px rgb(0 0 0 / 0.35), 0 28px 60px rgb(0 0 0 / 0.3);
+  --flow-pad: clamp(20px, 4vw, 40px);
 }
 
 @keyframes welcome-in {
@@ -114,7 +126,7 @@
 @keyframes flow-step-in {
   from {
     opacity: 0;
-    transform: translateX(24px);
+    transform: translateX(16px);
   }
 }
 

@@ -656,3 +656,63 @@ picture-in-picture`: `encrypted-media` is gone (the embeds play without it, and 
   pass the same validation as author text.
 - **Embed initial JS +2.4 KB** (308.6 -> 311.0 KB): only the Spanish strings, which live in
   the dictionary; the editor stays in the lazy studio chunk.
+
+## Welcome flow: visual polish
+
+Layout and look only: no contract, state machine, backend or plugin change.
+
+- **The language of the app, with one exception.** The tokens say "hard shadows, never
+  blurred" and the app is neo-brutalist (3 px ink borders, offset shadows). The card keeps
+  that language inside (soft 2 px ink borders on the music card and the waiting button, the
+  raised yellow primary, 24 px radius), but its own shadow is one soft layered token
+  (`--shadow-flow`): a hard ink shadow disappears on the dark stage and the card would have no
+  depth. No glassmorphism. Alternative: a hard shadow in a light color; rejected as a second
+  palette.
+- **Brand header zone is navy with a yellow edge.** Both are existing tokens (`--color-ink`,
+  `--color-accent`); nothing new in the palette. The only new tokens are the stage overlay, the
+  soft shadow and the card padding (`--flow-pad`).
+- **The stepper has four kinds, not three.** `current`, `done`, `visited` (reached, not done,
+  not here) and `locked`. The old dots painted every reachable unfinished step as "current"
+  while only `state.index` drove the label, so after "Atrás" the label said step 1 and dot 2
+  was highlighted. That was a styling bug (furthest-reached drawn as current), not a state
+  bug: the segments and the line now come from the same `state.index`
+  (`stepperModel.ts`). A completed step you came back to is `current` and says "hecho".
+- **The step name in "Paso N de M" is the kind of step** (Bienvenida, Video, Lectura, Documento,
+  Evaluación), not the author's title, which can be 120 characters. The title is the heading.
+- **The primary action on the first step is centered and alone.** The spec asks for it
+  centered on the welcome and for "Atrás" left and the primary right elsewhere. The first
+  step has no "Atrás" (there is nothing before it), so its footer centers the one primary.
+- **Waiting is a state of the button, not of its opacity.** `aria-disabled` stays (the button
+  must stay focusable so its reason is read); the look is the yellow tint, a dashed ink edge
+  and a lock, with the reason beside it as a status line with an hourglass. The reason copy is
+  now an instruction ("Termina el video para continuar.").
+- **The video exit lives in the footer status area**, not under the video. Same rules
+  (`showTroubleAction`), same texts and button name.
+- **Poster, not thumbnail.** Before play the step shows a dark frame with a large play button.
+  A Vimeo or YouTube thumbnail needs a request (oEmbed or an image host) before the click,
+  which the privacy rules of the flow forbid ("nothing is requested from the provider until the
+  student presses play"). Ask before adding one.
+- **The video frame is always 16:9.** The real aspect ratio is not known without asking the
+  provider, so a square or vertical video is letterboxed by the player inside the 16:9 frame.
+  Knowing it would need the provider's metadata (the same request as the thumbnail) or a field
+  on the step in the contract.
+- **A sandboxed HTML step cannot report its height.** The frame has no scripts and no
+  same-origin access (that is the security boundary), so the host cannot read its content
+  height. The frame takes the room the window leaves (`100dvh - 480px`, between 220 and 640
+  px) and scrolls its own content when it is longer. Alternative: `allow-same-origin` to
+  measure; rejected.
+- **HTML and PDF run edge to edge, always.** No signal tells whether the author's CSS "defines
+  its own surface" (a gradient on `body`, a card), so the rule is simpler: the card is the only
+  frame, the frame has no border, radius or padding, and the author's `body` padding and white
+  base come from `BASE_CSS`. A step is never a card inside a card.
+- **The music choice is a new component; the old curtain switch is untouched.** It reuses
+  `NowPlayingDisc` and the same `useCurtainMusic` state (`prefs.muted` stays the only source of
+  truth). It shows only on the first step and only when the map has a track.
+- **Widths.** 720 px for welcome and HTML, 960 px for video, quiz and PDF.
+- **The top-right 64 px corner stays free** (the host puts its exit there): below 1100 px the
+  card header keeps 64 px of right padding.
+- **Fullscreen button is icon-only below 480 px**, to give the first rows back to the content;
+  the name stays for assistive technology.
+- **Visual baselines are per engine, not per OS.** Fonts render slightly differently between
+  Windows and Linux, so the comparison allows 3% of pixels to differ. They were generated on
+  Windows; regenerate them on the CI image if a pipeline is added.

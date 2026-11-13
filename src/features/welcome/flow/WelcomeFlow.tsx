@@ -1,11 +1,10 @@
 import { useCallback, useEffect, useId, useReducer, useRef, type KeyboardEvent } from 'react'
-import { ArrowLeft, ArrowRight, Maximize2 } from 'lucide-react'
+import { ArrowLeft, ArrowRight, Hourglass, Info, Lock, Maximize2 } from 'lucide-react'
 import { Button } from '../../../components/ui/Button.tsx'
 import { useDataSaver } from '../../../fx/dataSaverStore.ts'
 import { es } from '../../../i18n/es.ts'
 import { resolveImageUrl } from '../../course-map/data/assets.ts'
 import type { WelcomeDocument, WelcomeStep } from '../../course-map/data/types.ts'
-import { CurtainMusicSwitch } from '../CurtainMusicSwitch.tsx'
 import { useCurtainMusic } from '../useCurtainMusic.ts'
 import { PLACEHOLDER } from '../welcome.ts'
 import {
@@ -14,12 +13,17 @@ import {
   gateOf,
   newCompletions,
   toStepInfo,
-  isDone,
+  videoOf,
   type FlowMode,
   type ProgressEntry,
 } from './flowReducer.ts'
 import type { FlowPersistence } from './flowPersistence.ts'
 import { StepHtml, StepPdf, StepQuiz, StepVideo, StepWelcome } from './FlowSteps.tsx'
+import { FlowMusicChoice } from './FlowMusicChoice.tsx'
+import { FlowStatus } from './FlowStatus.tsx'
+import { FlowStepper } from './FlowStepper.tsx'
+import { showTroubleAction } from './videoStepState.ts'
+import { offersMusicChoice } from './musicChoice.ts'
 import { waitingText } from './waitingText.ts'
 
 const text = es.flow
@@ -68,8 +72,6 @@ const WelcomeFlow = ({
   )
   const rootRef = useRef<HTMLDivElement>(null)
   const headingRef = useRef<HTMLHeadingElement>(null)
-  const viewRef = useRef<HTMLDivElement>(null)
-  const columnRef = useRef<HTMLDivElement>(null)
   const noteId = useId()
 
   const music = useCurtainMusic({
@@ -157,8 +159,8 @@ const WelcomeFlow = ({
           <StepWelcome
             message={step.message}
             extra={
-              hasMusic && state.index === 0 ? (
-                <CurtainMusicSwitch
+              offersMusicChoice({ hasMusic, stepIndex: state.index }) ? (
+                <FlowMusicChoice
                   on={music.on}
                   disabled={mode === 'preview'}
                   track={track}
@@ -176,8 +178,6 @@ const WelcomeFlow = ({
             step={step}
             state={state}
             dispatch={dispatch}
-            viewRef={viewRef}
-            columnRef={columnRef}
             onStart={beginMusic}
             onHold={hold}
           />
@@ -205,6 +205,14 @@ const WelcomeFlow = ({
     return isLast ? text.finish : text.next
   })()
 
+  const kindName = text.stepKinds[step.type]
+  const video = step.type === 'video' ? videoOf(state, step.key) : null
+  const trouble =
+    step.type === 'video' && video !== null && showTroubleAction(video, step.allowFallback)
+  const wide = step.type === 'video' || step.type === 'quiz' || step.type === 'pdf'
+  // The first welcome step is a hero: centered, with one centered primary action.
+  const hero = step.type === 'welcome' && state.index === 0
+
   return (
     <div
       ref={rootRef}
@@ -212,7 +220,7 @@ const WelcomeFlow = ({
       aria-modal="true"
       aria-label={text.dialog}
       onKeyDown={trapFocus}
-      className="absolute inset-0 z-50 overflow-hidden bg-ink text-white"
+      className="absolute inset-0 z-50 flex flex-col overflow-hidden bg-ink text-white"
     >
       <div
         aria-hidden
@@ -225,129 +233,134 @@ const WelcomeFlow = ({
       <div
         aria-hidden
         className="absolute inset-0"
-        style={{ background: 'var(--welcome-scrim)' }}
+        style={{ background: 'var(--flow-stage-overlay)' }}
       />
 
-      <div
-        className="relative mx-auto flex h-full w-full max-w-3xl flex-col gap-3 px-3 py-3"
-        style={{
-          paddingTop: 'max(0.75rem, env(safe-area-inset-top, 0px))',
-          paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom, 0px))',
-        }}
-      >
-        {/* The top-right 64x64 corner stays empty: the host puts its exit there. */}
-        <header
-          className="flex flex-wrap items-center gap-x-3 gap-y-2"
-          style={{ paddingRight: 64 }}
-        >
-          <p className="text-sm font-bold">{text.stepOf(state.index + 1, total)}</p>
-          <ol aria-label={text.progress} className="flex flex-wrap items-center gap-1.5">
-            {steps.map((item, index) => {
-              const reachable = state.mode === 'review' || index <= state.furthest
-              const done = isDone(state, state.steps[index])
-              const kind = done ? 'done' : reachable ? 'current' : 'locked'
-              return (
-                <li key={item.key}>
-                  <button
-                    type="button"
-                    disabled={!reachable}
-                    aria-current={index === state.index ? 'step' : undefined}
-                    aria-label={text.dot(index + 1, item.title, kind)}
-                    onClick={() => dispatch({ type: 'goto', index })}
-                    className="flex h-6 min-w-6 items-center justify-center rounded-pill border-2 border-white px-1 text-xs font-bold disabled:opacity-60"
-                    style={{
-                      background: kind === 'current' ? '#fff' : 'transparent',
-                      color: kind === 'current' ? 'var(--color-ink, #1b1b1f)' : '#fff',
-                    }}
+      <div className="flow-stage relative">
+        <div className="flow-card" data-wide={wide}>
+          <header className="flow-card-head">
+            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+              <p className="text-sm font-bold">{text.stepLine(state.index + 1, total, kindName)}</p>
+              <div className="flex items-center gap-2">
+                {onEnterFullscreen && (
+                  <Button variant="surface" size="sm" dense onClick={onEnterFullscreen}>
+                    <Maximize2 size={16} strokeWidth={2.5} aria-hidden />
+                    {/* Icon only on a narrow window; the name stays for assistive tech. */}
+                    <span className="max-[480px]:sr-only">{es.welcome.fullscreen}</span>
+                  </Button>
+                )}
+                {(mode === 'review' || skipVisible) && (
+                  <Button
+                    variant="surface"
+                    size="sm"
+                    dense
+                    onClick={() => dispatch({ type: 'close' })}
                   >
-                    {/* The number and the state are text: never color alone. */}
-                    {done ? '✓' : index + 1}
-                  </button>
-                </li>
-              )
-            })}
-          </ol>
-          <div className="ml-auto flex items-center gap-2">
-            {onEnterFullscreen && (
-              <Button variant="surface" size="sm" dense onClick={onEnterFullscreen}>
-                <Maximize2 size={16} strokeWidth={2.5} aria-hidden />
-                {es.welcome.fullscreen}
-              </Button>
-            )}
-            {(mode === 'review' || skipVisible) && (
-              <Button variant="surface" size="sm" dense onClick={() => dispatch({ type: 'close' })}>
-                {mode === 'review' ? text.close : text.skipPreview}
-              </Button>
-            )}
-          </div>
-        </header>
+                    {mode === 'review' ? text.close : text.skipPreview}
+                  </Button>
+                )}
+              </div>
+            </div>
+            <FlowStepper state={state} steps={steps} dispatch={dispatch} />
+          </header>
 
-        {mode !== 'normal' && (
-          <p role="note" className="text-xs font-semibold">
-            {mode === 'review' ? text.review : text.preview}
-          </p>
-        )}
-
-        <section
-          ref={viewRef}
-          className="border-soft flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain rounded-lg bg-surface p-4 text-ink"
-        >
-          <div
-            ref={columnRef}
-            key={step.key}
-            className={`flex min-h-0 flex-1 flex-col gap-4 ${dataSaver ? '' : 'flow-step-in'}`}
-          >
-            <h1
-              ref={headingRef}
-              tabIndex={-1}
-              className="font-heading text-2xl font-extrabold break-words outline-none"
+          {mode !== 'normal' && (
+            <p
+              role="note"
+              className="flex-none bg-sun-tint px-[var(--flow-pad)] py-2 text-sm font-semibold text-sun-dark"
             >
-              {title}
-              {!step.mandatory && (
-                <span className="ml-2 align-middle text-sm font-bold text-ink-soft">
-                  ({text.optionalTag})
-                </span>
-              )}
-            </h1>
-            {body}
-          </div>
-        </section>
-
-        <footer className="flex flex-col gap-2">
-          {note && (
-            <p id={noteId} className="text-sm font-semibold">
-              {note}
+              {mode === 'review' ? text.review : text.preview}
             </p>
           )}
-          <div className="flex flex-wrap items-center justify-between gap-2">
-            <Button
-              variant="surface"
-              onClick={() => dispatch({ type: 'back' })}
-              disabled={state.index === 0}
+
+          <div className="flow-card-scroll">
+            <div key={step.key} className={`flex flex-col ${dataSaver ? '' : 'flow-step-in'}`}>
+              <div className={`flow-title-zone ${hero ? 'text-center' : ''}`}>
+                {hero && (
+                  <p className="mb-2 text-sm font-extrabold tracking-wide text-primary uppercase">
+                    {text.stage.eyebrow}
+                  </p>
+                )}
+                <h1
+                  ref={headingRef}
+                  tabIndex={-1}
+                  className="flow-title font-heading font-extrabold outline-none"
+                >
+                  {title}
+                  {!step.mandatory && (
+                    <span className="ml-2 align-middle text-sm font-bold text-ink-soft">
+                      ({text.optionalTag})
+                    </span>
+                  )}
+                </h1>
+              </div>
+              {body}
+            </div>
+          </div>
+
+          <footer className={`flow-card-foot ${hero ? 'justify-center' : 'justify-between'}`}>
+            {!hero && (
+              <Button
+                variant="ghost"
+                onClick={() => dispatch({ type: 'back' })}
+                disabled={state.index === 0}
+              >
+                <ArrowLeft size={18} strokeWidth={3} aria-hidden />
+                {text.back}
+              </Button>
+            )}
+            <div
+              className={`flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2 ${hero ? 'justify-center' : 'ml-auto justify-end'}`}
             >
-              <ArrowLeft size={18} strokeWidth={3} aria-hidden />
-              {text.back}
-            </Button>
-            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex min-w-0 flex-col items-end gap-1 text-right">
+                {note && (
+                  <FlowStatus
+                    id={noteId}
+                    icon={<Hourglass size={16} strokeWidth={2.5} />}
+                    className="text-ink-soft"
+                  >
+                    {note}
+                  </FlowStatus>
+                )}
+                {trouble && (
+                  <div className="flex flex-wrap items-center justify-end gap-x-2 text-xs text-ink-soft">
+                    <span>{text.video.troubleHint}</span>
+                    <button
+                      type="button"
+                      onClick={() => dispatch({ type: 'video-fallback' })}
+                      className="min-h-[44px] px-1 text-sm font-bold text-primary underline underline-offset-4"
+                    >
+                      {text.video.trouble}
+                    </button>
+                  </div>
+                )}
+                {video?.usedFallback && video.phase !== 'ended' && (
+                  <FlowStatus role="status" icon={<Info size={16} strokeWidth={2.5} />}>
+                    {text.video.fallbackTaken}
+                  </FlowStatus>
+                )}
+              </div>
               {gate.canSkip && (
-                <Button variant="surface" onClick={() => dispatch({ type: 'skip' })}>
+                <Button variant="surface" dense onClick={() => dispatch({ type: 'skip' })}>
                   {text.skip}
                 </Button>
               )}
               {/* aria-disabled, not disabled: it stays focusable and its note is read. */}
               <Button
                 variant="secondary"
+                dense={blocked}
                 aria-disabled={blocked}
                 aria-describedby={blocked && note ? noteId : undefined}
-                className={blocked ? 'opacity-60' : ''}
+                className={blocked ? 'flow-next-waiting' : hero ? 'px-8' : ''}
                 onClick={goNext}
               >
+                {blocked && <Lock size={16} strokeWidth={3} aria-hidden />}
                 {nextLabel}
-                {!isLast && <ArrowRight size={18} strokeWidth={3} aria-hidden />}
+                {!blocked && !isLast && <ArrowRight size={18} strokeWidth={3} aria-hidden />}
               </Button>
             </div>
-          </div>
-        </footer>
+          </footer>
+        </div>
       </div>
       <p aria-live="polite" role="status" className="sr-only">
         {text.announce(state.index + 1, total, title)}

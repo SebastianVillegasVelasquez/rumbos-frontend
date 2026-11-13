@@ -11,6 +11,8 @@ export default defineConfig({
   fullyParallel: true,
   reporter: [['list']],
   timeout: 90_000,
+  // Baselines are per engine, not per operating system (see docs/E2E.md).
+  snapshotPathTemplate: '{testDir}/__screenshots__/{testFileName}/{projectName}/{arg}{ext}',
   use: {
     baseURL: `http://localhost:${PORT}`,
     viewport,

@@ -367,8 +367,34 @@ export const es = {
     announce: (current: number, total: number, title: string) =>
       `Paso ${current} de ${total}: ${title}`,
     progress: 'Pasos de la bienvenida',
-    dot: (n: number, title: string, state: 'done' | 'current' | 'locked') =>
-      `Paso ${n}: ${title}${state === 'done' ? ' (hecho)' : state === 'locked' ? ' (aún no disponible)' : ''}`,
+    // One name per kind of step for the progress line ("Paso 2 de 5 · Video").
+    stepKinds: {
+      welcome: 'Bienvenida',
+      video: 'Video',
+      html: 'Lectura',
+      pdf: 'Documento',
+      quiz: 'Evaluación',
+    },
+    stepLine: (current: number, total: number, kind: string) =>
+      `Paso ${current} de ${total} · ${kind}`,
+    dot: (
+      n: number,
+      title: string,
+      state: 'done' | 'current' | 'visited' | 'locked',
+      done: boolean
+    ) => {
+      const suffix =
+        state === 'current'
+          ? done
+            ? ' (paso actual, hecho)'
+            : ' (paso actual)'
+          : state === 'done'
+            ? ' (hecho)'
+            : state === 'locked'
+              ? ' (aún no disponible)'
+              : ' (pendiente)'
+      return `Paso ${n}: ${title}${suffix}`
+    },
     optionalTag: 'Opcional',
     back: 'Atrás',
     next: 'Continuar',
@@ -379,13 +405,14 @@ export const es = {
     preview: 'Vista previa: no se guarda nada.',
     skipPreview: 'Saltar vista previa',
     loading: 'Preparando la bienvenida…',
+    // Why "Continuar" is not available yet, said next to the button.
     waiting: {
       time: (seconds: number) => `Podrás continuar en ${seconds} s.`,
       ack: 'Marca la casilla para continuar.',
       timeAndAck: (seconds: number) =>
         `Podrás continuar en ${seconds} s y cuando marques la casilla.`,
-      video: 'Podrás continuar cuando termine el video.',
-      quiz: 'Podrás continuar cuando termines la evaluación.',
+      video: 'Termina el video para continuar.',
+      quiz: 'Termina la evaluación para continuar.',
     },
     video: {
       play: 'Reproducir video',
@@ -425,6 +452,17 @@ export const es = {
         unavailable: 'No pudimos consultar la evaluación ahora. Puedes continuar.',
         silent: 'No pudimos consultar la evaluación ahora. Puedes continuar.',
       },
+    },
+    // The music choice on the welcome step.
+    music: {
+      label: 'Música de ambiente',
+      on: 'Activada',
+      off: 'Desactivada',
+      hint: 'Puedes cambiarla más tarde en el control de audio.',
+    },
+    stage: {
+      eyebrow: 'Tu viaje comienza aquí',
+      defaultMessage: 'Te acompañaremos paso a paso. Solo te tomará unos minutos.',
     },
     reset: 'Reiniciar mi progreso de bienvenida',
     resetHint:
