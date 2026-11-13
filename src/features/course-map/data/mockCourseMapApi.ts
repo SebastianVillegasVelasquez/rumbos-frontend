@@ -1,3 +1,4 @@
+import { legacyFieldProblems } from '../../welcome/welcomeWire.ts'
 import { ApiError, hasAuthHooks } from './client.ts'
 import { mockFeatures, mockLaunch, mockMe, withMockAuth } from './mockAuth.ts'
 import { getTransferScenario, mockArchive, mockStaged } from './mockTransfer.ts'
@@ -683,7 +684,7 @@ const businessError = (
   code: string,
   message: string,
   extras: Record<string, unknown> = {}
-) => new ApiError(status, { code, message, ...extras })
+) => new ApiError(status, { detail: { code, message, ...extras } })
 
 const requireMap = (courseMapId: string) => {
   const map = maps.find((item) => item.id === courseMapId)
@@ -1664,6 +1665,11 @@ const impl: Omit<CourseMapApi, TransferMethods> = {
     if (input.defaultSkinId !== null) requireSkin(input.defaultSkinId)
     if (validateWelcome(input.settings.welcome).length > 0)
       throw businessError(422, 'welcome_invalid', 'La bienvenida no es válida')
+    const legacyProblems = legacyFieldProblems(input.settings.welcome)
+    if (legacyProblems.length > 0)
+      throw businessError(422, 'welcome_invalid', 'The welcome curtain settings are not valid', {
+        problems: legacyProblems,
+      })
     const flowProblems = validateFlow(input.settings.welcome, {
       availableDocuments: new Set(
         assets.filter((asset) => asset.kind === 'document').map((asset) => asset.id)
