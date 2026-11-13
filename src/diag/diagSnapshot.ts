@@ -97,27 +97,36 @@ export const diagRows = (env: DiagEnv): Array<[string, string]> => {
     [text.dvh, yesNo(env.supports.dvh)],
     [text.containerQueries, yesNo(env.supports.containerQueries)],
     [text.has, yesNo(env.supports.has)],
-    [text.fullscreenEnabled, yesNo(env.fullscreen.enabled)],
-    [
-      text.fullscreenPolicy,
-      env.fullscreen.policyAllows === null ? text.unknown : yesNo(env.fullscreen.policyAllows),
-    ],
-    [text.fullscreenElement, env.fullscreen.element ?? text.none],
-    [text.frameAllow, env.fullscreen.frameAllow ?? text.none],
-    [
-      text.frameAllowFullscreen,
-      env.fullscreen.frameAllowFullscreen === null
-        ? text.none
-        : yesNo(env.fullscreen.frameAllowFullscreen),
-    ],
-    [text.frameSandbox, env.fullscreen.frameSandbox ?? text.none],
-    [
-      text.blockedAncestors,
-      env.fullscreen.blockedAncestors.length
-        ? env.fullscreen.blockedAncestors.join(', ')
-        : text.none,
-    ],
+    // Only with a video frame on screen: they are about it, and a taller panel
+    // would cover the page when there is nothing to report.
+    ...fullscreenRows(env),
     [text.lastError, env.lastError ?? text.none],
   ]
   return rows
 }
+
+const fullscreenRows = (env: DiagEnv): Array<[string, string]> =>
+  env.fullscreen.frameAllow === null
+    ? []
+    : [
+        [text.fullscreenEnabled, yesNo(env.fullscreen.enabled)],
+        [
+          text.fullscreenPolicy,
+          env.fullscreen.policyAllows === null ? text.unknown : yesNo(env.fullscreen.policyAllows),
+        ],
+        [text.fullscreenElement, env.fullscreen.element ?? text.none],
+        [text.frameAllow, env.fullscreen.frameAllow ?? text.none],
+        [
+          text.frameAllowFullscreen,
+          env.fullscreen.frameAllowFullscreen === null
+            ? text.none
+            : yesNo(env.fullscreen.frameAllowFullscreen),
+        ],
+        [text.frameSandbox, env.fullscreen.frameSandbox ?? text.none],
+        [
+          text.blockedAncestors,
+          env.fullscreen.blockedAncestors.length
+            ? env.fullscreen.blockedAncestors.join(', ')
+            : text.none,
+        ],
+      ]
