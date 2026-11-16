@@ -465,8 +465,6 @@ export const es = {
       timeout: 'Moodle no respondió a tiempo. Puedes volver a comprobar.',
       escape: 'Continuar de todos modos',
       escapeHint: 'El resultado no se registrará como completado.',
-      escapeAnnounce:
-        'Puedes continuar de todos modos; el resultado no se registrará como completado.',
       done: 'Completaste la evaluación.',
       percent: (value: number) => `Tu resultado: ${Math.round(value)} %.`,
       pendingGrading: 'Tu resultado está pendiente de revisión.',

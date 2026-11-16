@@ -13,6 +13,7 @@ import { useDataSaver } from '../../../fx/dataSaverStore.ts'
 import { es } from '../../../i18n/es.ts'
 import { resolveImageUrl } from '../../course-map/data/assets.ts'
 import type { WelcomeDocument, WelcomeStep } from '../../course-map/data/types.ts'
+import { useEmbed } from '../../embed/EmbedContext.ts'
 import { useCurtainMusic } from '../useCurtainMusic.ts'
 import { PLACEHOLDER } from '../welcome.ts'
 import {
@@ -75,8 +76,11 @@ const WelcomeFlow = ({
   onFinish,
 }: WelcomeFlowProps) => {
   const dataSaver = useDataSaver().active
+  // The editing role (a teacher or manager) is usually not a student, so Moodle has
+  // no attempt of theirs to find: a quiz step never blocks them.
+  const editorRole = useEmbed()?.role === 'editor'
   const [state, dispatch] = useReducer(flowReducer, undefined, () =>
-    createFlowState(steps.map(toStepInfo), entries, mode)
+    createFlowState(steps.map(toStepInfo), entries, mode, editorRole)
   )
   const rootRef = useRef<HTMLDivElement>(null)
   const headingRef = useRef<HTMLHeadingElement>(null)
