@@ -270,12 +270,25 @@ test.describe('motion and fullscreen', () => {
     for (const name of names) expect(name).toBe('none')
   })
 
-  test('the fullscreen button asks the host', async ({ page, context }) => {
+  test('a mandatory flow asks the host for its full stage and offers no button for it', async ({
+    page,
+    context,
+  }) => {
     await open(page, context, flowOf(welcomeStep, htmlStep))
+    await expect(hostLog(page)).toContainText('request-fullscreen')
+    await expect(page.locator('#frame-wrap')).toHaveClass(/fullscreen/)
+    // The host owns the way out now, so the app keeps its own button away.
+    await expect(dialog(page).getByRole('button', { name: 'Pantalla completa' })).toHaveCount(0)
+  })
+
+  test('after leaving the stage the button is back and asks again', async ({ page, context }) => {
+    await open(page, context, flowOf(welcomeStep, htmlStep))
+    await expect(page.locator('#frame-wrap')).toHaveClass(/fullscreen/)
+    await page.getByRole('button', { name: 'Exit', exact: true }).click()
     const button = dialog(page).getByRole('button', { name: 'Pantalla completa' })
     await expect(button).toBeVisible()
     await button.click()
-    await expect(hostLog(page)).toContainText('request-fullscreen')
+    await expect(page.locator('#frame-wrap')).toHaveClass(/fullscreen/)
   })
 })
 
