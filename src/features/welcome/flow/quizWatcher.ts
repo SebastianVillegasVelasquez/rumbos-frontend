@@ -47,6 +47,9 @@ export const gateFromView = (view: HostQuizView | null): QuizGate => {
 //   - when the tab becomes visible or the window regains focus.
 // Asks are coalesced: a burst is one message, and the last trigger is never lost.
 export const RESULT_ASK_GAP_MS = 800
+// Regaining focus asks at most this often: a viewer switching windows back and
+// forth is not a reason to hammer Moodle.
+export const FOCUS_ASK_GAP_MS = 10_000
 // Nothing answered the first ask: an older plugin. The step stops waiting.
 export const RESULT_SILENCE_MS = 6_000
 
@@ -69,6 +72,7 @@ export interface QuizWatcher {
 
 export const createQuizWatcher = (deps: QuizWatcherDeps): QuizWatcher => {
   let lastAskAt = -Infinity
+  let lastVisibleAt = -Infinity
   let cancelAsk: (() => void) | null = null
   let cancelSilence: (() => void) | null = null
   let answeredAtFirstAsk: number | null = null
@@ -89,8 +93,12 @@ export const createQuizWatcher = (deps: QuizWatcherDeps): QuizWatcher => {
   }
 
   return {
-    trigger: () => {
+    trigger: (trigger) => {
       if (disposed || cancelAsk) return
+      if (trigger === 'visible') {
+        if (deps.now() - lastVisibleAt < FOCUS_ASK_GAP_MS) return
+        lastVisibleAt = deps.now()
+      }
       const wait = lastAskAt + RESULT_ASK_GAP_MS - deps.now()
       if (wait <= 0) sendNow()
       else cancelAsk = deps.schedule(sendNow, wait)
