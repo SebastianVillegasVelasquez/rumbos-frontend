@@ -1,5 +1,5 @@
 import type { QuizResult } from '../../embed/protocol.ts'
-import { classifyQuiz, confirmsCompletion, type QuizKind } from './quizOutcome.ts'
+import { confirmsCompletion } from './quizOutcome.ts'
 
 // The check-in half of a quiz step: what the viewer sees while the app asks Moodle
 // about the quiz, and when the recorded way out ("Continuar de todos modos") shows
@@ -19,7 +19,12 @@ export const ESCAPE_AFTER_CHECKS = 2
 export const CHECK_COUNT_GAP_MS = 3_000
 
 export type CheckOutcome =
-  | { kind: 'result'; checkedKind: QuizKind; finishedAttempts: number; previewAttempts: number }
+  | {
+      kind: 'result'
+      finishedAttempts: number
+      inProgress: boolean
+      previewAttempts: number
+    }
   | { kind: 'error' }
   | { kind: 'timeout' }
 
@@ -86,8 +91,8 @@ export const checkinReducer = (state: CheckinState, event: CheckinEvent): Checki
           at: event.at,
           outcome: {
             kind: 'result',
-            checkedKind: classifyQuiz(event.result),
             finishedAttempts: event.result.finishedAttempts,
+            inProgress: event.result.inProgress,
             previewAttempts: event.result.previewAttempts ?? 0,
           },
         },

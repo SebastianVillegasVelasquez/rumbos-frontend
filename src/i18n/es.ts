@@ -433,10 +433,40 @@ export const es = {
       unavailable: 'Este documento no está disponible ahora. Puedes continuar.',
     },
     quiz: {
-      start: 'Realizar la evaluación',
+      start: 'Abrir cuestionario',
       resume: 'Continuar el intento',
-      checking: 'Comprobando tu resultado…',
+      // What the viewer sees for each state of the check-in (quizOutcome.ts kinds).
+      notStarted:
+        'Abre el cuestionario, respóndelo y pulsa «Enviar todo y terminar». Después vuelve aquí.',
+      inProgress: 'Tienes un intento sin enviar. Ábrelo y pulsa «Enviar todo y terminar».',
+      waiting:
+        'Todavía no vemos un intento terminado. Cuando envíes el cuestionario, pulsa «Comprobar de nuevo».',
+      nonStudent:
+        'Tu cuenta no es de estudiante, así que no se registra un intento. Puedes continuar.',
+      notGraded: 'Tu cuestionario está pendiente de calificación. Puedes continuar.',
+      editorNote: 'Tienes permisos de edición, así que este paso no te bloquea.',
+      checking: 'Comprobando…',
       checkAgain: 'Comprobar de nuevo',
+      // "Última comprobación: hace unos segundos: 0 intentos finalizados".
+      lastCheck: (ago: string, summary: string) => `Última comprobación: ${ago}: ${summary}`,
+      ago: {
+        seconds: 'hace unos segundos',
+        minutes: (minutes: number) => (minutes === 1 ? 'hace 1 min' : `hace ${minutes} min`),
+      },
+      summary: {
+        finished: (count: number) =>
+          count === 1 ? '1 intento finalizado' : `${count} intentos finalizados`,
+        inProgress: 'un intento sin enviar',
+        preview: (count: number) =>
+          count === 1 ? '1 intento de vista previa' : `${count} intentos de vista previa`,
+        error: 'no pudimos consultar Moodle',
+        timeout: 'Moodle no respondió',
+      },
+      timeout: 'Moodle no respondió a tiempo. Puedes volver a comprobar.',
+      escape: 'Continuar de todos modos',
+      escapeHint: 'El resultado no se registrará como completado.',
+      escapeAnnounce:
+        'Puedes continuar de todos modos; el resultado no se registrará como completado.',
       done: 'Completaste la evaluación.',
       percent: (value: number) => `Tu resultado: ${Math.round(value)} %.`,
       pendingGrading: 'Tu resultado está pendiente de revisión.',

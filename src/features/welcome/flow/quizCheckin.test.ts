@@ -42,7 +42,7 @@ describe('the check button feedback', () => {
     assert.equal(isChecking(state), false)
     assert.deepEqual(state.last, {
       at: at(300),
-      outcome: { kind: 'result', checkedKind: 'unknown', finishedAttempts: 0, previewAttempts: 0 },
+      outcome: { kind: 'result', finishedAttempts: 0, inProgress: false, previewAttempts: 0 },
     })
   })
 
