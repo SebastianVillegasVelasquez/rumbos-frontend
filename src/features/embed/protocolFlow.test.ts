@@ -102,6 +102,42 @@ describe('host-quiz-result', () => {
     assert.equal(parseHostMessage({ ...quiz, cmid: 0 }), null)
     assert.equal(parseHostMessage({ ...quiz, result: null }), null)
   })
+
+  it('carries the v5.9 fields when they are valid', () => {
+    const extended = {
+      ...quiz,
+      result: {
+        ...quiz.result,
+        finishedAttempts: 0,
+        attempts: 0,
+        previewAttempts: 2,
+        canAttempt: false,
+        reason: 'preview_only',
+      },
+    }
+    assert.deepEqual(parseHostMessage(extended), extended)
+  })
+
+  it('reads an older plugin (no v5.9 fields) as it always did', () => {
+    const parsed = parseHostMessage(quiz)
+    assert.ok(parsed?.type === 'rumbos:host-quiz-result' && parsed.result)
+    assert.equal('reason' in parsed.result, false)
+    assert.equal('canAttempt' in parsed.result, false)
+    assert.equal('previewAttempts' in parsed.result, false)
+  })
+
+  it('drops a v5.9 value it does not understand without rejecting the answer', () => {
+    const parsed = parseHostMessage({
+      ...quiz,
+      result: {
+        ...quiz.result,
+        reason: 'something_new',
+        canAttempt: 'yes',
+        previewAttempts: -1,
+      },
+    })
+    assert.deepEqual(parsed, quiz)
+  })
 })
 
 describe('what the app sends for the flow', () => {
