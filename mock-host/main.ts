@@ -278,9 +278,21 @@ const QUIZ_SCENARIOS = [
   'unavailable',
   'no permission',
   'older plugin (silent)',
+  // Contract v5.9: the plugin says why.
+  'no attempts (v5.9)',
+  'in progress (v5.9)',
+  'passed (v5.9)',
+  'preview only (v5.9)',
+  'cannot attempt (v5.9)',
+  'not graded yet (v5.9)',
+  // Answers the first ask, then never again: a host that stops replying.
+  'answers once, then silent',
+  // The plugin answers (no attempts, no reason) but only after 2 s: the pending state.
+  'answers after 2 s',
 ] as const
 let quizScenario: (typeof QUIZ_SCENARIOS)[number] = 'no attempts'
 let quizAttempts = { attempts: 0, finished: 0, inProgress: false, percent: null as number | null }
+let quizAsks = 0
 
 const quizResultFor = (cmid: number) => {
   const row = rows.find((item) => item.cmid === cmid)
@@ -288,7 +300,9 @@ const quizResultFor = (cmid: number) => {
     row &&
     row.modname === 'quiz' &&
     !['hidden', 'unavailable', 'missing'].includes(row.availability)
+  quizAsks++
   if (quizScenario === 'older plugin (silent)') return null
+  if (quizScenario === 'answers once, then silent' && quizAsks > 1) return null
   if (quizScenario === 'no permission') return { error: 'capability' }
   if (quizScenario === 'unavailable') return { error: 'unavailable' }
   if (!visible || quizScenario === 'not found') return { error: 'not_found' }
@@ -300,7 +314,27 @@ const quizResultFor = (cmid: number) => {
     pendingGrading: false,
     passedThreshold: percent === null ? null : percent >= FLOW_QUIZ_THRESHOLD,
   })
+  const v59 = (
+    reason: string,
+    patch: Partial<ReturnType<typeof base>> = {},
+    extra: { previewAttempts: number; canAttempt: boolean } = {
+      previewAttempts: 0,
+      canAttempt: true,
+    }
+  ) => ({ result: { ...base(0, false, null), ...patch, ...extra, reason } })
   switch (quizScenario) {
+    case 'no attempts (v5.9)':
+      return v59('no_attempts')
+    case 'in progress (v5.9)':
+      return v59('in_progress', { attempts: 1, inProgress: true })
+    case 'passed (v5.9)':
+      return v59('ok', base(1, false, 85))
+    case 'preview only (v5.9)':
+      return v59('preview_only', {}, { previewAttempts: 1, canAttempt: false })
+    case 'cannot attempt (v5.9)':
+      return v59('cannot_attempt', {}, { previewAttempts: 0, canAttempt: false })
+    case 'not graded yet (v5.9)':
+      return v59('not_graded_yet', { ...base(1, false, null), pendingGrading: true })
     case 'in progress':
       return { result: base(0, true, null) }
     case 'passed (85%)':
@@ -319,7 +353,10 @@ const quizResultFor = (cmid: number) => {
 const answerQuizResult = (cmid: unknown) => {
   if (typeof cmid !== 'number') return
   const answer = quizResultFor(cmid)
-  if (answer) send({ type: 'rumbos:host-quiz-result', v: 1, cmid, ...answer })
+  if (!answer) return
+  const reply = () => send({ type: 'rumbos:host-quiz-result', v: 1, cmid, ...answer })
+  if (quizScenario === 'answers after 2 s') setTimeout(reply, 2000)
+  else reply()
 }
 
 window.addEventListener('message', (event) => {
@@ -751,10 +788,11 @@ const buildControls = () => {
       select(FLOW_MODES, flowMode, (value) => (flowMode = value))
     ),
     labelled(
-      'quiz result (v5.8)',
+      'quiz result (v5.8/v5.9)',
       select(QUIZ_SCENARIOS, quizScenario, (value) => (quizScenario = value))
     ),
     button('Reset flow progress (host side)', () => {
+      quizAsks = 0
       flowItems = []
       quizAttempts = { attempts: 0, finished: 0, inProgress: false, percent: null }
     }),

@@ -13,6 +13,8 @@ import { useDataSaver } from '../../../fx/dataSaverStore.ts'
 import { es } from '../../../i18n/es.ts'
 import { resolveImageUrl } from '../../course-map/data/assets.ts'
 import type { WelcomeDocument, WelcomeStep } from '../../course-map/data/types.ts'
+import { useEmbed } from '../../embed/EmbedContext.ts'
+import { getHostFullscreen } from '../../embed/hostFullscreen.ts'
 import { useCurtainMusic } from '../useCurtainMusic.ts'
 import { PLACEHOLDER } from '../welcome.ts'
 import {
@@ -32,6 +34,7 @@ import { FlowStatus } from './FlowStatus.tsx'
 import { FlowStepper } from './FlowStepper.tsx'
 import { showTroubleAction } from './videoStepState.ts'
 import { offersMusicChoice, previewSwitchStart } from './musicChoice.ts'
+import { wantsFullStage } from './stagePolicy.ts'
 import { waitingText } from './waitingText.ts'
 
 const text = es.flow
@@ -75,9 +78,34 @@ const WelcomeFlow = ({
   onFinish,
 }: WelcomeFlowProps) => {
   const dataSaver = useDataSaver().active
+  // The editing role (a teacher or manager) is usually not a student, so Moodle has
+  // no attempt of theirs to find: a quiz step never blocks them.
+  const embed = useEmbed()
+  const editorRole = embed?.role === 'editor'
   const [state, dispatch] = useReducer(flowReducer, undefined, () =>
-    createFlowState(steps.map(toStepInfo), entries, mode)
+    createFlowState(steps.map(toStepInfo), entries, mode, editorRole)
   )
+  // Read through a ref: a new context object must not leave and re-enter the stage.
+  const requestFullscreenRef = useRef(embed?.requestFullscreen)
+  const hostRequestFullscreen = embed?.requestFullscreen
+  useEffect(() => {
+    requestFullscreenRef.current = hostRequestFullscreen
+  }, [hostRequestFullscreen])
+  const fullStage = wantsFullStage({
+    embedded: embed !== null,
+    mode,
+    hasMandatoryStep: steps.some((item) => item.mandatory),
+  })
+  // A mandatory flow opens in the stage of its own (the host's fullscreen) and
+  // gives the room back when it is over. Only what this flow entered is left: a
+  // viewer who was already fullscreen stays so. The viewer can leave it earlier
+  // with the host's exit control; the flow does not pull them back in.
+  useEffect(() => {
+    const request = requestFullscreenRef.current
+    if (!fullStage || !request || getHostFullscreen()) return
+    request(true)
+    return () => requestFullscreenRef.current?.(false)
+  }, [fullStage])
   const rootRef = useRef<HTMLDivElement>(null)
   const headingRef = useRef<HTMLHeadingElement>(null)
   const noteId = useId()

@@ -766,3 +766,73 @@ Layout and look only: no contract, state machine, backend or plugin change.
   fullscreen and reports back, and guards the attributes and the policy.
 - **Quiz notice reworded**: secure-window quizzes open in a separate window; "permite las ventanas
   emergentes". The text stays fixed on every quiz step.
+
+## Check-in: the quiz step is never a trap (branch fix/checkin-never-traps)
+
+Branched from `fix/welcome-flow-corrections`, which had not merged into `main` yet.
+
+### Audit (code at fa745fd, mock host, Chromium)
+
+- **"Comprobar de nuevo" was not dead, it only looked dead.** It was never disabled, had no
+  debounce and swallowed nothing: each click sent one `request-quiz-result` and the mock
+  answered. With `finishedAttempts: 0` the answer was the same, the same text was rendered,
+  and nothing on screen moved. Measured per scenario (button enabled / one request per click /
+  text changed after the click): no attempts (yes / yes / no), in progress (yes / yes / no),
+  `previewAttempts: 1, canAttempt: false` (yes / yes / no, "Continuar" disabled), passed (yes /
+  yes / no, "Continuar" enabled). With `not_found`, `unavailable`, `capability` and no reply the
+  step already said "Puedes continuar" with "Continuar" enabled and recorded `unavailable`, but
+  it hid both buttons, so a transient error could not be retried.
+- **Where it decided, and why the escape did not appear.** `gateOf` had one condition for a
+  result: `finishedAttempts >= 1`. The escape existed only for the host errors, so a plugin that
+  answers successfully with zero attempts (a teacher's preview attempts, an unknown cause)
+  matched no branch: no error, no finished attempt, no exit. That was the trap.
+- **The app does re-ask when the overlay closes** (and on each host state and on focus); the
+  host does not push the result. The re-ask worked; it just changed nothing visible.
+
+### Decisions
+
+- **`reason` wins, the counts decide when it is absent** (`quizOutcome.ts`). `canAttempt: false`
+  with no reason is a non-student. `previewAttempts` alone never releases a student. An unknown
+  `reason` or a malformed v5.9 field reads as absent instead of rejecting the whole answer.
+- **Not graded yet records `completed` only with a finished attempt behind it** ("only when the
+  plugin says so": a finished attempt is how the plugin says it); otherwise `fallback`.
+- **Errors keep their old behaviour** (non-blocking, `unavailable`): they already were a
+  recorded exit. The new escape covers the case that had none, and also a check that stops
+  being answered after earlier answers (5 s, then the message and the exit at once).
+- **The escape records and advances** (`quiz-escape`): "Continuar de todos modos" is the
+  continue, not a button that enables another one.
+- **45 s counts from the first time the quiz is opened**, not from the step opening, so a
+  student who has not opened it is never offered the exit. Two checks in a row count only if
+  they were sent at least 3 s apart: the overlay closing and the state refresh that follows
+  are one look at Moodle, and without that, opening and closing the quiz would already show it.
+- **Focus re-checks are limited to one per 10 s**; the overlay closing and a fresh host state
+  still ask at once (800 ms coalescing).
+- **The editing role** is `host-init.role === 'editor'` (what `EmbedContext.role` already
+  carries), so it holds with Moodle's editing mode off too. The host does expose the signal;
+  nothing is needed from the plugin. It is the token's role, not a capability read: if the
+  plugin grants the role to someone without `moodle/course:update`, that person also skips.
+  The step records `fallback` for them unless the quiz is done.
+- **Video by width first** (`.video-panel.flow-poster`, `.flow-video-box`): the shared panel's
+  `calc((100dvh - reserve) * 16/9)` cap is what shrank it. The card already scrolls inside
+  with header and footer pinned, so only the cap went. The curtain keeps the shared rule.
+- **The full stage while mandatory and unfinished** is the host's fullscreen requested on
+  mount and released on unmount (`stagePolicy.ts`). A preview, a review, a flow with nothing
+  mandatory and the standalone app stay inline. It does not pull the viewer back after they
+  use the host's exit. It depends on the plugin honoring `request-fullscreen` without a click:
+  the mock does, the real host is on the hand-test list. **If it does not, the video is still
+  880 px wide inline, because of the width-first rule.**
+- **Test fallout, fixed and not hidden:** the mock host's "Quiz attempt finished" button sits
+  under the full stage, as the host page does under the real one, so the specs press it with
+  `dispatchEvent`. The fullscreen button spec now checks the automatic request and that the
+  button returns after leaving the stage. The visual specs leave the stage first, so they stay
+  the inline look; the video and quiz baselines were regenerated for both engines (wider video,
+  new copy).
+- **No component tests with a DOM:** the repo has no DOM test environment and no new
+  dependency was allowed. The feedback rules are a pure view model (`quizStepView.ts`,
+  tested), and the rendering is covered by Playwright in Chromium and WebKit.
+
+### Measured video width (Chromium and WebKit, identical)
+
+Card content width 880 px, 16:9 (495 px high), at 1280x640, 1366x700, 1440x780 and 1536x735,
+inline (the frame is the window) and in the host's full stage. Before: the shared cap gave
+`(height - 420) * 16/9`, that is about 391 px at 1280x640 and 498 px at 1366x700.

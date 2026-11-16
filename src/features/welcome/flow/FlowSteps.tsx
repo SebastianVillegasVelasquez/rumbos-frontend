@@ -1,12 +1,14 @@
 import {
+  useCallback,
   useEffect,
   useId,
+  useReducer,
   useRef,
   useSyncExternalStore,
   type Dispatch,
   type ReactNode,
 } from 'react'
-import { CheckCircle2, Download, ExternalLink, Hourglass, Info, Play } from 'lucide-react'
+import { CheckCircle2, Download, ExternalLink, Info, Loader2, Play } from 'lucide-react'
 import { Button } from '../../../components/ui/Button.tsx'
 import { es } from '../../../i18n/es.ts'
 import { API_BASE_URL } from '../../course-map/data/client.ts'
@@ -37,6 +39,9 @@ import {
 import { quizOf, videoOf, type FlowEvent, type FlowState } from './flowReducer.ts'
 import { FlowStatus } from './FlowStatus.tsx'
 import { assetsOrigin, htmlStepFrameAttributes } from './htmlStepDocument.ts'
+import { CHECK_TIMEOUT_MS, checkinReducer, createCheckin, escapeDueAt } from './quizCheckin.ts'
+import { classifyQuiz } from './quizOutcome.ts'
+import { quizStepView } from './quizStepView.ts'
 import { createQuizWatcher, gateFromView, quizAvailability } from './quizWatcher.ts'
 
 const text = es.flow
@@ -294,6 +299,9 @@ const timers = (run: () => void, delayMs: number) => {
   return () => window.clearTimeout(id)
 }
 
+// How often the "hace ..." of the last check is refreshed while the step is open.
+const AGE_REFRESH_MS = 15_000
+
 export const StepQuiz = ({ step, state, dispatch }: StepContext & { step: WelcomeQuizStep }) => {
   const embed = useEmbed()
   const hostState = useHostState()
@@ -303,6 +311,9 @@ export const StepQuiz = ({ step, state, dispatch }: StepContext & { step: Welcom
     cmid === null ? null : getHostQuizView(cmid)
   )
   const requestQuizResult = embed?.requestQuizResult
+  const [checkin, dispatchCheckin] = useReducer(checkinReducer, undefined, () =>
+    createCheckin(clock())
+  )
 
   // Not there for this user: the step does not block and records `unavailable`.
   useEffect(() => {
@@ -315,11 +326,57 @@ export const StepQuiz = ({ step, state, dispatch }: StepContext & { step: Welcom
     if (availability === null && view) dispatch({ type: 'quiz', gate: gateFromView(view) })
   }, [availability, view, dispatch])
 
+  // Every new answer is also an outcome of a check, for the feedback. An answer
+  // already in memory when the step opened is not one: it says nothing of "now".
+  const seenView = useRef(view)
+  useEffect(() => {
+    if (!view || view === seenView.current) return
+    seenView.current = view
+    if (view.status === 'ready')
+      dispatchCheckin({ type: 'answer', at: clock(), result: view.result })
+    else dispatchCheckin({ type: 'error', at: clock() })
+  }, [view])
+
+  // One way to ask, for the button and for the automatic checks: it always shows
+  // as a pending check, so nothing happens without the viewer seeing it.
+  const check = useCallback(() => {
+    if (!requestQuizResult || cmid === null) return
+    dispatchCheckin({ type: 'check-start', at: clock() })
+    requestQuizResult(cmid)
+  }, [requestQuizResult, cmid])
+
+  // A check nobody answers within 5 s says so and gives the button back.
+  const pendingSince = checkin.pendingSince
+  useEffect(() => {
+    if (pendingSince === null) return
+    return timers(
+      () => dispatchCheckin({ type: 'timeout', at: clock() }),
+      Math.max(0, pendingSince + CHECK_TIMEOUT_MS - clock())
+    )
+  }, [pendingSince])
+
+  // Time passing: the age of the last check, and the moment the exit is due.
+  const dueAt = escapeDueAt(checkin)
+  useEffect(() => {
+    const id = window.setInterval(
+      () => dispatchCheckin({ type: 'tick', at: clock() }),
+      AGE_REFRESH_MS
+    )
+    const cancelDue =
+      dueAt === null
+        ? null
+        : timers(() => dispatchCheckin({ type: 'tick', at: clock() }), dueAt - clock())
+    return () => {
+      window.clearInterval(id)
+      cancelDue?.()
+    }
+  }, [dueAt])
+
   // Ask for the result on every moment that can change it (see quizWatcher.ts).
   useEffect(() => {
     if (availability !== null || cmid === null || !requestQuizResult) return
     const watcher = createQuizWatcher({
-      ask: () => requestQuizResult(cmid),
+      ask: check,
       answeredCount: getHostQuizReceivedCount,
       now: clock,
       schedule: timers,
@@ -348,11 +405,12 @@ export const StepQuiz = ({ step, state, dispatch }: StepContext & { step: Welcom
       document.removeEventListener('visibilitychange', onVisible)
       window.removeEventListener('focus', onVisible)
     }
-  }, [availability, cmid, requestQuizResult, dispatch])
+  }, [availability, cmid, requestQuizResult, check, dispatch])
 
   const gate = quizOf(state, step.key)
   const result = gate.kind === 'result' ? gate.result : null
-  const finished = result !== null && result.finishedAttempts >= 1
+  const finished = result !== null && classifyQuiz(result) === 'finished'
+  const model = quizStepView({ gate, checkin, editor: state.editor })
 
   if (availability !== null || gate.kind === 'unavailable') {
     const reason = gate.kind === 'unavailable' ? gate.reason : (availability ?? 'unavailable')
@@ -374,6 +432,14 @@ export const StepQuiz = ({ step, state, dispatch }: StepContext & { step: Welcom
       : result.passedThreshold === false
         ? step.outcomeBelow?.trim() || null
         : null
+  const messageText: Record<string, string> = {
+    not_started: text.quiz.notStarted,
+    in_progress: text.quiz.inProgress,
+    waiting: text.quiz.waiting,
+    non_student: text.quiz.nonStudent,
+    not_graded: text.quiz.notGraded,
+  }
+  const message = model.message ? messageText[model.message] : undefined
 
   return (
     <div className="flow-pad space-y-4">
@@ -393,33 +459,50 @@ export const StepQuiz = ({ step, state, dispatch }: StepContext & { step: Welcom
           )}
         </FlowStatus>
       )}
-      {!finished && gate.kind === 'pending' && !result && (
+      {message && (
         <FlowStatus
           role="status"
-          icon={<Hourglass size={16} strokeWidth={2.5} />}
-          className="text-ink-soft"
+          icon={<Info size={18} strokeWidth={2.5} />}
+          className="text-base text-ink"
         >
-          {text.quiz.checking}
+          {message}
         </FlowStatus>
       )}
+      {model.editorNote && <p className="text-sm text-ink-soft">{text.quiz.editorNote}</p>}
       <div className="flex flex-wrap items-center gap-3">
         <Button
           variant={finished ? 'surface' : 'secondary'}
-          onClick={() => embed && cmid !== null && embed.openActivity(cmid)}
+          onClick={() => {
+            if (!embed || cmid === null) return
+            dispatchCheckin({ type: 'opened', at: clock() })
+            embed.openActivity(cmid)
+          }}
         >
-          {result?.inProgress ? text.quiz.resume : text.quiz.start}
+          {model.openLabel}
         </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => embed && cmid !== null && embed.requestQuizResult(cmid)}
-        >
-          {text.quiz.checkAgain}
+        <Button variant="ghost" size="sm" disabled={model.checkDisabled} onClick={check}>
+          {model.checking && (
+            <Loader2 size={16} strokeWidth={2.5} className="motion-safe:animate-spin" aria-hidden />
+          )}
+          {model.checkLabel}
         </Button>
       </div>
-      {result && result.finishedAttempts > 0 && !finished && (
-        <p className="text-sm text-ink-soft">{text.quiz.attempts(result.finishedAttempts)}</p>
-      )}
+      {/* What the last check found, announced each time it changes, also when the
+          answer is the same as before. */}
+      <p aria-live="polite" role="status" className="min-h-[1.25rem] text-sm text-ink-soft">
+        {model.checking ? text.quiz.checking : model.statusLine}
+      </p>
+      {/* The recorded way out. The region is always there, so its arrival is read. */}
+      <div aria-live="polite" role="status">
+        {model.escape && (
+          <div className="border-soft flex flex-col items-start gap-2 rounded-md bg-surface-muted p-3">
+            <p className="text-sm text-ink-soft">{text.quiz.escapeHint}</p>
+            <Button variant="surface" size="sm" onClick={() => dispatch({ type: 'quiz-escape' })}>
+              {text.quiz.escape}
+            </Button>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

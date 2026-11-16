@@ -178,7 +178,23 @@ export interface QuizResult {
   percent: number | null
   pendingGrading: boolean
   passedThreshold: boolean | null
+  // Contract v5.9, additive: a plugin that predates it sends none of these three,
+  // and the app then decides from the counts above. `previewAttempts` are the
+  // attempts of a non-student role (a teacher's preview), which never count.
+  previewAttempts?: number
+  canAttempt?: boolean
+  reason?: QuizReason
 }
+
+export const QUIZ_REASONS = [
+  'ok',
+  'no_attempts',
+  'in_progress',
+  'preview_only',
+  'cannot_attempt',
+  'not_graded_yet',
+] as const
+export type QuizReason = (typeof QUIZ_REASONS)[number]
 
 export type QuizResultError = 'not_found' | 'unavailable' | 'capability'
 
@@ -535,7 +551,24 @@ const parseQuizResult = (value: unknown): QuizResult | null => {
   if (percent !== null && !(typeof percent === 'number' && percent >= 0 && percent <= 100))
     return null
   if (passedThreshold !== null && typeof passedThreshold !== 'boolean') return null
-  return { attempts, finishedAttempts, inProgress, percent, pendingGrading, passedThreshold }
+  const result: QuizResult = {
+    attempts,
+    finishedAttempts,
+    inProgress,
+    percent,
+    pendingGrading,
+    passedThreshold,
+  }
+  // The v5.9 fields are optional and never reject the message: a value this app
+  // does not understand (a newer plugin) reads as absent, so the step falls back
+  // to the counts instead of dropping the whole answer.
+  const { previewAttempts, canAttempt, reason } = value
+  if (isId(previewAttempts) && previewAttempts <= MAX_QUIZ_COUNT)
+    result.previewAttempts = previewAttempts
+  if (typeof canAttempt === 'boolean') result.canAttempt = canAttempt
+  if (typeof reason === 'string' && (QUIZ_REASONS as readonly string[]).includes(reason))
+    result.reason = reason as QuizReason
+  return result
 }
 
 export const parseHostMessage = (data: unknown): HostMessage | null => {

@@ -105,6 +105,13 @@ const open = async (
   await giveMapsMusic(page)
   await level.click()
   await app(page).getByRole('dialog', { name: 'Bienvenida', exact: true }).waitFor()
+  // A mandatory flow takes the host's full stage; the baselines are the inline look
+  // (the frame at the size a course gives it), so the viewer leaves the stage.
+  const exit = page.getByRole('button', { name: 'Exit', exact: true })
+  if ((await exit.count()) > 0) {
+    await exit.click()
+    await expect(page.locator('#frame-wrap')).not.toHaveClass(/fullscreen/)
+  }
 }
 
 const dialog = (page: Page) => app(page).getByRole('dialog', { name: 'Bienvenida', exact: true })

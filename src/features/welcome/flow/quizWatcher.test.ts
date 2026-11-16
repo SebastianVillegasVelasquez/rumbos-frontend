@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import type { CourseState } from '../../embed/protocol.ts'
 import {
+  FOCUS_ASK_GAP_MS,
   RESULT_ASK_GAP_MS,
   RESULT_SILENCE_MS,
   createQuizWatcher,
@@ -181,6 +182,33 @@ describe('when the quiz result is asked', () => {
     assert.equal(t.asks.length, 1)
     t.advance(RESULT_ASK_GAP_MS)
     assert.equal(t.asks.length, 2)
+  })
+
+  it('regaining focus asks at most once every 10 s', () => {
+    const t = setup()
+    t.watcher.trigger('open')
+    t.answer()
+    t.advance(RESULT_ASK_GAP_MS)
+    t.watcher.trigger('visible')
+    assert.equal(t.asks.length, 2)
+    t.advance(RESULT_ASK_GAP_MS)
+    t.watcher.trigger('visible')
+    t.advance(RESULT_ASK_GAP_MS)
+    assert.equal(t.asks.length, 2, 'a second focus inside 10 s asks nothing')
+    t.advance(FOCUS_ASK_GAP_MS)
+    t.watcher.trigger('visible')
+    assert.equal(t.asks.length, 3)
+  })
+
+  it('the overlay closing is not held back by a recent focus', () => {
+    const t = setup()
+    t.watcher.trigger('open')
+    t.answer()
+    t.advance(RESULT_ASK_GAP_MS)
+    t.watcher.trigger('visible')
+    t.advance(RESULT_ASK_GAP_MS)
+    t.watcher.trigger('overlay-closed')
+    assert.equal(t.asks.length, 3)
   })
 
   it('a host that never answers stops the wait, once', () => {

@@ -72,6 +72,11 @@ const dialog = (page: Page) => app(page).getByRole('dialog', { name: 'Bienvenida
 const next = (page: Page) =>
   dialog(page).getByRole('button', { name: /^(Continuar|Terminar|Empezar viaje)$/ })
 const hostLog = (page: Page) => page.locator('#log')
+// The mock host's button stands for the attempt handed in inside Moodle's own
+// overlay. The mandatory flow is in the host's full stage, which covers the host
+// page like the real one does, so the button is pressed by the page, not by a mouse.
+const handInQuiz = (page: Page) =>
+  page.getByRole('button', { name: /Quiz attempt finished/ }).dispatchEvent('click')
 
 test.describe('welcome flow', () => {
   test('goes through every step, gates each one, and records progress in the host', async ({
@@ -100,8 +105,8 @@ test.describe('welcome flow', () => {
     // The quiz step waits for a finished attempt.
     await expect(dialog(page).getByRole('heading', { name: 'Evaluación de entrada' })).toBeVisible()
     await expect(next(page)).toHaveAttribute('aria-disabled', 'true')
-    await dialog(page).getByRole('button', { name: 'Realizar la evaluación' }).click()
-    await page.getByRole('button', { name: /Quiz attempt finished/ }).click()
+    await dialog(page).getByRole('button', { name: 'Abrir cuestionario' }).click()
+    await handInQuiz(page)
     await expect(dialog(page).getByText('Tu resultado: 85 %.')).toBeVisible()
     await expect(dialog(page).getByText('Muy bien.')).toBeVisible()
     await expect(next(page)).toHaveText(/Terminar/)
@@ -119,8 +124,8 @@ test.describe('welcome flow', () => {
     await dialog(page).getByRole('checkbox', { name: 'Leí y acepto las reglas' }).check()
     await expect(next(page)).toHaveAttribute('aria-disabled', 'false', { timeout: 6000 })
     await next(page).click()
-    await dialog(page).getByRole('button', { name: 'Realizar la evaluación' }).click()
-    await page.getByRole('button', { name: /Quiz attempt finished/ }).click()
+    await dialog(page).getByRole('button', { name: 'Abrir cuestionario' }).click()
+    await handInQuiz(page)
     await next(page).click()
     await expect(dialog(page)).toHaveCount(0)
 
@@ -160,8 +165,8 @@ test.describe('welcome flow', () => {
     await dialog(page).getByRole('checkbox', { name: 'Leí y acepto las reglas' }).check()
     await expect(next(page)).toHaveAttribute('aria-disabled', 'false', { timeout: 6000 })
     await next(page).click()
-    await dialog(page).getByRole('button', { name: 'Realizar la evaluación' }).click()
-    await page.getByRole('button', { name: /Quiz attempt finished/ }).click()
+    await dialog(page).getByRole('button', { name: 'Abrir cuestionario' }).click()
+    await handInQuiz(page)
     await next(page).click()
     await expect(dialog(page)).toHaveCount(0)
     const written = (await hostLog(page).innerText()).split('flow-step-done').length
