@@ -18,7 +18,7 @@ and what must be checked by hand. Decisions and their reasons are in
 | `video`   | YouTube or Vimeo                 | the player reports `ended`, or the fallback exit is used |
 | `html`    | author HTML and CSS, sandboxed   | minimum seconds elapsed and, if set, the box is checked  |
 | `pdf`     | an uploaded document (`/assets`) | the student continues (the document is not tracked)      |
-| `quiz`    | a Moodle quiz (`cmid`)           | Moodle reports a finished attempt                        |
+| `quiz`    | a Moodle quiz (`cmid`)           | Moodle reports a finished attempt, or a recorded exit    |
 
 Each step has a `key` (`[A-Za-z0-9_-]{1,16}`), a `revision` (0..1000000) and a
 `mandatory` flag. Raising the `revision` asks everyone who completed the step before
@@ -84,6 +84,48 @@ overlay is only visible after that. Asks are coalesced (800 ms apart at most).
   notice on every quiz step: "Los cuestionarios con ventana segura se abren en una ventana
   aparte; permite las ventanas emergentes." (It used to say they do not work.)
 
+### The step is never a trap
+
+A mandatory step is a convention, not a lock: every cause that can keep a viewer on the
+quiz step has a recorded way out. What the step says and how it records depends on the
+answer (`quizOutcome.ts`; `reason` wins, the counts decide when it is absent):
+
+| Answer                                               | Shows                                        | Records                                              |
+| ---------------------------------------------------- | -------------------------------------------- | ---------------------------------------------------- |
+| `ok`, or a finished attempt (no reason)              | success, percent, the author's outcome text  | `completed`                                          |
+| `no_attempts`                                        | open the quiz, answer it, send it, come back | waits                                                |
+| `in_progress`, or an open attempt (no reason)        | "Tienes un intento sin enviar..."            | waits                                                |
+| `preview_only`, `cannot_attempt`, `canAttempt:false` | "Tu cuenta no es de estudiante..."           | `fallback`                                           |
+| `not_graded_yet`                                     | "pendiente de calificación"                  | `completed` with a finished attempt, else `fallback` |
+| nothing known (an older plugin, 0 finished)          | "Todavía no vemos un intento terminado..."   | waits                                                |
+| an error reply, or no reply                          | "Puedes continuar"                           | `unavailable`                                        |
+
+- **"Comprobar de nuevo" always visibly does something.** Every check (the button, the
+  overlay closing, a fresh host state, the window regaining focus) shows "Comprobando…",
+  then "Última comprobación: hace unos segundos: 0 intentos finalizados", also when the
+  answer did not change. The button is disabled only while a request is out; nothing
+  answering within 5 s says so and gives it back. The line is `aria-live="polite"`.
+- **Re-checks.** On the overlay closing (once) and on each fresh host state, 800 ms apart
+  at most; on window focus at most once every 10 s.
+- **"Continuar de todos modos"** records `fallback` through `flow-step-done` and moves on,
+  with the line "El resultado no se registrará como completado." It appears after the
+  viewer opened the quiz and two checks in a row did not confirm completion (answers
+  within 3 s count as one look), or 45 s after they first opened it, or at once after an
+  error or a missing reply. It is not shown before that, so it does not become a shortcut,
+  and it arrives inside a live region and next in the tab order.
+- **The editing role never blocks on this step** (`host-init.role === 'editor'`, whether
+  or not Moodle's editing mode is on). It records `fallback` unless the quiz is done.
+
+## Where the flow shows
+
+While a flow is mandatory and unfinished inside the host, it asks for the host's full
+stage (`request-fullscreen`) when it opens and gives it back when it ends: the height of
+the inline frame is the plugin's, not the app's. A preview, a review and a flow with
+nothing mandatory stay inline; the viewer can leave the stage with the host's exit
+control and the flow does not pull them back in. The video is sized by width first (the
+card's content width at 16:9) and the card scrolls inside itself, so a short window never
+shrinks it.
+
 ## Persistence and privacy
 
 Progress lives in Moodle (plugin v5.8) and nowhere in the Rumbos backend. A guest or a
@@ -136,6 +178,16 @@ PDF page limit (200).
 
 - Real Moodle: a student, a guest, "log in as", a quiz attempt finished inside the
   overlay, a hidden quiz, grade hidden.
+- The check-in step, inside the real Moodle and on a real Mac in Chrome and Safari:
+  1. A non-student account (a teacher or a manager, with editing mode on and off): the step
+     must not block, and the progress must be recorded as `fallback`.
+  2. A student with an unsent attempt: "Tienes un intento sin enviar", then send it from the
+     overlay and see the step unlock without pressing anything.
+  3. A student who finishes: the result and "Continuar", recorded as `completed`.
+  4. A student who opens the quiz and comes back without finishing: "Continuar de todos
+     modos" appears after two checks or 45 s and records `fallback`.
+  5. The host honors `request-fullscreen` when the flow opens without a click, and the video
+     is at least 560 px wide on a laptop window.
 - Real Mac (Safari and Chrome) and an iPhone: YouTube and Vimeo ready/play/ended (use
   `?diag=1`), autoplay, fullscreen, the PDF viewer and "Abrir documento".
 - Fullscreen from the real Vimeo/YouTube player: Chrome on Windows and a Mac (Safari and

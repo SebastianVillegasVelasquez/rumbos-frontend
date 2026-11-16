@@ -338,7 +338,11 @@ persistent, config: { quizThreshold } }` or `{ mapId, error }` with `readonly` o
 - `host-quiz-result { cmid, result }` with `attempts`, `finishedAttempts`, `inProgress`,
   `percent`, `pendingGrading`, `passedThreshold`, or `{ cmid, error }` with `not_found`,
   `unavailable` or `capability`. A hidden grade sends `percent` and `passedThreshold`
-  as null.
+  as null. Since v5.9 (additive) the result may also carry `previewAttempts` (attempts of a
+  non-student role, which never count), `canAttempt` and `reason`
+  (`ok`, `no_attempts`, `in_progress`, `preview_only`, `cannot_attempt`, `not_graded_yet`).
+  All three may be absent (an older plugin) and a value the app does not know reads as
+  absent: the step then decides from `finishedAttempts` and `inProgress`.
 
 Limits: `stepKey` is `[A-Za-z0-9_-]{1,16}`, `revision` is 0..1000000, `completedAt` is
 ISO-8601 UTC, and the plugin allows 30 writes a minute per user (the app caps itself at
