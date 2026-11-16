@@ -154,8 +154,18 @@
 
 /* ---- video poster ------------------------------------------------------------------ */
 
+/* The video is sized by WIDTH first: the card's content width, 16:9. The shared
+   .video-panel caps its width by the window height, which on a short window (a
+   laptop with the Moodle bars, a course frame of 500 px) shrank the video to about
+   400 px and left the card half empty. Here the card scrolls instead (its header
+   and footer stay put), so a short window costs a little scrolling, never the
+   size. The curtain keeps the shared rule. */
+.video-panel.flow-poster,
+.video-panel.flow-video-box {
+  width: 100%;
+}
+
 .flow-poster {
-  --video-reserve: 420px; /* the card chrome around the video */
   position: relative;
   display: flex;
   align-items: center;
@@ -183,10 +193,6 @@
 .flow-poster:hover .flow-poster-play {
   transform: scale(1.06);
 }
-.flow-video-box {
-  --video-reserve: 420px;
-}
-
 /* ---- embedded documents ------------------------------------------------------------ */
 
 /* The author's text and the PDF fill the card edge to edge: the card is the only
