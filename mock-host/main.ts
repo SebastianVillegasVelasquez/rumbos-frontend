@@ -287,6 +287,8 @@ const QUIZ_SCENARIOS = [
   'not graded yet (v5.9)',
   // Answers the first ask, then never again: a host that stops replying.
   'answers once, then silent',
+  // The plugin answers (no attempts, no reason) but only after 2 s: the pending state.
+  'answers after 2 s',
 ] as const
 let quizScenario: (typeof QUIZ_SCENARIOS)[number] = 'no attempts'
 let quizAttempts = { attempts: 0, finished: 0, inProgress: false, percent: null as number | null }
@@ -351,7 +353,10 @@ const quizResultFor = (cmid: number) => {
 const answerQuizResult = (cmid: unknown) => {
   if (typeof cmid !== 'number') return
   const answer = quizResultFor(cmid)
-  if (answer) send({ type: 'rumbos:host-quiz-result', v: 1, cmid, ...answer })
+  if (!answer) return
+  const reply = () => send({ type: 'rumbos:host-quiz-result', v: 1, cmid, ...answer })
+  if (quizScenario === 'answers after 2 s') setTimeout(reply, 2000)
+  else reply()
 }
 
 window.addEventListener('message', (event) => {
