@@ -36,8 +36,12 @@ const item = (stepKey: string, revision = 1, method: FlowProgressItem['method'] 
 })
 
 const play = (state: FlowState, ...events: FlowEvent[]) => events.reduce(flowReducer, state)
-const start = (steps: FlowStepInfo[], items: FlowProgressItem[] = [], mode: FlowMode = 'normal') =>
-  createFlowState(steps, items, mode)
+const start = (
+  steps: FlowStepInfo[],
+  items: FlowProgressItem[] = [],
+  mode: FlowMode = 'normal',
+  editor = false
+) => createFlowState(steps, items, mode, editor)
 const ticks = (n: number): FlowEvent[] => Array.from({ length: n }, () => ({ type: 'tick' }))
 const result = (patch: Partial<QuizResult> = {}): QuizResult => ({
   attempts: 1,
@@ -184,6 +188,86 @@ describe('quiz steps', () => {
     }
     const next = play(withGate({ kind: 'unavailable', reason: 'hidden' }), { type: 'next' })
     assert.deepEqual(next.done.quiz0001, { revision: 1, method: 'unavailable' })
+  })
+
+  describe('never a trap', () => {
+    const none = result({ attempts: 0, finishedAttempts: 0, reason: 'no_attempts' })
+    const unknown = result({ attempts: 0, finishedAttempts: 0 })
+
+    it('lets a preview-only or cannot-attempt role go on and records a fallback', () => {
+      for (const reason of ['preview_only', 'cannot_attempt'] as const) {
+        const state = withGate({
+          kind: 'result',
+          result: result({ attempts: 0, finishedAttempts: 0, previewAttempts: 1, reason }),
+        })
+        assert.equal(gateOf(state).canContinue, true, reason)
+        const next = play(state, { type: 'next' })
+        assert.deepEqual(next.done.quiz0001, { revision: 1, method: 'fallback' }, reason)
+      }
+    })
+
+    it('records not graded yet as completed with a finished attempt, else as a fallback', () => {
+      const handedIn = withGate({
+        kind: 'result',
+        result: result({ reason: 'not_graded_yet', pendingGrading: true }),
+      })
+      assert.equal(gateOf(handedIn).method, 'completed')
+      const empty = withGate({
+        kind: 'result',
+        result: result({ attempts: 0, finishedAttempts: 0, reason: 'not_graded_yet' }),
+      })
+      assert.equal(gateOf(empty).canContinue, true)
+      assert.equal(gateOf(empty).method, 'fallback')
+    })
+
+    it('keeps a student with no attempt, an open attempt or an unknown answer waiting', () => {
+      for (const gate of [none, unknown, result({ finishedAttempts: 0, inProgress: true })])
+        assert.equal(gateOf(withGate({ kind: 'result', result: gate })).canContinue, false)
+    })
+
+    it('"Continuar de todos modos" records a fallback and moves on, from any waiting state', () => {
+      for (const gate of [
+        { kind: 'pending' } as const,
+        { kind: 'result', result: none } as const,
+        { kind: 'result', result: unknown } as const,
+      ]) {
+        const next = play(withGate(gate), { type: 'quiz-escape' })
+        assert.equal(here(next), 'welcome1')
+        assert.deepEqual(next.done.quiz0001, { revision: 1, method: 'fallback' })
+      }
+    })
+
+    it('reports the escape to the host once, as a fallback', () => {
+      const before = withGate({ kind: 'result', result: unknown })
+      const after = play(before, { type: 'quiz-escape' })
+      assert.deepEqual(newCompletions(before, after), [
+        { stepKey: 'quiz0001', revision: 1, method: 'fallback' },
+      ])
+    })
+
+    it('does not downgrade a finished quiz when the escape is taken', () => {
+      const state = play(withGate({ kind: 'result', result: result() }), { type: 'quiz-escape' })
+      assert.equal(state.done.quiz0001.method, 'completed')
+    })
+
+    it('does nothing on another step type, or in a review', () => {
+      const onWelcome = start([welcome, quiz])
+      assert.equal(play(onWelcome, { type: 'quiz-escape' }), onWelcome)
+      const review = start([quiz, welcome], [], 'review')
+      assert.equal(play(review, { type: 'quiz-escape' }), review)
+    })
+
+    it('never blocks the editing role, and records a fallback unless the quiz is done', () => {
+      let state = start([quiz, welcome], [], 'normal', true)
+      assert.equal(gateOf(state).canContinue, true)
+      state = play(state, { type: 'next' })
+      assert.deepEqual(state.done.quiz0001, { revision: 1, method: 'fallback' })
+      const finished = play(start([quiz, welcome], [], 'normal', true), {
+        type: 'quiz',
+        gate: { kind: 'result', result: result() },
+      })
+      assert.equal(gateOf(finished).method, 'completed')
+    })
   })
 })
 

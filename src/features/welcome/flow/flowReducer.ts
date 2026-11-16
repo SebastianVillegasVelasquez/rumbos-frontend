@@ -4,6 +4,7 @@ import type { FlowMethod, FlowProgressItem, QuizResult } from '../../embed/proto
 // What the flow needs of a progress record: the host also sends when it was
 // completed, a local flag does not.
 export type ProgressEntry = Omit<FlowProgressItem, 'completedAt'>
+import { outcomeOfResult } from './quizOutcome.ts'
 import {
   initialVideoState,
   takeVideoFallback,
@@ -77,6 +78,12 @@ export interface FlowState {
   acked: Record<string, boolean>
   video: Record<string, VideoState>
   quiz: Record<string, QuizGate>
+  // Quiz steps the viewer chose to leave without a confirmed result ("Continuar de
+  // todos modos"): they record `fallback`.
+  quizEscaped: Record<string, boolean>
+  // The viewer holds the editing role: a quiz step never blocks them (they are
+  // usually not students, so Moodle has no attempt of theirs to find).
+  editor: boolean
   // Steps whose content cannot be served (a document that is gone): they do not
   // block and record `unavailable`.
   unavailable: Record<string, boolean>
@@ -115,7 +122,8 @@ export const isFlowComplete = (steps: FlowStepInfo[], done: FlowState['done']): 
 export const createFlowState = (
   steps: FlowStepInfo[],
   items: readonly ProgressEntry[],
-  mode: FlowMode
+  mode: FlowMode,
+  editor = false
 ): FlowState => {
   const done = mode === 'normal' ? doneFromProgress(items) : {}
   // Resume at the first mandatory step not done at its current revision; when
@@ -132,6 +140,8 @@ export const createFlowState = (
     acked: {},
     video: {},
     quiz: {},
+    quizEscaped: {},
+    editor,
     unavailable: {},
     finished: false,
   }
@@ -193,11 +203,18 @@ export const gateOf = (state: FlowState, index: number = state.index): Gate => {
       if (gate.kind === 'unavailable') {
         // Non-blocking, and recorded as such.
         method = 'unavailable'
-      } else if (gate.kind === 'result' && gate.result.finishedAttempts >= 1) {
-        // done
       } else {
-        satisfied = false
-        waitingFor = 'quiz'
+        const outcome =
+          gate.kind === 'result' ? outcomeOfResult(gate.result) : { satisfied: false, method }
+        satisfied = outcome.satisfied
+        method = outcome.method
+        // Never a trap: an editor, or a viewer who took the exit, goes on with a
+        // fallback unless the result already confirms it.
+        if (!satisfied && (state.editor || state.quizEscaped[step.key])) {
+          satisfied = true
+          method = 'fallback'
+        }
+        if (!satisfied) waitingFor = 'quiz'
       }
       break
     }
@@ -236,6 +253,8 @@ export type FlowEvent =
   | { type: 'video'; event: VideoEvent }
   | { type: 'video-fallback' }
   | { type: 'quiz'; gate: QuizGate }
+  // "Continuar de todos modos": leave the quiz step with a recorded fallback.
+  | { type: 'quiz-escape' }
   // The content of the current step cannot be served.
   | { type: 'unavailable' }
   | { type: 'next' }
@@ -289,6 +308,11 @@ export const flowReducer = (state: FlowState, event: FlowEvent): FlowState => {
       return step.type === 'quiz'
         ? { ...state, quiz: replaceRecord(state.quiz, step.key, event.gate) }
         : state
+    case 'quiz-escape': {
+      if (step.type !== 'quiz' || state.mode === 'review') return state
+      const escaped = { ...state, quizEscaped: replaceRecord(state.quizEscaped, step.key, true) }
+      return flowReducer(escaped, { type: 'next' })
+    }
     case 'unavailable':
       return { ...state, unavailable: replaceRecord(state.unavailable, step.key, true) }
     case 'next':
