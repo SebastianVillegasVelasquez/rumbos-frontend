@@ -333,10 +333,18 @@ export const flowReducer = (state: FlowState, event: FlowEvent): FlowState => {
       const escaped = { ...state, quizEscaped: replaceRecord(state.quizEscaped, step.key, true) }
       return flowReducer(escaped, { type: 'next' })
     }
-    case 'assessment-done':
-      return step.type === 'assessment' && state.mode !== 'review'
-        ? { ...state, assessment: replaceRecord(state.assessment, step.key, 'done') }
-        : state
+    case 'assessment-done': {
+      if (step.type !== 'assessment' || state.mode === 'review') return state
+      // Recorded now, not at "Continuar": the attempt is over, and closing the tab on
+      // the result screen must not lose it.
+      const done = isDone(state, step)
+        ? state.done
+        : replaceRecord(state.done, step.key, {
+            revision: step.revision,
+            method: 'completed' as const,
+          })
+      return { ...state, done, assessment: replaceRecord(state.assessment, step.key, 'done') }
+    }
     case 'assessment-escape': {
       if (step.type !== 'assessment' || state.mode === 'review') return state
       const escaped = {

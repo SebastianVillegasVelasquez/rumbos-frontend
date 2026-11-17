@@ -451,10 +451,17 @@ describe('the native check-in step', () => {
     let state = start([check, welcome])
     assert.equal(gateOf(state).canContinue, false)
     assert.equal(gateOf(state).waitingFor, 'assessment')
+    const before = state
     state = play(state, { type: 'assessment-done' })
     assert.equal(gateOf(state).canContinue, true)
-    state = play(state, { type: 'next' })
+    // Recorded at once, when the attempt is over, not later at "Continuar".
     assert.deepEqual(state.done.check001, { revision: 1, method: 'completed' })
+    assert.deepEqual(newCompletions(before, state), [
+      { stepKey: 'check001', revision: 1, method: 'completed' },
+    ])
+    state = play(state, { type: 'next' })
+    assert.equal(here(state), 'welcome1')
+    assert.deepEqual(newCompletions(before, state).length, 1)
   })
 
   it('"Continuar de todos modos" records a fallback and moves on, never a trap', () => {
