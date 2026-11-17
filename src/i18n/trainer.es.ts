@@ -159,6 +159,7 @@ export const esTrainer = {
     due: (n: number) => (n === 1 ? '1 palabra para repasar' : `${n} palabras para repasar`),
     review: 'Repasar palabras',
     remove: (word: string) => `Quitar ${word}`,
+    removeShort: 'Quitar',
     box: (n: number) => `Caja ${n}`,
     flip: 'Ver traducción',
     knew: 'La sabía',

@@ -1,0 +1,56 @@
+/* The trainer's stage opens over the map: about 180 ms in, 150 ms out. With reduced
+   motion only the opacity changes (no movement, no scale). The card itself is the
+   welcome flow's (welcome-flow.css); this file only animates the stage. */
+
+@keyframes trainer-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes trainer-out {
+  from {
+    opacity: 1;
+    transform: none;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(8px) scale(0.99);
+  }
+}
+@keyframes trainer-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes trainer-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.trainer-stage[data-state='open'] {
+  animation: trainer-in 180ms ease-out both;
+}
+.trainer-stage[data-state='closing'] {
+  animation: trainer-out 150ms ease-in both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trainer-stage[data-state='open'] {
+    animation-name: trainer-fade-in;
+  }
+  .trainer-stage[data-state='closing'] {
+    animation-name: trainer-fade-out;
+  }
+}

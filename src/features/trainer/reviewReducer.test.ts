@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { reviewReducer, startReview, type ReviewEvent } from './reviewReducer.ts'
+import { dueWords, reviewReducer, startReview, type ReviewEvent } from './reviewReducer.ts'
 import type { SavedWord } from './types.ts'
 
 const card = (id: string): SavedWord => ({
@@ -58,5 +58,13 @@ describe('vocabulary review', () => {
       { type: 'answer', knew: false, attemptId: 'two' },
     ])
     assert.equal(s.pending?.attemptId, 'one')
+  })
+  it('only the words whose time has come are due', () => {
+    const late = { ...card('late'), due_at: '2026-01-01T00:00:00Z' }
+    const soon = { ...card('soon'), due_at: '2099-01-01T00:00:00Z' }
+    assert.deepEqual(
+      dueWords([late, soon], Date.parse('2026-06-01T00:00:00Z')).map((w) => w.word_id),
+      ['late']
+    )
   })
 })

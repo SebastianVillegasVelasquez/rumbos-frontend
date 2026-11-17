@@ -741,6 +741,8 @@ export const es = {
     controls: 'Controles del mapa',
     levels: 'Niveles',
     quests: 'Misiones',
+    trainer: 'Entrenar',
+    trainerWaiting: 'Se activa al terminar la bienvenida',
     recenter: 'Recentrar el mapa',
     levelPosition: (index: number, count: number) => `Nivel ${index} de ${count}`,
     chipProgress: (done: number, total: number) => `· ${done}/${total}`,

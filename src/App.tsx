@@ -26,7 +26,12 @@ import { ActivityModal } from './features/course-map/components/ActivityModal.ts
 import { ActivitiesOverviewModal } from './features/course-map/components/ActivitiesOverviewModal.tsx'
 import { MapsHome } from './features/course-map/components/MapsHome.tsx'
 import { CourseLevels } from './features/course-map/components/CourseLevels.tsx'
-import { StudentStage, type ContinueAction } from './features/hud/StudentStage.tsx'
+import {
+  StudentStage,
+  TRAINER_BUTTON_ID,
+  type ContinueAction,
+} from './features/hud/StudentStage.tsx'
+import { LazyTrainerStage } from './features/trainer/LazyTrainerStage.tsx'
 import { StudentLevelsChrome } from './features/hud/StudentLevelsChrome.tsx'
 import { WriteSyncHost } from './features/course-map/components/WriteSyncHost.tsx'
 import { PublicationBar } from './features/course-map/components/publication/PublicationBar.tsx'
@@ -745,6 +750,18 @@ export function AppShell() {
         onDone={welcomeState.dismiss}
       />
     ) : null
+  // The practice trainer: its button shows only when the map has one. Until the
+  // welcome flow is finished it is disabled with the reason (a convention, never a
+  // lock); an editor is never disabled.
+  const [trainerOpen, setTrainerOpen] = useState(false)
+  const trainerOn = Boolean(renderable?.settings.trainer?.enabled)
+  const welcomePending =
+    flowGate !== null && (flowGate.state.status === 'run' || flowGate.state.status === 'checking')
+  const closeTrainer = () => {
+    setTrainerOpen(false)
+    // The HUD is inert while the stage is open: give it the focus back afterwards.
+    window.setTimeout(() => document.getElementById(TRAINER_BUTTON_ID)?.focus(), 0)
+  }
   const resumeCourseId = renderable?.moodleCourseId ?? null
   const resumeMapId = renderable?.id ?? null
   useResume({
@@ -1258,6 +1275,19 @@ export function AppShell() {
                 coachMarks={!exitPreview && !shownContentBubble}
                 questsOpen={questsOpen}
                 onToggleQuests={toggleQuests}
+                trainer={
+                  trainerOn
+                    ? {
+                        onOpen: () => setTrainerOpen(true),
+                        disabledReason: welcomePending && !isEditor ? es.hud.trainerWaiting : null,
+                      }
+                    : null
+                }
+                overlay={
+                  trainerOpen && renderable ? (
+                    <LazyTrainerStage imageUrl={renderable.imageUrl} onClose={closeTrainer} />
+                  ) : null
+                }
                 questsPanel={({ compact, bottomOffset }) => (
                   <QuestLog
                     open={questsOpen}

@@ -1,9 +1,10 @@
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import {
   ArrowLeft,
   ArrowRight,
   Box,
   CheckCircle2,
+  Dumbbell,
   Layers,
   ListChecks,
   Map as MapIcon,
@@ -25,6 +26,16 @@ import { useHudInsets } from './useHudInsets.ts'
 import { useStageSize } from './useStageSize.ts'
 import { isCoarsePointer } from './pointer.ts'
 
+export const TRAINER_BUTTON_ID = 'hud-trainer-button'
+
+// "Entrenar": absent when the map has no trainer. While the welcome flow is not
+// finished it is disabled with the reason in visible text (a UI convention, not a
+// lock; editors are never disabled).
+export interface TrainerEntry {
+  onOpen: () => void
+  disabledReason: string | null
+}
+
 export type ContinueAction =
   | { kind: 'continue'; label: string; onClick: () => void }
   | { kind: 'next-level'; onClick: () => void }
@@ -38,6 +49,9 @@ interface StudentStageProps {
   // Absent when the course has a single level.
   onOpenLevels?: () => void
   onToggleQuests: () => void
+  trainer?: TrainerEntry | null
+  // The trainer's stage, while it is open: drawn over the map, the HUD behind it inert.
+  overlay?: ReactNode
   // The 2D/3D switch; absent when the published map has no 3D view.
   view: { value: MapViewKind; onChange: (view: MapViewKind) => void } | null
   // Camera buttons, for 2D and 3D alike (the 3D page draws none). In 3D the
@@ -85,6 +99,8 @@ export const StudentStage = ({
   progress,
   onOpenLevels,
   onToggleQuests,
+  trainer = null,
+  overlay = null,
   view,
   zoom,
   audio,
@@ -101,6 +117,13 @@ export const StudentStage = ({
   children,
 }: StudentStageProps) => {
   const stageRef = useRef<HTMLDivElement>(null)
+  // Pressing the disabled button shows why, as text, for a few seconds.
+  const [reasonShown, setReasonShown] = useState(false)
+  useEffect(() => {
+    if (!reasonShown) return
+    const timer = window.setTimeout(() => setReasonShown(false), 4000)
+    return () => window.clearTimeout(timer)
+  }, [reasonShown])
   const { width, height } = useStageSize(stageRef)
   const dimmed = useIdleDim(questsOpen)
   useHudInsets(stageRef, reportInsets)
@@ -121,6 +144,7 @@ export const StudentStage = ({
     guardsTouch: embedded && isCoarsePointer(),
     clusterButtons,
     hasLevelsButton: Boolean(onOpenLevels),
+    hasTrainerButton: Boolean(trainer),
     hasPreviewPill: Boolean(exitPreview),
   })
 
@@ -176,7 +200,7 @@ export const StudentStage = ({
       {curtain ? null : children({ guardCompact: metrics.guardCompact })}
       {curtain}
 
-      <div className="contents" inert={curtain !== null}>
+      <div className="contents" inert={curtain !== null || overlay !== null}>
         <div
           role="group"
           aria-label={es.hud.controls}
@@ -215,8 +239,48 @@ export const StudentStage = ({
             <ListChecks size={18} strokeWidth={2.5} aria-hidden />
             <span className={labelClass}>{es.hud.quests}</span>
           </Button>
+          {trainer && (
+            <Button
+              variant="surface"
+              size="sm"
+              dense
+              className="hud-dimmable pointer-events-auto min-w-[44px] data-[disabled=true]:opacity-60"
+              id={TRAINER_BUTTON_ID}
+              aria-disabled={trainer.disabledReason !== null}
+              aria-describedby={trainer.disabledReason ? `${TRAINER_BUTTON_ID}-why` : undefined}
+              data-disabled={trainer.disabledReason !== null}
+              title={trainer.disabledReason ?? es.hud.trainer}
+              onClick={() => (trainer.disabledReason ? setReasonShown(true) : trainer.onOpen())}
+            >
+              <Dumbbell size={18} strokeWidth={2.5} aria-hidden />
+              <span className={labelClass}>{es.hud.trainer}</span>
+            </Button>
+          )}
           <SettingsPopover onShowWelcome={onShowWelcome} />
         </div>
+        {trainer?.disabledReason && (
+          <p
+            id={`${TRAINER_BUTTON_ID}-why`}
+            role="status"
+            className={
+              reasonShown
+                ? 'hud-chip pointer-events-none absolute z-10 rounded-md px-3 py-1.5 text-sm font-bold text-white'
+                : 'sr-only'
+            }
+            style={
+              reasonShown
+                ? {
+                    background: 'var(--hud-scrim)',
+                    top: '3.5rem',
+                    left: inset('left'),
+                    maxWidth: 'min(22rem, 80%)',
+                  }
+                : undefined
+            }
+          >
+            {trainer.disabledReason}
+          </p>
+        )}
 
         {chip}
 
@@ -376,6 +440,7 @@ export const StudentStage = ({
           bottomOffset: `calc(${inset('bottom')} + ${TOUCH_TARGET + 2 * GAP + (metrics.rects.guard ? TOUCH_TARGET + GAP : 0)}px)`,
         })}
       </div>
+      {overlay}
     </div>
   )
 }

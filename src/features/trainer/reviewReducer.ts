@@ -59,3 +59,7 @@ export const reviewReducer = (state: ReviewState, event: ReviewEvent): ReviewSta
       return state.phase === 'error' && state.pending ? { ...state, phase: 'sending' } : state
   }
 }
+
+// The words whose review time has come.
+export const dueWords = (saved: SavedWord[], nowMs: number): SavedWord[] =>
+  saved.filter((word) => new Date(word.due_at).getTime() <= nowMs)
