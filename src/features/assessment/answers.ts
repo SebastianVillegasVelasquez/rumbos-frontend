@@ -114,21 +114,45 @@ export const clipAt = (pairs: readonly Pair[], place: string): string | null =>
 // ---- Numbering and the review list --------------------------------------------------
 
 export interface NumberedItem {
+  // The first number the item takes; a matching task takes one per audio.
   number: number
+  last: number
   sectionKey: string
   sectionIndex: number
   item: AssessmentItem
 }
 
-// Items numbered 1..n across the loaded sections, in the order shown. A matching
-// task is one number (it scores as five items but is answered as one task).
-export const numberItems = (sections: readonly (SectionPayload | null)[]): NumberedItem[] => {
+// How many numbers an item takes on the paper: a matching task scores one point per
+// pair, so it spans five numbers; every other item is one.
+export const itemSpan = (item: AssessmentItem): number =>
+  item.type === 'match_audio' ? Math.max(1, item.clips.length) : 1
+
+// Items numbered across the sections, in the order shown. A section starts after the
+// items the server says the earlier ones hold (`counts`), so numbers are right even
+// while later sections have not loaded.
+export const numberItems = (
+  sections: readonly (SectionPayload | null)[],
+  counts: readonly number[]
+): NumberedItem[] => {
   const out: NumberedItem[] = []
+  let base = 0
   sections.forEach((section, sectionIndex) => {
-    if (!section) return
-    for (const part of section.parts)
-      for (const item of part.items)
-        out.push({ number: out.length + 1, sectionKey: section.key, sectionIndex, item })
+    if (section) {
+      let next = base + 1
+      for (const part of section.parts)
+        for (const item of part.items) {
+          const span = itemSpan(item)
+          out.push({
+            number: next,
+            last: next + span - 1,
+            sectionKey: section.key,
+            sectionIndex,
+            item,
+          })
+          next += span
+        }
+    }
+    base += counts[sectionIndex] ?? 0
   })
   return out
 }

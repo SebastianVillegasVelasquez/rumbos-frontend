@@ -285,7 +285,11 @@ export const examReducer = (state: ExamState, event: ExamEvent): ExamState => {
 export const allSectionsLoaded = (state: ExamState): boolean =>
   state.summaries.length > 0 && state.sections.every((section) => section !== null)
 
-export const numberedItems = (state: ExamState): NumberedItem[] => numberItems(state.sections)
+export const numberedItems = (state: ExamState): NumberedItem[] =>
+  numberItems(
+    state.sections,
+    state.summaries.map((section) => section.item_count)
+  )
 
 // Only truthful once every section is loaded (the review loads the rest first).
 export const unansweredItems = (state: ExamState): NumberedItem[] =>

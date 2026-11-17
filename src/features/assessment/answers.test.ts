@@ -110,18 +110,22 @@ describe('numbering', () => {
     parts: [{ part_key: 'a', instructions: '', shared: null, items }],
     saved: {},
   })
-  it('numbers across sections, skips unloaded ones and lists the unanswered', () => {
-    const numbered = numberItems([section('listening', [mcq]), null, section('use', [match])])
+  it('numbers across sections by the server counts, and lists the unanswered', () => {
+    // Listening holds 1 item here, so reading starts at 2; the matching task spans two.
+    const numbered = numberItems(
+      [section('listening', [mcq]), null, section('use', [match])],
+      [1, 4, 2]
+    )
     assert.deepEqual(
-      numbered.map((n) => [n.number, n.item.item_id]),
+      numbered.map((n) => [n.number, n.last, n.item.item_id]),
       [
-        [1, 'q1'],
-        [2, 'm1'],
+        [1, 1, 'q1'],
+        [6, 7, 'm1'],
       ]
     )
     assert.deepEqual(
       unanswered(numbered, { q1: { option_id: 'a' } }).map((n) => n.number),
-      [2]
+      [6]
     )
   })
 })
