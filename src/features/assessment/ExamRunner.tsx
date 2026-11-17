@@ -328,7 +328,7 @@ export const ExamRunner = ({
         <div className="flow-card-scroll">{body}</div>
 
         <footer className="flow-card-foot justify-between">
-          <div className="flex items-center gap-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
             {live && state.view === 'section' && state.sectionIndex > 0 ? (
               <Button variant="ghost" onClick={() => exam.gotoSection(state.sectionIndex - 1)}>
                 <ArrowLeft size={18} strokeWidth={3} aria-hidden />
