@@ -374,6 +374,7 @@ export const es = {
       html: 'Lectura',
       pdf: 'Documento',
       quiz: 'Evaluación',
+      assessment: 'Evaluación',
     },
     stepLine: (current: number, total: number, kind: string) =>
       `Paso ${current} de ${total} · ${kind}`,
@@ -413,6 +414,7 @@ export const es = {
         `Podrás continuar en ${seconds} s y cuando marques la casilla.`,
       video: 'Termina el video para continuar.',
       quiz: 'Termina la evaluación para continuar.',
+      assessment: 'Termina la evaluación para continuar.',
     },
     video: {
       play: 'Reproducir video',
@@ -739,6 +741,8 @@ export const es = {
     controls: 'Controles del mapa',
     levels: 'Niveles',
     quests: 'Misiones',
+    trainer: 'Entrenar',
+    trainerWaiting: 'Se activa al terminar la bienvenida',
     recenter: 'Recentrar el mapa',
     levelPosition: (index: number, count: number) => `Nivel ${index} de ${count}`,
     chipProgress: (done: number, total: number) => `· ${done}/${total}`,
@@ -807,6 +811,39 @@ export const es = {
       animation: 'Animación',
       music: 'Música',
       welcome: 'Bienvenida',
+      training: 'Entrenamiento',
+    },
+    training: {
+      title: 'Entrenamiento y evaluación',
+      intro:
+        'Práctica guiada e inglés evaluado dentro de Rumbos. Todo está escrito de antemano; nada usa inteligencia artificial.',
+      trainerTitle: 'Entrenamiento',
+      trainerSwitch: 'Mostrar el botón «Entrenar» a los estudiantes',
+      language: 'Idioma',
+      languageEnglish: 'Inglés',
+      level: 'Nivel',
+      noContent: 'sin contenido todavía',
+      definedByCourse: 'Lo define el curso, no el estudiante.',
+      assessmentsTitle: 'Evaluaciones',
+      assessmentsSwitch: 'Activar la evaluación de entrada y la final',
+      on: 'Activado',
+      off: 'Desactivado',
+      checkIn: 'Evaluación de entrada',
+      final: 'Evaluación final',
+      attempts: 'Intentos',
+      minutes: 'Minutos por intento',
+      minutesHint: 'El reloj lo lleva el servidor.',
+      passPercent: 'Nota para aprobar (%)',
+      operator: 'Cómo se compara',
+      operators: { gt: 'mayor que', gte: 'mayor o igual que' },
+      rule: (percent: number, operator: 'gt' | 'gte') =>
+        operator === 'gt'
+          ? `Se aprueba con más de ${percent} %. Con exactamente ${percent} % no se aprueba.`
+          : `Se aprueba con ${percent} % o más.`,
+      exemption: 'Dar el curso por completado al aprobar',
+      exemptionWarning:
+        'Atención: quien apruebe la evaluación de entrada o la final completará el curso y recibirá el certificado, sin hacer el resto de actividades.',
+      previewNote: 'Quien tenga permiso de edición lo prueba como vista previa: no se guarda nada.',
     },
     welcome: {
       title: 'Pantalla de bienvenida',
@@ -855,6 +892,7 @@ export const es = {
         html: 'Texto con formato',
         pdf: 'Documento PDF',
         quiz: 'Evaluación de Moodle',
+        assessment: 'Evaluación de entrada (nativa)',
       },
       newTitles: {
         welcome: 'Bienvenida',
@@ -862,6 +900,7 @@ export const es = {
         html: 'Texto',
         pdf: 'Documento',
         quiz: 'Evaluación',
+        assessment: 'Evaluación de entrada',
       },
       copySuffix: '(copia)',
       refusals: {
@@ -952,6 +991,13 @@ export const es = {
           rights: 'Debes declarar que tienes derecho a usar el documento.',
           generic: 'No se pudo subir el documento. Inténtalo de nuevo.',
         },
+      },
+      assessment: {
+        body: 'Evaluación de entrada del curso, dentro de Rumbos. Cuenta como hecha cuando el estudiante la entrega o se acaba el tiempo, sea cual sea el resultado.',
+        where:
+          'Los intentos, el tiempo y la nota mínima se definen en «Entrenamiento y evaluación» del mapa.',
+        fallback:
+          'Si no se puede conectar, el estudiante puede continuar sin hacerla; queda registrado.',
       },
       quiz: {
         activity: 'Evaluación de Moodle',

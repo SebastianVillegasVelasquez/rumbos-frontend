@@ -104,6 +104,37 @@ export interface MapSettings {
   // The welcome curtain. Null or absent means all defaults; a backend that
   // predates it never sends the key (the editor then hides the tab).
   welcome?: MapWelcome | null
+  // The practice trainer and the native assessments (contract v2). Both default
+  // off; a backend that predates them never sends the keys (the editor panel then
+  // does not exist). The level, language and policy are the editor's, never the
+  // student's.
+  trainer?: MapTrainer | null
+  assessments?: MapAssessments | null
+}
+
+export type TrainerLevel = 'A1' | 'A2' | 'B1' | 'B2'
+
+export interface MapTrainer {
+  enabled: boolean
+  language: 'en'
+  level: TrainerLevel
+}
+
+export interface AssessmentRules {
+  form_id: string
+  max_attempts: number
+  time_limit_min: number
+}
+
+export interface MapAssessments {
+  enabled: boolean
+  check_in: AssessmentRules
+  final: AssessmentRules
+  // A pass is strictly above (gt) or at least (gte) this percent.
+  pass_percent: number
+  pass_operator: 'gt' | 'gte'
+  // A pass in the check-in or the final completes the course (through Moodle).
+  exemption: { enabled: boolean }
 }
 
 export type WelcomeShow = 'first_visit' | 'always'
@@ -129,7 +160,7 @@ export const WELCOME_LIMITS = { titleMax: 120, messageMax: 300 } as const
 
 // ---- Welcome flow steps -----------------------------------------------------
 
-export type WelcomeStepType = 'welcome' | 'video' | 'html' | 'pdf' | 'quiz'
+export type WelcomeStepType = 'welcome' | 'video' | 'html' | 'pdf' | 'quiz' | 'assessment'
 
 // "I have read it": a checkbox with its label. Null: no acknowledgement.
 export interface StepAck {
@@ -182,8 +213,20 @@ export interface WelcomeQuizStep extends StepCommon {
   outcomeBelow: string | null
 }
 
+// The native check-in (contract v2, /trainer/assessments). It replaces the Moodle quiz
+// step when the editor chooses it; the quiz step stays as the fallback.
+export interface WelcomeAssessmentStep extends StepCommon {
+  type: 'assessment'
+  purpose: 'check_in'
+}
+
 export type WelcomeStep =
-  WelcomeMessageStep | WelcomeVideoStep | WelcomeHtmlStep | WelcomePdfStep | WelcomeQuizStep
+  | WelcomeMessageStep
+  | WelcomeVideoStep
+  | WelcomeHtmlStep
+  | WelcomePdfStep
+  | WelcomeQuizStep
+  | WelcomeAssessmentStep
 
 export const FLOW_LIMITS = {
   stepsMax: 12,

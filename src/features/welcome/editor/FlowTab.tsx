@@ -34,12 +34,19 @@ import {
   updateStep,
 } from './flowEdit.ts'
 import { flowFlags } from './flowFlags.ts'
-import { HtmlEditor, PdfEditor, QuizEditor, VideoEditor, WelcomeEditor } from './StepEditors.tsx'
+import {
+  AssessmentEditor,
+  HtmlEditor,
+  PdfEditor,
+  QuizEditor,
+  VideoEditor,
+  WelcomeEditor,
+} from './StepEditors.tsx'
 import { WelcomeTab } from './WelcomeTab.tsx'
 
 const text = es.studio.flow
 const checkboxClass = 'h-5 w-5 shrink-0 accent-primary'
-const TYPES: WelcomeStepType[] = ['welcome', 'video', 'html', 'pdf', 'quiz']
+const TYPES: WelcomeStepType[] = ['welcome', 'video', 'html', 'pdf', 'quiz', 'assessment']
 const DOCUMENT_PARAMS: AssetListParams = { kind: 'document', scope: 'tenant', limit: 100 }
 
 interface FlowTabProps {
@@ -470,6 +477,7 @@ const StepCard = ({
           )}
           {step.type === 'html' && <HtmlEditor step={step} onChange={patch} problems={problems} />}
           {step.type === 'pdf' && <PdfEditor step={step} onChange={patch} problems={problems} />}
+          {step.type === 'assessment' && <AssessmentEditor />}
           {step.type === 'quiz' && (
             <QuizEditor step={step} onChange={patch} problems={problems} activities={activities} />
           )}

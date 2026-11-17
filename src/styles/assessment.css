@@ -1,0 +1,184 @@
+/* The exam and the trainer: answer controls and the result profile. Colors, radii and
+   borders come from tokens.css. Every state is a shape or a word as well as a color. */
+
+/* A choice: a native radio inside a card. The checked card gets a heavier edge, a
+   tint and a tick, so the answer is not told by color alone. */
+.exam-choice {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 10px 14px;
+  border: var(--bw-soft) solid var(--color-ink);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  cursor: pointer;
+}
+.exam-choice:hover {
+  background: var(--color-primary-tint);
+}
+.exam-choice > input {
+  position: absolute;
+  inset: 0;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.exam-choice-mark {
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: var(--bw-soft) solid var(--color-ink);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  font-size: 14px;
+  font-weight: 800;
+  line-height: 1;
+}
+.exam-choice:has(> input:checked) {
+  border-width: var(--bw-strong);
+  padding: 9px 13px;
+  background: var(--color-sun-tint);
+}
+.exam-choice:has(> input:checked) .exam-choice-mark {
+  background: var(--color-ink);
+  color: var(--color-surface);
+}
+.exam-choice:has(> input:checked) .exam-choice-mark::after {
+  content: '✓';
+}
+.exam-choice:has(> input:focus-visible) {
+  outline: 3px solid var(--color-primary);
+  outline-offset: 3px;
+}
+
+/* Text fields: one look for blanks, form fields and written answers. */
+.exam-field {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: var(--bw-soft) solid var(--color-ink);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font: inherit;
+}
+.exam-blank {
+  display: inline-block;
+  width: 9ch;
+  min-width: 9ch;
+  max-width: 100%;
+  margin-inline: 4px;
+  vertical-align: baseline;
+  text-align: center;
+}
+
+/* A printed sign ("NO SMOKING"): text in a frame, no image needed. */
+.exam-sign {
+  display: inline-block;
+  max-width: 100%;
+  padding: 10px 22px;
+  border: var(--bw-strong) solid var(--color-ink);
+  border-radius: var(--radius-sm);
+  outline: 3px solid var(--color-surface);
+  outline-offset: -9px;
+  background: var(--color-accent);
+  color: var(--color-ink);
+  font-family: var(--font-heading);
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-align: center;
+  text-transform: uppercase;
+  overflow-wrap: anywhere;
+}
+
+/* Reading passage and supporting text. */
+.exam-passage {
+  max-width: 65ch;
+  padding: 14px 16px;
+  border-left: var(--bw-strong) solid var(--color-primary);
+  background: var(--color-surface-muted);
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+/* Matching: select one on each side. The selected one is outlined heavily and says
+   so in words; a pair is shown on both sides with its number. */
+.exam-pick {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: var(--bw-soft) solid var(--color-ink);
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+.exam-pick:hover {
+  background: var(--color-primary-tint);
+}
+.exam-pick[aria-pressed='true'] {
+  border-width: var(--bw-strong);
+  padding: 7px 11px;
+  background: var(--color-sun-tint);
+}
+.exam-pick[data-paired='true'] {
+  background: var(--color-primary-tint);
+}
+.exam-pick[data-tile='true'] {
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+.exam-pick-tag {
+  flex: none;
+  min-width: 24px;
+  padding: 0 6px;
+  border: var(--bw-soft) solid var(--color-ink);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  font-size: 13px;
+  font-weight: 800;
+  text-align: center;
+}
+
+/* The result profile: ten cells per section, filled ones solid, the rest outlined,
+   always with the number beside it. */
+.exam-meter {
+  display: grid;
+  grid-template-columns: repeat(10, 1fr);
+  gap: 3px;
+  min-width: 120px;
+}
+.exam-meter > span {
+  height: 14px;
+  border: var(--bw-soft) solid var(--color-ink);
+  border-radius: 3px;
+  background: var(--color-surface);
+}
+.exam-meter > span[data-on='true'] {
+  background: var(--color-ink);
+}
+
+@media (forced-colors: active) {
+  .exam-choice:has(> input:checked),
+  .exam-pick[aria-pressed='true'] {
+    border-color: Highlight;
+  }
+  .exam-meter > span[data-on='true'] {
+    background: CanvasText;
+  }
+}

@@ -395,6 +395,10 @@ const defaultSettings = (mode: MapSettings['mode']): MapSettings => ({
   ambient: { kind: 'none', intensity: 0 },
   intro: 'none',
   ...(mockWelcomeSeed() === undefined ? {} : { welcome: mockWelcomeSeed() }),
+  // A backend that knows the trainer and the assessments sends null while nothing is set.
+  // ?mockTrainer=1 turns the practice trainer on (the e2e suite does).
+  trainer: queryParam('mockTrainer') ? { enabled: true, language: 'en', level: 'A1' } : null,
+  assessments: null,
 })
 
 // The scenes this "backend" accepts. A scene is hand-authored with a fixed

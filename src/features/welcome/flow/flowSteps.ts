@@ -110,7 +110,7 @@ export interface FlowValidationContext {
   availableDocuments?: ReadonlySet<string>
 }
 
-const STEP_TYPES: readonly string[] = ['welcome', 'video', 'html', 'pdf', 'quiz']
+const STEP_TYPES: readonly string[] = ['welcome', 'video', 'html', 'pdf', 'quiz', 'assessment']
 const byteLength = (text: string) => new TextEncoder().encode(text).length
 
 const validateStep = (
@@ -154,6 +154,10 @@ const validateStep = (
       else if (context.availableDocuments && !context.availableDocuments.has(step.assetId))
         add('assetId', 'document_unavailable')
       validateAcknowledgement(step, add)
+      break
+    case 'assessment':
+      // Only the check-in goes in the flow; the final exam is launched from the trainer.
+      if (step.purpose !== 'check_in') add('purpose', 'step_field_invalid')
       break
     case 'quiz':
       if (step.cmid !== null && (!Number.isSafeInteger(step.cmid) || step.cmid <= 0))

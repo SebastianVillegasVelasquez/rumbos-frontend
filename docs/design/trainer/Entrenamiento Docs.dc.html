@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+<style>body{margin:0;background:#FFF1D6}a{color:#0F7173}a:hover{color:#14284B}*{box-sizing:border-box}</style>
+</helmet>
+<div style="max-width:1180px;margin:0 auto;padding:40px 20px 80px;display:flex;flex-direction:column;gap:48px;font:400 16px/1.45 Figtree,sans-serif;color:#14284B">
+  <header style="display:flex;flex-direction:column;gap:10px">
+    <div style="font:700 13px Figtree;letter-spacing:.06em;text-transform:uppercase;color:#0F7173">Rumbos · Entrenamiento de {idioma}</div>
+    <h1 style="margin:0;font:800 44px/1.05 Outfit,sans-serif">Documentación de diseño</h1>
+    <p style="margin:0;max-width:760px">Tokens, niveles, inventario, textos, interacción, hand-off y preguntas abiertas. Los marcos están en <a href="Entrenamiento Frames.dc.html">Entrenamiento Frames</a>. Los valores de color se midieron a ojo sobre los PNG: confírmalos contra el CSS real de Rumbos.</p>
+    <nav style="display:flex;flex-wrap:wrap;gap:8px"><sc-for list="{{ docs }}" as="d" hint-placeholder-count="9"><a href="{{ d.href }}" style="display:inline-flex;align-items:center;min-height:44px;padding:0 14px;background:#fff;border:2px solid #14284B;border-radius:14px;font:600 15px Outfit,sans-serif;color:#14284B;text-decoration:none">{{ d.t }}</a></sc-for></nav>
+  </header>
+  <sc-for list="{{ docs }}" as="d" hint-placeholder-count="9">
+    <section id="{{ d.id }}" style="display:flex;flex-direction:column;gap:12px">
+      <h2 style="margin:0;font:800 28px Outfit,sans-serif">{{ d.t }}</h2>
+      <sc-if value="{{ d.note }}" hint-placeholder-val="{{ false }}"><p style="margin:0;max-width:820px">{{ d.note }}</p></sc-if>
+      <div style="overflow-x:auto;border:2px solid #14284B;border-radius:18px;background:#fff">
+        <div style="min-width:{{ d.minw }}px">
+          <div style="display:grid;grid-template-columns:{{ d.grid }};background:#14284B;color:#fff;font:600 14px Outfit,sans-serif"><sc-for list="{{ d.cols }}" as="c" hint-placeholder-count="3"><div style="padding:10px 14px">{{ c }}</div></sc-for></div>
+          <sc-for list="{{ d.rows }}" as="r" hint-placeholder-count="6">
+            <div style="display:grid;grid-template-columns:{{ d.grid }};border-top:1px solid #C9D1E0"><sc-for list="{{ r }}" as="c" hint-placeholder-count="3"><div style="padding:10px 14px;font-size:15px;overflow-wrap:anywhere">{{ c }}</div></sc-for></div>
+          </sc-for>
+        </div>
+      </div>
+    </section>
+  </sc-for>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+class Component extends DCLogic {
+  renderVals() {
+    const D = (id, t, grid, cols, rows, note, minw) => ({ id, href: '#' + id, t, grid, cols, rows, note, minw: minw || 640 });
+    const A = 'Mis mapas', B = 'Mapa del curso', C = 'Editor', P = 'Panel Apariencia';
+    const docs = [
+      D('estilo', 'Verificación de tus observaciones de estilo', '1.2fr 2fr', ['Observación del brief', 'Lo que muestran las capturas'], [
+        ['Azul marino como superficie oscura y cabecera', 'Parcial. El marino (#14284B) es texto, borde y sombra dura. La cabecera visible es amarilla (Mis mapas, Editor). No hay cabecera marina en las 4 capturas.'],
+        ['Amarillo como acento y botón primario', 'Confirmado: “Abrir”, “Reintentar”, “Usar como skin”.'],
+        ['Crema para pies y superficies tranquilas', 'Crema confirmado como fondo de página (con cuadrícula). El pie crema de tarjeta no se ve: propuesta.'],
+        ['Verde azulado para etiquetas en mayúscula', 'Confirmado (“CONTINUAR DONDE LO DEJASTE”). También es relleno: “Crear mapa”, pestaña activa, píldora “Continuar”.'],
+        ['Primario amarillo con sombra dura; secundario blanco con borde', 'Confirmado. Los blancos del Editor también llevan sombra dura.'],
+        ['Terciario “Atrás”', 'No visible. Propuesta: texto subrayado, 48 px de alto.'],
+        ['Barra segmentada sólida y “Paso 2 de 5”', 'No visible. Propuesta siguiendo tu descripción.'],
+        ['Tipografías', 'Leídas a ojo: Outfit (títulos) y Figtree (cuerpo). Sin confirmar.'],
+        ['Esquina superior derecha reservada', 'Confirmado: botón oscuro de cierre de Moodle en el mapa.']
+      ]),
+      D('tokens', 'Tokens', '1fr 1.2fr 1.4fr', ['Nombre', 'Valor', 'Captura de origen'], [
+        ['color.navy', '#14284B', A + ', ' + C + ', ' + P + ' (texto, bordes, sombras)'],
+        ['color.yellow', '#FFB703', A + ' (cabecera, “Abrir”)'],
+        ['color.cream', '#FFF1D6', A + ' (fondo)'],
+        ['color.teal', '#0F7173', A + ' (“Crear mapa”, eyebrow), ' + B + ' (píldora Continuar)'],
+        ['color.pink', '#FF8FA3', A + ' (insignia de brújula)'],
+        ['color.slate', '#4A5878', A + ' (subtítulo)'],
+        ['color.line', '#C9D1E0', 'Propuesta (segmento vacío, divisores)'],
+        ['color.disabled', '#E6E9F0 / borde #4A5878', 'Propuesta, cercana a nodos grises de ' + B],
+        ['color.error', '#B3261E sobre #FFE0E3', C + ' (alerta)'],
+        ['color.moodle', '#1E2A38', B + ' (botón de cierre)'],
+        ['radius.card', '28 px (20 px en móvil)', A + ' (tarjeta grande)'],
+        ['radius.panel', '18 px', P + ' (tarjeta de skin)'],
+        ['radius.button', '14 px', A + ', ' + C],
+        ['radius.pill', '999 px', B + ' (chip A1 · 0/16), ' + P + ' (Predefinido)'],
+        ['border', '2 px sólido navy', 'Todas'],
+        ['shadow.button', '4px 4px 0 navy', A + ', ' + P],
+        ['shadow.card', '10px 10px 0 navy (6 px en móvil)', A],
+        ['font.display', 'Outfit 600 a 800', A + ' (“Mis mapas”) · sin confirmar'],
+        ['font.body', 'Figtree 400 a 700, 16 px mínimo', A + ' · sin confirmar'],
+        ['type.eyebrow', 'Figtree 700 13 px, mayúsculas, 0.06em', A + ', ' + P],
+        ['hud.button', '52 px alto (44 px móvil), radio 14, borde 2 px', B + ' (Misiones)'],
+        ['space', '4, 8, 12, 16, 24, 32 px', 'Derivado de ' + P]
+      ]),
+      D('contraste', 'Contraste (AA)', '1.4fr 1fr .6fr', ['Texto sobre superficie', 'Colores', 'Razón'], [
+        ['Texto principal en tarjeta', '#14284B sobre #FFFFFF', '14.7 : 1'], ['Texto en pie o ayuda', '#14284B sobre #FFF1D6', '13.1 : 1'],
+        ['Botón primario', '#14284B sobre #FFB703', '8.4 : 1'], ['Burbuja propia, chip de nivel', '#FFFFFF sobre #14284B', '14.7 : 1'],
+        ['Eyebrow y enlaces', '#0F7173 sobre #FFFFFF', '5.8 : 1'], ['Eyebrow en ayuda', '#0F7173 sobre #FFF1D6', '5.2 : 1'],
+        ['Opción correcta, velocidad activa', '#FFFFFF sobre #0F7173', '5.8 : 1'], ['Texto secundario', '#4A5878 sobre #FFFFFF', '7.1 : 1'],
+        ['Texto secundario en crema', '#4A5878 sobre #FFF1D6', '6.3 : 1'], ['Botón deshabilitado', '#4A5878 sobre #E6E9F0', '5.8 : 1'],
+        ['Etiqueta “revisión legal”', '#14284B sobre #FF8FA3', '6.8 : 1'], ['Escena elegida', '#14284B sobre #FFB703', '8.4 : 1'],
+        ['Corrección resaltada', '#14284B sobre #FFE39A', '11.6 : 1'], ['Estado de error', '#14284B sobre #FFE0E3', '12.0 : 1']
+      ], 'Calculado con la fórmula WCAG 2.1 sobre los valores estimados; recalcula con los hex definitivos.'),
+      D('niveles', 'Qué aparece en cada nivel (S4)', '1.4fr 1fr 1fr 1fr 1fr', ['Elemento', 'A1', 'A2', 'B1', 'B2'], [
+        ['Inicios de frase', 'Visibles', 'Dentro de Ayuda', 'A pedido', 'No'],
+        ['Banco de palabras', 'Visible', 'Plegado', 'A pedido', 'No'],
+        ['“Ver en español”', 'En cada burbuja', 'A pedido (menú)', 'A pedido (menú)', 'No visible'],
+        ['Botón Ayuda', 'Panel siempre abierto', 'Abre el panel', 'Texto en el pie', 'Texto en el pie'],
+        ['Tamaño de burbuja', '18 px, frases cortas', '17 px', '16 px', '16 px, turnos largos'],
+        ['Campo de texto', '1 línea', '1 a 2 líneas', '3 líneas', '4 líneas, crece'],
+        ['Chips', '44 px o más', '44 px', '44 px', 'No aplica'],
+        ['Ritmo de la IA', 'Lento, 1 idea por turno', 'Moderado', 'Natural', 'Natural'],
+        ['Comentarios', 'Al final, muy concretos', 'Al final', 'Al final', 'Al final: registro y precisión'],
+        ['Turnos por sesión', '6', '6', '8', '8']
+      ], 'Mismos componentes, distinta densidad de andamiaje. En los marcos se dibujaron A1 y B2.', 760),
+      D('componentes', 'Inventario de componentes', '1.1fr 2fr .8fr', ['Componente', 'Variantes y estados', 'Origen'], [
+        ['Botón HUD “Entrenar”', 'Normal, hover, foco, presionado, deshabilitado con motivo, con punto de novedad; solo icono 44 px en móvil', 'Reutilizado (Misiones) + punto nuevo'],
+        ['Botón primario', 'Normal, hover (sombra 6 px), foco (anillo 3 px teal), presionado (sombra 0, baja 4 px), deshabilitado (gris + candado o reloj + motivo), cargando (texto “Enviando…”)', 'Reutilizado'],
+        ['Botón secundario', 'Los mismos estados, fondo blanco', 'Reutilizado'],
+        ['Botón terciario', 'Texto subrayado; foco con anillo', 'Propuesta'],
+        ['Tarjeta de escenario', 'Cabecera, cuerpo con scroll interno, pie crema fijo', 'Propuesta (flujo de bienvenida no recibido)'],
+        ['Volver al mapa', 'Siempre visible arriba a la izquierda; Esc', 'Reutilizado (estilo HUD)'],
+        ['Chip de nivel', 'Con candado “lo define tu curso”; compacto', 'Reutilizado (A1 · 0/16)'],
+        ['Eyebrow', 'Teal, mayúsculas', 'Reutilizado'],
+        ['Barra segmentada', 'Cupo (12), turnos (6 u 8), habilidad (8), volumen (10); siempre con texto', 'Propuesta'],
+        ['Ficha de habilidad', 'Normal, hover crema, foco, presionado', 'Nuevo (deriva del botón blanco)'],
+        ['Tarjeta de escena', 'Normal, elegida (borde 4 px + amarillo + “Elegida”), bloqueada (gris + candado + motivo)', 'Nuevo'],
+        ['Avatar de IA', 'Forma abstracta: cuadrado teal, círculo amarillo, rombo rosa', 'Nuevo'],
+        ['Burbuja', 'IA (crema, izquierda, etiqueta IA), propia (marino, derecha, etiqueta TÚ), pensando, escribiendo, con traducción, error', 'Nuevo'],
+        ['Acciones de burbuja', 'Ver en español, Escuchar, Reportar respuesta; 44 px', 'Nuevo'],
+        ['Panel Ayuda', 'Abierto (A1), plegado (A2), a pedido (B1, B2); columna en escritorio, franja en móvil', 'Nuevo'],
+        ['Chip de palabra', 'Normal, hover, foco, usado (tachado + check)', 'Reutilizado (pestañas de Apariencia)'],
+        ['Campo de mensaje', 'Vacío, con texto, foco, deshabilitado (límite), error de envío', 'Reutilizado (buscador de Mis mapas)'],
+        ['Botón de micrófono', 'Normal, grabando (relleno rosa + “Grabando 0:04”), denegado (candado)', 'Nuevo'],
+        ['Palabra evaluada', 'Bien (píldora + check), Casi (redondeado + ondas), Otra vez (casi recto + flecha)', 'Nuevo'],
+        ['Reproductor de audio', 'Pausa, reproduciendo, velocidad, subtítulos; nunca automático', 'Propuesta (disco de audio no recibido)'],
+        ['Interruptor', 'Activado, desactivado, foco; siempre con texto de estado', 'Propuesta'],
+        ['Popover de corrección', 'Abierto, con Aplicar e Ignorar', 'Propuesta (popover no recibido)'],
+        ['Tarjeta de estado', 'Icono + título + cuerpo + acciones', 'Reutilizado (“No se pudieron cargar los mapas”)']
+      ], null, 760),
+      D('textos', 'Textos (copy deck)', '1fr 2fr 1.2fr', ['Clave', 'Español', 'Notas'], [
+        ['trainer.title', 'Entrenamiento de {idioma}', '{idioma} en minúscula. Máx. 40 caracteres.'],
+        ['hud.open', 'Entrenar', 'Máx. 12 caracteres. aria: “Abrir entrenamiento de {idioma}”.'],
+        ['hud.new', 'Hay práctica nueva', 'Solo lector de pantalla y tooltip.'],
+        ['hud.disabled', 'Se activa al terminar la bienvenida', 'Motivo siempre visible.'],
+        ['nav.back_map', 'Volver al mapa', 'Fijo. No acortar.'],
+        ['s1.what', 'Un espacio para practicar {idioma} con situaciones de turismo, a tu nivel. No es un examen y no da certificado.', 'Tono directo.'],
+        ['s1.ai', 'Tu compañero de práctica es una inteligencia artificial, no una persona. Puede equivocarse. Si una respuesta te parece mala, puedes reportarla.', 'REQUIERE REVISIÓN LEGAL.'],
+        ['s1.mic', 'Solo se usa mientras tocas Grabar. Tu navegador te pedirá permiso. También puedes practicar escribiendo.', 'REQUIERE REVISIÓN LEGAL.'],
+        ['s1.data', 'Tus mensajes de práctica, tu progreso y tus palabras guardadas. No guardamos tu voz después de analizarla.', 'REQUIERE REVISIÓN LEGAL. La afirmación sobre la voz depende del backend.'],
+        ['s1.later', 'Ahora no', 'Vuelve al mapa sin guardar nada.'],
+        ['s1.no_mic', 'Practicar sin micrófono', ''],
+        ['s1.allow', 'Permitir micrófono y empezar', 'Máx. 32 caracteres.'],
+        ['s2.title', '¿Qué practicamos hoy?', ''],
+        ['s2.level', 'Nivel {nivel} · lo define tu curso', 'No editable.'],
+        ['s2.quota', 'Te quedan {n} intercambios hoy', 'Singular: “Te queda 1 intercambio hoy”.'],
+        ['s2.quota_sub', '{n} de {total} · se renuevan mañana', ''],
+        ['s2.today', 'Práctica de hoy', ''],
+        ['ai.notice', 'Hablas con una IA. Puede equivocarse.', 'Persistente en S4. REQUIERE REVISIÓN LEGAL.'],
+        ['ai.feedback_notice', 'Comentarios generados por IA. Son una guía de práctica, no una calificación.', 'S5, S8. REQUIERE REVISIÓN LEGAL.'],
+        ['s3.title', 'Elige una escena', ''],
+        ['s3.locked', 'Disponible desde el nivel {nivel}', ''],
+        ['s4.persona', '{personaje} · IA', 'Nunca un nombre propio.'],
+        ['s4.role', 'Tu papel: {papel}', ''],
+        ['s4.turn', 'Turno {n} de {total}', ''],
+        ['s4.finish', 'Terminar', 'Pide confirmación si quedan turnos.'],
+        ['s4.translate', 'Ver en español', 'A1 y A2.'],
+        ['s4.listen', 'Escuchar', 'Nunca automático.'],
+        ['s4.report', 'Reportar respuesta', ''],
+        ['s4.placeholder', 'Escribe en {idioma}…', ''],
+        ['s4.help', 'Ayuda', ''],
+        ['s8.title', 'Terminaste: {escena}', ''],
+        ['s8.cando', 'En esta práctica pudiste', 'No usar “certificado” ni “aprobado”.'],
+        ['state.thinking', 'La IA está pensando…', ''],
+        ['state.ai_error', 'No recibimos respuesta', 'Cuerpo: “Tu mensaje está guardado y este intento no gasta un intercambio.”'],
+        ['state.offline', 'Estás sin conexión', ''],
+        ['state.limit', 'Usaste tus {total} intercambios de hoy', 'Cuerpo: “Vuelven mañana.”'],
+        ['state.mic', 'No podemos usar el micrófono', ''],
+        ['state.safety', 'Eso no es parte de la práctica; volvamos a la escena', 'Calmado, sin regaño.'],
+        ['state.timeout', '¿Sigues ahí?', ''],
+        ['report.title', '¿Qué pasó con esta respuesta?', '']
+      ], 'Todo texto visible es una clave. Diseñado con 30% de expansión: los botones crecen y bajan de línea; nada se trunca.', 760),
+      D('interaccion', 'Notas de interacción', '1fr 2.4fr', ['Tema', 'Comportamiento'], [
+        ['Abrir escenario', '180 ms: velo y desenfoque del mapa; tarjeta opacidad 0→1 y escala 0.96→1. Foco al título. El mapa queda inerte.'],
+        ['Cerrar', '150 ms inverso. Foco vuelve a “Entrenar”. Esc equivale a “Volver al mapa”; con sesión activa pide confirmar.'],
+        ['Botones', 'Hover y presionado en 150 ms: la sombra dura crece o se cierra.'],
+        ['Streaming', 'La burbuja crece por palabras. role="log" con aria-live="polite"; el texto se anuncia una vez al terminar la frase, nunca letra por letra. “Detener” disponible. Envío bloqueado con motivo mientras llega.'],
+        ['Grabación', 'Tocar para empezar y tocar para terminar (no mantener). Muestra “Grabando 0:04” y medidor segmentado. Corte a los 30 s. Nada se graba sin toque.'],
+        ['Audio', 'Nunca automático. Subtítulos disponibles en todo audio; velocidad 0.75×, 1×, 1.25×.'],
+        ['Teclado', 'Orden: Volver al mapa, cabecera, mensajes, ayuda, campo, micrófono, enviar. Enter envía; Shift+Enter salta línea. Chips insertan texto en el campo.'],
+        ['Movimiento reducido', 'Sin escala, sin desenfoque animado, sin cursor parpadeante; los puntos de “pensando” son estáticos con texto.'],
+        ['Zoom 200% y A-/A+ de Moodle', 'Tamaños en rem; las filas se envuelven; el cuerpo de la tarjeta hace scroll y el pie queda fijo.']
+      ]),
+      D('handoff', 'Hand-off para ingeniería', '1fr 2.4fr', ['Tema', 'Regla'], [
+        ['Puntos de quiebre', 'Menos de 600 px: tarjeta a ancho completo (márgenes 8 px), radio 20, sombra 6. Desde 600 px: tarjeta de 920 px máx., centrada, radio 28, sombra 10.'],
+        ['Escala de espacio', '4, 8, 12, 16, 24, 32 px. Relleno de tarjeta: 14 px móvil, 24 px escritorio.'],
+        ['Tarjeta', 'Columna flex: cabecera fija, cuerpo con overflow-y:auto y min-height:0, pie fijo. Sin scroll horizontal.'],
+        ['Altos cortos', '1366×700 y 1280×640: la tarjeta ocupa el alto menos 48 px; solo el cuerpo hace scroll.'],
+        ['Zona de Moodle', 'Nada nuestro en los 96×96 px superiores derechos. La tarjeta empieza a 60 px en móvil.'],
+        ['S4', 'Escritorio: mensajes + columna Ayuda de 300 px. Móvil: Ayuda como franja de 170 px máx. sobre el campo.'],
+        ['Toque', '44 px mínimo; acción primaria siempre abajo a la derecha (alcance con una mano).'],
+        ['Idiomas', 'Sin banderas. Guía fonética es un interruptor que puede no existir por idioma.'],
+        ['Donde Rumbos no alcanzó', 'Burbujas, avatar de IA, palabra evaluada, panel Ayuda, medidor de cupo: propuestos con los mismos bordes de 2 px, radios y colores.'],
+        ['Sin confirmar', 'Tarjeta de bienvenida, barra segmentada, disco de audio, popover y estado deshabilitado: propuestos por falta de capturas.']
+      ]),
+      D('preguntas', 'Supuestos y preguntas abiertas', '.5fr 2.6fr', ['Tipo', 'Detalle'], [
+        ['Supuesto', 'Tipografías Outfit y Figtree.'],
+        ['Supuesto', 'Cupo diario de 12 intercambios; un intercambio = un mensaje tuyo + una respuesta.'],
+        ['Supuesto', 'Un error de la IA o una redirección de seguridad no gasta cupo.'],
+        ['Supuesto', 'La escena “Atender una queja” se abre desde A2.'],
+        ['Supuesto', 'El botón Entrenar va junto a Misiones, arriba a la izquierda.'],
+        ['Supuesto', 'Los títulos de escena y los comentarios van en español; solo el contenido de práctica va en {idioma}.'],
+        ['Pregunta', '¿Se guarda el audio de voz o solo el resultado? Cambia el texto s1.data.'],
+        ['Pregunta', '¿Quién recibe los reportes de respuesta y en cuánto tiempo?'],
+        ['Pregunta', '¿El cupo es por estudiante, por curso o por día calendario (hora de Colombia)?'],
+        ['Pregunta', '¿El tiempo de pausa (10 min) lo fija Moodle o nosotros?'],
+        ['Pregunta', '¿Hay modelo de voz para portugués con el mismo nivel de calidad? Si no, S5 se oculta por idioma.'],
+        ['Pregunta', '¿Puedes enviar las capturas del flujo de bienvenida para sustituir las propuestas?']
+      ])
+    ];
+    return { docs };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,79 @@
+name: ci
+
+# Runs on every pull request (and on pushes to a pull request's branch through it).
+# The existing workflow.yml keeps building and publishing the image from main; this
+# one only checks.
+on:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Types, lint, unit tests, build and bundle budget
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone source code
+        uses: actions/checkout@v7
+
+      - name: Install node and pnpm
+        uses: pnpm/setup@v3
+        with:
+          version: 12
+          runtime: node@24
+          cache: true
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build (type check and bundle)
+        run: pnpm build
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Unit tests
+        run: pnpm test
+
+      - name: Bundle budget
+        run: pnpm check:budget
+
+  e2e:
+    name: Browser tests (${{ matrix.browser }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+    steps:
+      - name: Clone source code
+        uses: actions/checkout@v7
+
+      - name: Install node and pnpm
+        uses: pnpm/setup@v3
+        with:
+          version: 12
+          runtime: node@24
+          cache: true
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install the browser
+        run: pnpm exec playwright install --with-deps ${{ matrix.browser }}
+
+      - name: Run the browser tests
+        run: pnpm exec playwright test --project=${{ matrix.browser }} --workers=2
+        env:
+          CI: 'true'
+
+      - name: Keep the report when something fails
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-${{ matrix.browser }}
+          path: test-results
+          retention-days: 7

@@ -17,6 +17,7 @@ export interface NewStepLabels {
   html: string
   pdf: string
   quiz: string
+  assessment: string
 }
 
 export type AddRefusal = 'too_many' | 'quiz_too_many' | 'welcome_exists'
@@ -59,6 +60,8 @@ export const createStep = (
       return { ...common, type, html: '', css: null, ack: null, minSeconds: 0 }
     case 'pdf':
       return { ...common, type, assetId: '', ack: null, minSeconds: 0 }
+    case 'assessment':
+      return { ...common, type, purpose: 'check_in' }
     case 'quiz':
       return { ...common, type, cmid: null, intro: null, outcomeAbove: null, outcomeBelow: null }
   }

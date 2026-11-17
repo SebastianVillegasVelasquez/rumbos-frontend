@@ -10,18 +10,20 @@ const grid = function* () {
     for (const height of heights)
       for (const guardsTouch of [false, true])
         for (const hasLevelsButton of [false, true])
-          for (const hasPreviewPill of [false, true])
-            for (const clusterButtons of [3, 6]) {
-              const input: HudInput = {
-                width,
-                height,
-                guardsTouch,
-                hasLevelsButton,
-                hasPreviewPill,
-                clusterButtons,
+          for (const hasTrainerButton of [false, true])
+            for (const hasPreviewPill of [false, true])
+              for (const clusterButtons of [3, 6]) {
+                const input: HudInput = {
+                  width,
+                  height,
+                  guardsTouch,
+                  hasLevelsButton,
+                  hasTrainerButton,
+                  hasPreviewPill,
+                  clusterButtons,
+                }
+                yield input
               }
-              yield input
-            }
 }
 
 const describeInput = (input: HudInput) => JSON.stringify(input)

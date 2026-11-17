@@ -33,6 +33,8 @@ export interface HudInput {
   clusterButtons: number
   // "Niveles" is present only when the course has several levels.
   hasLevelsButton: boolean
+  // "Entrenar" is present only when the map has a trainer.
+  hasTrainerButton?: boolean
   hasPreviewPill: boolean
 }
 
@@ -73,6 +75,7 @@ const stack = (count: number) => (count <= 0 ? 0 : count * TOUCH_TARGET + (count
 
 export const hudMetrics = (input: HudInput): HudMetrics => {
   const { width, height, guardsTouch, clusterButtons, hasLevelsButton, hasPreviewPill } = input
+  const hasTrainerButton = input.hasTrainerButton ?? false
 
   const chipOnTop = width < NARROW
   const guardCompact = guardsTouch && width < COMPACT
@@ -103,8 +106,8 @@ export const hudMetrics = (input: HudInput): HudMetrics => {
   const continueIconOnly = rawContinue < MIN_CONTINUE_WIDTH
   const continueMaxWidth = Math.max(TOUCH_TARGET, rawContinue)
 
-  // Niveles (optional), Misiones and Ajustes. Ajustes is always icon-only.
-  const topLeftButtons = (hasLevelsButton ? 1 : 0) + 2
+  // Niveles (optional), Misiones, Entrenar (optional) and Ajustes. Ajustes is always icon-only.
+  const topLeftButtons = (hasLevelsButton ? 1 : 0) + (hasTrainerButton ? 1 : 0) + 2
   const topLeft: Rect = topLeftColumn
     ? { x: GUTTER, y: GUTTER, w: TOUCH_TARGET, h: stack(topLeftButtons) }
     : topLeftLabels

@@ -24,6 +24,7 @@ const labels: NewStepLabels = {
   html: 'Texto',
   pdf: 'Documento',
   quiz: 'Evaluación',
+  assessment: 'Evaluación de entrada',
 }
 let seed = 1
 const random = () => {
