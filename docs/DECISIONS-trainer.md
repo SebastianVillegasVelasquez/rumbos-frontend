@@ -140,3 +140,18 @@ is added.
 
 - `welcome-editor.spec.ts:174` ("Probar el flujo ... Guardar") fails on clean main too (Descartar stays after Guardar); not caused by this work.
 - `assessment-flow.spec.ts:302` (deadline) failed once in the full run and passed on re-run: timing-sensitive.
+
+## 5. Implementation decisions (Phase C)
+
+- The trainer is one lazy chunk (`TrainerStage`), loaded when "Entrenar" is pressed. Its copy lives in `trainer.es.ts`, beside the chunk.
+- "Entrenar" shows when `settings.trainer.enabled` (no extra request for the button). While the welcome flow is `run` or `checking` it is `aria-disabled` with the reason "Se activa al terminar la bienvenida"; pressing it shows the reason as text for 4 s. Editors are never disabled. In practice the flow's curtain already covers the HUD, so the disabled state is only visible in that short window.
+- The stage reuses the flow's card classes (`.flow-stage`, `.flow-card`, pinned footer). It is a modal dialog at `z-40`; Esc and "Volver al mapa" always close it; the focus goes to each screen's title and back to the button on close.
+- S1 acceptance is remembered per browser in `localStorage` (`rumbos.trainer.accepted.v1`); the server stores nothing about it. Without storage the notice shows each time. The S1 notice and the "what we store" text are marked LEGAL in the copy and need the client's review.
+- S4 is a guided dialogue: the partner is a role (never a name, never "IA"); the translation is the authored one, on request; audio only if the line has it.
+- Written answers show the closest answer, the authored error tags and a local word diff (LCS over words, punctuation apart). It is a comparison, not a grade; missing and extra words are marked by text as well as shape.
+- A failed answer keeps the draft and the same `attempt_id`; there is no offline queue. A double submit is ignored by the reducer.
+- A 401 in practice shows a banner ("Tu sesión venció..."); the embed layer already refreshes the token and reports `session_expired` to the host.
+- Level aids (translation, starters, word bank, hints, slow audio) are configuration keyed by level (`levelConfig.ts`). Only A1 has content; A2 and B2 are proven with a fixture catalog.
+- The final exam launches from the trainer home card ("Evaluación final"), reusing the exam runner inside the stage. The mock treats both purposes with one attempt counter.
+- Proposal, not built: the final exam could also appear as a map node. Map nodes only open Moodle URLs (`activityOpener.ts`), so this needs a decision on a new node kind. Until then the entry point is the trainer card.
+- For students who cannot hear: the exam's listening items cannot be answered without audio and the transcript is deliberately hidden in the exam. The client must decide the alternative (an accommodation, a transcript on request, or an exemption by the teacher).
