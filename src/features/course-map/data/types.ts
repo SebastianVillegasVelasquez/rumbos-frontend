@@ -129,7 +129,7 @@ export const WELCOME_LIMITS = { titleMax: 120, messageMax: 300 } as const
 
 // ---- Welcome flow steps -----------------------------------------------------
 
-export type WelcomeStepType = 'welcome' | 'video' | 'html' | 'pdf' | 'quiz'
+export type WelcomeStepType = 'welcome' | 'video' | 'html' | 'pdf' | 'quiz' | 'assessment'
 
 // "I have read it": a checkbox with its label. Null: no acknowledgement.
 export interface StepAck {
@@ -182,8 +182,20 @@ export interface WelcomeQuizStep extends StepCommon {
   outcomeBelow: string | null
 }
 
+// The native check-in (contract v2, /trainer/assessments). It replaces the Moodle quiz
+// step when the editor chooses it; the quiz step stays as the fallback.
+export interface WelcomeAssessmentStep extends StepCommon {
+  type: 'assessment'
+  purpose: 'check_in'
+}
+
 export type WelcomeStep =
-  WelcomeMessageStep | WelcomeVideoStep | WelcomeHtmlStep | WelcomePdfStep | WelcomeQuizStep
+  | WelcomeMessageStep
+  | WelcomeVideoStep
+  | WelcomeHtmlStep
+  | WelcomePdfStep
+  | WelcomeQuizStep
+  | WelcomeAssessmentStep
 
 export const FLOW_LIMITS = {
   stepsMax: 12,

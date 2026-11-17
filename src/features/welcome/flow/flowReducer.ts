@@ -81,6 +81,9 @@ export interface FlowState {
   // Quiz steps the viewer chose to leave without a confirmed result ("Continuar de
   // todos modos"): they record `fallback`.
   quizEscaped: Record<string, boolean>
+  // The native check-in: `done` when the attempt was submitted or expired, `fallback`
+  // when the viewer went on without it ("Continuar de todos modos").
+  assessment: Record<string, 'done' | 'fallback'>
   // The viewer holds the editing role: a quiz step never blocks them (they are
   // usually not students, so Moodle has no attempt of theirs to find).
   editor: boolean
@@ -141,6 +144,7 @@ export const createFlowState = (
     video: {},
     quiz: {},
     quizEscaped: {},
+    assessment: {},
     editor,
     unavailable: {},
     finished: false,
@@ -149,7 +153,7 @@ export const createFlowState = (
 
 // ---- Gating -------------------------------------------------------------------
 
-export type WaitingFor = 'time' | 'ack' | 'video' | 'quiz' | 'time-and-ack'
+export type WaitingFor = 'time' | 'ack' | 'video' | 'quiz' | 'assessment' | 'time-and-ack'
 
 export interface Gate {
   // The step's own condition is met (or it needs none).
@@ -196,6 +200,18 @@ export const gateOf = (state: FlowState, index: number = state.index): Gate => {
       satisfied = !needsTime && !needsAck
       waitingFor =
         needsTime && needsAck ? 'time-and-ack' : needsTime ? 'time' : needsAck ? 'ack' : null
+      break
+    }
+    case 'assessment': {
+      const outcome = state.assessment[step.key]
+      satisfied = outcome !== undefined
+      if (outcome === 'fallback') method = 'fallback'
+      // Never a trap: the editing role is not blocked (they run it as a preview).
+      if (!satisfied && state.editor) {
+        satisfied = true
+        method = 'fallback'
+      }
+      if (!satisfied) waitingFor = 'assessment'
       break
     }
     case 'quiz': {
@@ -255,6 +271,10 @@ export type FlowEvent =
   | { type: 'quiz'; gate: QuizGate }
   // "Continuar de todos modos": leave the quiz step with a recorded fallback.
   | { type: 'quiz-escape' }
+  // The native check-in was submitted or expired (whatever the result), or the
+  // viewer left it with the recorded fallback.
+  | { type: 'assessment-done' }
+  | { type: 'assessment-escape' }
   // The content of the current step cannot be served.
   | { type: 'unavailable' }
   | { type: 'next' }
@@ -311,6 +331,18 @@ export const flowReducer = (state: FlowState, event: FlowEvent): FlowState => {
     case 'quiz-escape': {
       if (step.type !== 'quiz' || state.mode === 'review') return state
       const escaped = { ...state, quizEscaped: replaceRecord(state.quizEscaped, step.key, true) }
+      return flowReducer(escaped, { type: 'next' })
+    }
+    case 'assessment-done':
+      return step.type === 'assessment' && state.mode !== 'review'
+        ? { ...state, assessment: replaceRecord(state.assessment, step.key, 'done') }
+        : state
+    case 'assessment-escape': {
+      if (step.type !== 'assessment' || state.mode === 'review') return state
+      const escaped = {
+        ...state,
+        assessment: replaceRecord(state.assessment, step.key, 'fallback' as const),
+      }
       return flowReducer(escaped, { type: 'next' })
     }
     case 'unavailable':

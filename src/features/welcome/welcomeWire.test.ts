@@ -5,7 +5,7 @@ import { convertLegacyToSteps } from './flow/flowSteps.ts'
 import { addStep, createStep } from './editor/flowEdit.ts'
 import { legacyFieldProblems, serializeAppearance, serializeWelcome } from './welcomeWire.ts'
 
-const editorLabels = { welcome: 'B', video: 'V', html: 'T', pdf: 'D', quiz: 'Q' }
+const editorLabels = { welcome: 'B', video: 'V', html: 'T', pdf: 'D', quiz: 'Q', assessment: 'A' }
 const labels = { welcomeTitle: 'Bienvenida', videoTitle: 'Video' }
 // The welcome the production map had.
 const legacy: MapWelcome = {

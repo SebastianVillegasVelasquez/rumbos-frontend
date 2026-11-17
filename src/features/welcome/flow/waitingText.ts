@@ -19,6 +19,8 @@ export const waitingText = (state: FlowState): string | null => {
       return text.waiting.video
     case 'quiz':
       return text.waiting.quiz
+    case 'assessment':
+      return text.waiting.assessment
     default:
       return null
   }

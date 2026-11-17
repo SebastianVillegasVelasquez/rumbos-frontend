@@ -409,6 +409,18 @@ export const PdfEditor = ({ step, onChange, problems }: EditorProps<WelcomePdfSt
   )
 }
 
+// ---- native check-in --------------------------------------------------------------
+
+// Nothing to configure here: the policy (attempts, time, pass rule) is the map's, set
+// in "Entrenamiento y evaluación". The purpose is fixed to the check-in.
+export const AssessmentEditor = () => (
+  <>
+    <p className="text-sm font-semibold text-ink">{text.assessment.body}</p>
+    <p className={hintClass}>{text.assessment.where}</p>
+    <p className={hintClass}>{text.assessment.fallback}</p>
+  </>
+)
+
 // ---- quiz ------------------------------------------------------------------------
 
 export const QuizEditor = ({

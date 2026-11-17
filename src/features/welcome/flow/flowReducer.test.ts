@@ -27,6 +27,7 @@ const video = step({ key: 'video001', type: 'video' })
 const html = step({ key: 'html0001', type: 'html', minSeconds: 3, needsAck: true })
 const pdf = step({ key: 'pdf00001', type: 'pdf', minSeconds: 2 })
 const quiz = step({ key: 'quiz0001', type: 'quiz' })
+const check = step({ key: 'check001', type: 'assessment' })
 
 const item = (stepKey: string, revision = 1, method: FlowProgressItem['method'] = 'completed') => ({
   stepKey,
@@ -442,5 +443,46 @@ describe('finishing, modes and what gets persisted', () => {
       { type: 'quiz', gate: { kind: 'pending' } },
     ] as FlowEvent[])
       assert.equal(play(state, event), state)
+  })
+})
+
+describe('the native check-in step', () => {
+  it('blocks until the attempt is submitted or expired, then records completed', () => {
+    let state = start([check, welcome])
+    assert.equal(gateOf(state).canContinue, false)
+    assert.equal(gateOf(state).waitingFor, 'assessment')
+    state = play(state, { type: 'assessment-done' })
+    assert.equal(gateOf(state).canContinue, true)
+    state = play(state, { type: 'next' })
+    assert.deepEqual(state.done.check001, { revision: 1, method: 'completed' })
+  })
+
+  it('"Continuar de todos modos" records a fallback and moves on, never a trap', () => {
+    const before = start([check, welcome])
+    const after = play(before, { type: 'assessment-escape' })
+    assert.equal(here(after), 'welcome1')
+    assert.deepEqual(after.done.check001, { revision: 1, method: 'fallback' })
+    assert.deepEqual(newCompletions(before, after), [
+      { stepKey: 'check001', revision: 1, method: 'fallback' },
+    ])
+  })
+
+  it('never blocks the editing role', () => {
+    const state = start([check, welcome], [], 'normal', true)
+    assert.equal(gateOf(state).canContinue, true)
+  })
+
+  it('an unavailable check-in (disabled or locked) does not block', () => {
+    const state = play(start([check, welcome]), { type: 'unavailable' })
+    assert.equal(gateOf(state).canContinue, true)
+    assert.equal(gateOf(state).method, 'unavailable')
+  })
+
+  it('does nothing on another step type, or in a review', () => {
+    const onWelcome = start([welcome, check])
+    assert.equal(play(onWelcome, { type: 'assessment-done' }), onWelcome)
+    assert.equal(play(onWelcome, { type: 'assessment-escape' }), onWelcome)
+    const review = start([check, welcome], [], 'review')
+    assert.equal(play(review, { type: 'assessment-escape' }), review)
   })
 })

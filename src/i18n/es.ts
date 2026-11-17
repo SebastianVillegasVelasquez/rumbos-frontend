@@ -374,6 +374,7 @@ export const es = {
       html: 'Lectura',
       pdf: 'Documento',
       quiz: 'Evaluación',
+      assessment: 'Evaluación',
     },
     stepLine: (current: number, total: number, kind: string) =>
       `Paso ${current} de ${total} · ${kind}`,
@@ -413,6 +414,7 @@ export const es = {
         `Podrás continuar en ${seconds} s y cuando marques la casilla.`,
       video: 'Termina el video para continuar.',
       quiz: 'Termina la evaluación para continuar.',
+      assessment: 'Termina la evaluación para continuar.',
     },
     video: {
       play: 'Reproducir video',
@@ -855,6 +857,7 @@ export const es = {
         html: 'Texto con formato',
         pdf: 'Documento PDF',
         quiz: 'Evaluación de Moodle',
+        assessment: 'Evaluación de entrada (nativa)',
       },
       newTitles: {
         welcome: 'Bienvenida',
@@ -862,6 +865,7 @@ export const es = {
         html: 'Texto',
         pdf: 'Documento',
         quiz: 'Evaluación',
+        assessment: 'Evaluación de entrada',
       },
       copySuffix: '(copia)',
       refusals: {
@@ -952,6 +956,13 @@ export const es = {
           rights: 'Debes declarar que tienes derecho a usar el documento.',
           generic: 'No se pudo subir el documento. Inténtalo de nuevo.',
         },
+      },
+      assessment: {
+        body: 'Evaluación de entrada del curso, dentro de Rumbos. Cuenta como hecha cuando el estudiante la entrega o se acaba el tiempo, sea cual sea el resultado.',
+        where:
+          'Los intentos, el tiempo y la nota mínima se definen en «Entrenamiento y evaluación» del mapa.',
+        fallback:
+          'Si no se puede conectar, el estudiante puede continuar sin hacerla; queda registrado.',
       },
       quiz: {
         activity: 'Evaluación de Moodle',
