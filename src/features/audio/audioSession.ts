@@ -18,6 +18,7 @@ import {
   type AudioPrefs,
 } from './audioPrefs.ts'
 import { fadeStep } from './fade.ts'
+import { createHolds } from './holds.ts'
 import { guardSource, type SourceGuard } from './sourceGuard.ts'
 
 // The one place that touches an <audio> element. It lives in a lazy chunk and is
@@ -64,6 +65,10 @@ let attached = false
 const listeners = new Set<() => void>()
 
 let view: AudioSessionView = { state, prefs, track, playing: false }
+
+// The welcome video's switch and the exam's and trainer's clips each hold the
+// music; it resumes only when nobody does (see holds.ts).
+const holds = createHolds((held) => dispatch({ type: 'hold', held }))
 
 const targetVolume = () => (track ? effectiveVolume(prefs, track.volume) : 0)
 
@@ -274,10 +279,21 @@ export const audioSession = {
   welcome: (phase: 'waiting' | 'started' | 'closed') => {
     attach()
     dispatch({ type: 'welcome', phase })
+    // The reducer lets go of the video's hold when the curtain closes; the
+    // counted holds follow, and a clip that is playing keeps the music down.
+    if (phase === 'closed') holds.resetSwitch()
   },
 
   // The welcome video plays over a track that should not talk across it.
-  hold: (held: boolean) => dispatch({ type: 'hold', held }),
+  hold: (held: boolean) => holds.setSwitch(held),
+
+  // One hold per playing clip (exam and trainer audio). Release it when the clip
+  // pauses, ends, fails or its component unmounts. The music resumes only if the
+  // viewer wanted it and had not muted it.
+  holdAmbient: (): (() => void) => {
+    attach()
+    return holds.acquire()
+  },
 
   setVolume: (volume: number) => {
     prefs = { ...prefs, volume: Math.min(1, Math.max(0, volume)) }
