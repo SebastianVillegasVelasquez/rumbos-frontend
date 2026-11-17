@@ -15,6 +15,8 @@ export interface PracticeOptions {
   catalogStatus?: number
   // Words due for review.
   dueWords?: number
+  // The course's level (a fixture: only A1 has content in production).
+  level?: 'A1' | 'A2' | 'B1' | 'B2'
 }
 
 export interface PracticeReply {
@@ -213,7 +215,7 @@ export class PracticeMock {
     return {
       enabled: this.options.enabled ?? true,
       language: { code: 'en', name: 'inglés' },
-      level: 'A1',
+      level: this.options.level ?? 'A1',
       content_version: 'v1',
       preview: this.preview,
       modules: [{ key: 'M1', title: 'Módulo I · Primeros pasos' }],

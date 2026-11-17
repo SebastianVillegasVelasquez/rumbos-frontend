@@ -241,6 +241,69 @@ test.describe('practice trainer', () => {
     await expect(stage(page).getByRole('heading', { name: 'Resumen de la práctica' })).toBeVisible()
   })
 
+  test('B2 and A2 fixtures render the same screens with less help', async ({ page, context }) => {
+    await open(page, context, { practice: { level: 'B2' } })
+    await openStage(page)
+    await expect(stage(page).getByText('Nivel B2')).toBeVisible()
+    await stage(page).getByRole('button', { name: 'Elige una lección' }).click()
+    await stage(page)
+      .getByRole('button', { name: /^Abrir: En el hotel/ })
+      .click()
+    await stage(page).getByRole('button', { name: 'Empezar', exact: true }).click()
+    await expect(stage(page).getByText('Good evening. Do you have a reservation?')).toBeVisible()
+    // No translation on request at B2, and the choices still work.
+    await expect(stage(page).getByRole('button', { name: 'Ver en español' })).toHaveCount(0)
+    await stage(page).getByRole('radio', { name: 'Yes, I do.' }).check()
+    await check(page).click()
+    await nextStep(page).click()
+    // The typed turn has no starters and no word bank, but is answerable.
+    await expect(stage(page).getByRole('button', { name: 'Usar: My name is' })).toHaveCount(0)
+    await expect(stage(page).getByRole('button', { name: 'Ana', exact: true })).toHaveCount(0)
+    await stage(page).getByLabel('Escribe tu respuesta').fill('My name is Ana')
+    await expect(check(page)).toBeEnabled()
+  })
+
+  test('reorder and match work from the keyboard', async ({ page, context }) => {
+    await open(page, context)
+    await openStage(page)
+    await startActivity(page, 'Verb to be')
+    await stage(page).getByRole('radio', { name: 'is' }).check()
+    await check(page).click()
+    await nextStep(page).click()
+    await stage(page).getByLabel('Espacio 1').selectOption('am')
+    await stage(page).getByLabel('Espacio 2').fill('Colombia')
+    await check(page).click()
+    await nextStep(page).click()
+    // Reorder: focus a word and press Enter, then Space on the placed one to take it back.
+    const word = (name: string) => stage(page).getByRole('button', { name })
+    await word('Poner I').focus()
+    await page.keyboard.press('Enter')
+    await expect(word('Quitar I')).toBeVisible()
+    await word('Quitar I').focus()
+    await page.keyboard.press('Space')
+    await expect(word('Poner I')).toBeVisible()
+    for (const name of ['Poner I', 'Poner am', 'Poner a', 'Poner student']) {
+      await word(name).focus()
+      await page.keyboard.press('Enter')
+    }
+    await check(page).focus()
+    await page.keyboard.press('Enter')
+    await expect(stage(page).getByText('Correcto', { exact: true })).toBeVisible()
+    await nextStep(page).focus()
+    await page.keyboard.press('Enter')
+    // Match: select one on each side with the keyboard.
+    for (const name of ['cat', 'gato', 'dog', 'perro']) {
+      await stage(page).getByRole('button', { name, exact: true }).focus()
+      await page.keyboard.press('Enter')
+    }
+    // The pair is shown on both sides.
+    await expect(stage(page).getByRole('button', { name: 'cat con gato' })).toHaveCount(2)
+    await expect(
+      stage(page).getByRole('button', { name: 'Deshacer la pareja de dog' })
+    ).toBeVisible()
+    await expect(check(page)).toBeEnabled()
+  })
+
   test('the listening step plays on a click and shows the transcript afterwards', async ({
     page,
     context,

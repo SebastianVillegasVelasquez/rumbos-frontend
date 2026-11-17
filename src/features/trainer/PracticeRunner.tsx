@@ -10,8 +10,9 @@ import { StepView } from './StepViews.tsx'
 import { Banner, TrainerCard } from './TrainerCard.tsx'
 import { tokenDiff } from './tokenDiff.ts'
 import { isAnswerable, type SessionState } from './sessionReducer.ts'
+import { scaffoldingFor } from './levelConfig.ts'
 import { useSession } from './useSession.ts'
-import type { AnswerResult, SessionSummary } from './types.ts'
+import type { AnswerResult, SessionSummary, TrainerLevel } from './types.ts'
 
 const text = esTrainer
 
@@ -198,6 +199,7 @@ const failureText = (failure: SessionState['failure']) =>
 
 export interface PracticeRunnerProps {
   activityId: string
+  level?: TrainerLevel
   // Back to the lessons (or the home). "Volver al mapa" is the stage's own.
   onBack: () => void
   onNextActivity: (activityId: string) => void
@@ -206,6 +208,7 @@ export interface PracticeRunnerProps {
 
 export const PracticeRunner = ({
   activityId,
+  level,
   onBack,
   onNextActivity,
   onChooseLesson,
@@ -357,15 +360,19 @@ export const PracticeRunner = ({
           disabled={locked}
           onDraft={setDraft}
           onSubmit={submit}
+          level={level}
         />
-        {step.hint && step.type !== 'dialogue_turn' && phase === 'step' && (
-          <details>
-            <summary className="min-h-[44px] cursor-pointer font-bold text-primary">
-              {text.run.showHint}
-            </summary>
-            <p>{step.hint}</p>
-          </details>
-        )}
+        {step.hint &&
+          step.type !== 'dialogue_turn' &&
+          scaffoldingFor(level).hints &&
+          phase === 'step' && (
+            <details>
+              <summary className="min-h-[44px] cursor-pointer font-bold text-primary">
+                {text.run.showHint}
+              </summary>
+              <p>{step.hint}</p>
+            </details>
+          )}
         {phase === 'feedback' && state.result && (
           <Feedback
             result={state.result}

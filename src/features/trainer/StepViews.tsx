@@ -4,7 +4,8 @@ import { esTrainer } from '../../i18n/trainer.es.ts'
 import { ClipPlayer } from '../audio/ClipPlayer.tsx'
 import { splitTemplate } from '../assessment/answers.ts'
 import { placePair, placeToken, removePair, removeToken, setGap } from './sessionReducer.ts'
-import type { Step, StepResponse } from './types.ts'
+import { scaffoldingFor, type Scaffolding } from './levelConfig.ts'
+import type { Step, StepResponse, TrainerLevel } from './types.ts'
 
 const text = esTrainer.run
 
@@ -18,6 +19,8 @@ interface ViewProps<T extends Step = Step> {
   disabled: boolean
   onDraft: (response: StepResponse | null) => void
   onSubmit: () => void
+  // What the level shows around a step (A1 by default).
+  level?: TrainerLevel
 }
 
 const Prompt = ({ id, children }: { id: string; children: string }) => (
@@ -315,12 +318,14 @@ const ShortAnswer = ({ step, draft, disabled, onDraft, onSubmit }: ViewProps) =>
 }
 
 // S4: a scripted partner (a role, never a name), and the student chooses or types.
-const DialogueTurn = ({ step, draft, disabled, onDraft, onSubmit }: ViewProps) => {
+const DialogueTurn = (props: ViewProps) => {
+  const { step, draft, disabled, onDraft, onSubmit } = props
   const id = useId()
   const fieldId = useId()
   const [translated, setTranslated] = useState(false)
   if (step.type !== 'dialogue_turn') return null
   const copy = esTrainer.dialogue
+  const aid: Scaffolding = scaffoldingFor(props.level)
   const line = step.partner_line
   const value = draft && 'text' in draft ? draft.text : ''
   const append = (word: string) =>
@@ -337,10 +342,10 @@ const DialogueTurn = ({ step, draft, disabled, onDraft, onSubmit }: ViewProps) =
               url={line.audio.url}
               label={copy.listen}
               transcript={line.audio.transcript}
-              speeds
+              speeds={aid.slowAudio}
             />
           )}
-          {line.translation && (
+          {line.translation && aid.translation && (
             <>
               <button
                 type="button"
@@ -390,14 +395,16 @@ const DialogueTurn = ({ step, draft, disabled, onDraft, onSubmit }: ViewProps) =
           </div>
         )}
       </div>
-      {(step.starters.length > 0 || step.word_bank.length > 0 || step.hint) && (
+      {((aid.starters && step.starters.length > 0) ||
+        (aid.wordBank && step.word_bank.length > 0) ||
+        (aid.hints && step.hint)) && (
         <aside
           aria-label={copy.help}
           className="flex max-h-[170px] flex-col gap-3 overflow-y-auto rounded-md border-hair bg-surface-muted p-3 md:max-h-none"
         >
           <h3 className="text-sm font-extrabold">{copy.help}</h3>
-          {step.hint && <p className="text-sm">{step.hint}</p>}
-          {step.mode === 'type' && step.starters.length > 0 && (
+          {aid.hints && step.hint && <p className="text-sm">{step.hint}</p>}
+          {step.mode === 'type' && aid.starters && step.starters.length > 0 && (
             <div>
               <p className="text-xs font-extrabold tracking-wide text-ink-soft uppercase">
                 {copy.starters}
@@ -419,7 +426,7 @@ const DialogueTurn = ({ step, draft, disabled, onDraft, onSubmit }: ViewProps) =
               </ul>
             </div>
           )}
-          {step.mode === 'type' && step.word_bank.length > 0 && (
+          {step.mode === 'type' && aid.wordBank && step.word_bank.length > 0 && (
             <div>
               <p className="text-xs font-extrabold tracking-wide text-ink-soft uppercase">
                 {copy.wordBank}

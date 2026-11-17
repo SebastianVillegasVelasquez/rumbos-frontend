@@ -143,6 +143,7 @@ const TrainerStage = ({ imageUrl, onClose }: TrainerStageProps) => {
       <PracticeRunner
         key={view.activityId}
         activityId={view.activityId}
+        level={catalog.data.level}
         onBack={() => {
           void client.invalidateQueries({ queryKey: ['trainer', 'catalog'] })
           home()
