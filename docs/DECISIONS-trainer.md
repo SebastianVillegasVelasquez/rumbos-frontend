@@ -122,3 +122,21 @@ is added.
 - Exactly 80 % does not pass under `gt`, although the document labels 80 to 100 "A1 logrado".
 - Writing and Speaking proxy rubric needs pedagogical sign-off.
 - Retention of assessment records; legal text for the practice notice ("requiere revisión legal").
+
+## 3. Implementation decisions (Phase A)
+
+- Wire types stay snake_case, as the contract names them.
+- Exam copy lives in a sibling dictionary (`assessment.es.ts`) so it loads with the lazy chunk.
+- Template blanks are written `{id}` (assumption). The word counter counts the template text plus the blanks.
+- A match_audio item takes one item number per clip.
+- Submit confirmation is inline, not a modal.
+- The check-in step is recorded as done when the attempt ends. An exhausted or passed check-in counts as done; a locked or disabled one does not block.
+- Scene icons are placeholders (`data-placeholder`).
+- WebKit in this Playwright build cannot play audio: those tests assert the click and the element and are annotated `relaxed`.
+- There is no DOM test library; DOM behaviour is covered by Playwright, pure logic by `node --test`.
+- Editor panel: `form_id` defaults to `forma_a` (the contract lists no forms). Only English A1 is selectable.
+
+## 4. Known test status
+
+- `welcome-editor.spec.ts:174` ("Probar el flujo ... Guardar") fails on clean main too (Descartar stays after Guardar); not caused by this work.
+- `assessment-flow.spec.ts:302` (deadline) failed once in the full run and passed on re-run: timing-sensitive.
