@@ -1,5 +1,6 @@
 import type { BrowserContext, Route } from '@playwright/test'
 import { makeWav } from './audioFixture.ts'
+import { PracticeMock, type PracticeOptions } from './practiceMock.ts'
 
 // An in-memory implementation of the assessment half of contract v2
 // (`/api/v1/trainer`), served to the browser through Playwright's routing. It is a
@@ -29,7 +30,8 @@ export interface MockOptions {
   failSubmits?: number
   // A state to report for the check-in in the list.
   state?: 'available' | 'exhausted' | 'locked' | 'passed'
-  // Percent computed from how many items were answered (deterministic).
+  // The practice half (catalog, sessions, vocabulary); see practiceMock.ts.
+  practice?: PracticeOptions
 }
 
 export interface Call {
@@ -211,9 +213,11 @@ export class TrainerMock {
   private seq = 0
 
   readonly options: MockOptions
+  readonly practice: PracticeMock
 
   constructor(options: MockOptions = {}) {
     this.options = options
+    this.practice = new PracticeMock(options.practice)
   }
 
   get opts(): Required<
@@ -335,6 +339,13 @@ export class TrainerMock {
     this.calls.push({ method, path, body })
     const o = this.options
 
+    const practice = this.practice.respond(method, path, body)
+    if (practice) {
+      if (practice.abort) return route.abort('connectionfailed')
+      if (practice.body === null) return route.fulfill({ status: practice.status, body: '' })
+      return this.json(route, practice.status, practice.body)
+    }
+
     if (method === 'GET' && path === '/assessments') {
       if (o.listStatus) return this.err(route, o.listStatus, 'down')
       const active = this.active()
@@ -348,27 +359,21 @@ export class TrainerMock {
           pass_operator: this.opts.operator,
           time_limit_min: Math.round(this.opts.timeLimitMs / 60_000),
         },
-        items: [
-          {
-            purpose: 'check_in',
-            title: 'Evaluación de entrada',
-            section_count: SECTIONS.length,
-            item_count: TOTAL_ITEMS,
-            attempts: { used: this.used, max: this.opts.maxAttempts },
-            state:
-              o.state ??
-              (live
-                ? 'in_progress'
-                : this.used >= this.opts.maxAttempts
-                  ? 'exhausted'
-                  : 'available'),
-            locked_reason: o.state === 'locked' ? 'Termina primero el módulo 1.' : null,
-            in_progress: live
-              ? { attempt_id: live.id, deadline_at: new Date(live.deadline).toISOString() }
-              : null,
-            best: this.best(),
-          },
-        ],
+        items: (['check_in', 'final'] as const).map((purpose) => ({
+          purpose,
+          title: purpose === 'final' ? 'Evaluación final' : 'Evaluación de entrada',
+          section_count: SECTIONS.length,
+          item_count: TOTAL_ITEMS,
+          attempts: { used: this.used, max: this.opts.maxAttempts },
+          state:
+            o.state ??
+            (live ? 'in_progress' : this.used >= this.opts.maxAttempts ? 'exhausted' : 'available'),
+          locked_reason: o.state === 'locked' ? 'Termina primero el módulo 1.' : null,
+          in_progress: live
+            ? { attempt_id: live.id, deadline_at: new Date(live.deadline).toISOString() }
+            : null,
+          best: this.best(),
+        })),
       })
     }
 

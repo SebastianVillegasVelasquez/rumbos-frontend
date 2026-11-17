@@ -396,7 +396,8 @@ const defaultSettings = (mode: MapSettings['mode']): MapSettings => ({
   intro: 'none',
   ...(mockWelcomeSeed() === undefined ? {} : { welcome: mockWelcomeSeed() }),
   // A backend that knows the trainer and the assessments sends null while nothing is set.
-  trainer: null,
+  // ?mockTrainer=1 turns the practice trainer on (the e2e suite does).
+  trainer: queryParam('mockTrainer') ? { enabled: true, language: 'en', level: 'A1' } : null,
   assessments: null,
 })
 
