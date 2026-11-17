@@ -282,6 +282,16 @@ describe('submitting', () => {
   })
 })
 
+describe('sections', () => {
+  it('a section that fails to load can be retried and does not stop the others', () => {
+    let s = run([{ type: 'section-failed', index: 1 }], running())
+    assert.equal(s.sectionError, 1)
+    assert.equal(s.phase, 'running')
+    s = examReducer(s, { type: 'section-retry' })
+    assert.equal(s.sectionError, null)
+  })
+})
+
 describe('review', () => {
   it('lists the unanswered items by number once every section is loaded', () => {
     let s = running()

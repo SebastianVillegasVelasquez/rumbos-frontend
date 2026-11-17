@@ -101,6 +101,7 @@ export type ExamEvent =
   | { type: 'started'; attempt: AttemptStart; now: number }
   | { type: 'section-loaded'; index: number; payload: SectionPayload; now: number }
   | { type: 'section-failed'; index: number }
+  | { type: 'section-retry' }
   | { type: 'goto-section'; index: number }
   | { type: 'answer'; itemId: string; response: ItemResponse }
   | { type: 'save-start' }
@@ -180,6 +181,8 @@ export const examReducer = (state: ExamState, event: ExamEvent): ExamState => {
     }
     case 'section-failed':
       return { ...state, sectionError: event.index }
+    case 'section-retry':
+      return { ...state, sectionError: null }
     case 'goto-section':
       return event.index >= 0 && event.index < state.summaries.length
         ? { ...state, sectionIndex: event.index, view: 'section' }
