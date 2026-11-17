@@ -49,6 +49,8 @@ export const esAssessment = {
     timeLeftAria: (clock: string) => `Tiempo restante: ${clock}`,
     minutesLeft: (n: number) => (n === 1 ? 'Queda 1 minuto.' : `Quedan ${n} minutos.`),
     question: (n: number) => `Pregunta ${n}`,
+    questions: (from: number, to: number) =>
+      from === to ? `Pregunta ${from}` : `Preguntas ${from} a ${to}`,
     saving: 'Guardando…',
     saved: 'Guardado',
     saveFailed: 'No se pudo guardar. Lo que escribiste sigue aquí.',
@@ -75,6 +77,9 @@ export const esAssessment = {
     partial: 'Incompleta',
     empty: 'Sin responder',
     go: (n: number) => `Ir a la pregunta ${n}`,
+    goShort: 'Ir',
+    confirmBodyUnknown:
+      'No pudimos revisar todas las secciones. Ya no podrás cambiar tus respuestas.',
     back: 'Volver a las preguntas',
     submit: 'Entregar',
     confirmTitle: '¿Entregar la evaluación?',
@@ -96,8 +101,11 @@ export const esAssessment = {
     audioFailed: 'No pudimos reproducir el audio.',
     audioRetry: 'Reintentar el audio',
     audioLabel: (n: number) => `Audio ${n}`,
+    speed: 'Velocidad',
+    transcript: 'Transcripción',
     match: {
       hint: 'Elige un audio y luego el lugar que le corresponde. Para quitar una unión, elígela de nuevo.',
+      joined: 'Unión hecha.',
       clipSelected: (n: number) => `Audio ${n}, elegido`,
       clipPaired: (n: number, place: string) => `Audio ${n}, unido con ${place}`,
       place: (text: string) => text,
@@ -188,6 +196,7 @@ export const esAssessment = {
     sent: 'Gracias, recibimos tu reporte.',
     failed: 'No pudimos enviar el reporte. Inténtalo de nuevo.',
     cancel: 'Cancelar',
+    close: 'Cerrar',
   },
 
   // The step of the welcome flow.

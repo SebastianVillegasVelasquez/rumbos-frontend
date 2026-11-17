@@ -44,3 +44,15 @@ export const assessmentApi = {
 
   result: (attemptId: string) => get<AssessmentResult>(`/attempts/${attemptId}/result`),
 }
+
+export type ReportReason = 'wrong_answer' | 'unclear' | 'audio' | 'offensive' | 'other'
+export const REPORT_NOTE_MAX = 500
+
+// "Reportar un error" (practice step, or the whole exam from its result screen).
+export const sendReport = (report: {
+  activity_id: string | null
+  step_id: string | null
+  item_id: string | null
+  reason: ReportReason
+  note: string | null
+}): Promise<void> => apiRequest<void>(`${BASE}/reports`, { method: 'POST', body: report })
