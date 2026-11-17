@@ -395,6 +395,9 @@ const defaultSettings = (mode: MapSettings['mode']): MapSettings => ({
   ambient: { kind: 'none', intensity: 0 },
   intro: 'none',
   ...(mockWelcomeSeed() === undefined ? {} : { welcome: mockWelcomeSeed() }),
+  // A backend that knows the trainer and the assessments sends null while nothing is set.
+  trainer: null,
+  assessments: null,
 })
 
 // The scenes this "backend" accepts. A scene is hand-authored with a fixed

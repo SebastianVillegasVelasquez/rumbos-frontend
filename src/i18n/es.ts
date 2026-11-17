@@ -809,6 +809,39 @@ export const es = {
       animation: 'Animación',
       music: 'Música',
       welcome: 'Bienvenida',
+      training: 'Entrenamiento',
+    },
+    training: {
+      title: 'Entrenamiento y evaluación',
+      intro:
+        'Práctica guiada e inglés evaluado dentro de Rumbos. Todo está escrito de antemano; nada usa inteligencia artificial.',
+      trainerTitle: 'Entrenamiento',
+      trainerSwitch: 'Mostrar el botón «Entrenar» a los estudiantes',
+      language: 'Idioma',
+      languageEnglish: 'Inglés',
+      level: 'Nivel',
+      noContent: 'sin contenido todavía',
+      definedByCourse: 'Lo define el curso, no el estudiante.',
+      assessmentsTitle: 'Evaluaciones',
+      assessmentsSwitch: 'Activar la evaluación de entrada y la final',
+      on: 'Activado',
+      off: 'Desactivado',
+      checkIn: 'Evaluación de entrada',
+      final: 'Evaluación final',
+      attempts: 'Intentos',
+      minutes: 'Minutos por intento',
+      minutesHint: 'El reloj lo lleva el servidor.',
+      passPercent: 'Nota para aprobar (%)',
+      operator: 'Cómo se compara',
+      operators: { gt: 'mayor que', gte: 'mayor o igual que' },
+      rule: (percent: number, operator: 'gt' | 'gte') =>
+        operator === 'gt'
+          ? `Se aprueba con más de ${percent} %. Con exactamente ${percent} % no se aprueba.`
+          : `Se aprueba con ${percent} % o más.`,
+      exemption: 'Dar el curso por completado al aprobar',
+      exemptionWarning:
+        'Atención: quien apruebe la evaluación de entrada o la final completará el curso y recibirá el certificado, sin hacer el resto de actividades.',
+      previewNote: 'Quien tenga permiso de edición lo prueba como vista previa: no se guarda nada.',
     },
     welcome: {
       title: 'Pantalla de bienvenida',

@@ -11,6 +11,8 @@ import { FlowTab } from '../../welcome/editor/FlowTab.tsx'
 import { describeSaveFailure } from './appearanceErrors.ts'
 import { MusicTab } from '../../audio/editor/MusicTab.tsx'
 import { View3dTab } from '../../view3d/editor/View3dTab.tsx'
+import { TrainingTab } from '../../assessment/editor/TrainingTab.tsx'
+import { trainingSupported } from '../../assessment/editor/trainingForm.ts'
 import { useAnimationQuality, type QualitySetting } from '../../../fx/quality.ts'
 import { useAssets, useReorderBubbles } from '../data/queries.ts'
 import { useUpdateAppearance, useUpdateBubble } from '../data/draftMutations.ts'
@@ -32,7 +34,16 @@ import type {
   SkinRule,
 } from '../data/types.ts'
 
-type Tab = 'bubbles' | 'map' | 'ambient' | 'sequence' | 'view3d' | 'animation' | 'music' | 'welcome'
+type Tab =
+  | 'bubbles'
+  | 'map'
+  | 'ambient'
+  | 'sequence'
+  | 'view3d'
+  | 'animation'
+  | 'music'
+  | 'welcome'
+  | 'training'
 
 interface AppearanceStudioProps {
   courseMap: CourseMapRead
@@ -74,6 +85,8 @@ export const AppearanceStudio = ({
   // A backend that predates the welcome curtain never sends the key (it sends
   // null when it knows the feature and nothing is set).
   const welcomeSupported = 'welcome' in courseMap.settings
+  // The trainer and the assessments exist only where the backend sends their keys.
+  const trainingAvailable = trainingSupported(courseMap.settings)
 
   // Re-sync the draft whenever a fresh save lands (new updatedAt), but
   // never while the panel is mid-edit otherwise - it would stomp on
@@ -139,10 +152,12 @@ export const AppearanceStudio = ({
               'animation',
               'music',
               'welcome',
+              'training',
             ] as Tab[]
           )
             .filter((t) => t !== 'music' || audioSupported)
             .filter((t) => t !== 'welcome' || welcomeSupported)
+            .filter((t) => t !== 'training' || trainingAvailable)
             .map((t) => (
               <button
                 key={t}
@@ -197,6 +212,9 @@ export const AppearanceStudio = ({
         {tab === 'animation' && <AnimationTab />}
         {tab === 'music' && audioSupported && (
           <MusicTab settings={settings} onChange={setSettings} />
+        )}
+        {tab === 'training' && trainingAvailable && (
+          <TrainingTab settings={settings} onChange={setSettings} />
         )}
         {tab === 'welcome' && welcomeSupported && (
           <FlowTab
