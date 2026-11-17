@@ -229,10 +229,21 @@ export class TrainerMock {
   }
 
   async install(context: BrowserContext): Promise<void> {
-    const wav = makeWav(1)
-    await context.route('**/__tone.wav', (route) =>
-      route.fulfill({ status: 200, contentType: 'audio/wav', body: wav })
-    )
+    const wav = makeWav(2)
+    // Answered by range, as the real backend does: WebKit refuses media it cannot
+    // read by range.
+    await context.route('**/__tone.wav', (route) => {
+      const range = /^bytes=(\d+)-(\d*)$/.exec(route.request().headers()['range'] ?? '')
+      const headers = { 'Content-Type': 'audio/wav', 'Accept-Ranges': 'bytes' }
+      if (!range) return route.fulfill({ status: 200, body: wav, headers })
+      const start = Number(range[1])
+      const end = Math.min(range[2] ? Number(range[2]) : wav.length - 1, wav.length - 1)
+      return route.fulfill({
+        status: 206,
+        body: wav.subarray(start, end + 1),
+        headers: { ...headers, 'Content-Range': `bytes ${start}-${end}/${wav.length}` },
+      })
+    })
     await context.route('**/api/v1/trainer/**', (route) => this.handle(route))
   }
 
