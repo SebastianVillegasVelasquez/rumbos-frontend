@@ -43,6 +43,8 @@ export interface ExamRunnerProps {
   onFallback?: () => void
   // Final exam: start the next attempt after a result.
   onAgain?: () => void
+  // What the exit button says once there is a result ("Continuar" inside the flow).
+  exitLabel?: string
 }
 
 const Dots = ({ state, goto }: { state: ExamState; goto: (index: number) => void }) => (
@@ -92,6 +94,7 @@ export const ExamRunner = ({
   onExit,
   onFallback,
   onAgain,
+  exitLabel,
 }: ExamRunnerProps) => {
   const exam = useExam(purpose, onFinished)
   const { state } = exam
@@ -130,7 +133,7 @@ export const ExamRunner = ({
     if (isFinished(state.phase))
       return (
         <Button variant="secondary" onClick={onExit}>
-          {text.result.toMap}
+          {exitLabel ?? text.result.toMap}
         </Button>
       )
     if (state.phase === 'error')

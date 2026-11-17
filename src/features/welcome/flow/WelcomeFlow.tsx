@@ -29,6 +29,8 @@ import {
 } from './flowReducer.ts'
 import type { FlowPersistence } from './flowPersistence.ts'
 import { StepHtml, StepPdf, StepQuiz, StepVideo, StepWelcome } from './FlowSteps.tsx'
+import { LazyExamRunner } from '../../assessment/LazyExamRunner.tsx'
+import { StepAssessment, type Launch } from './StepAssessment.tsx'
 import { FlowMusicChoice } from './FlowMusicChoice.tsx'
 import { FlowStatus } from './FlowStatus.tsx'
 import { FlowStepper } from './FlowStepper.tsx'
@@ -106,6 +108,8 @@ const WelcomeFlow = ({
     request(true)
     return () => requestFullscreenRef.current?.(false)
   }, [fullStage])
+  // The native check-in runs in this same stage once the student starts it.
+  const [launch, setLaunch] = useState<Launch | null>(null)
   const rootRef = useRef<HTMLDivElement>(null)
   const headingRef = useRef<HTMLHeadingElement>(null)
   const noteId = useId()
@@ -238,6 +242,16 @@ const WelcomeFlow = ({
             dispatch={dispatch}
           />
         )
+      case 'assessment':
+        return (
+          <StepAssessment
+            key={step.key}
+            step={step}
+            state={state}
+            dispatch={dispatch}
+            onLaunch={setLaunch}
+          />
+        )
       case 'quiz':
         return <StepQuiz key={step.key} step={step} state={state} dispatch={dispatch} />
     }
@@ -253,7 +267,11 @@ const WelcomeFlow = ({
   const video = step.type === 'video' ? videoOf(state, step.key) : null
   const trouble =
     step.type === 'video' && video !== null && showTroubleAction(video, step.allowFallback)
-  const wide = step.type === 'video' || step.type === 'quiz' || step.type === 'pdf'
+  const wide =
+    step.type === 'video' ||
+    step.type === 'quiz' ||
+    step.type === 'pdf' ||
+    step.type === 'assessment'
   // The first welcome step is a hero: centered, with one centered primary action.
   const hero = step.type === 'welcome' && state.index === 0
 
@@ -280,132 +298,155 @@ const WelcomeFlow = ({
         style={{ background: 'var(--flow-stage-overlay)' }}
       />
 
-      <div className="flow-stage relative">
-        <div className="flow-card" data-wide={wide}>
-          <header className="flow-card-head">
-            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
-              <p className="text-sm font-bold">{text.stepLine(state.index + 1, total, kindName)}</p>
-              <div className="flex items-center gap-2">
-                {onEnterFullscreen && (
-                  <Button variant="surface" size="sm" dense onClick={onEnterFullscreen}>
-                    <Maximize2 size={16} strokeWidth={2.5} aria-hidden />
-                    {/* Icon only on a narrow window; the name stays for assistive tech. */}
-                    <span className="max-[480px]:sr-only">{es.welcome.fullscreen}</span>
-                  </Button>
-                )}
-                {(mode === 'review' || skipVisible) && (
-                  <Button
-                    variant="surface"
-                    size="sm"
-                    dense
-                    onClick={() => dispatch({ type: 'close' })}
-                  >
-                    {mode === 'review' ? text.close : text.skipPreview}
-                  </Button>
-                )}
-              </div>
-            </div>
-            <FlowStepper state={state} steps={steps} dispatch={dispatch} />
-          </header>
-
-          {mode !== 'normal' && (
-            <p
-              role="note"
-              className="flex-none bg-sun-tint px-[var(--flow-pad)] py-2 text-sm font-semibold text-sun-dark"
-            >
-              {mode === 'review' ? text.review : text.preview}
-            </p>
-          )}
-
-          <div className="flow-card-scroll">
-            <div key={step.key} className={`flex flex-col ${dataSaver ? '' : 'flow-step-in'}`}>
-              <div className={`flow-title-zone ${hero ? 'text-center' : ''}`}>
-                {hero && (
-                  <p className="mb-2 text-sm font-extrabold tracking-wide text-primary uppercase">
-                    {text.stage.eyebrow}
-                  </p>
-                )}
-                <h1
-                  ref={headingRef}
-                  tabIndex={-1}
-                  className="flow-title font-heading font-extrabold outline-none"
-                >
-                  {title}
-                  {!step.mandatory && (
-                    <span className="ml-2 align-middle text-sm font-bold text-ink-soft">
-                      ({text.optionalTag})
-                    </span>
+      {launch && step.type === 'assessment' ? (
+        <LazyExamRunner
+          purpose={step.purpose}
+          info={launch.info}
+          policy={launch.policy}
+          preview={launch.preview || mode === 'preview'}
+          // Submitted or expired, whatever the result: the check-in is a baseline.
+          onFinished={() => dispatch({ type: 'assessment-done' })}
+          onExit={() => {
+            // Leaving after a result goes on; leaving before one returns to the step.
+            if (state.assessment[step.key]) dispatch({ type: 'next' })
+            setLaunch(null)
+          }}
+          onFallback={() => {
+            setLaunch(null)
+            dispatch({ type: 'assessment-escape' })
+          }}
+          exitLabel={state.assessment[step.key] ? text.next : undefined}
+        />
+      ) : (
+        <div className="flow-stage relative">
+          <div className="flow-card" data-wide={wide}>
+            <header className="flow-card-head">
+              <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+                <p className="text-sm font-bold">
+                  {text.stepLine(state.index + 1, total, kindName)}
+                </p>
+                <div className="flex items-center gap-2">
+                  {onEnterFullscreen && (
+                    <Button variant="surface" size="sm" dense onClick={onEnterFullscreen}>
+                      <Maximize2 size={16} strokeWidth={2.5} aria-hidden />
+                      {/* Icon only on a narrow window; the name stays for assistive tech. */}
+                      <span className="max-[480px]:sr-only">{es.welcome.fullscreen}</span>
+                    </Button>
                   )}
-                </h1>
-              </div>
-              {body}
-            </div>
-          </div>
-
-          <footer className={`flow-card-foot ${hero ? 'justify-center' : 'justify-between'}`}>
-            {!hero && (
-              <Button
-                variant="ghost"
-                onClick={() => dispatch({ type: 'back' })}
-                disabled={state.index === 0}
-              >
-                <ArrowLeft size={18} strokeWidth={3} aria-hidden />
-                {text.back}
-              </Button>
-            )}
-            <div
-              className={`flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2 ${hero ? 'justify-center' : 'ml-auto justify-end'}`}
-            >
-              <div className="flex min-w-0 flex-col items-end gap-1 text-right">
-                {note && (
-                  <FlowStatus
-                    id={noteId}
-                    icon={<Hourglass size={16} strokeWidth={2.5} />}
-                    className="text-ink-soft"
-                  >
-                    {note}
-                  </FlowStatus>
-                )}
-                {trouble && (
-                  <div className="flex flex-wrap items-center justify-end gap-x-2 text-xs text-ink-soft">
-                    <span>{text.video.troubleHint}</span>
-                    <button
-                      type="button"
-                      onClick={() => dispatch({ type: 'video-fallback' })}
-                      className="min-h-[44px] px-1 text-sm font-bold text-primary underline underline-offset-4"
+                  {(mode === 'review' || skipVisible) && (
+                    <Button
+                      variant="surface"
+                      size="sm"
+                      dense
+                      onClick={() => dispatch({ type: 'close' })}
                     >
-                      {text.video.trouble}
-                    </button>
-                  </div>
-                )}
-                {video?.usedFallback && video.phase !== 'ended' && (
-                  <FlowStatus role="status" icon={<Info size={16} strokeWidth={2.5} />}>
-                    {text.video.fallbackTaken}
-                  </FlowStatus>
-                )}
+                      {mode === 'review' ? text.close : text.skipPreview}
+                    </Button>
+                  )}
+                </div>
               </div>
-              {gate.canSkip && (
-                <Button variant="surface" dense onClick={() => dispatch({ type: 'skip' })}>
-                  {text.skip}
+              <FlowStepper state={state} steps={steps} dispatch={dispatch} />
+            </header>
+
+            {mode !== 'normal' && (
+              <p
+                role="note"
+                className="flex-none bg-sun-tint px-[var(--flow-pad)] py-2 text-sm font-semibold text-sun-dark"
+              >
+                {mode === 'review' ? text.review : text.preview}
+              </p>
+            )}
+
+            <div className="flow-card-scroll">
+              <div key={step.key} className={`flex flex-col ${dataSaver ? '' : 'flow-step-in'}`}>
+                <div className={`flow-title-zone ${hero ? 'text-center' : ''}`}>
+                  {hero && (
+                    <p className="mb-2 text-sm font-extrabold tracking-wide text-primary uppercase">
+                      {text.stage.eyebrow}
+                    </p>
+                  )}
+                  <h1
+                    ref={headingRef}
+                    tabIndex={-1}
+                    className="flow-title font-heading font-extrabold outline-none"
+                  >
+                    {title}
+                    {!step.mandatory && (
+                      <span className="ml-2 align-middle text-sm font-bold text-ink-soft">
+                        ({text.optionalTag})
+                      </span>
+                    )}
+                  </h1>
+                </div>
+                {body}
+              </div>
+            </div>
+
+            <footer className={`flow-card-foot ${hero ? 'justify-center' : 'justify-between'}`}>
+              {!hero && (
+                <Button
+                  variant="ghost"
+                  onClick={() => dispatch({ type: 'back' })}
+                  disabled={state.index === 0}
+                >
+                  <ArrowLeft size={18} strokeWidth={3} aria-hidden />
+                  {text.back}
                 </Button>
               )}
-              {/* aria-disabled, not disabled: it stays focusable and its note is read. */}
-              <Button
-                variant="secondary"
-                dense={blocked}
-                aria-disabled={blocked}
-                aria-describedby={blocked && note ? noteId : undefined}
-                className={blocked ? 'flow-next-waiting' : hero ? 'px-8' : ''}
-                onClick={goNext}
+              <div
+                className={`flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2 ${hero ? 'justify-center' : 'ml-auto justify-end'}`}
               >
-                {blocked && <Lock size={16} strokeWidth={3} aria-hidden />}
-                {nextLabel}
-                {!blocked && !isLast && <ArrowRight size={18} strokeWidth={3} aria-hidden />}
-              </Button>
-            </div>
-          </footer>
+                <div className="flex min-w-0 flex-col items-end gap-1 text-right">
+                  {note && (
+                    <FlowStatus
+                      id={noteId}
+                      icon={<Hourglass size={16} strokeWidth={2.5} />}
+                      className="text-ink-soft"
+                    >
+                      {note}
+                    </FlowStatus>
+                  )}
+                  {trouble && (
+                    <div className="flex flex-wrap items-center justify-end gap-x-2 text-xs text-ink-soft">
+                      <span>{text.video.troubleHint}</span>
+                      <button
+                        type="button"
+                        onClick={() => dispatch({ type: 'video-fallback' })}
+                        className="min-h-[44px] px-1 text-sm font-bold text-primary underline underline-offset-4"
+                      >
+                        {text.video.trouble}
+                      </button>
+                    </div>
+                  )}
+                  {video?.usedFallback && video.phase !== 'ended' && (
+                    <FlowStatus role="status" icon={<Info size={16} strokeWidth={2.5} />}>
+                      {text.video.fallbackTaken}
+                    </FlowStatus>
+                  )}
+                </div>
+                {gate.canSkip && (
+                  <Button variant="surface" dense onClick={() => dispatch({ type: 'skip' })}>
+                    {text.skip}
+                  </Button>
+                )}
+                {/* aria-disabled, not disabled: it stays focusable and its note is read. */}
+                <Button
+                  variant="secondary"
+                  dense={blocked}
+                  aria-disabled={blocked}
+                  aria-describedby={blocked && note ? noteId : undefined}
+                  className={blocked ? 'flow-next-waiting' : hero ? 'px-8' : ''}
+                  onClick={goNext}
+                >
+                  {blocked && <Lock size={16} strokeWidth={3} aria-hidden />}
+                  {nextLabel}
+                  {!blocked && !isLast && <ArrowRight size={18} strokeWidth={3} aria-hidden />}
+                </Button>
+              </div>
+            </footer>
+          </div>
         </div>
-      </div>
+      )}
       <p aria-live="polite" role="status" className="sr-only">
         {text.announce(state.index + 1, total, title)}
       </p>
