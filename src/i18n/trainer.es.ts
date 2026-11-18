@@ -20,6 +20,7 @@ export const esTrainer = {
   publication: {
     published: 'Publicado',
     draft: 'Borrador: los estudiantes no lo verán',
+    reviewed: 'Revisado: los estudiantes aún no lo verán',
     unpublished: 'Sin publicar: los estudiantes no lo verán',
     archived: 'Archivado: los estudiantes no lo verán',
     other: (state: string) => `Estado: ${state}`,
