@@ -275,3 +275,21 @@ Nothing was added; the welcome text stays what the author writes.
   list, so the home entry waits for a design that wants it. Also noted: `TrainerProgress` in `types.ts` (`by_skill`,
   `recent`) does not match the OpenAPI `Progress` (`lessons`, `words_saved`, `words_due`, `words_by_box`); not
   checked against the spec yet.
+
+## Welcome step 5, practice 409 and the tutor button
+
+- (D19) **`not_available` came from `locked_reason`.** The check-in step rendered the backend's
+  `locked_reason` as it came and, for a locked, disabled or missing exam, dispatched `unavailable`, which opened
+  "Terminar" with no record of why. Now every such case shows a translated reason and the existing recorded escape
+  (`assessment-escape`, method `fallback`); an unknown code reads as the generic sentence (`lockedReason.ts`, also used
+  by the final-exam card, which leaked the same code).
+- (D20) **A failed load keeps "Terminar" closed.** The state table asks for it, so "Continuar de todos modos" was
+  removed from the error state; only "Reintentar" remains. The escape lives in the not-available state.
+- (D21) A pass in either exam shows "Ya aprobaste" and counts as done for the check-in step.
+- (D22) A practice 409 is its own class (`conflict`) with its own copy and no retry. The text "state of the exam" was
+  not found in the front end (practice 409 shared "Esta práctica ya no está disponible" with 404/403); if the phrase
+  was seen in the app it comes from a backend `detail` that must be checked on a real session.
+- (D23) Tutor messages are `rumbos:tutor-open` / `rumbos:host-tutor-closed` with `v: 1`, following the contract's
+  prefix and versioning, not the bare `tutor.open` of the brief. The plugin prompt must use these names.
+- (D24) The HUD overlap test skips the preview pill when the screen is too short to hold the full five-button stack
+  plus the pill; it is physically impossible there and only reachable on a 320 px-tall window.
