@@ -1,5 +1,7 @@
 import { apiRequest } from '../course-map/data/client.ts'
+import { checked } from '../course-map/data/contract.ts'
 import { refuseLeak } from './leakGuard.ts'
+import { parseAssessmentList } from './listContract.ts'
 import type {
   AssessmentList,
   AssessmentPurpose,
@@ -18,7 +20,8 @@ const BASE = '/trainer'
 const get = async <T>(path: string): Promise<T> => refuseLeak(await apiRequest<T>(`${BASE}${path}`))
 
 export const assessmentApi = {
-  list: () => get<AssessmentList>('/assessments'),
+  list: async (): Promise<AssessmentList> =>
+    checked('GET /trainer/assessments', parseAssessmentList)(await get<unknown>('/assessments')),
 
   // 201 on a new attempt, 200 when one is resumed: the caller needs no difference.
   start: async (purpose: AssessmentPurpose) =>

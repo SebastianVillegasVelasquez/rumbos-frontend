@@ -27,12 +27,22 @@ export interface AssessmentListItem {
   best: { percent: string; passed: boolean; finished_at: string } | null
 }
 
-export interface AssessmentList {
-  enabled: boolean
+export interface EnabledAssessmentList {
+  enabled: true
   preview: boolean
   policy: AssessmentPolicy
   items: AssessmentListItem[]
 }
+
+// A map without assessments answers `enabled: false` and nothing else: no policy, no
+// items. The client makes `items` an empty list so a reader never meets `undefined`.
+export interface DisabledAssessmentList {
+  enabled: false
+  preview: boolean
+  items: []
+}
+
+export type AssessmentList = EnabledAssessmentList | DisabledAssessmentList
 
 export interface SectionSummary {
   key: string

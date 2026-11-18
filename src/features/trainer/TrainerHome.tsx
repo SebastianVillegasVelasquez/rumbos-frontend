@@ -5,7 +5,7 @@ import { Button } from '../../components/ui/Button.tsx'
 import { esAssessment } from '../../i18n/assessment.es.ts'
 import { esTrainer } from '../../i18n/trainer.es.ts'
 import { assessmentApi } from '../assessment/api.ts'
-import type { AssessmentList } from '../assessment/types.ts'
+import type { AssessmentListItem, EnabledAssessmentList } from '../assessment/types.ts'
 import { trainerApi } from './api.ts'
 import { rememberAccepted } from './firstUse.ts'
 import { TrainerCard } from './TrainerCard.tsx'
@@ -47,11 +47,11 @@ const FinalCard = ({
   list,
   onOpen,
 }: {
-  list: AssessmentList
-  onOpen: (item: AssessmentList['items'][number]) => void
+  list: EnabledAssessmentList
+  onOpen: (item: AssessmentListItem) => void
 }) => {
   const item = list.items.find((entry) => entry.purpose === 'final')
-  if (!list.enabled || !item) return null
+  if (!item) return null
   const copy = esAssessment.finalCard
   const canOpen = item.state === 'available' || item.state === 'in_progress'
   return (
@@ -83,7 +83,7 @@ export interface HomeProps {
   onLessons: () => void
   onProgress: () => void
   onReview: () => void
-  onFinal: (item: AssessmentList['items'][number], list: AssessmentList) => void
+  onFinal: (item: AssessmentListItem, list: EnabledAssessmentList) => void
 }
 
 // S2: the suggestion, the way to the lessons, the skills, the words due and the
@@ -108,6 +108,7 @@ export const TrainerHome = ({
     queryFn: () => assessmentApi.list(),
     retry: false,
   })
+  const examList = exams.data?.enabled ? exams.data : null
   const suggested = catalog.suggestion
     ? catalog.activities?.find((a) => a.id === catalog.suggestion?.activity_id)
     : undefined
@@ -182,7 +183,7 @@ export const TrainerHome = ({
         </section>
       )}
 
-      {exams.data && <FinalCard list={exams.data} onOpen={(item) => onFinal(item, exams.data)} />}
+      {examList && <FinalCard list={examList} onOpen={(item) => onFinal(item, examList)} />}
 
       <div className="border-t-soft pt-3">
         {deleted ? (

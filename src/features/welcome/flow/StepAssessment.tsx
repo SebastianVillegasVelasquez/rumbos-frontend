@@ -5,7 +5,7 @@ import { esAssessment } from '../../../i18n/assessment.es.ts'
 import { assessmentApi } from '../../assessment/api.ts'
 import { classifyFailure } from '../../assessment/failure.ts'
 import { formatClock } from '../../assessment/serverClock.ts'
-import type { AssessmentList, AssessmentListItem } from '../../assessment/types.ts'
+import type { AssessmentListItem, EnabledAssessmentList } from '../../assessment/types.ts'
 import type { WelcomeAssessmentStep } from '../../course-map/data/types.ts'
 import type { FlowEvent, FlowState } from './flowReducer.ts'
 
@@ -17,12 +17,12 @@ const LIST_RETRY_DELAYS_MS = [1_000, 3_000] as const
 
 export type LoadState =
   | { kind: 'loading' }
-  | { kind: 'ready'; list: AssessmentList; item: AssessmentListItem }
+  | { kind: 'ready'; list: EnabledAssessmentList; item: AssessmentListItem }
   | { kind: 'unreachable' }
 
 export interface Launch {
   info: AssessmentListItem
-  policy: AssessmentList['policy']
+  policy: EnabledAssessmentList['policy']
   preview: boolean
 }
 
@@ -55,9 +55,10 @@ export const StepAssessment = ({
         .list()
         .then((list) => {
           if (cancelled) return
-          const item = list.items.find((entry) => entry.purpose === step.purpose)
           // Not enabled for this map, or no such assessment: it does not block.
-          if (!list.enabled || !item) return dispatch({ type: 'unavailable' })
+          if (!list.enabled) return dispatch({ type: 'unavailable' })
+          const item = list.items.find((entry) => entry.purpose === step.purpose)
+          if (!item) return dispatch({ type: 'unavailable' })
           setLoadedAt(Date.now())
           setLoad({ kind: 'ready', list, item })
         })

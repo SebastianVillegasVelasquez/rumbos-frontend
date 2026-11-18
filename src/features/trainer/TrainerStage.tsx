@@ -4,7 +4,7 @@ import { ArrowLeft } from 'lucide-react'
 import { Button } from '../../components/ui/Button.tsx'
 import { esTrainer } from '../../i18n/trainer.es.ts'
 import { resolveImageUrl } from '../course-map/data/assets.ts'
-import type { AssessmentList, AssessmentListItem } from '../assessment/types.ts'
+import type { AssessmentListItem, EnabledAssessmentList } from '../assessment/types.ts'
 import { LazyExamRunner } from '../assessment/LazyExamRunner.tsx'
 import { stageScreen } from './availability.ts'
 import { useCatalog } from './useCatalog.ts'
@@ -28,7 +28,7 @@ type View =
   | { name: 'practice'; activityId: string }
   | { name: 'progress' }
   | { name: 'review' }
-  | { name: 'exam'; item: AssessmentListItem; list: AssessmentList }
+  | { name: 'exam'; item: AssessmentListItem; list: EnabledAssessmentList }
 
 export interface TrainerStageProps {
   imageUrl: string
