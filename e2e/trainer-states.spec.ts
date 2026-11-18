@@ -151,4 +151,30 @@ test.describe('trainer entry states', () => {
     await expect(dialog.getByText('Presentarse')).toBeVisible()
     await expect(dialog.getByText(/Sin publicar/)).toHaveCount(0)
   })
+
+  test('the trainer code failing to download says so, with a retry and the way back', async ({
+    page,
+    context,
+  }) => {
+    await open(page, context)
+    let blocked = true
+    // The dev server serves the chunk as a module; the build serves a hashed file.
+    await context.route(/TrainerStage/, (route) =>
+      blocked ? route.abort('connectionfailed') : route.continue()
+    )
+    await hud(page).click()
+    const failed = app(page).getByRole('alertdialog')
+    await expect(failed.getByRole('alert')).toContainText('No pudimos cargar el entrenamiento', {
+      timeout: 20_000,
+    })
+    // The map is still there behind it.
+    await expect(app(page).getByRole('button', { name: 'Misiones' })).toBeAttached()
+    await failed.getByRole('button', { name: 'Volver al mapa' }).click()
+    await expect(failed).toHaveCount(0)
+    await expect(hud(page)).toBeFocused()
+    // Back online: pressing again loads it.
+    blocked = false
+    await hud(page).click()
+    await expect(stage(page)).toBeVisible({ timeout: 20_000 })
+  })
 })

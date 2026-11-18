@@ -742,6 +742,12 @@ export const es = {
     levels: 'Niveles',
     quests: 'Misiones',
     trainer: 'Entrenar',
+    // The trainer's code could not be downloaded (offline, or the site was updated).
+    trainerChunk: {
+      failed: 'No pudimos cargar el entrenamiento. Revisa tu conexión e inténtalo de nuevo.',
+      retry: 'Reintentar',
+      back: 'Volver al mapa',
+    },
     // What the "Entrenar" button says about itself when it cannot just open.
     trainerNote: {
       loading: 'Cargando el entrenamiento…',
