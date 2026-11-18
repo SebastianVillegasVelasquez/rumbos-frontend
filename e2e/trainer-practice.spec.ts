@@ -114,13 +114,8 @@ test.describe('practice trainer', () => {
 
     await expect(stage(page).getByRole('heading', { name: 'Resumen de la práctica' })).toBeVisible()
     await expect(stage(page).getByText('4 de 4 correctas')).toBeVisible()
-    await expect(stage(page).getByText('Recuerda el artículo a.')).toBeVisible()
     await expect(stage(page).getByRole('button', { name: 'Siguiente actividad' })).toBeVisible()
     expect(server.practice.gradedCount).toBe(4)
-
-    // A new word can be saved from the summary.
-    await stage(page).getByRole('button', { name: 'Guardar palabra' }).click()
-    await expect.poll(() => server.practice.saved.has('w-student')).toBe(true)
   })
 
   test('a failed answer keeps what was chosen and retries with the same attempt id', async ({
@@ -255,10 +250,7 @@ test.describe('practice trainer', () => {
     await expect(check(page)).toBeEnabled()
   })
 
-  test('the listening step plays on a click and shows the transcript afterwards', async ({
-    page,
-    context,
-  }) => {
+  test('the listening step plays on a click', async ({ page, context }) => {
     await open(page, context)
     await openStage(page)
     await startActivity(page, 'Escucha: saludos')

@@ -12,7 +12,7 @@ export type Node = Record<string, unknown>
 export const specPresent = existsSync(SPEC_PATH)
 export const spec = (specPresent ? JSON.parse(readFileSync(SPEC_PATH, 'utf8')) : {}) as Node
 
-const deref = (node: Node): Node => {
+export const deref = (node: Node): Node => {
   let current = node
   for (let hops = 0; typeof current.$ref === 'string' && hops < 20; hops++) {
     let target: unknown = spec
@@ -107,10 +107,11 @@ const jsonSchema = (holder: Node | undefined, what: string): Node => {
   return json.schema as Node
 }
 
-// The schema of the 200 answer of `METHOD /route`.
-export const responseSchema = (method: string, route: string): Node => {
-  const ok = (operation(method, route)?.responses as Node | undefined)?.['200'] as Node | undefined
-  return jsonSchema(ok, `the 200 answer of ${method} /api/v1${route}`)
+// The schema of the answer of `METHOD /route` with `status` (200 unless said).
+export const responseSchema = (method: string, route: string, status = 200): Node => {
+  const answer = (operation(method, route)?.responses as Node | undefined)?.[String(status)] as
+    Node | undefined
+  return jsonSchema(answer, `the ${status} answer of ${method} /api/v1${route}`)
 }
 
 // The schema of the JSON body `METHOD /route` takes.

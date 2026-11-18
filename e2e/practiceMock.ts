@@ -3,6 +3,13 @@
 // grade on the "server" side, idempotent answers by attempt_id, a vocabulary box and
 // progress. Practice answers DO carry feedback by contract; none of this is the
 // assessment (which never does).
+//
+// Sessions, answers, finish and the catalog are answered from openapi.json: the body is
+// built from the spec's response schema (or checked against it) before it leaves, so a
+// mock that drifts from the contract throws here. The vocabulary, progress and review
+// answers are still the front's old shapes (the spec differs: see the report).
+
+import { specReply, validated } from '../src/contracts/openapiExample.ts'
 
 export interface PracticeOptions {
   // catalog.enabled (false: the stage says it is not available).
@@ -40,6 +47,9 @@ export interface PracticeReply {
   then?: () => PracticeReply
 }
 
+// Steps are written in the wire's shape (rumbos-backend: views.py, and its documented
+// examples): options, tokens and match items are `{ id, text }`, an audio has no
+// transcript, a dialogue turn has its partner line as a string. `grade` plays the server.
 type StepDef = {
   step: Record<string, unknown>
   grade: (response: Record<string, unknown>) => Grade
@@ -48,7 +58,7 @@ interface Grade {
   outcome: 'correct' | 'partial' | 'incorrect' | 'accepted'
   explanation?: string
   closest?: string
-  tags?: { tag: string; text: string }[]
+  tags?: string[]
 }
 
 const base = (id: string, type: string, prompt: string, extra: Record<string, unknown>) => ({
@@ -60,16 +70,31 @@ const base = (id: string, type: string, prompt: string, extra: Record<string, un
   ...extra,
 })
 
-const ACTIVITIES: Record<string, { title: string; skill: string; steps: StepDef[] }> = {
+const turn = (id: string, extra: Record<string, unknown>) => ({
+  step_id: id,
+  type: 'dialogue_turn',
+  translation: null,
+  audio: null,
+  options: [],
+  starters: [],
+  word_bank: [],
+  ...extra,
+})
+
+const ACTIVITIES: Record<
+  string,
+  { title: string; skill: string; kind: 'exercise' | 'dialogue'; steps: StepDef[] }
+> = {
   'act-gram': {
     title: 'Verb to be',
     skill: 'grammar',
+    kind: 'exercise',
     steps: [
       {
         step: base('g1', 'mcq', 'She ___ a teacher.', {
           options: [
-            { option_id: 'a', text: 'am' },
-            { option_id: 'b', text: 'is' },
+            { id: 'a', text: 'am' },
+            { id: 'b', text: 'is' },
           ],
         }),
         grade: (r) =>
@@ -84,8 +109,8 @@ const ACTIVITIES: Record<string, { title: string; skill: string; steps: StepDef[
             {
               gap_id: '1',
               options: [
-                { option_id: 'am', text: 'am' },
-                { option_id: 'are', text: 'are' },
+                { id: 'am', text: 'am' },
+                { id: 'are', text: 'are' },
               ],
             },
             { gap_id: '2', options: null },
@@ -101,10 +126,10 @@ const ACTIVITIES: Record<string, { title: string; skill: string; steps: StepDef[
       {
         step: base('g3', 'reorder', 'Ordena la frase.', {
           tokens: [
-            { token_id: 't3', text: 'a' },
-            { token_id: 't1', text: 'I' },
-            { token_id: 't4', text: 'student' },
-            { token_id: 't2', text: 'am' },
+            { id: 't3', text: 'a' },
+            { id: 't1', text: 'I' },
+            { id: 't4', text: 'student' },
+            { id: 't2', text: 'am' },
           ],
         }),
         grade: (r) =>
@@ -134,13 +159,14 @@ const ACTIVITIES: Record<string, { title: string; skill: string; steps: StepDef[
   'act-listen': {
     title: 'Escucha: saludos',
     skill: 'listening',
+    kind: 'exercise',
     steps: [
       {
         step: base('s1', 'listen_choose', 'What does she say?', {
-          audio: { url: '/__tone.wav', duration_s: 2, transcript: 'Good morning.' },
+          audio: { url: '/__tone.wav', duration_s: 2 },
           options: [
-            { option_id: 'a', text: 'Good morning' },
-            { option_id: 'b', text: 'Good night' },
+            { id: 'a', text: 'Good morning' },
+            { id: 'b', text: 'Good night' },
           ],
         }),
         grade: (r) => (r.option_id === 'a' ? { outcome: 'correct' } : { outcome: 'incorrect' }),
@@ -150,6 +176,7 @@ const ACTIVITIES: Record<string, { title: string; skill: string; steps: StepDef[
   'act-write': {
     title: 'Escribe sobre ti',
     skill: 'writing',
+    kind: 'exercise',
     steps: [
       {
         step: base('w1', 'short_answer', 'Who are you?', { max_length: 80 }),
@@ -162,7 +189,7 @@ const ACTIVITIES: Record<string, { title: string; skill: string; steps: StepDef[
                 outcome: 'partial',
                 closest: 'I am a student',
                 explanation: 'Falta el artículo a.',
-                tags: [{ tag: 'article', text: 'Usa a antes de una profesión.' }],
+                tags: ['Usa a antes de una profesión.'],
               },
       },
     ],
@@ -170,21 +197,17 @@ const ACTIVITIES: Record<string, { title: string; skill: string; steps: StepDef[
   'act-dial': {
     title: 'En el hotel',
     skill: 'dialogue',
+    kind: 'dialogue',
     steps: [
       {
-        step: base('d1', 'dialogue_turn', 'Responde al huésped.', {
-          partner_line: {
-            text: 'Good evening. Do you have a reservation?',
-            translation: 'Buenas noches. ¿Tiene una reserva?',
-            audio: null,
-          },
+        step: turn('d1', {
+          partner_line: 'Good evening. Do you have a reservation?',
+          translation: 'Buenas noches. ¿Tiene una reserva?',
           mode: 'choose',
           options: [
-            { option_id: 'o1', text: 'Yes, I do.' },
-            { option_id: 'o2', text: 'Banana.' },
+            { id: 'o1', text: 'Yes, I do.' },
+            { id: 'o2', text: 'Banana.' },
           ],
-          starters: [],
-          word_bank: [],
         }),
         grade: (r) =>
           r.option_id === 'o1'
@@ -192,10 +215,9 @@ const ACTIVITIES: Record<string, { title: string; skill: string; steps: StepDef[
             : { outcome: 'incorrect', closest: 'Yes, I do.' },
       },
       {
-        step: base('d2', 'dialogue_turn', 'Dile tu nombre.', {
-          partner_line: { text: 'What is your name?', translation: null, audio: null },
+        step: turn('d2', {
+          partner_line: 'What is your name?',
           mode: 'type',
-          options: null,
           starters: ['My name is'],
           word_bank: ['Sebastian', 'Ana'],
         }),
@@ -206,8 +228,18 @@ const ACTIVITIES: Record<string, { title: string; skill: string; steps: StepDef[
   },
 }
 
+interface SessionRecord {
+  id: string
+  activity: string
+  finished: boolean
+  // Every try, in order: what the server keeps and the summary counts.
+  tries: { step: string; attempt: string; outcome: Grade['outcome'] }[]
+  // A dialogue's current turn.
+  turn: number
+}
+
 export class PracticeMock {
-  readonly sessions = new Map<string, { activity: string; index: number }>()
+  readonly sessions = new Map<string, SessionRecord>()
   readonly answered = new Map<string, unknown>()
   readonly saved = new Set<string>(['w-hello'])
   readonly reviews: { word: string; knew: boolean; attempt: string }[] = []
@@ -292,6 +324,41 @@ export class PracticeMock {
     return list
   }
 
+  private open(activity: string): SessionRecord {
+    const session: SessionRecord = {
+      id: `00000000-0000-4000-8000-${String(++this.seq).padStart(12, '0')}`,
+      activity,
+      finished: false,
+      tries: [],
+      turn: 0,
+    }
+    this.sessions.set(session.id, session)
+    return session
+  }
+
+  // SessionView: an exercise with all its steps (answered ones marked), a dialogue with its
+  // current turn only.
+  private view(session: SessionRecord): unknown {
+    const a = ACTIVITIES[session.activity]
+    const dialogue = a.kind === 'dialogue'
+    return specReply('POST', '/trainer/sessions', 201, {
+      session_id: session.id,
+      activity_id: session.activity,
+      title: a.title,
+      status: session.finished ? 'finished' : 'in_progress',
+      kind: a.kind,
+      steps: dialogue
+        ? [a.steps[session.turn]?.step].filter(Boolean)
+        : a.steps.map((def) => {
+            const last = [...session.tries].reverse().find((t) => t.step === def.step.step_id)
+            return { ...def.step, answered: Boolean(last), last_outcome: last?.outcome ?? null }
+          }),
+      summary: null,
+      turn: dialogue ? session.turn + 1 : null,
+      turns_total: dialogue ? a.steps.length : null,
+    })
+  }
+
   // Returns null for a path that is not a practice one.
   respond(method: string, path: string, body: unknown): PracticeReply | null {
     const o = this.options
@@ -317,7 +384,10 @@ export class PracticeMock {
               preview: this.preview,
             },
           }
-        return { status: 200, body: this.catalog() }
+        return {
+          status: 200,
+          body: validated('GET', '/trainer/catalog', 200, this.catalog()),
+        }
       }
       return delayMs ? { status: 0, body: null, delayMs, then: answer } : answer()
     }
@@ -325,27 +395,23 @@ export class PracticeMock {
     // There is no route for one activity: the catalog carries what the intro shows.
     if (method === 'POST' && path === '/sessions') {
       const a = ACTIVITIES[String(b.activity_id)]
-      if (!a) return { status: 404, body: { detail: { code: 'not_found', message: 'not_found' } } }
-      const id = `sess${++this.seq}`
-      this.sessions.set(id, { activity: String(b.activity_id), index: 0 })
-      return {
-        status: 200,
-        body: {
-          session_id: id,
-          preview: this.preview,
-          step: a.steps[0].step,
-          progress: { index: 1, total: a.steps.length },
-        },
-      }
+      if (!a) return { status: 404, body: { detail: 'Not found' } }
+      // 201 for a new session, 200 with the one already open for the activity.
+      const open = [...this.sessions.values()].find(
+        (s) => s.activity === b.activity_id && !s.finished
+      )
+      const session = open ?? this.open(String(b.activity_id))
+      return { status: open ? 200 : 201, body: this.view(session) }
     }
 
     let m = path.match(/^\/sessions\/([^/]+)\/answers$/)
     if (method === 'POST' && m) {
       const session = this.sessions.get(m[1])
-      if (!session)
-        return { status: 404, body: { detail: { code: 'not_found', message: 'not_found' } } }
+      if (!session) return { status: 404, body: { detail: 'Not found' } }
       const cached = this.answered.get(String(b.attempt_id))
       if (cached) return { status: 200, body: cached }
+      if (session.finished)
+        return { status: 409, body: { detail: { code: 'finished', message: 'finished' } } }
       if (this.failures < (o.failAnswers ?? 0)) {
         this.failures++
         if (o.failAnswerStatus === 0) return { status: 0, body: null, abort: true }
@@ -355,21 +421,41 @@ export class PracticeMock {
         }
       }
       const a = ACTIVITIES[session.activity]
-      const def = a.steps[session.index]
+      const at = a.steps.findIndex((def) => def.step.step_id === b.step_id)
+      if (at === -1) return { status: 404, body: { detail: 'Not found' } }
+      if (a.kind === 'dialogue' && at !== session.turn)
+        return {
+          status: 409,
+          body: { detail: { code: 'not_current_turn', message: 'not current turn' } },
+        }
       this.gradedCount++
-      const grade = def.grade((b.response ?? {}) as Record<string, unknown>)
-      session.index += 1
-      const next = a.steps[session.index]?.step ?? null
-      const result = {
+      const grade = a.steps[at].grade((b.response ?? {}) as Record<string, unknown>)
+      session.tries.push({
+        step: String(b.step_id),
+        attempt: String(b.attempt_id),
         outcome: grade.outcome,
+      })
+      const earned = grade.outcome === 'correct' || grade.outcome === 'accepted' ? 1 : 0
+      let next: unknown = null
+      let finished = false
+      if (a.kind === 'dialogue' && grade.outcome === 'accepted') {
+        session.turn += 1
+        next = a.steps[session.turn]?.step ?? null
+        finished = next === null
+        if (finished) session.finished = true
+      }
+      const result = specReply('POST', '/trainer/sessions/{session_id}/answers', 200, {
+        outcome: grade.outcome,
+        earned,
+        total: 1,
         feedback: {
           explanation: grade.explanation ?? null,
           closest_answer: grade.closest ?? null,
           error_tags: grade.tags ?? [],
         },
-        next_step: next,
-        progress: { index: Math.min(session.index + 1, a.steps.length), total: a.steps.length },
-      }
+        next,
+        finished,
+      })
       this.answered.set(String(b.attempt_id), result)
       return { status: 200, body: result }
     }
@@ -377,21 +463,29 @@ export class PracticeMock {
     m = path.match(/^\/sessions\/([^/]+)\/finish$/)
     if (method === 'POST' && m) {
       const session = this.sessions.get(m[1])
-      if (!session)
-        return { status: 404, body: { detail: { code: 'not_found', message: 'not_found' } } }
-      const total = ACTIVITIES[session.activity].steps.length
+      if (!session) return { status: 404, body: { detail: 'Not found' } }
+      session.finished = true
+      const steps = ACTIVITIES[session.activity].steps
+      // The first try of each step counts; what was missed is what to revise.
+      const first = new Map<string, Grade['outcome']>()
+      for (const t of session.tries) if (!first.has(t.step)) first.set(t.step, t.outcome)
+      const right = [...first.values()].filter((x) => x === 'correct' || x === 'accepted').length
       return {
         status: 200,
-        body: {
-          score: { correct: total, total },
-          went_well: ['Reconoces el verbo to be'],
-          to_improve: [
-            { tag: 'article', text: 'Recuerda el artículo a.', example: 'I am a student' },
-          ],
-          new_vocabulary: [{ word_id: 'w-student', word: 'student', translation: 'estudiante' }],
-          can_do: ['Presentarte en inglés'],
-          next_activity_id: session.activity === 'act-gram' ? 'act-write' : null,
-        },
+        body: specReply('POST', '/trainer/sessions/{session_id}/finish', 200, {
+          session_id: session.id,
+          summary: {
+            tries: session.tries.length,
+            percent: Math.round((right / steps.length) * 100),
+            to_revise: right < first.size ? ['article'] : [],
+            steps_total: steps.length,
+            missed_steps: [...first]
+              .filter(([, x]) => x !== 'correct' && x !== 'accepted')
+              .map(([k]) => k),
+            steps_answered: first.size,
+            first_try_correct: right,
+          },
+        }),
       }
     }
 
