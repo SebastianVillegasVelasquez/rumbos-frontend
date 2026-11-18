@@ -104,6 +104,8 @@ export interface MapSettings {
   // The welcome curtain. Null or absent means all defaults; a backend that
   // predates it never sends the key (the editor then hides the tab).
   welcome?: MapWelcome | null
+  // DRAFT (see MapClosing): held in the editor and the mock only, never saved.
+  closing?: MapClosing | null
   // The practice trainer and the native assessments (contract v2). Both default
   // off; a backend that predates them never sends the keys (the editor panel then
   // does not exist). The level, language and policy are the editor's, never the
@@ -217,8 +219,19 @@ export interface WelcomeQuizStep extends StepCommon {
 // step when the editor chooses it; the quiz step stays as the fallback.
 export interface WelcomeAssessmentStep extends StepCommon {
   type: 'assessment'
-  purpose: 'check_in'
+  // The welcome flow only carries the check-in; the closing flow only the final exam.
+  purpose: 'check_in' | 'final'
 }
+
+// The two guided flows built from the same steps and the same editor.
+export type FlowKey = 'welcome' | 'closing'
+
+// DRAFT, not in contracts/openapi.json: the closing flow the student sees on finishing
+// the level. It has the welcome flow's shape (enabled + steps; the legacy fields stay
+// null) so the player and the editor are shared. Never sent to the backend until the
+// contract declares it (see serializeAppearance); the backend decides when it is
+// available (`closingAvailable` on the map read).
+export type MapClosing = MapWelcome
 
 export type WelcomeStep =
   | WelcomeMessageStep
@@ -331,6 +344,8 @@ export interface CourseMapRead {
   audioInfo?: AudioInfo | null
   // Absent on a backend that predates the welcome flow.
   welcomeDocuments?: WelcomeDocument[]
+  // DRAFT: the backend's word that the closing flow is open to this student.
+  closingAvailable?: boolean
   bubbles: Bubble[]
   revision: number
   createdAt: string
