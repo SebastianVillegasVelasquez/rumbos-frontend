@@ -335,6 +335,9 @@ export interface CourseMapRead {
   revision: number
   createdAt: string
   updatedAt: string
+  // Non-blocking notes on a save that went through (additive field of the settings
+  // write; absent on a backend that predates it).
+  warnings?: { path: string; rule: string; message_key: string }[]
 }
 
 // Kept as an alias: most of the existing code refers to the single-map detail

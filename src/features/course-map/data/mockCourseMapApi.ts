@@ -1,4 +1,5 @@
 import { legacyFieldProblems } from '../../welcome/welcomeWire.ts'
+import { trainerSettingsErrors, trainerSettingsWarnings } from './mockTrainerSettings.ts'
 import { ApiError, hasAuthHooks } from './client.ts'
 import { mockFeatures, mockLaunch, mockMe, withMockAuth } from './mockAuth.ts'
 import { getTransferScenario, mockArchive, mockStaged } from './mockTransfer.ts'
@@ -1683,6 +1684,11 @@ const impl: Omit<CourseMapApi, TransferMethods> = {
       throw businessError(422, 'welcome_invalid', 'La bienvenida no es válida', {
         problems: flowProblems.map((problem) => ({ ...problem, message: problem.code })),
       })
+    const trainerErrors = trainerSettingsErrors(input.settings)
+    if (trainerErrors.length > 0)
+      throw businessError(422, 'trainer_settings_invalid', 'The trainer settings are not valid', {
+        errors: trainerErrors,
+      })
     const seenModnames = new Set<string>()
     for (const rule of input.skinRules) {
       if (seenModnames.has(rule.modname)) {
@@ -1698,7 +1704,7 @@ const impl: Omit<CourseMapApi, TransferMethods> = {
       seenModnames.add(rule.modname)
       requireSkin(rule.skinId)
     }
-    return toRead(
+    const saved = toRead(
       replaceMap({
         ...map,
         settings: input.settings,
@@ -1708,6 +1714,11 @@ const impl: Omit<CourseMapApi, TransferMethods> = {
         updatedAt: now(),
       })
     )
+    const warnings = trainerSettingsWarnings(
+      input.settings,
+      Boolean(queryParam('mockTrainerUnpublished'))
+    )
+    return warnings.length > 0 ? { ...saved, warnings } : saved
   },
 
   async updateView3d(
