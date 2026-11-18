@@ -17,6 +17,20 @@ import {
 const base = { schemaVersion: 1 } as unknown as MapSettings
 
 describe('training settings model', () => {
+  it('fills the parts a partial server object leaves out', () => {
+    const partial = {
+      ...base,
+      assessments: { enabled: true },
+      trainer: {},
+    } as unknown as MapSettings
+    const a = assessmentsOf(partial)
+    assert.equal(a.enabled, true)
+    assert.equal(a.check_in.max_attempts, 1)
+    assert.equal(a.final.max_attempts, 3)
+    assert.equal(a.exemption.enabled, true)
+    assert.equal(trainerOf(partial).level, 'A1')
+  })
+
   it('both features default off, with the agreed policy', () => {
     assert.equal(defaultTrainer().enabled, false)
     const a = defaultAssessments()
