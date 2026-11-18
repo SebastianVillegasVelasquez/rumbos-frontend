@@ -20,6 +20,9 @@ export interface EmbedContextValue {
   // Ask the host for a fresh CourseState (throttled).
   requestState: () => void
   requestFullscreen: (on: boolean) => void
+  // Contract v5.10: ask the host to open the virtual tutor. No URL and no payload; only
+  // offered when the host announced capabilities.tutor.
+  openTutor: () => void
   // Contract v5.5. Idempotent: safe to call from an effect on every render.
   reportNoContent: (reason: NoContentReason) => void
   reportPreferredSize: (aspectRatio: number) => void

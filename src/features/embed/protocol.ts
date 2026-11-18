@@ -62,6 +62,19 @@ export interface CourseState {
 
 export type HostMode = 'student' | 'editor'
 
+// Contract v5.10, additive: what the host can do for the app. Absent from a host that
+// predates it, and each flag reads false unless it is exactly `true`, so a newer value
+// this app does not understand never turns anything on.
+export interface HostCapabilities {
+  // The host can open the virtual tutor (a page only the host's origin may frame).
+  tutor: boolean
+}
+
+export const NO_CAPABILITIES: HostCapabilities = { tutor: false }
+
+export const parseCapabilities = (value: unknown): HostCapabilities =>
+  isRecord(value) ? { tutor: value.tutor === true } : NO_CAPABILITIES
+
 export interface HostInitMessage {
   type: 'rumbos:host-init'
   v: 1
@@ -71,6 +84,8 @@ export interface HostInitMessage {
   // Contract v5.6: the course's name as plain text (at most 200 characters), or
   // null from a host that predates it. Untrusted: only ever rendered as text.
   courseName: string | null
+  // Contract v5.10: see HostCapabilities.
+  capabilities: HostCapabilities
   // Opaque to the app: handed to the backend untouched, never logged.
   assertion: string
   state: CourseState
@@ -92,6 +107,13 @@ export interface HostFullscreenMessage {
   type: 'rumbos:host-fullscreen'
   v: 1
   on: boolean
+}
+
+// Contract v5.10: the host closed the tutor it opened; the app returns focus to its
+// button. Carries nothing else.
+export interface HostTutorClosedMessage {
+  type: 'rumbos:host-tutor-closed'
+  v: 1
 }
 
 // Contract v5.3: the host opened or closed an overlay (an activity popup) above
@@ -213,6 +235,7 @@ export type HostMessage =
   | HostLaunchMessage
   | HostFullscreenMessage
   | HostOverlayMessage
+  | HostTutorClosedMessage
 
 // Why the app gave up. The plugin uses it to fall back to the standard course
 // content, so a student is never left on a dead page.
@@ -265,6 +288,9 @@ export type AppMessage =
   // page in a new tab. The app never supplies a URL.
   | { type: 'rumbos:open-activity-settings'; v: 1; cmid: number }
   | { type: 'rumbos:request-fullscreen'; v: 1; on: boolean }
+  // Contract v5.10: ask the host to open the virtual tutor. No URL, no payload: the
+  // host owns what it opens, and the app never chooses it.
+  | { type: 'rumbos:tutor-open'; v: 1 }
   | { type: 'rumbos:error'; v: 1; code: ReportedErrorCode; detail?: string }
   // Contract v5.5: the student has nothing to see, so the host falls back to
   // the standard course content.
@@ -320,6 +346,8 @@ export const toWireMessage = (message: AppMessage): unknown => {
       ? message
       : { type: message.type, v: 1 }
   }
+  // Never anything but the type: the host owns what it opens.
+  if (message.type === 'rumbos:tutor-open') return { type: message.type, v: 1 }
   if (message.type === 'rumbos:preferred-size') {
     const aspectRatio = clampAspectRatio(message.aspectRatio)
     return aspectRatio === null ? null : { ...message, aspectRatio }
@@ -588,6 +616,7 @@ export const parseHostMessage = (data: unknown): HostMessage | null => {
         locale,
         courseId: data.courseId,
         courseName: parseCourseName(data.courseName),
+        capabilities: parseCapabilities(data.capabilities),
         assertion,
         state,
       }
@@ -604,6 +633,8 @@ export const parseHostMessage = (data: unknown): HostMessage | null => {
       return typeof data.on === 'boolean'
         ? { type: 'rumbos:host-fullscreen', v: 1, on: data.on }
         : null
+    case 'rumbos:host-tutor-closed':
+      return { type: 'rumbos:host-tutor-closed', v: 1 }
     case 'rumbos:host-overlay':
       return typeof data.open === 'boolean'
         ? { type: 'rumbos:host-overlay', v: 1, open: data.open }
