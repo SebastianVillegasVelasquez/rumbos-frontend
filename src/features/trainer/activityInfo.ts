@@ -23,3 +23,13 @@ export const activityInfoOf = (
     }
   return null
 }
+
+// The activity after `activityId` in the catalog's own order (the rest of its lesson, then
+// the lessons after it). The sessions' answers do not name one.
+export const nextActivityId = (catalog: Catalog | undefined, activityId: string): string | null => {
+  const ids = (catalog?.modules ?? []).flatMap((module) =>
+    module.lessons.flatMap((lesson) => lesson.activities.map((activity) => activity.id))
+  )
+  const at = ids.indexOf(activityId)
+  return at === -1 ? null : (ids[at + 1] ?? null)
+}

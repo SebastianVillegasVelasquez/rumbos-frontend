@@ -5,6 +5,7 @@ import { setPolicy, setRules } from '../features/assessment/editor/trainingForm.
 import { realCourseMapApi } from '../features/course-map/data/courseMapApi.ts'
 import type { AppearanceUpdate, MapSettings } from '../features/course-map/data/types.ts'
 import { trainerApi } from '../features/trainer/api.ts'
+import { practiceExamples } from '../features/trainer/fixtures/practiceExamples.ts'
 import { createStep } from '../features/welcome/editor/flowEdit.ts'
 import { serializeAppearance } from '../features/welcome/welcomeWire.ts'
 import { check, requestSchema, SPEC_PATH, specPresent } from './openapiSchema.ts'
@@ -22,17 +23,20 @@ interface Sent {
 }
 
 const sent: Sent[] = []
+// What the stubbed backend answers: a session, so the client can read it.
+let reply: unknown = {}
 const realFetch = globalThis.fetch
 
 beforeEach(() => {
   sent.length = 0
+  reply = practiceExamples().exerciseSession
   globalThis.fetch = (async (url: string | URL | Request, init?: RequestInit) => {
     sent.push({
       method: init?.method ?? 'GET',
       url: String(url),
       body: typeof init?.body === 'string' ? JSON.parse(init.body) : undefined,
     })
-    return new Response('{}', { status: 200 })
+    return new Response(JSON.stringify(reply), { status: 200 })
   }) as typeof fetch
 })
 afterEach(() => {
@@ -100,21 +104,26 @@ describe('request bodies against openapi.json', () => {
   })
 
   it('POST /trainer/sessions', async () => {
-    await trainerApi.start('a1-greetings')
+    await trainerApi.start('demo-grammar')
+    assert.deepEqual(lastBody(), { activity_id: 'demo-grammar' })
     assert.deepEqual(check(lastBody(), requestSchema('POST', '/trainer/sessions'), 'body'), [])
   })
 
   it('POST /trainer/sessions/{id}/answers', async () => {
-    await trainerApi.answer(UUID, {
+    const session = practiceExamples().exerciseSession
+    await trainerApi.start('demo-grammar')
+    reply = practiceExamples().wrongAnswer
+    await trainerApi.answer(session.session_id, {
       attempt_id: UUID,
-      step_id: 'step-1',
-      response: { choice: 'a' } as never,
+      step_id: 't.mcq',
+      response: { option_id: 'a' },
     })
     const schema = requestSchema('POST', '/trainer/sessions/{session_id}/answers')
     assert.deepEqual(check(lastBody(), schema, 'body'), [])
   })
 
   it('PUT /trainer/attempts/{id}/answers', async () => {
+    reply = {}
     await assessmentApi.save(UUID, [{ item_id: 'item-1', response: { choice: 'a' } as never }])
     const schema = requestSchema('PUT', '/trainer/attempts/{attempt_id}/answers')
     assert.deepEqual(check(lastBody(), schema, 'body'), [])

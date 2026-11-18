@@ -67,7 +67,8 @@ export interface ActivityInfo {
 export interface StepAudio {
   url: string
   duration_s: number
-  transcript: string
+  // The wire has none: the player then shows no transcript.
+  transcript: string | null
 }
 
 interface StepBase {

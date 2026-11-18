@@ -12,7 +12,8 @@ export const newAttemptId = (): string =>
     : `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`
 
 // Runs the effects of the pure session reducer: start, answer, finish.
-export const useSession = (activityId: string) => {
+// `preview` is the catalog's: the session itself does not say whether it is one.
+export const useSession = (activityId: string, preview = false) => {
   const [state, dispatch] = useReducer(sessionReducer, initialSession)
 
   useEffect(() => {
@@ -20,12 +21,12 @@ export const useSession = (activityId: string) => {
     let alive = true
     trainerApi
       .start(activityId)
-      .then((start) => alive && dispatch({ type: 'started', start }))
+      .then((start) => alive && dispatch({ type: 'started', start: { ...start, preview } }))
       .catch((error) => alive && dispatch({ type: 'failed', kind: classifyFailure(error) }))
     return () => {
       alive = false
     }
-  }, [state.phase, activityId])
+  }, [state.phase, activityId, preview])
 
   useEffect(() => {
     if (state.phase !== 'checking' || !state.sessionId || !state.step || !state.attemptId) return

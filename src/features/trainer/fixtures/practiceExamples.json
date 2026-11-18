@@ -1,0 +1,226 @@
+{
+  "exerciseSession": {
+    "session_id": "9b2e7c10-5d4f-4e8a-a6b3-1c0f8d2e4a01",
+    "activity_id": "demo-grammar",
+    "title": "Be: am, is, are",
+    "status": "in_progress",
+    "kind": "exercise",
+    "steps": [
+      {
+        "step_id": "t.mcq",
+        "type": "mcq",
+        "prompt": "Pick the right one",
+        "hint": null,
+        "audio": null,
+        "options": [
+          {
+            "id": "c",
+            "text": "am"
+          },
+          {
+            "id": "a",
+            "text": "is"
+          },
+          {
+            "id": "b",
+            "text": "are"
+          }
+        ],
+        "answered": false,
+        "last_outcome": null
+      },
+      {
+        "step_id": "t.gap",
+        "type": "gap_fill",
+        "prompt": "Fill",
+        "hint": null,
+        "audio": null,
+        "template": "I {g1} a guide.",
+        "gaps": [
+          {
+            "gap_id": "g1",
+            "options": null
+          }
+        ],
+        "answered": false,
+        "last_outcome": null
+      },
+      {
+        "step_id": "t.reorder",
+        "type": "reorder",
+        "prompt": "Order",
+        "hint": null,
+        "audio": null,
+        "tokens": [
+          {
+            "id": "t2",
+            "text": "are"
+          },
+          {
+            "id": "t1",
+            "text": "Where"
+          },
+          {
+            "id": "t3",
+            "text": "you"
+          }
+        ],
+        "answered": false,
+        "last_outcome": null
+      },
+      {
+        "step_id": "t.match",
+        "type": "match",
+        "prompt": "Match",
+        "hint": null,
+        "audio": null,
+        "left": [
+          {
+            "id": "l1",
+            "text": "Hello"
+          },
+          {
+            "id": "l2",
+            "text": "Bye"
+          }
+        ],
+        "right": [
+          {
+            "id": "r2",
+            "text": "Goodbye"
+          },
+          {
+            "id": "r1",
+            "text": "Hi"
+          }
+        ],
+        "answered": false,
+        "last_outcome": null
+      },
+      {
+        "step_id": "t.short",
+        "type": "short_answer",
+        "prompt": "Say your country",
+        "hint": null,
+        "audio": null,
+        "max_length": 60,
+        "answered": false,
+        "last_outcome": null
+      }
+    ],
+    "summary": null,
+    "turn": null,
+    "turns_total": null
+  },
+  "notFound": {
+    "detail": "Not found"
+  },
+  "wrongAnswer": {
+    "outcome": "incorrect",
+    "earned": 0,
+    "total": 1,
+    "feedback": {
+      "explanation": "You takes are.",
+      "closest_answer": "are",
+      "error_tags": ["Use are with you."]
+    },
+    "next": null,
+    "finished": false
+  },
+  "rightAnswer": {
+    "outcome": "correct",
+    "earned": 1,
+    "total": 1,
+    "feedback": {
+      "explanation": "I takes am.",
+      "closest_answer": null,
+      "error_tags": []
+    },
+    "next": null,
+    "finished": false
+  },
+  "invalidResponse": {
+    "detail": {
+      "code": "invalid_response",
+      "message": "That is not a possible answer to this item"
+    }
+  },
+  "finish": {
+    "session_id": "9b2e7c10-5d4f-4e8a-a6b3-1c0f8d2e4a01",
+    "summary": {
+      "tries": 3,
+      "percent": 20,
+      "to_revise": ["be_agreement"],
+      "steps_total": 5,
+      "missed_steps": ["t.mcq"],
+      "steps_answered": 2,
+      "first_try_correct": 1
+    }
+  },
+  "dialogueSession": {
+    "session_id": "9b2e7c10-5d4f-4e8a-a6b3-1c0f8d2e4a06",
+    "activity_id": "demo-dialogue",
+    "title": "Meet a guest",
+    "status": "in_progress",
+    "kind": "dialogue",
+    "steps": [
+      {
+        "step_id": "n1",
+        "type": "dialogue_turn",
+        "partner_line": "Hello!",
+        "translation": null,
+        "audio": null,
+        "mode": "choose",
+        "options": [
+          {
+            "id": "o1",
+            "text": "Hi"
+          },
+          {
+            "id": "o2",
+            "text": "Hello"
+          }
+        ],
+        "starters": [],
+        "word_bank": []
+      }
+    ],
+    "summary": null,
+    "turn": 1,
+    "turns_total": 2
+  },
+  "dialogueAccepted": {
+    "outcome": "accepted",
+    "earned": 1,
+    "total": 1,
+    "feedback": {
+      "explanation": null,
+      "closest_answer": null,
+      "error_tags": []
+    },
+    "next": {
+      "step_id": "n2",
+      "type": "dialogue_turn",
+      "partner_line": "What is your name?",
+      "translation": null,
+      "audio": null,
+      "mode": "type",
+      "options": [],
+      "starters": [],
+      "word_bank": []
+    },
+    "finished": false
+  },
+  "notCurrentTurn": {
+    "detail": {
+      "code": "not_current_turn",
+      "message": "The request conflicts with the state of the exam"
+    }
+  },
+  "answerAfterFinish": {
+    "detail": {
+      "code": "finished",
+      "message": "The request conflicts with the state of the exam"
+    }
+  }
+}

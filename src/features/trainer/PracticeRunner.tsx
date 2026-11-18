@@ -5,7 +5,7 @@ import { announce } from '../../components/ui/announce.ts'
 import { esTrainer } from '../../i18n/trainer.es.ts'
 import { ReportForm } from '../assessment/ReportForm.tsx'
 import { trainerApi } from './api.ts'
-import { activityInfoOf } from './activityInfo.ts'
+import { activityInfoOf, nextActivityId } from './activityInfo.ts'
 import { classifyFailure } from './failure.ts'
 import { useCatalog } from './useCatalog.ts'
 import { StepView } from './StepViews.tsx'
@@ -227,7 +227,10 @@ export const PracticeRunner = ({
     : catalog.isSuccess && !info
       ? 'closed'
       : null
-  const { state, begin, setDraft, submit, next, finish, retry } = useSession(activityId)
+  const { state, begin, setDraft, submit, next, finish, retry } = useSession(
+    activityId,
+    catalog.data?.preview === true
+  )
   const [confirmExit, setConfirmExit] = useState(false)
   const [saved, setSaved] = useState<Set<string>>(new Set())
   const titleRef = useRef<HTMLHeadingElement>(null)
@@ -349,14 +352,20 @@ export const PracticeRunner = ({
         <Button onClick={retry}>{text.errors.retry}</Button>
       )
   } else if (phase === 'summary' && state.summary) {
-    body = <Summary summary={state.summary} savedIds={saved} onSave={save} />
+    // The wire's summary has no can-do list or next activity: the catalog has both.
+    const summary = {
+      ...state.summary,
+      can_do: info?.can_do ?? [],
+      next_activity_id: nextActivityId(catalog.data, activityId),
+    }
+    body = <Summary summary={summary} savedIds={saved} onSave={save} />
     primary = (
       <div className="flex flex-wrap gap-2">
         <Button variant="secondary" onClick={onChooseLesson}>
           {text.summary.again}
         </Button>
-        {state.summary.next_activity_id && (
-          <Button onClick={() => onNextActivity(state.summary!.next_activity_id!)}>
+        {summary.next_activity_id && (
+          <Button onClick={() => onNextActivity(summary.next_activity_id!)}>
             {text.summary.next}
             <ArrowRight size={18} strokeWidth={3} aria-hidden />
           </Button>
