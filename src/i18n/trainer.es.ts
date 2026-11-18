@@ -141,6 +141,7 @@ export const esTrainer = {
     keep: 'Tu respuesta sigue aquí; no se perdió.',
     unauthorized: 'Tu sesión venció. Vuelve a abrir el curso desde Moodle para seguir.',
     closed: 'Esta práctica ya no está disponible.',
+    contract: 'El entrenamiento tiene un problema técnico. Avisa a tu docente.',
     other: 'Algo salió mal.',
     startFailed: 'No pudimos abrir la práctica.',
   },

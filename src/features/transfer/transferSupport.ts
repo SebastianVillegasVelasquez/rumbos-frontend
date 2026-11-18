@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react'
-import { ApiError } from '../course-map/data/apiError.ts'
+import { isMissingRoute } from '../course-map/data/apiError.ts'
 
 // Whether the running backend knows the export and import routes. Learned, never
 // assumed: the buttons are offered until a call proves the routes are not there,
@@ -18,13 +18,7 @@ const set = (next: TransferSupport) => {
   listeners.forEach((listener) => listener())
 }
 
-// A route the server does not have answers 404, 405 or 501 with no business
-// code in the body. A coded 404 (a level or an import that does not exist) is a
-// real answer from a backend that does know the route.
-export const isMissingRoute = (error: unknown): boolean =>
-  error instanceof ApiError &&
-  [404, 405, 501].includes(error.status) &&
-  error.detail.code === 'unknown_error'
+export { isMissingRoute }
 
 export const learnFromTransferError = (error: unknown) => {
   if (isMissingRoute(error)) set('no')

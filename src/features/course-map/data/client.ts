@@ -109,7 +109,7 @@ export async function apiRequest<T>(
   if (blob && response.ok) return (await response.blob()) as T
 
   const parsed = parseBody(await response.text())
-  if (!response.ok) throw new ApiError(response.status, parsed)
+  if (!response.ok) throw new ApiError(response.status, parsed, `${method} ${path}`)
   return parsed as T
 }
 

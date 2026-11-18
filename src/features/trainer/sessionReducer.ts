@@ -12,7 +12,9 @@ import type {
 // answer keeps what was typed and the same attempt_id, so a retry is idempotent on
 // the server. There is no offline queue.
 
-export type FailureKind = 'unreachable' | 'unauthorized' | 'closed' | 'other'
+// `contract`: the backend has no such route (a 404 without a business code), so retrying
+// or telling the student it is closed would both be wrong. The route goes to the console.
+export type FailureKind = 'unreachable' | 'unauthorized' | 'closed' | 'contract' | 'other'
 
 export type SessionPhase =
   | 'idle'
