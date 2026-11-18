@@ -339,7 +339,11 @@ export class TrainerMock {
     this.calls.push({ method, path, body })
     const o = this.options
 
-    const practice = this.practice.respond(method, path, body)
+    let practice = this.practice.respond(method, path, body)
+    if (practice?.delayMs && practice.then) {
+      await new Promise((resolve) => setTimeout(resolve, practice!.delayMs))
+      practice = practice.then()
+    }
     if (practice) {
       if (practice.abort) return route.abort('connectionfailed')
       if (practice.body === null) return route.fulfill({ status: practice.status, body: '' })
