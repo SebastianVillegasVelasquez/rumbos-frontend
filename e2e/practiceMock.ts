@@ -305,7 +305,8 @@ export class PracticeMock {
       const delayMs = o.catalogDelayMs
       const answer = (): PracticeReply => {
         if (failing && o.catalogStatus === 0) return { status: 0, body: null, abort: true }
-        if (failing) return { status: o.catalogStatus!, body: { detail: { code: 'down' } } }
+        if (failing)
+          return { status: o.catalogStatus!, body: { detail: { code: 'down', message: 'down' } } }
         if (o.catalogBody !== undefined) return { status: 200, body: o.catalogBody }
         if (o.enabled === false)
           return {
@@ -324,7 +325,7 @@ export class PracticeMock {
     // There is no route for one activity: the catalog carries what the intro shows.
     if (method === 'POST' && path === '/sessions') {
       const a = ACTIVITIES[String(b.activity_id)]
-      if (!a) return { status: 404, body: { detail: { code: 'not_found' } } }
+      if (!a) return { status: 404, body: { detail: { code: 'not_found', message: 'not_found' } } }
       const id = `sess${++this.seq}`
       this.sessions.set(id, { activity: String(b.activity_id), index: 0 })
       return {
@@ -341,13 +342,17 @@ export class PracticeMock {
     let m = path.match(/^\/sessions\/([^/]+)\/answers$/)
     if (method === 'POST' && m) {
       const session = this.sessions.get(m[1])
-      if (!session) return { status: 404, body: { detail: { code: 'not_found' } } }
+      if (!session)
+        return { status: 404, body: { detail: { code: 'not_found', message: 'not_found' } } }
       const cached = this.answered.get(String(b.attempt_id))
       if (cached) return { status: 200, body: cached }
       if (this.failures < (o.failAnswers ?? 0)) {
         this.failures++
         if (o.failAnswerStatus === 0) return { status: 0, body: null, abort: true }
-        return { status: o.failAnswerStatus ?? 503, body: { detail: { code: 'down' } } }
+        return {
+          status: o.failAnswerStatus ?? 503,
+          body: { detail: { code: 'down', message: 'down' } },
+        }
       }
       const a = ACTIVITIES[session.activity]
       const def = a.steps[session.index]
@@ -372,7 +377,8 @@ export class PracticeMock {
     m = path.match(/^\/sessions\/([^/]+)\/finish$/)
     if (method === 'POST' && m) {
       const session = this.sessions.get(m[1])
-      if (!session) return { status: 404, body: { detail: { code: 'not_found' } } }
+      if (!session)
+        return { status: 404, body: { detail: { code: 'not_found', message: 'not_found' } } }
       const total = ACTIVITIES[session.activity].steps.length
       return {
         status: 200,
