@@ -38,7 +38,9 @@ export interface Catalog {
   level?: TrainerLevel
   content_version?: string
   preview?: boolean
-  modules?: { key: string; title: string }[]
+  // The backend nests the lessons under their module; the screens still read the flat
+  // `lessons` and `activities` below (see DECISIONS-trainer.md).
+  modules?: { key: string; title: string; lessons?: { id: string }[] }[]
   lessons?: CatalogLesson[]
   activities?: CatalogActivity[]
   skills?: { skill: Skill; available: boolean }[]
