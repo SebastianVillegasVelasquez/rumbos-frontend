@@ -14,7 +14,7 @@ import type { AssessmentListItem, EnabledAssessmentList } from '../../assessment
 import type { WelcomeAssessmentStep } from '../../course-map/data/types.ts'
 import type { FlowEvent, FlowState } from './flowReducer.ts'
 
-const text = esAssessment.step
+const checkInText = esAssessment.step
 
 // Waits before the second and third look at the list, so a blip does not show an
 // error; after those the step offers "Reintentar" and "Continuar de todos modos".
@@ -52,6 +52,9 @@ export const StepAssessment = ({
   dispatch: Dispatch<FlowEvent>
   onLaunch: (launch: Launch) => void
 }) => {
+  // The closing flow's final exam uses the same states with its own names.
+  const text =
+    step.purpose === 'final' ? { ...checkInText, ...esAssessment.stepFinal } : checkInText
   const [load, setLoad] = useState<LoadState>({ kind: 'loading' })
   const [attempt, setAttempt] = useState(0)
   // The device time when the list arrived: the countdown here is only a hint (the
@@ -151,7 +154,7 @@ export const StepAssessment = ({
         ) : (
           <>
             <p role="status" className="flow-prose font-semibold">
-              {reasonText(load.reason)}
+              {reasonText(load.reason, step.purpose)}
             </p>
             {state.editor && (
               <p

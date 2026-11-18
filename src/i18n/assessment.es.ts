@@ -226,6 +226,20 @@ export const esAssessment = {
     editorNote: 'Vista previa: puedes continuar sin hacer la evaluación.',
   },
 
+  // The same step in the closing flow (the final exam): only the words that name the
+  // exam differ; the rest comes from `step`.
+  stepFinal: {
+    available: 'Evaluación final: muestra lo que aprendiste.',
+    reasons: {
+      not_available: 'La evaluación final todavía no está lista en este curso.',
+      locked: 'Esta evaluación todavía no está disponible.',
+      disabled: 'Este curso no tiene evaluación final.',
+      no_form: 'La evaluación final todavía no tiene preguntas.',
+    },
+    skipNote: 'No se hizo la evaluación final. Podrás hacerla más adelante.',
+    editorNote: 'Vista previa: puedes continuar sin hacer la evaluación.',
+  },
+
   // The final exam's card in the trainer home.
   finalCard: {
     title: 'Evaluación final',

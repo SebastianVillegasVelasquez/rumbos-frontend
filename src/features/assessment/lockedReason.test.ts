@@ -16,6 +16,14 @@ describe('the words for an exam that cannot be opened', () => {
       assert.ok(reasonText(reason).trim().length > 0, reason)
   })
 
+  it('names the final exam in the closing flow, with a sentence for every reason', () => {
+    for (const reason of Object.keys(esAssessment.step.reasons) as UnavailableReason[]) {
+      const text = reasonText(reason, 'final')
+      assert.ok(text.trim().length > 0, reason)
+      assert.doesNotMatch(text, /entrada/, reason)
+    }
+  })
+
   it('has a sentence for every code the backend is known to send', () => {
     for (const code of KNOWN_LOCKED_CODES) {
       const text = lockedReasonText(code)

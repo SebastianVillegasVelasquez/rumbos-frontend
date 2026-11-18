@@ -12,7 +12,11 @@ export const KNOWN_LOCKED_CODES = ['not_available'] as const
 export const reasonOfLockedCode = (code: string | null | undefined): UnavailableReason =>
   code === 'not_available' ? 'not_available' : 'locked'
 
-export const reasonText = (reason: UnavailableReason): string => esAssessment.step.reasons[reason]
+export const reasonText = (
+  reason: UnavailableReason,
+  purpose: 'check_in' | 'final' = 'check_in'
+): string =>
+  purpose === 'final' ? esAssessment.stepFinal.reasons[reason] : esAssessment.step.reasons[reason]
 
 // The sentence for an item's `locked_reason`, or null when there is none to say.
 export const lockedReasonText = (code: string | null | undefined): string | null =>

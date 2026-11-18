@@ -12,7 +12,7 @@ import { Button } from '../../../components/ui/Button.tsx'
 import { useDataSaver } from '../../../fx/dataSaverStore.ts'
 import { es } from '../../../i18n/es.ts'
 import { resolveImageUrl } from '../../course-map/data/assets.ts'
-import type { WelcomeDocument, WelcomeStep } from '../../course-map/data/types.ts'
+import type { FlowKey, WelcomeDocument, WelcomeStep } from '../../course-map/data/types.ts'
 import { useEmbed } from '../../embed/EmbedContext.ts'
 import { getHostFullscreen } from '../../embed/hostFullscreen.ts'
 import { useCurtainMusic } from '../useCurtainMusic.ts'
@@ -42,6 +42,8 @@ import { waitingText } from './waitingText.ts'
 const text = es.flow
 
 export interface WelcomeFlowProps {
+  // Which guided flow this is; the welcome flow when absent.
+  flowKey?: FlowKey
   steps: WelcomeStep[]
   mode: FlowMode
   entries: ProgressEntry[]
@@ -67,6 +69,7 @@ const FOCUSABLE =
 // done is the pure reducer (flowReducer.ts). No swipe to advance, it would
 // bypass the gating.
 const WelcomeFlow = ({
+  flowKey = 'welcome',
   steps,
   mode,
   entries,
@@ -280,7 +283,7 @@ const WelcomeFlow = ({
       ref={rootRef}
       role="dialog"
       aria-modal="true"
-      aria-label={text.dialog}
+      aria-label={flowKey === 'closing' ? text.closingDialog : text.dialog}
       onKeyDown={trapFocus}
       className="absolute inset-0 z-50 flex flex-col overflow-hidden bg-ink text-white"
     >
@@ -345,7 +348,12 @@ const WelcomeFlow = ({
                   )}
                 </div>
               </div>
-              <FlowStepper state={state} steps={steps} dispatch={dispatch} />
+              <FlowStepper
+                state={state}
+                steps={steps}
+                dispatch={dispatch}
+                label={flowKey === 'closing' ? text.closingProgress : text.progress}
+              />
             </header>
 
             {mode !== 'normal' && (

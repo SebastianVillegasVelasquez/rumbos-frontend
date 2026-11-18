@@ -363,6 +363,8 @@ export const es = {
   // The welcome flow: the steps a viewer goes through when a level opens.
   flow: {
     dialog: 'Bienvenida',
+    closingDialog: 'Cierre',
+    closingProgress: 'Pasos del cierre',
     stepOf: (current: number, total: number) => `Paso ${current} de ${total}`,
     announce: (current: number, total: number, title: string) =>
       `Paso ${current} de ${total}: ${title}`,
