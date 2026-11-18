@@ -742,7 +742,22 @@ export const es = {
     levels: 'Niveles',
     quests: 'Misiones',
     trainer: 'Entrenar',
-    trainerWaiting: 'Se activa al terminar la bienvenida',
+    // The trainer's code could not be downloaded (offline, or the site was updated).
+    trainerChunk: {
+      failed: 'No pudimos cargar el entrenamiento. Revisa tu conexión e inténtalo de nuevo.',
+      retry: 'Reintentar',
+      back: 'Volver al mapa',
+    },
+    // What the "Entrenar" button says about itself when it cannot just open.
+    trainerNote: {
+      loading: 'Cargando el entrenamiento…',
+      waiting_welcome: 'Se activa al terminar la bienvenida',
+      no_content: 'Pronto habrá ejercicios disponibles',
+      // Editors only: students never see a button for a map without a trainer.
+      disabled_for_map: 'El entrenamiento está desactivado en este mapa',
+      load_error: 'No pudimos cargar el entrenamiento. Toca para reintentar.',
+      unauthorized: 'Tu sesión venció. Vuelve a entrar para entrenar.',
+    },
     recenter: 'Recentrar el mapa',
     levelPosition: (index: number, count: number) => `Nivel ${index} de ${count}`,
     chipProgress: (done: number, total: number) => `· ${done}/${total}`,
@@ -844,6 +859,54 @@ export const es = {
       exemptionWarning:
         'Atención: quien apruebe la evaluación de entrada o la final completará el curso y recibirá el certificado, sin hacer el resto de actividades.',
       previewNote: 'Quien tenga permiso de edición lo prueba como vista previa: no se guarda nada.',
+      formId: 'Formulario',
+      formPlaceholder: 'Elige un formulario',
+      formGone: (id: string) => `${id} (ya no está disponible)`,
+      formIdHint: 'Hay que elegir uno: no se elige solo.',
+      fieldError: 'Error',
+      // What a failed (or refused) save says: the fields that are wrong, in words.
+      issues: {
+        title: 'No se pudo guardar. Corrige estos campos:',
+        goTo: 'Ir al campo',
+        warningsTitle: 'Se guardó, con avisos:',
+        sections: {
+          trainer: 'Entrenamiento',
+          assessments: 'Evaluaciones',
+          check_in: 'Evaluación de entrada',
+          final: 'Evaluación final',
+          pass: 'Nota para aprobar',
+          exemption: 'Cierre del curso',
+          welcome: 'Bienvenida',
+          step: (position: number, title: string) =>
+            title
+              ? `Paso ${position} de la bienvenida (${title})`
+              : `Paso ${position} de la bienvenida`,
+          other: 'Configuración',
+        },
+        // Spanish for the message_key the server sends. Assumed keys: the server's list
+        // is not published yet, so an unknown key is shown with the key itself.
+        messages: {
+          assessments_disabled:
+            'las evaluaciones están desactivadas; actívalas en «Entrenamiento y evaluación» para usar este paso',
+          trainer_disabled: 'el entrenamiento está desactivado',
+          form_required: 'falta elegir el formulario',
+          assessment_step_needs_check_in:
+            'este paso necesita la evaluación de entrada activada y con un formulario elegido',
+          form_not_found: 'el formulario seleccionado no existe',
+          form_not_published: 'el formulario seleccionado todavía no está publicado',
+          level_without_content: 'ese nivel todavía no tiene contenido',
+          language_unsupported: 'ese idioma todavía no está disponible',
+          attempts_out_of_range: 'los intentos deben estar entre 1 y 10',
+          time_out_of_range: 'el tiempo debe estar entre 5 y 240 minutos',
+          pass_percent_out_of_range: 'la nota debe estar entre 0 y 100',
+          step_field_invalid: 'este paso no es válido',
+        } as Record<string, string>,
+        warningMessages: {
+          content_unpublished: 'El contenido aún no está publicado: los estudiantes no lo verán.',
+          no_published_content: 'El contenido aún no está publicado: los estudiantes no lo verán.',
+        } as Record<string, string>,
+        unknown: (key: string) => `revisa este valor (${key})`,
+      },
     },
     welcome: {
       title: 'Pantalla de bienvenida',
@@ -892,7 +955,7 @@ export const es = {
         html: 'Texto con formato',
         pdf: 'Documento PDF',
         quiz: 'Evaluación de Moodle',
-        assessment: 'Evaluación de entrada (nativa)',
+        assessment: 'Evaluación de Rumbos (check-in)',
       },
       newTitles: {
         welcome: 'Bienvenida',
@@ -992,7 +1055,17 @@ export const es = {
           generic: 'No se pudo subir el documento. Inténtalo de nuevo.',
         },
       },
+      kindsHint:
+        'La evaluación de Rumbos es la nativa. La de Moodle es la alternativa (fallback): su comportamiento no cambia.',
       assessment: {
+        requires:
+          'Este paso necesita dos cosas en «Entrenamiento y evaluación»: las evaluaciones activadas y un formulario válido.',
+        autoEnabled:
+          'Activamos las evaluaciones en «Entrenamiento y evaluación» para que este paso funcione. Falta que elijas allí el formulario.',
+        disabledNow: 'Las evaluaciones están desactivadas, así que este paso no se podrá guardar.',
+        enableNow: 'Activar las evaluaciones',
+        form: (id: string) => (id ? `Formulario: ${id}` : 'Formulario: sin elegir todavía'),
+        pickForm: 'Elígelo en «Entrenamiento y evaluación» antes de guardar.',
         body: 'Evaluación de entrada del curso, dentro de Rumbos. Cuenta como hecha cuando el estudiante la entrega o se acaba el tiempo, sea cual sea el resultado.',
         where:
           'Los intentos, el tiempo y la nota mínima se definen en «Entrenamiento y evaluación» del mapa.',

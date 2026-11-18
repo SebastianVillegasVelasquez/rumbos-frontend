@@ -1,5 +1,14 @@
 import { useMemo, useState, useSyncExternalStore } from 'react'
-import { ChevronDown, ChevronUp, Copy, Eye, Plus, RotateCcw, Trash2 } from 'lucide-react'
+import {
+  AlertCircle,
+  ChevronDown,
+  ChevronUp,
+  Copy,
+  Eye,
+  Plus,
+  RotateCcw,
+  Trash2,
+} from 'lucide-react'
 import { Button, IconButton } from '../../../components/ui/Button.tsx'
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog.tsx'
 import { Input } from '../../../components/ui/Input.tsx'
@@ -35,6 +44,12 @@ import {
 } from './flowEdit.ts'
 import { flowFlags } from './flowFlags.ts'
 import {
+  issueMessage,
+  stepIndexOf,
+  type SettingsIssue,
+} from '../../assessment/editor/settingsIssues.ts'
+import { assessmentsOf, enableAssessments } from '../../assessment/editor/trainingForm.ts'
+import {
   AssessmentEditor,
   HtmlEditor,
   PdfEditor,
@@ -59,6 +74,8 @@ interface FlowTabProps {
   activities: readonly Activity[]
   // The documents the saved steps use; undefined: the backend has no flows.
   documents: readonly WelcomeDocument[] | undefined
+  // What the last save said was wrong with the steps (field-level 422).
+  issues?: readonly SettingsIssue[]
 }
 
 // Which problems the validation found, by step position and field.
@@ -126,6 +143,7 @@ const StepsEditor = ({
   activities,
   documents,
   welcome,
+  issues = [],
 }: FlowTabProps & { documents: readonly WelcomeDocument[]; welcome: MapWelcome }) => {
   const steps = useMemo(() => welcome.steps ?? [], [welcome.steps])
   const courseName = useHostCourseName()
@@ -134,6 +152,9 @@ const StepsEditor = ({
   const [removing, setRemoving] = useState<number | null>(null)
   const [refusal, setRefusal] = useState<string | null>(null)
   const [previewing, setPreviewing] = useState(false)
+  // The step for which the assessments were switched on automatically, to say so.
+  const [autoEnabledFor, setAutoEnabledFor] = useState<string | null>(null)
+  const assessments = assessmentsOf(settings)
 
   const setSteps = (next: WelcomeStep[]) =>
     onChange({ ...settings, welcome: { ...welcome, steps: next } })
@@ -177,7 +198,13 @@ const StepsEditor = ({
     }
     setRefusal(null)
     const step = createStep(type, steps, text.newTitles)
-    setSteps(addStep(steps, step))
+    const next = { ...settings, welcome: { ...welcome, steps: addStep(steps, step) } }
+    // The check-in cannot work with the assessments off: switch them on, and say so in
+    // the step instead of letting the save fail later.
+    if (type === 'assessment' && !assessments.enabled) {
+      onChange(enableAssessments(next))
+      setAutoEnabledFor(step.key)
+    } else onChange(next)
     setOpen(step.key)
   }
 
@@ -226,6 +253,18 @@ const StepsEditor = ({
               steps={steps}
               expanded={open === step.key}
               problems={byStep.get(index) ?? new Set()}
+              serverMessages={issues
+                .filter((issue) => stepIndexOf(issue.path) === index)
+                .map((issue) => issueMessage(issue, es.studio.training.issues))}
+              assessment={{
+                enabled: assessments.enabled,
+                autoEnabled: autoEnabledFor === step.key,
+                formId: assessments.check_in.form_id,
+                onEnable: () => {
+                  onChange(enableAssessments(settings))
+                  setAutoEnabledFor(step.key)
+                },
+              }}
               activities={activities}
               onToggle={() => setOpen(open === step.key ? null : step.key)}
               onChange={(patch) => setSteps(updateStep(steps, index, patch))}
@@ -253,6 +292,7 @@ const StepsEditor = ({
               </Button>
             ))}
           </div>
+          <p className="text-xs font-semibold text-ink-soft">{text.kindsHint}</p>
           {refusal && (
             <p role="alert" className="text-xs font-bold text-danger">
               {refusal}
@@ -348,12 +388,24 @@ const StepsEditor = ({
 
 // ---- One step ---------------------------------------------------------------------
 
+interface AssessmentState {
+  // The map's assessments switch, which the check-in step cannot work without.
+  enabled: boolean
+  // They were switched on for this step a moment ago.
+  autoEnabled: boolean
+  formId: string
+  onEnable: () => void
+}
+
 interface StepCardProps {
   step: WelcomeStep
   index: number
   steps: readonly WelcomeStep[]
   expanded: boolean
   problems: ReadonlySet<string>
+  // What the server said about this step, in words.
+  serverMessages: readonly string[]
+  assessment: AssessmentState
   activities: readonly Activity[]
   onToggle: () => void
   onChange: (patch: Partial<WelcomeStep>) => void
@@ -369,6 +421,8 @@ const StepCard = ({
   steps,
   expanded,
   problems,
+  serverMessages,
+  assessment,
   activities,
   onToggle,
   onChange,
@@ -378,7 +432,7 @@ const StepCard = ({
   onAskAgain,
 }: StepCardProps) => {
   const [askedAgain, setAskedAgain] = useState(false)
-  const hasProblem = problems.size > 0
+  const hasProblem = problems.size > 0 || serverMessages.length > 0
   const label = text.stepLabel(index + 1, text.types[step.type], step.title)
   const bodyId = `flow-step-${step.key}`
   const patch = onChange as (value: Partial<typeof step>) => void
@@ -391,6 +445,8 @@ const StepCard = ({
           type="button"
           aria-expanded={expanded}
           aria-controls={bodyId}
+          data-field-path={`welcome.steps[${index}]`}
+          aria-invalid={serverMessages.length > 0 ? true : undefined}
           aria-label={`${label}. ${expanded ? text.collapse : text.expand}`}
           onClick={onToggle}
           className="flex min-h-[44px] flex-1 items-center gap-2 text-left"
@@ -445,6 +501,20 @@ const StepCard = ({
         </IconButton>
       </div>
 
+      {serverMessages.length > 0 && (
+        <ul className="mt-1 space-y-1 text-xs font-bold text-danger">
+          {serverMessages.map((message) => (
+            <li key={message} className="flex items-start gap-1.5">
+              <AlertCircle size={14} strokeWidth={2.5} aria-hidden className="mt-0.5 shrink-0" />
+              <span>
+                <span className="sr-only">{es.studio.training.fieldError}: </span>
+                {message}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+
       {expanded && (
         <div id={bodyId} className="mt-2 space-y-3 border-t border-line pt-3">
           <div className="space-y-1">
@@ -477,7 +547,7 @@ const StepCard = ({
           )}
           {step.type === 'html' && <HtmlEditor step={step} onChange={patch} problems={problems} />}
           {step.type === 'pdf' && <PdfEditor step={step} onChange={patch} problems={problems} />}
-          {step.type === 'assessment' && <AssessmentEditor />}
+          {step.type === 'assessment' && <AssessmentEditor {...assessment} />}
           {step.type === 'quiz' && (
             <QuizEditor step={step} onChange={patch} problems={problems} activities={activities} />
           )}

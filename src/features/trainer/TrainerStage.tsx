@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useRef, useState, type KeyboardEvent } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '../../components/ui/Button.tsx'
 import { esTrainer } from '../../i18n/trainer.es.ts'
 import { resolveImageUrl } from '../course-map/data/assets.ts'
 import type { AssessmentList, AssessmentListItem } from '../assessment/types.ts'
 import { LazyExamRunner } from '../assessment/LazyExamRunner.tsx'
-import { trainerApi } from './api.ts'
+import { stageScreen } from './availability.ts'
+import { useCatalog } from './useCatalog.ts'
 import { classifyFailure } from './failure.ts'
 import { Lessons } from './Lessons.tsx'
 import { PracticeRunner } from './PracticeRunner.tsx'
@@ -47,10 +48,11 @@ const TrainerStage = ({ imageUrl, onClose }: TrainerStageProps) => {
     wasAccepted() ? { name: 'home' } : { name: 'first' }
   )
 
-  const catalog = useQuery({
-    queryKey: ['trainer', 'catalog'],
-    queryFn: trainerApi.catalog,
-    retry: 1,
+  const catalog = useCatalog()
+  const screenKind = stageScreen({
+    status: catalog.status,
+    catalog: catalog.data,
+    failure: catalog.isError ? classifyFailure(catalog.error) : undefined,
   })
 
   const close = useCallback(() => {
@@ -93,41 +95,53 @@ const TrainerStage = ({ imageUrl, onClose }: TrainerStageProps) => {
   )
 
   let screen: React.ReactNode
-  if (catalog.isPending) {
+  if (screenKind.kind === 'loading') {
     screen = (
       <TrainerCard title={text.title} busy footer={backFooter}>
         <p role="status">{text.loading}</p>
       </TrainerCard>
     )
-  } else if (catalog.isError) {
-    const failure = classifyFailure(catalog.error)
+  } else if (screenKind.kind === 'error') {
+    // The generic message, and it always has a way out: retry (when it can help) and
+    // back to the map. While the retry runs the card says so and the button waits.
+    const fetching = catalog.isFetching
     screen = (
       <TrainerCard
         title={text.title}
+        busy={fetching}
         footer={
           <>
             {backFooter}
-            {failure !== 'unauthorized' && failure !== 'closed' && (
-              <Button onClick={() => void catalog.refetch()}>{text.errors.retry}</Button>
+            {screenKind.retry && (
+              <Button disabled={fetching} onClick={() => void catalog.refetch()}>
+                {fetching ? text.loading : text.errors.retry}
+              </Button>
             )}
           </>
         }
       >
         <p role="alert" className="font-semibold text-danger">
-          {failure === 'unauthorized'
-            ? text.errors.unauthorized
-            : failure === 'closed'
-              ? text.unavailable
-              : text.errors.unreachable}
+          {screenKind.reason === 'unauthorized' ? text.errors.unauthorized : text.errors.loadFailed}
         </p>
+        {screenKind.reason === 'load_error' && <p className="text-sm">{text.errors.loadHint}</p>}
       </TrainerCard>
     )
-  } else if (!catalog.data.enabled) {
+  } else if (screenKind.kind === 'unavailable') {
+    // A catalog with nothing to open says which of the two it is. An editor in
+    // preview also learns what to do about it.
+    const preview = catalog.data?.preview === true
+    const hint =
+      screenKind.reason === 'no_content'
+        ? text.unavailable.noContentEditor
+        : text.unavailable.disabledEditor
     screen = (
       <TrainerCard title={text.title} footer={backFooter}>
-        <p role="status">{text.unavailable}</p>
+        <p role="status">{text.unavailable[screenKind.reason]}</p>
+        {preview && <p className="text-sm">{hint}</p>}
       </TrainerCard>
     )
+  } else if (!catalog.data) {
+    return null
   } else if (view.name === 'first') {
     screen = <FirstUse onAccept={home} onBack={close} />
   } else if (view.name === 'lessons') {

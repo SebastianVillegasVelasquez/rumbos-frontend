@@ -1,59 +1,12 @@
-import { expect, test, type BrowserContext, type Page } from '@playwright/test'
-import { app, setFrameSize } from './support.ts'
-import { TrainerMock, type MockOptions } from './trainerMock.ts'
+import { expect, test, type Page } from '@playwright/test'
+import { app } from './support.ts'
+import { hud, open, stage } from './trainerHarness.ts'
 
 // The practice trainer against a mock server that implements contract v2: the HUD
 // button, the stage and its Esc and focus, S1 to S3, a run through every step type,
 // a failed answer that keeps what was typed and retries with the same attempt_id,
 // a written answer's comparison, the guided dialogue, the vocabulary review, the
 // preview banner, the final-exam card, and the layout at three windows.
-
-const open = async (
-  page: Page,
-  context: BrowserContext,
-  mock: MockOptions = {},
-  {
-    trainer = true,
-    role,
-    size,
-  }: { trainer?: boolean; role?: 'editor'; size?: [number, number] } = {}
-) => {
-  const server = new TrainerMock(mock)
-  await server.install(context)
-  await page.goto('/mock-host/index.html')
-  if (role === 'editor') {
-    await page
-      .locator('label:has(select)')
-      .filter({ hasText: /^role/ })
-      .locator('select')
-      .selectOption('editor')
-    await page
-      .locator('label:has(input[type="checkbox"])')
-      .filter({ hasText: /^editing on/ })
-      .locator('input')
-      .uncheck()
-  }
-  const input = page.locator('label:has-text("app URL") input')
-  const current = await input.inputValue()
-  await input.fill(
-    `${current.split('?')[0]}?mockStableIds=1&mockWelcome=disabled${trainer ? '&mockTrainer=1' : ''}`
-  )
-  await page.getByRole('button', { name: '(Re)load app' }).click()
-  if (size) await setFrameSize(page, size[0], size[1])
-  const level = app(page).getByRole('button', { name: /^1/ }).first()
-  await level.waitFor({ timeout: 8000 })
-  await level.click()
-  // The demo map opens an info bubble on the first visit, then a guide: close both.
-  const bubble = app(page).getByRole('dialog', { name: 'Bienvenida al curso' })
-  await bubble.waitFor({ timeout: 8000 })
-  await bubble.getByRole('button', { name: 'Cerrar' }).first().click()
-  await app(page).getByRole('button', { name: 'Omitir' }).click()
-  await expect(app(page).getByRole('dialog')).toHaveCount(0)
-  return server
-}
-
-const hud = (page: Page) => app(page).getByRole('button', { name: 'Entrenar', exact: true })
-const stage = (page: Page) => app(page).getByRole('dialog', { name: 'Entrenar', exact: true })
 
 const openStage = async (page: Page) => {
   await hud(page).click()
@@ -355,7 +308,7 @@ test.describe('practice trainer', () => {
   }) => {
     await open(page, context, { practice: { catalogStatus: 503 } })
     await hud(page).click()
-    await expect(stage(page).getByText('No pudimos comprobar tu respuesta.')).toBeVisible({
+    await expect(stage(page).getByText('No pudimos cargar el entrenamiento.')).toBeVisible({
       timeout: 20_000,
     })
     await expect(stage(page).getByRole('button', { name: 'Reintentar' })).toBeVisible()

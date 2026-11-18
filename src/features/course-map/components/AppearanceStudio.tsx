@@ -12,6 +12,10 @@ import { describeSaveFailure } from './appearanceErrors.ts'
 import { MusicTab } from '../../audio/editor/MusicTab.tsx'
 import { View3dTab } from '../../view3d/editor/View3dTab.tsx'
 import { TrainingTab } from '../../assessment/editor/TrainingTab.tsx'
+import { SettingsIssuesList, SettingsWarnings } from '../../assessment/editor/SettingsIssues.tsx'
+import { checkTrainingSettings, issuesFromError } from '../../assessment/editor/settingsIssues.ts'
+import { useAssessmentForms } from '../../assessment/editor/useAssessmentForms.ts'
+import { useSettingsIssues } from '../../assessment/editor/useSettingsIssues.ts'
 import { trainingSupported } from '../../assessment/editor/trainingForm.ts'
 import { useAnimationQuality, type QualitySetting } from '../../../fx/quality.ts'
 import { useAssets, useReorderBubbles } from '../data/queries.ts'
@@ -78,6 +82,18 @@ export const AppearanceStudio = ({
   const [defaultSkinId, setDefaultSkinId] = useState(courseMap.defaultSkinId)
   const [skinRules, setSkinRules] = useState<SkinRule[]>(courseMap.skinRules)
   const [confirmDiscard, setConfirmDiscard] = useState(false)
+  const rootRef = useRef<HTMLDivElement>(null)
+  const {
+    issues: settingsIssues,
+    warnings: settingsWarnings,
+    summaryRef,
+    go: goToIssue,
+    refuse: refuseSettings,
+    accept: acceptSettings,
+    edited: settingsEdited,
+    dismissWarnings,
+  } = useSettingsIssues({ rootRef, setTab })
+  const { forms } = useAssessmentForms()
   const updateAppearance = useUpdateAppearance(courseMap.id)
   // A backend that predates audio answers the library listing with an error:
   // the Música tab then does not exist.
@@ -105,10 +121,33 @@ export const AppearanceStudio = ({
     defaultSkinId !== courseMap.defaultSkinId ||
     !rulesEqual(skinRules, courseMap.skinRules)
 
+  // Edits to the settings also drop the errors of the fields they touch.
+  const changeSettings = (next: MapSettings) => {
+    settingsEdited(settings, next)
+    setSettings(next)
+  }
+  const stepTitle = (index: number) => settings.welcome?.steps?.[index]?.title
+
   const handleSave = () => {
+    updateAppearance.reset()
+    // What the server would refuse is said before the request, in the same list.
+    const local = checkTrainingSettings(settings)
+    if (local.length > 0) {
+      refuseSettings(local)
+      return
+    }
     updateAppearance.mutate(
       { settings, defaultSkinId, skinRules },
-      { onSuccess: (map) => (syncedAtRef.current = map.updatedAt) }
+      {
+        onSuccess: (map) => {
+          syncedAtRef.current = map.updatedAt
+          acceptSettings(map)
+        },
+        onError: (error) => {
+          const failing = issuesFromError(error)
+          if (failing) refuseSettings(failing)
+        },
+      }
     )
   }
 
@@ -125,7 +164,10 @@ export const AppearanceStudio = ({
   }
 
   return (
-    <div className="fixed inset-y-0 right-0 z-40 flex w-full max-w-sm flex-col border-l-strong bg-surface">
+    <div
+      ref={rootRef}
+      className="fixed inset-y-0 right-0 z-40 flex w-full max-w-sm flex-col border-l-strong bg-surface"
+    >
       <div className="flex items-center justify-between gap-2 border-b-soft px-4 py-3">
         <h2 className="min-w-0 truncate font-heading text-base font-extrabold text-ink">
           {es.studio.title}
@@ -214,12 +256,18 @@ export const AppearanceStudio = ({
           <MusicTab settings={settings} onChange={setSettings} />
         )}
         {tab === 'training' && trainingAvailable && (
-          <TrainingTab settings={settings} onChange={setSettings} />
+          <TrainingTab
+            settings={settings}
+            onChange={changeSettings}
+            issues={settingsIssues}
+            forms={forms}
+          />
         )}
         {tab === 'welcome' && welcomeSupported && (
           <FlowTab
             settings={settings}
-            onChange={setSettings}
+            onChange={changeSettings}
+            issues={settingsIssues}
             mapId={courseMap.id}
             mapTitle={courseMap.title}
             imageUrl={courseMap.imageUrl}
@@ -240,7 +288,22 @@ export const AppearanceStudio = ({
           </Button>
         </div>
       )}
-      {updateAppearance.isError && (
+      {settingsIssues.length > 0 && (
+        <SettingsIssuesList
+          ref={summaryRef}
+          issues={settingsIssues}
+          stepTitle={stepTitle}
+          onGo={goToIssue}
+        />
+      )}
+      {settingsWarnings.length > 0 && (
+        <SettingsWarnings
+          warnings={settingsWarnings}
+          stepTitle={stepTitle}
+          onDismiss={dismissWarnings}
+        />
+      )}
+      {updateAppearance.isError && issuesFromError(updateAppearance.error) === null && (
         <p role="alert" className="px-4 pb-3 text-xs font-bold text-danger">
           {describeSaveFailure(updateAppearance.error, es.studio.saveFailure)}
         </p>

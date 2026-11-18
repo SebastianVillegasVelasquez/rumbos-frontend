@@ -11,8 +11,17 @@ export interface PracticeOptions {
   // The first N answers fail with this status (0 = the connection drops).
   failAnswers?: number
   failAnswerStatus?: number
-  // The catalog answers this status.
+  // catalog.reason when enabled is false (contract: additive field).
+  reason?: 'disabled_for_map' | 'no_published_content'
+  // The catalog answers this status (0: the connection drops).
   catalogStatus?: number
+  // Only the first N catalog calls fail (with catalogStatus, 503 by default); the next
+  // ones succeed, which is what the retry button is for.
+  catalogFailures?: number
+  // How long the catalog takes to answer, to show the loading state.
+  catalogDelayMs?: number
+  // Mark the second lesson and the listening activity as not yet published.
+  unpublished?: boolean
   // Words due for review.
   dueWords?: number
   // The course's level (a fixture: only A1 has content in production).
@@ -23,6 +32,9 @@ export interface PracticeReply {
   status: number
   body: unknown
   abort?: boolean
+  // Answer after this delay with what `then` returns.
+  delayMs?: number
+  then?: () => PracticeReply
 }
 
 type StepDef = {
@@ -198,6 +210,7 @@ export class PracticeMock {
   readonly reviews: { word: string; knew: boolean; attempt: string }[] = []
   private failures = 0
   private seq = 0
+  private catalogCalls = 0
   // How many times the server actually graded (idempotent repeats are not counted).
   gradedCount = 0
 
@@ -227,6 +240,7 @@ export class PracticeMock {
           title: 'Presentarse',
           description: 'Saluda y di quién eres.',
           locked: false,
+          ...(this.options.unpublished ? { publication_state: 'published' } : {}),
         },
         {
           id: 'les2',
@@ -235,6 +249,7 @@ export class PracticeMock {
           title: 'La casa',
           description: 'Habitaciones y objetos.',
           locked: true,
+          ...(this.options.unpublished ? { publication_state: 'draft' } : {}),
         },
       ],
       activities: Object.entries(ACTIVITIES).map(([id, a]) => ({
@@ -247,6 +262,9 @@ export class PracticeMock {
         locked: false,
         completed_count: 0,
         best_score: null,
+        ...(this.options.unpublished
+          ? { publication_state: id === 'act-gram' ? 'published' : 'draft' }
+          : {}),
       })),
       skills: [
         { skill: 'dialogue', available: true },
@@ -288,9 +306,26 @@ export class PracticeMock {
     const b = (body ?? {}) as Record<string, unknown>
 
     if (method === 'GET' && path === '/catalog') {
-      if (o.catalogStatus) return { status: o.catalogStatus, body: { detail: { code: 'down' } } }
-      if (o.enabled === false) return { status: 200, body: { enabled: false } }
-      return { status: 200, body: this.catalog() }
+      this.catalogCalls += 1
+      const failing =
+        o.catalogStatus !== undefined &&
+        (o.catalogFailures === undefined || this.catalogCalls <= o.catalogFailures)
+      const delayMs = o.catalogDelayMs
+      const answer = (): PracticeReply => {
+        if (failing && o.catalogStatus === 0) return { status: 0, body: null, abort: true }
+        if (failing) return { status: o.catalogStatus!, body: { detail: { code: 'down' } } }
+        if (o.enabled === false)
+          return {
+            status: 200,
+            body: {
+              enabled: false,
+              ...(o.reason ? { reason: o.reason } : {}),
+              ...(o.preview ? { preview: true } : {}),
+            },
+          }
+        return { status: 200, body: this.catalog() }
+      }
+      return delayMs ? { status: 0, body: null, delayMs, then: answer } : answer()
     }
 
     let m = path.match(/^\/activities\/([^/]+)$/)

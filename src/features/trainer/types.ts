@@ -10,6 +10,8 @@ export interface CatalogLesson {
   title: string
   description: string
   locked: boolean
+  // Editors in preview only (additive field): see publication.ts.
+  publication_state?: string
 }
 
 export interface CatalogActivity {
@@ -22,10 +24,16 @@ export interface CatalogActivity {
   locked: boolean
   completed_count: number
   best_score: number | null
+  publication_state?: string
 }
+
+// Why a catalog has nothing to offer (additive field; a backend that predates it
+// sends `enabled: false` alone).
+export type CatalogReason = 'disabled_for_map' | 'no_published_content'
 
 export interface Catalog {
   enabled: boolean
+  reason?: CatalogReason
   language?: { code: string; name: string }
   level?: TrainerLevel
   content_version?: string
