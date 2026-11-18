@@ -18,8 +18,11 @@ export const esTrainer = {
     disabledEditor: 'Actívalo en «Entrenamiento y evaluación», en Apariencia.',
   },
   publication: {
-    unpublished: 'Sin publicar: los estudiantes no lo verán',
     published: 'Publicado',
+    draft: 'Borrador: los estudiantes no lo verán',
+    unpublished: 'Sin publicar: los estudiantes no lo verán',
+    archived: 'Archivado: los estudiantes no lo verán',
+    other: (state: string) => `Estado: ${state}`,
   },
   button: {
     label: 'Entrenar',

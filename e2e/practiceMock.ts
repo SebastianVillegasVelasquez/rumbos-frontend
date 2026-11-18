@@ -240,7 +240,7 @@ export class PracticeMock {
           title: 'Presentarse',
           description: 'Saluda y di quién eres.',
           locked: false,
-          ...(this.options.unpublished ? { published: true } : {}),
+          ...(this.options.unpublished ? { publication_state: 'published' } : {}),
         },
         {
           id: 'les2',
@@ -249,7 +249,7 @@ export class PracticeMock {
           title: 'La casa',
           description: 'Habitaciones y objetos.',
           locked: true,
-          ...(this.options.unpublished ? { published: false } : {}),
+          ...(this.options.unpublished ? { publication_state: 'draft' } : {}),
         },
       ],
       activities: Object.entries(ACTIVITIES).map(([id, a]) => ({
@@ -262,7 +262,9 @@ export class PracticeMock {
         locked: false,
         completed_count: 0,
         best_score: null,
-        ...(this.options.unpublished ? { published: id === 'act-gram' } : {}),
+        ...(this.options.unpublished
+          ? { publication_state: id === 'act-gram' ? 'published' : 'draft' }
+          : {}),
       })),
       skills: [
         { skill: 'dialogue', available: true },

@@ -10,8 +10,8 @@ export interface CatalogLesson {
   title: string
   description: string
   locked: boolean
-  // Editors in preview only (additive field): whether students can see it yet.
-  published?: boolean
+  // Editors in preview only (additive field): see publication.ts.
+  publication_state?: string
 }
 
 export interface CatalogActivity {
@@ -24,7 +24,7 @@ export interface CatalogActivity {
   locked: boolean
   completed_count: number
   best_score: number | null
-  published?: boolean
+  publication_state?: string
 }
 
 // Why a catalog has nothing to offer (additive field; a backend that predates it

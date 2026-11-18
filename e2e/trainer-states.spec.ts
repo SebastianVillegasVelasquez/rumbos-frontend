@@ -137,9 +137,7 @@ test.describe('trainer entry states', () => {
     const dialog = stage(page)
     await dialog.getByRole('button', { name: 'Entendido, empezar' }).click({ timeout: 20_000 })
     await dialog.getByRole('button', { name: 'Elige una lección' }).click()
-    await expect(
-      dialog.getByText('Sin publicar: los estudiantes no lo verán').first()
-    ).toBeVisible()
+    await expect(dialog.getByText('Borrador: los estudiantes no lo verán').first()).toBeVisible()
   })
 
   test('a student never sees publication states', async ({ page, context }) => {
@@ -149,7 +147,7 @@ test.describe('trainer entry states', () => {
     await dialog.getByRole('button', { name: 'Entendido, empezar' }).click({ timeout: 20_000 })
     await dialog.getByRole('button', { name: 'Elige una lección' }).click()
     await expect(dialog.getByText('Presentarse')).toBeVisible()
-    await expect(dialog.getByText(/Sin publicar/)).toHaveCount(0)
+    await expect(dialog.getByText(/Borrador|Publicado/)).toHaveCount(0)
   })
 
   test('the trainer code failing to download says so, with a retry and the way back', async ({
