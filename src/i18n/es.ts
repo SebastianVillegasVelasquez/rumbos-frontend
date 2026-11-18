@@ -862,6 +862,10 @@ export const es = {
       formId: 'Formulario',
       formPlaceholder: 'Elige un formulario',
       formGone: (id: string) => `${id} (ya no está disponible)`,
+      formUnpublished: (title: string, state: 'draft' | 'reviewed') =>
+        `${title} (${state === 'draft' ? 'borrador' : 'en revisión'})`,
+      formsUnavailable:
+        'No pudimos cargar la lista de formularios. Recarga el editor para intentarlo de nuevo.',
       formIdHint: 'Hay que elegir uno: no se elige solo.',
       fieldError: 'Error',
       // What a failed (or refused) save says: the fields that are wrong, in words.

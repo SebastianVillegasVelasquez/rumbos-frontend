@@ -6,8 +6,8 @@ import { specPresent, specServes } from './openapiSchema.ts'
 
 // Every request the trainer and assessment clients make goes to a route the backend's
 // openapi.json declares. A route that is not there answers 404 in production, which the
-// screens cannot tell from "closed": GET /trainer/activities/{id} and
-// GET /trainer/assessments/forms were both called for a while and never existed.
+// screens cannot tell from "closed": GET /trainer/activities/{id} was called for a while
+// and never existed.
 
 const sent: { method: string; url: string }[] = []
 const realFetch = globalThis.fetch
@@ -37,6 +37,7 @@ const calls: Record<string, () => Promise<unknown>> = {
   'trainerApi.progress': () => trainerApi.progress(),
   'trainerApi.deleteMine': () => trainerApi.deleteMine(),
   'assessmentApi.list': () => assessmentApi.list(),
+  'assessmentApi.forms': () => assessmentApi.forms(),
   'assessmentApi.start': () => assessmentApi.start('check_in'),
   'assessmentApi.section': () => assessmentApi.section(ID, 'listening'),
   'assessmentApi.save': () => assessmentApi.save(ID, []),
@@ -74,7 +75,8 @@ describe('routes the front calls against openapi.json', () => {
 
   it('a route the spec lacks is reported', () => {
     assert.equal(specServes('GET', '/api/v1/trainer/activities/a1-greetings'), false)
-    assert.equal(specServes('GET', '/api/v1/trainer/assessments/forms'), false)
+    assert.equal(specServes('GET', '/api/v1/trainer/assessments/forms'), true)
+    assert.equal(specServes('GET', '/api/v1/trainer/assessments/lists'), false)
     assert.equal(specServes('GET', '/api/v1/trainer/catalog?x=1'), true)
     assert.equal(specServes('POST', '/api/v1/trainer/catalog'), false)
   })

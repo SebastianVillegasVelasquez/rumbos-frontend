@@ -1,8 +1,15 @@
-import { KNOWN_FORMS, type AssessmentForm } from './forms.ts'
+import { useQuery } from '@tanstack/react-query'
+import { assessmentApi } from '../api.ts'
+import type { FormsState } from './forms.ts'
 
-// The forms the author can pick: the known list, with no request (the backend has no
-// route for it, see forms.ts). Kept as a hook so the editor does not change when one exists.
-export const useAssessmentForms = (): { forms: readonly AssessmentForm[]; loading: boolean } => ({
-  forms: KNOWN_FORMS,
-  loading: false,
-})
+// The forms the author can pick. When the list cannot be had, the picker says so and
+// offers nothing: there is no form to fall back to.
+export const useAssessmentForms = (): FormsState => {
+  const query = useQuery({
+    queryKey: ['trainer', 'assessment-forms'],
+    queryFn: assessmentApi.forms,
+    retry: false,
+    staleTime: 60_000,
+  })
+  return { forms: query.data ?? [], loading: query.isPending, failed: query.isError }
+}

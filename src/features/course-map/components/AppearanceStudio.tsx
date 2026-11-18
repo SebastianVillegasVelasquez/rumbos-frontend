@@ -93,7 +93,7 @@ export const AppearanceStudio = ({
     edited: settingsEdited,
     dismissWarnings,
   } = useSettingsIssues({ rootRef, setTab })
-  const { forms } = useAssessmentForms()
+  const forms = useAssessmentForms()
   const updateAppearance = useUpdateAppearance(courseMap.id)
   // A backend that predates audio answers the library listing with an error:
   // the Música tab then does not exist.

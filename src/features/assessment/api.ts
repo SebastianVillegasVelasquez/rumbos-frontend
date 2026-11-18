@@ -1,6 +1,7 @@
 import { apiRequest } from '../course-map/data/client.ts'
 import { checked } from '../course-map/data/contract.ts'
 import { refuseLeak } from './leakGuard.ts'
+import { FORMS_ENDPOINT, parseForms, type AssessmentForm } from './editor/forms.ts'
 import { parseAssessmentList } from './listContract.ts'
 import type {
   AssessmentList,
@@ -22,6 +23,10 @@ const get = async <T>(path: string): Promise<T> => refuseLeak(await apiRequest<T
 export const assessmentApi = {
   list: async (): Promise<AssessmentList> =>
     checked('GET /trainer/assessments', parseAssessmentList)(await get<unknown>('/assessments')),
+
+  // Editors only: the exam forms a map can be set up with.
+  forms: async (): Promise<AssessmentForm[]> =>
+    checked(FORMS_ENDPOINT, parseForms)(await apiRequest<unknown>(`${BASE}/assessments/forms`)),
 
   // 201 on a new attempt, 200 when one is resumed: the caller needs no difference.
   start: async (purpose: AssessmentPurpose) =>

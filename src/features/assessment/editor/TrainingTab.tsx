@@ -2,7 +2,7 @@ import { useId } from 'react'
 import { AlertCircle } from 'lucide-react'
 import { es } from '../../../i18n/es.ts'
 import type { MapSettings, TrainerLevel } from '../../course-map/data/types.ts'
-import type { AssessmentForm } from './forms.ts'
+import type { FormsState } from './forms.ts'
 import { issueMessage, normalizePath, type SettingsIssue } from './settingsIssues.ts'
 import {
   ALL_LEVELS,
@@ -146,7 +146,7 @@ const PurposeRules = ({
   settings: MapSettings
   onChange: (settings: MapSettings) => void
   issues: Issues
-  forms: readonly AssessmentForm[]
+  forms: FormsState
 }) => {
   const rules = assessmentsOf(settings)[rulesKey(purpose)]
   const base = `assessments.${rulesKey(purpose)}`
@@ -174,23 +174,34 @@ const PurposeRules = ({
           id={formId}
           className={`${fieldClass} ${formError ? invalidClass : ''}`}
           value={rules.formId}
+          disabled={forms.failed}
           onChange={(event) =>
             onChange(setRules(settings, purpose, { formId: event.target.value }))
           }
           {...fieldProps(`${base}.formId`, formError, formErrorId)}
         >
           <option value="">{text.formPlaceholder}</option>
-          {forms.map((form) => (
+          {forms.forms.map((form) => (
             <option key={form.id} value={form.id}>
-              {form.title}
+              {form.publication_state === 'published'
+                ? form.title
+                : text.formUnpublished(form.title, form.publication_state)}
             </option>
           ))}
-          {/* A saved form the list no longer has stays visible, so it can be replaced. */}
-          {rules.formId !== '' && !forms.some((form) => form.id === rules.formId) && (
-            <option value={rules.formId}>{text.formGone(rules.formId)}</option>
+          {/* A saved form the list does not have stays visible, so it can be replaced. While
+              the list is missing that says nothing about the form, so it shows only its id. */}
+          {rules.formId !== '' && !forms.forms.some((form) => form.id === rules.formId) && (
+            <option value={rules.formId}>
+              {forms.failed || forms.loading ? rules.formId : text.formGone(rules.formId)}
+            </option>
           )}
         </select>
         <FieldError id={formErrorId} message={formError} />
+        {forms.failed && (
+          <p role="alert" className="text-sm font-semibold text-danger">
+            {text.formsUnavailable}
+          </p>
+        )}
         <p className={hintClass}>{text.formIdHint}</p>
       </div>
       <NumberField
@@ -229,7 +240,7 @@ export const TrainingTab = ({
   settings: MapSettings
   onChange: (settings: MapSettings) => void
   issues?: Issues
-  forms: readonly AssessmentForm[]
+  forms: FormsState
 }) => {
   const trainer = trainerOf(settings)
   const assessments = assessmentsOf(settings)
