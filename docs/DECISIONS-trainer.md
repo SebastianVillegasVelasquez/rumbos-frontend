@@ -254,11 +254,24 @@ Nothing was added; the welcome text stays what the author writes.
   `ContractError` (endpoint + fields) instead of letting a wrong shape reach a render. A disabled
   assessment list leaves with `items: []`; its type no longer promises a policy.
 - An enabled catalog with no lessons (flat or nested) is `no_content`, for the button and the stage.
-- **Drift closed (against `rumbos-backend/openapi.json`):** the catalog types are now the backend's own nested shape
-  (`modules[].lessons[].activities[]`, with `estimated_minutes`, `step_count`, `role`, `can_do`, `state`,
-  `best_percent`, `publication_state`; `vocabulary_count` per lesson). `locked`, `completed_count` and `best_score` are
-  gone: the backend does not send them. Nothing is filtered in the client: students get published items from the server,
-  editors in preview get draft and reviewed too, each labelled. `Catalog` has no `preview` flag in the OpenAPI, so
-  `parseCatalog` derives it (any item not published). Known gap: an editor whose whole catalog is published sees no
-  preview banner on the lessons screen. `suggestion`, `skills` and `vocab_due` are not in the OpenAPI `Catalog` either;
-  the home screen shows them only if sent.
+- **Drift closed (against `contracts/openapi.json`, a committed copy of the backend export):** the catalog types are the
+  backend's own nested shape (`modules[].lessons[].activities[]`, with `estimated_minutes`, `step_count`, `role`,
+  `can_do`, `state`, `best_percent`, `publication_state`; `vocabulary_count` per lesson). `locked`, `completed_count` and
+  `best_score` are gone: the backend does not send them. Nothing is filtered in the client: students get published
+  items from the server, editors in preview get draft and reviewed too, each labelled.
+- `preview` is a required boolean on both `Catalog` and `CatalogUnavailable`, read as it comes (no guessing from the
+  items), so an editor with no content gets the banner too. The contract test (`catalogOpenapi.test.ts`) validates the
+  real fixture and the unavailable answers against the spec and **fails** when the spec is missing; to update it, copy the
+  backend export over `contracts/openapi.json` (see `contracts/README.md`).
+- `suggestion`, `skills` and `vocab_due` do not exist in the backend and were removed from types and screens.
+- (D18) An unknown `publication_state` or activity `state` (a value outside the OpenAPI enum): **strict for editors and CI,
+  tolerant for students.** With `preview: true` the parser raises a ContractError naming the field, because an editor is
+  who must see contract drift and a new state would otherwise be shown wrongly in silence; the contract test is strict
+  for everyone. With `preview: false` any string is accepted and shown as it came, because a student cannot fix the
+  contract and should not lose the whole trainer to a new enum value (the server already decides what a student sees).
+  Strict for everyone was rejected for that reason; tolerant for everyone because it hides drift where it can be fixed.
+- **Future, not built:** a "repasar palabras" shortcut with a count on the home screen. The catalog carries no due-words
+  count; `GET /trainer/progress` has `words_due`, but the progress screen already offers the review from the vocabulary
+  list, so the home entry waits for a design that wants it. Also noted: `TrainerProgress` in `types.ts` (`by_skill`,
+  `recent`) does not match the OpenAPI `Progress` (`lessons`, `words_saved`, `words_due`, `words_by_box`); not
+  checked against the spec yet.
