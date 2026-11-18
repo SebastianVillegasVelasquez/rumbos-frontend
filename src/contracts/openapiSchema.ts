@@ -60,13 +60,21 @@ export const check = (value: unknown, raw: Node, at: string): string[] => {
     const record = value as Record<string, unknown>
     const props = (schema.properties ?? {}) as Record<string, Node>
     const required = (schema.required ?? []) as string[]
+    const open =
+      schema.additionalProperties === true || typeof schema.additionalProperties === 'object'
     return [
       ...required.filter((key) => !(key in record)).map((key) => `${at}.${key}: required, missing`),
+      // `additionalProperties: true` (free-form, e.g. an answer's `response`) or a schema
+      // declares the open keys; the backend's strict models declare nothing here.
       ...Object.keys(record)
-        .filter((key) => !(key in props))
+        .filter((key) => !(key in props) && !open)
         .map((key) => `${at}.${key}: not in the schema`),
       ...Object.entries(record).flatMap(([key, child]) =>
-        key in props ? check(child, props[key] as Node, `${at}.${key}`) : []
+        key in props
+          ? check(child, props[key] as Node, `${at}.${key}`)
+          : typeof schema.additionalProperties === 'object'
+            ? check(child, schema.additionalProperties as Node, `${at}.${key}`)
+            : []
       ),
     ]
   }

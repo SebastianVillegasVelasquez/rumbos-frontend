@@ -49,6 +49,15 @@ describe('serializing a welcome', () => {
     for (const field of LEGACY) assert.match(json, new RegExp(`"${field}":null`))
   })
 
+  it('leaves out the trainer and the assessments while they are null', () => {
+    const settings = { trainer: null, assessments: null, mode: 'guided' } as never
+    const sent = serializeAppearance({ settings, defaultSkinId: null, skinRules: [] }).settings
+    assert.deepEqual(Object.keys(sent), ['mode'])
+    const on = { trainer: { enabled: true }, assessments: { enabled: true } } as never
+    const kept = serializeAppearance({ settings: on, defaultSkinId: null, skinRules: [] }).settings
+    assert.deepEqual(Object.keys(kept), ['trainer', 'assessments'])
+  })
+
   it('leaves a legacy welcome without steps untouched', () => {
     assert.deepEqual(serializeWelcome(legacy), legacy)
     assert.deepEqual(serializeWelcome({ ...legacy, steps: [] }), { ...legacy, steps: [] })

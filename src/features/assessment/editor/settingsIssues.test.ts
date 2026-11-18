@@ -72,6 +72,12 @@ describe('reading the server answer', () => {
   it('accepts the path spellings the editor does not use', () => {
     assert.equal(normalizePath('settings.assessments.enabled'), 'assessments.enabled')
     assert.equal(normalizePath('body.settings.welcome.steps.2.purpose'), 'welcome.steps[2].purpose')
+    // A server that names the fields in snake_case points at the same controls.
+    assert.equal(
+      normalizePath('settings.assessments.check_in.form_id'),
+      'assessments.checkIn.formId'
+    )
+    assert.equal(normalizePath('assessments.pass_percent'), 'assessments.passPercent')
   })
 
   it('reads warnings from a successful save, and none from an old backend', () => {
