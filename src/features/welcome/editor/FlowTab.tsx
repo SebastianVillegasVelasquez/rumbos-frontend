@@ -259,7 +259,7 @@ const StepsEditor = ({
               assessment={{
                 enabled: assessments.enabled,
                 autoEnabled: autoEnabledFor === step.key,
-                formId: assessments.check_in.form_id,
+                formId: assessments.checkIn.formId,
                 onEnable: () => {
                   onChange(enableAssessments(settings))
                   setAutoEnabledFor(step.key)

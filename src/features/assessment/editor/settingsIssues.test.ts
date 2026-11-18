@@ -48,11 +48,11 @@ describe('reading the server answer', () => {
   it('turns errors[] of a 422 into issues', () => {
     const issues = issuesFromError(
       failure([
-        { path: 'assessments.check_in.form_id', rule: 'exists', message_key: 'form_not_found' },
+        { path: 'assessments.checkIn.formId', rule: 'exists', message_key: 'form_not_found' },
       ])
     )
     assert.deepEqual(issues, [
-      { path: 'assessments.check_in.form_id', rule: 'exists', messageKey: 'form_not_found' },
+      { path: 'assessments.checkIn.formId', rule: 'exists', messageKey: 'form_not_found' },
     ])
   })
 
@@ -98,7 +98,7 @@ describe('saying it in words', () => {
   it('names the section and the problem, like the brief', () => {
     const [issue] = issuesFromError(
       failure([
-        { path: 'assessments.check_in.form_id', rule: 'exists', message_key: 'form_not_found' },
+        { path: 'assessments.checkIn.formId', rule: 'exists', message_key: 'form_not_found' },
       ])
     )!
     assert.equal(
@@ -116,7 +116,7 @@ describe('saying it in words', () => {
   })
 
   it('shows an unknown key with the key, never hides it', () => {
-    const issue = { path: 'assessments.final.form_id', rule: 'r', messageKey: 'brand_new_rule' }
+    const issue = { path: 'assessments.final.formId', rule: 'r', messageKey: 'brand_new_rule' }
     assert.equal(describeIssue(issue, copy), 'Evaluación final: revisa este valor (brand_new_rule)')
   })
 
@@ -153,9 +153,9 @@ describe('saying it in words', () => {
 
 describe('where an issue points', () => {
   it('tries the field, then each enclosing one', () => {
-    assert.deepEqual(pathCandidates('assessments.check_in.form_id'), [
-      'assessments.check_in.form_id',
-      'assessments.check_in',
+    assert.deepEqual(pathCandidates('assessments.checkIn.formId'), [
+      'assessments.checkIn.formId',
+      'assessments.checkIn',
       'assessments',
     ])
     assert.deepEqual(pathCandidates('welcome.steps[2].purpose'), [
@@ -191,15 +191,15 @@ describe('checking before the request', () => {
       issues.map((issue) => [issue.path, issue.messageKey]),
       [
         ['assessments.enabled', 'assessments_disabled'],
-        ['assessments.check_in.form_id', 'form_required'],
+        ['assessments.checkIn.formId', 'form_required'],
       ]
     )
   })
 
   it('accepts a check-in step once they are on and each form is chosen', () => {
     const on = setPolicy(base({ welcome: welcome([checkIn]) }), { enabled: true })
-    const chosen = setRules(setRules(on, 'check_in', { form_id: 'a1-form-a' }), 'final', {
-      form_id: 'a1-form-a',
+    const chosen = setRules(setRules(on, 'check_in', { formId: 'a1-form-a' }), 'final', {
+      formId: 'a1-form-a',
     })
     assert.deepEqual(checkTrainingSettings(chosen), [])
   })
@@ -209,8 +209,8 @@ describe('checking before the request', () => {
     assert.deepEqual(
       issues.map((issue) => [issue.path, issue.messageKey]),
       [
-        ['assessments.check_in.form_id', 'form_required'],
-        ['assessments.final.form_id', 'form_required'],
+        ['assessments.checkIn.formId', 'form_required'],
+        ['assessments.final.formId', 'form_required'],
       ]
     )
   })
@@ -224,14 +224,14 @@ describe('checking before the request', () => {
 describe('keeping the list honest', () => {
   it('drops the error of a field the author changed and keeps the rest', () => {
     const before = setPolicy(base(), { enabled: true })
-    const after = setPolicy(before, { pass_percent: 70 })
+    const after = setPolicy(before, { passPercent: 70 })
     const issues = [
-      { path: 'assessments.pass_percent', rule: 'r', messageKey: 'pass_percent_out_of_range' },
-      { path: 'assessments.check_in.form_id', rule: 'r', messageKey: 'form_not_found' },
+      { path: 'assessments.passPercent', rule: 'r', messageKey: 'pass_percent_out_of_range' },
+      { path: 'assessments.checkIn.formId', rule: 'r', messageKey: 'form_not_found' },
     ]
     assert.deepEqual(
       pruneIssues(issues, before, after).map((issue) => issue.path),
-      ['assessments.check_in.form_id']
+      ['assessments.checkIn.formId']
     )
   })
 

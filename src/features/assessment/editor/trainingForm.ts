@@ -24,7 +24,7 @@ export const LIMITS = {
   formIdMax: 64,
 } as const
 
-// No form is chosen for the author: an empty form_id means "not selected yet", and a
+// No form is chosen for the author: an empty formId means "not selected yet", and a
 // map with the assessments on cannot be saved until each purpose has one.
 export const NO_FORM = ''
 
@@ -32,10 +32,10 @@ export const defaultTrainer = (): MapTrainer => ({ enabled: false, language: 'en
 
 export const defaultAssessments = (): MapAssessments => ({
   enabled: false,
-  check_in: { form_id: NO_FORM, max_attempts: 1, time_limit_min: 60 },
-  final: { form_id: NO_FORM, max_attempts: 3, time_limit_min: 60 },
-  pass_percent: 80,
-  pass_operator: 'gt',
+  checkIn: { formId: NO_FORM, maxAttempts: 1, timeLimitMin: 60 },
+  final: { formId: NO_FORM, maxAttempts: 3, timeLimitMin: 60 },
+  passPercent: 80,
+  passOperator: 'gt',
   exemption: { enabled: true },
 })
 
@@ -57,7 +57,7 @@ export const assessmentsOf = (settings: MapSettings): MapAssessments => {
   return {
     ...base,
     ...given,
-    check_in: { ...base.check_in, ...given.check_in },
+    checkIn: { ...base.checkIn, ...given.checkIn },
     final: { ...base.final, ...given.final },
     exemption: { ...base.exemption, ...given.exemption },
   }
@@ -72,34 +72,39 @@ export const setTrainer = (settings: MapSettings, patch: Partial<MapTrainer>): M
 
 export type Purpose = 'check_in' | 'final'
 
+// The purpose is how the exam is named in URLs and steps (`check_in`); the settings spell
+// the same exam `checkIn`, as the contract does. The one translation between the two.
+export const rulesKey = (purpose: Purpose): 'checkIn' | 'final' =>
+  purpose === 'check_in' ? 'checkIn' : 'final'
+
 export const setRules = (
   settings: MapSettings,
   purpose: Purpose,
-  patch: Partial<Pick<AssessmentRules, 'max_attempts' | 'time_limit_min' | 'form_id'>>
+  patch: Partial<Pick<AssessmentRules, 'maxAttempts' | 'timeLimitMin' | 'formId'>>
 ): MapSettings => {
   const current = assessmentsOf(settings)
-  const rules = { ...current[purpose] }
+  const rules = { ...current[rulesKey(purpose)] }
   // Kept as typed (a blank one is the author's to fix, and the save says so).
-  if (patch.form_id !== undefined) rules.form_id = patch.form_id.slice(0, LIMITS.formIdMax)
-  if (patch.max_attempts !== undefined)
-    rules.max_attempts = clamp(patch.max_attempts, LIMITS.attempts.min, LIMITS.attempts.max)
-  if (patch.time_limit_min !== undefined)
-    rules.time_limit_min = clamp(patch.time_limit_min, LIMITS.minutes.min, LIMITS.minutes.max)
-  return { ...settings, assessments: { ...current, [purpose]: rules } }
+  if (patch.formId !== undefined) rules.formId = patch.formId.slice(0, LIMITS.formIdMax)
+  if (patch.maxAttempts !== undefined)
+    rules.maxAttempts = clamp(patch.maxAttempts, LIMITS.attempts.min, LIMITS.attempts.max)
+  if (patch.timeLimitMin !== undefined)
+    rules.timeLimitMin = clamp(patch.timeLimitMin, LIMITS.minutes.min, LIMITS.minutes.max)
+  return { ...settings, assessments: { ...current, [rulesKey(purpose)]: rules } }
 }
 
 export const setPolicy = (
   settings: MapSettings,
-  patch: Partial<Pick<MapAssessments, 'enabled' | 'pass_percent' | 'pass_operator'>> & {
+  patch: Partial<Pick<MapAssessments, 'enabled' | 'passPercent' | 'passOperator'>> & {
     exemption?: boolean
   }
 ): MapSettings => {
   const current = assessmentsOf(settings)
   const next: MapAssessments = { ...current }
   if (patch.enabled !== undefined) next.enabled = patch.enabled
-  if (patch.pass_operator !== undefined) next.pass_operator = patch.pass_operator
-  if (patch.pass_percent !== undefined)
-    next.pass_percent = clamp(patch.pass_percent, LIMITS.percent.min, LIMITS.percent.max)
+  if (patch.passOperator !== undefined) next.passOperator = patch.passOperator
+  if (patch.passPercent !== undefined)
+    next.passPercent = clamp(patch.passPercent, LIMITS.percent.min, LIMITS.percent.max)
   if (patch.exemption !== undefined) next.exemption = { enabled: patch.exemption }
   return { ...settings, assessments: next }
 }

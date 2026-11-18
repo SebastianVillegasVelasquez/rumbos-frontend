@@ -12,10 +12,20 @@ export const serializeWelcome = (welcome: MapWelcome): MapWelcome =>
     ? { ...welcome, title: null, message: null, video: null, playOnEnter: null }
     : welcome
 
+// `trainer` and `assessments` are objects in the contract, never null: a null the editor
+// holds (nothing set yet) is left out, which the backend reads as the defaults (off).
 export const serializeAppearance = (input: AppearanceUpdate): AppearanceUpdate => {
-  const welcome = input.settings.welcome
-  if (!welcome) return input
-  return { ...input, settings: { ...input.settings, welcome: serializeWelcome(welcome) } }
+  const { trainer, assessments, ...rest } = input.settings
+  const settings = {
+    ...rest,
+    ...(trainer == null ? {} : { trainer }),
+    ...(assessments == null ? {} : { assessments }),
+  }
+  const welcome = settings.welcome
+  return {
+    ...input,
+    settings: welcome ? { ...settings, welcome: serializeWelcome(welcome) } : settings,
+  }
 }
 
 export interface WireProblem {

@@ -121,18 +121,18 @@ export interface MapTrainer {
 }
 
 export interface AssessmentRules {
-  form_id: string
-  max_attempts: number
-  time_limit_min: number
+  formId: string
+  maxAttempts: number
+  timeLimitMin: number
 }
 
 export interface MapAssessments {
   enabled: boolean
-  check_in: AssessmentRules
+  checkIn: AssessmentRules
   final: AssessmentRules
   // A pass is strictly above (gt) or at least (gte) this percent.
-  pass_percent: number
-  pass_operator: 'gt' | 'gte'
+  passPercent: number
+  passOperator: 'gt' | 'gte'
   // A pass in the check-in or the final completes the course (through Moodle).
   exemption: { enabled: boolean }
 }

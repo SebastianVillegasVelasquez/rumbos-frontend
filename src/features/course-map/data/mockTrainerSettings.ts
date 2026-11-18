@@ -29,16 +29,17 @@ export const trainerSettingsErrors = (settings: MapSettings, formsGone = false):
     })
   if (assessments?.enabled) {
     for (const purpose of ['check_in', 'final'] as const) {
-      const formId = assessments[purpose]?.form_id
+      const key = purpose === 'check_in' ? 'checkIn' : 'final'
+      const formId = assessments[key]?.formId
       if (typeof formId !== 'string' || formId === '')
         errors.push({
-          path: `assessments.${purpose}.form_id`,
+          path: `assessments.${key}.formId`,
           rule: 'form_required',
           message_key: 'form_required',
         })
       else if (formsGone || !MOCK_FORMS.includes(formId))
         errors.push({
-          path: `assessments.${purpose}.form_id`,
+          path: `assessments.${key}.formId`,
           rule: 'form_exists',
           message_key: 'form_not_found',
         })

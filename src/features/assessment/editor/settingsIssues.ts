@@ -15,12 +15,26 @@ export interface SettingsIssue {
 
 export type StudioTab = 'training' | 'welcome'
 
-// `settings.assessments.check_in.form_id`, `body.settings...` and `welcome.steps.2`
-// all name the same thing the editor knows as `assessments.check_in.form_id` and
-// `welcome.steps[2]`.
+// `settings.assessments.checkIn.formId`, `body.settings...` and `welcome.steps.2`
+// all name the same thing the editor knows as `assessments.checkIn.formId` and
+// `welcome.steps[2]`. A server that spells the assessments fields in snake_case
+// (`check_in.form_id`) names the same fields too.
+const CONTRACT_NAMES: Record<string, string> = {
+  check_in: 'checkIn',
+  form_id: 'formId',
+  max_attempts: 'maxAttempts',
+  time_limit_min: 'timeLimitMin',
+  pass_percent: 'passPercent',
+  pass_operator: 'passOperator',
+}
+
 export const normalizePath = (path: string): string =>
   path
     .replace(/^(?:body\.)?(?:settings\.)?/, '')
+    .replace(
+      /(?<=^|\.)[a-z]+(?:_[a-z]+)+(?=\.|$)/g,
+      (segment) => CONTRACT_NAMES[segment] ?? segment
+    )
     .replace(/\.(\d+)(?=\.|$)/g, '[$1]')
     .replace(/^\[\d+\]/, '')
 
@@ -117,9 +131,9 @@ export const sectionLabel = (
   const normal = normalizePath(path)
   const step = stepIndexOf(normal)
   if (step !== null) return copy.sections.step(step + 1, stepTitle?.(step) ?? '')
-  if (normal.startsWith('assessments.check_in')) return copy.sections.check_in
+  if (normal.startsWith('assessments.checkIn')) return copy.sections.check_in
   if (normal.startsWith('assessments.final')) return copy.sections.final
-  if (/^assessments\.pass_/.test(normal)) return copy.sections.pass
+  if (/^assessments\.pass(Percent|Operator)/.test(normal)) return copy.sections.pass
   if (normal.startsWith('assessments.exemption')) return copy.sections.exemption
   if (normal.startsWith('assessments')) return copy.sections.assessments
   if (normal.startsWith('trainer')) return copy.sections.trainer
@@ -160,15 +174,15 @@ export const checkTrainingSettings = (settings: MapSettings): SettingsIssue[] =>
       rule: 'required_by_check_in_step',
       messageKey: 'assessments_disabled',
     })
-  if ((stepIndex !== -1 || assessments.enabled) && assessments.check_in.form_id.trim() === '')
+  if ((stepIndex !== -1 || assessments.enabled) && assessments.checkIn.formId.trim() === '')
     issues.push({
-      path: 'assessments.check_in.form_id',
+      path: 'assessments.checkIn.formId',
       rule: 'required',
       messageKey: 'form_required',
     })
-  if (assessments.enabled && assessments.final.form_id.trim() === '')
+  if (assessments.enabled && assessments.final.formId.trim() === '')
     issues.push({
-      path: 'assessments.final.form_id',
+      path: 'assessments.final.formId',
       rule: 'required',
       messageKey: 'form_required',
     })

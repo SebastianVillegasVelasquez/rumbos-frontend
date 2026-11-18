@@ -9,6 +9,7 @@ import {
   LIMITS,
   assessmentsOf,
   levelHasContent,
+  rulesKey,
   setPolicy,
   setRules,
   setTrainer,
@@ -147,12 +148,12 @@ const PurposeRules = ({
   issues: Issues
   forms: readonly AssessmentForm[]
 }) => {
-  const rules = assessmentsOf(settings)[purpose]
-  const base = `assessments.${purpose}`
+  const rules = assessmentsOf(settings)[rulesKey(purpose)]
+  const base = `assessments.${rulesKey(purpose)}`
   const formId = useId()
   const formErrorId = useId()
   const sectionErrorId = useId()
-  const formError = messageAt(issues, `${base}.form_id`)
+  const formError = messageAt(issues, `${base}.formId`)
   const sectionError = messageAt(issues, base)
   return (
     <fieldset
@@ -172,11 +173,11 @@ const PurposeRules = ({
         <select
           id={formId}
           className={`${fieldClass} ${formError ? invalidClass : ''}`}
-          value={rules.form_id}
+          value={rules.formId}
           onChange={(event) =>
-            onChange(setRules(settings, purpose, { form_id: event.target.value }))
+            onChange(setRules(settings, purpose, { formId: event.target.value }))
           }
-          {...fieldProps(`${base}.form_id`, formError, formErrorId)}
+          {...fieldProps(`${base}.formId`, formError, formErrorId)}
         >
           <option value="">{text.formPlaceholder}</option>
           {forms.map((form) => (
@@ -185,8 +186,8 @@ const PurposeRules = ({
             </option>
           ))}
           {/* A saved form the list no longer has stays visible, so it can be replaced. */}
-          {rules.form_id !== '' && !forms.some((form) => form.id === rules.form_id) && (
-            <option value={rules.form_id}>{text.formGone(rules.form_id)}</option>
+          {rules.formId !== '' && !forms.some((form) => form.id === rules.formId) && (
+            <option value={rules.formId}>{text.formGone(rules.formId)}</option>
           )}
         </select>
         <FieldError id={formErrorId} message={formError} />
@@ -194,22 +195,22 @@ const PurposeRules = ({
       </div>
       <NumberField
         label={text.attempts}
-        value={rules.max_attempts}
+        value={rules.maxAttempts}
         min={LIMITS.attempts.min}
         max={LIMITS.attempts.max}
-        path={`${base}.max_attempts`}
+        path={`${base}.maxAttempts`}
         issues={issues}
-        onChange={(value) => onChange(setRules(settings, purpose, { max_attempts: value }))}
+        onChange={(value) => onChange(setRules(settings, purpose, { maxAttempts: value }))}
       />
       <NumberField
         label={text.minutes}
         hint={text.minutesHint}
-        value={rules.time_limit_min}
+        value={rules.timeLimitMin}
         min={LIMITS.minutes.min}
         max={LIMITS.minutes.max}
-        path={`${base}.time_limit_min`}
+        path={`${base}.timeLimitMin`}
         issues={issues}
-        onChange={(value) => onChange(setRules(settings, purpose, { time_limit_min: value }))}
+        onChange={(value) => onChange(setRules(settings, purpose, { timeLimitMin: value }))}
       />
     </fieldset>
   )
@@ -234,7 +235,7 @@ export const TrainingTab = ({
   const assessments = assessmentsOf(settings)
   const ids = { level: useId(), levelError: useId(), operator: useId(), operatorError: useId() }
   const levelError = messageAt(issues, 'trainer.level')
-  const operatorError = messageAt(issues, 'assessments.pass_operator')
+  const operatorError = messageAt(issues, 'assessments.passOperator')
   return (
     <div className="space-y-6">
       <div className="space-y-1">
@@ -310,12 +311,12 @@ export const TrainingTab = ({
 
         <NumberField
           label={text.passPercent}
-          value={assessments.pass_percent}
+          value={assessments.passPercent}
           min={LIMITS.percent.min}
           max={LIMITS.percent.max}
-          path="assessments.pass_percent"
+          path="assessments.passPercent"
           issues={issues}
-          onChange={(value) => onChange(setPolicy(settings, { pass_percent: value }))}
+          onChange={(value) => onChange(setPolicy(settings, { passPercent: value }))}
         />
         <div className="space-y-1">
           <label htmlFor={ids.operator} className={labelClass}>
@@ -324,18 +325,18 @@ export const TrainingTab = ({
           <select
             id={ids.operator}
             className={`${fieldClass} ${operatorError ? invalidClass : ''}`}
-            value={assessments.pass_operator}
+            value={assessments.passOperator}
             onChange={(event) =>
-              onChange(setPolicy(settings, { pass_operator: event.target.value as 'gt' | 'gte' }))
+              onChange(setPolicy(settings, { passOperator: event.target.value as 'gt' | 'gte' }))
             }
-            {...fieldProps('assessments.pass_operator', operatorError, ids.operatorError)}
+            {...fieldProps('assessments.passOperator', operatorError, ids.operatorError)}
           >
             <option value="gt">{text.operators.gt}</option>
             <option value="gte">{text.operators.gte}</option>
           </select>
           <FieldError id={ids.operatorError} message={operatorError} />
           <p className={hintClass}>
-            {text.rule(assessments.pass_percent, assessments.pass_operator)}
+            {text.rule(assessments.passPercent, assessments.passOperator)}
           </p>
         </div>
 

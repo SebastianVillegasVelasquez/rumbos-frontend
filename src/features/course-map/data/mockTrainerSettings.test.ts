@@ -41,10 +41,10 @@ describe('the mock backend trainer rules', () => {
   it('refuses a form that does not exist, per purpose', () => {
     const assessments = defaultAssessments()
     assessments.enabled = true
-    assessments.check_in.form_id = 'a1-form-a'
-    assessments.final.form_id = 'nope'
+    assessments.checkIn.formId = 'a1-form-a'
+    assessments.final.formId = 'nope'
     assert.deepEqual(trainerSettingsErrors(withStep(assessments)), [
-      { path: 'assessments.final.form_id', rule: 'form_exists', message_key: 'form_not_found' },
+      { path: 'assessments.final.formId', rule: 'form_exists', message_key: 'form_not_found' },
     ])
   })
 
@@ -53,16 +53,16 @@ describe('the mock backend trainer rules', () => {
     assert.deepEqual(
       trainerSettingsErrors(withStep(assessments)).map((issue) => [issue.path, issue.message_key]),
       [
-        ['assessments.check_in.form_id', 'form_required'],
-        ['assessments.final.form_id', 'form_required'],
+        ['assessments.checkIn.formId', 'form_required'],
+        ['assessments.final.formId', 'form_required'],
       ]
     )
   })
 
   it('accepts a chosen form, and refuses it when it is gone', () => {
     const assessments = { ...defaultAssessments(), enabled: true }
-    assessments.check_in.form_id = 'a1-form-a'
-    assessments.final.form_id = 'a1-form-a'
+    assessments.checkIn.formId = 'a1-form-a'
+    assessments.final.formId = 'a1-form-a'
     assert.deepEqual(trainerSettingsErrors(withStep(assessments)), [])
     assert.equal(trainerSettingsErrors(withStep(assessments), true).length, 2)
   })
