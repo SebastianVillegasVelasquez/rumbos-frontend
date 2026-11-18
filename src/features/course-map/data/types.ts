@@ -754,6 +754,8 @@ export interface PublishedBubble {
 export interface PublishedMapRead {
   id: string
   title: string
+  // DRAFT: the backend's word that the closing flow is open to this student.
+  closingAvailable?: boolean
   moodleCourseId: number
   moodleSectionId: number | null
   position: number

@@ -21,21 +21,29 @@ const grid = function* () {
         for (const hasLevelsButton of [false, true])
           for (const hasTrainerButton of [false, true])
             for (const hasTutorButton of [false, true])
-              for (const hasPreviewPill of [false, true])
-                for (const clusterButtons of [3, 6]) {
-                  const input: HudInput = {
-                    width,
-                    height,
-                    guardsTouch,
-                    hasLevelsButton,
-                    hasTrainerButton,
-                    hasTutorButton,
-                    hasPreviewPill,
-                    clusterButtons,
+              for (const hasClosingButton of [false, true])
+                for (const hasPreviewPill of [false, true])
+                  for (const clusterButtons of [3, 6]) {
+                    const input: HudInput = {
+                      width,
+                      height,
+                      guardsTouch,
+                      hasLevelsButton,
+                      hasTrainerButton,
+                      hasTutorButton,
+                      hasClosingButton,
+                      hasPreviewPill,
+                      clusterButtons,
+                    }
+                    yield input
                   }
-                  yield input
-                }
 }
+
+// A screen too short for the whole stack of top-left buttons plus what sits below it
+// (the preview pill, "Continuar" or the guard, all optional buttons on, a few hundred px
+// tall): it cannot hold them apart, so those pairs are not asserted there.
+const tooShortForStack = (input: HudInput, stackHeight: number) =>
+  input.height < stackHeight + 2 * GUTTER + 2 * TOUCH_TARGET + 2 * GAP
 
 const describeInput = (input: HudInput) => JSON.stringify(input)
 
@@ -68,8 +76,10 @@ describe('hudMetrics', () => {
           // A screen too short for the whole stack plus the preview pill and "Continuar"
           // (all five buttons on, a few hundred px tall) cannot hold them apart.
           const stackTooTall =
-            (names[i] === 'pill' || names[j] === 'pill') &&
-            input.height < rects.topLeft.h + 2 * GUTTER + 2 * TOUCH_TARGET + 2 * GAP
+            (names[i] === 'pill' ||
+              names[j] === 'pill' ||
+              (names[i] === 'topLeft' && names[j] === 'guard')) &&
+            tooShortForStack(input, rects.topLeft.h)
           if (stackTooTall) continue
           assert.equal(
             overlaps(a, b),
@@ -86,6 +96,7 @@ describe('hudMetrics', () => {
       const { rects } = hudMetrics(input)
       for (const [name, rect] of Object.entries(rects)) {
         if (!rect) continue
+        if (name === 'pill' && tooShortForStack(input, rects.topLeft.h)) continue
         assert.ok(
           rect.x >= 0 &&
             rect.y >= 0 &&
