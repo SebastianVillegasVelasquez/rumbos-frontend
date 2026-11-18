@@ -90,6 +90,17 @@ const operation = (method: string, route: string): Node | undefined =>
 export const hasOperation = (method: string, route: string): boolean =>
   operation(method, route) !== undefined
 
+// Whether the spec declares a route for the request that was actually sent: `method` and the
+// concrete `url` (e.g. /api/v1/trainer/sessions/3f2b/answers), each {param} matching one segment.
+export const specServes = (method: string, url: string): boolean => {
+  const pathname = url.split('?')[0] ?? url
+  return Object.entries((spec.paths ?? {}) as Record<string, Node>).some(
+    ([template, item]) =>
+      method.toLowerCase() in item &&
+      new RegExp(`^${template.replace(/\{[^}]+\}/g, '[^/]+')}$`).test(pathname)
+  )
+}
+
 const jsonSchema = (holder: Node | undefined, what: string): Node => {
   const json = (holder?.content as Node | undefined)?.['application/json'] as Node | undefined
   assert.ok(json?.schema, `the spec has no JSON schema for ${what}`)

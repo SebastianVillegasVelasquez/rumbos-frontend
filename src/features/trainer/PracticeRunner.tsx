@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
-import { useQuery } from '@tanstack/react-query'
 import { AlertTriangle, ArrowLeft, ArrowRight, Check, CircleHelp, Flag, X } from 'lucide-react'
 import { Button } from '../../components/ui/Button.tsx'
 import { announce } from '../../components/ui/announce.ts'
 import { esTrainer } from '../../i18n/trainer.es.ts'
 import { ReportForm } from '../assessment/ReportForm.tsx'
 import { trainerApi } from './api.ts'
+import { activityInfoOf } from './activityInfo.ts'
+import { classifyFailure } from './failure.ts'
+import { useCatalog } from './useCatalog.ts'
 import { StepView } from './StepViews.tsx'
 import { Banner, TrainerCard } from './TrainerCard.tsx'
 import { tokenDiff } from './tokenDiff.ts'
@@ -193,9 +195,11 @@ const failureText = (failure: SessionState['failure']) =>
     ? text.errors.unauthorized
     : failure === 'closed'
       ? text.errors.closed
-      : failure === 'unreachable'
-        ? text.errors.unreachable
-        : text.errors.other
+      : failure === 'contract'
+        ? text.errors.contract
+        : failure === 'unreachable'
+          ? text.errors.unreachable
+          : text.errors.other
 
 export interface PracticeRunnerProps {
   activityId: string
@@ -213,11 +217,16 @@ export const PracticeRunner = ({
   onNextActivity,
   onChooseLesson,
 }: PracticeRunnerProps) => {
-  const info = useQuery({
-    queryKey: ['trainer', 'activity', activityId],
-    queryFn: () => trainerApi.activity(activityId),
-    staleTime: 60_000,
-  })
+  // The backend has no route for one activity: the catalog (already loaded by the stage,
+  // same query key) carries what the intro shows.
+  const catalog = useCatalog()
+  const info = activityInfoOf(catalog.data, activityId)
+  // The catalog failed, or it loaded and does not list this activity (closed or gone).
+  const infoFailure: SessionState['failure'] = catalog.isError
+    ? classifyFailure(catalog.error)
+    : catalog.isSuccess && !info
+      ? 'closed'
+      : null
   const { state, begin, setDraft, submit, next, finish, retry } = useSession(activityId)
   const [confirmExit, setConfirmExit] = useState(false)
   const [saved, setSaved] = useState<Set<string>>(new Set())
@@ -257,7 +266,7 @@ export const PracticeRunner = ({
     })
   }
 
-  const title = phase === 'summary' ? text.summary.title : (info.data?.title ?? text.loading)
+  const title = phase === 'summary' ? text.summary.title : (info?.title ?? text.loading)
   const kicker =
     state.progress && inProgress
       ? text.run.step(state.progress.index, state.progress.total)
@@ -288,30 +297,32 @@ export const PracticeRunner = ({
   let primary: React.ReactNode = null
 
   if (phase === 'idle') {
-    body = info.data ? (
+    body = info ? (
       <>
-        {info.data.role && <p className="font-bold">{text.intro.role(info.data.role)}</p>}
-        {info.data.can_do.length > 0 && (
+        {info.role && <p className="font-bold">{text.intro.role(info.role)}</p>}
+        {info.can_do.length > 0 && (
           <section>
             <h3 className="text-sm font-extrabold">{text.intro.canDo}</h3>
             <ul className="list-disc pl-5">
-              {info.data.can_do.map((item) => (
+              {info.can_do.map((item) => (
                 <li key={item}>{item}</li>
               ))}
             </ul>
           </section>
         )}
-        <p className="text-sm text-ink-soft">{text.intro.steps(info.data.step_count)}</p>
+        <p className="text-sm text-ink-soft">{text.intro.steps(info.step_count)}</p>
       </>
-    ) : info.isError ? (
+    ) : infoFailure ? (
       <p role="alert" className="font-semibold text-danger">
-        {text.errors.startFailed}
+        {infoFailure === 'closed' || infoFailure === 'contract'
+          ? failureText(infoFailure)
+          : text.errors.startFailed}
       </p>
     ) : (
       <p role="status">{text.loading}</p>
     )
     primary = (
-      <Button onClick={begin} disabled={!info.data}>
+      <Button onClick={begin} disabled={!info}>
         {text.intro.start}
         <ArrowRight size={18} strokeWidth={3} aria-hidden />
       </Button>
@@ -332,7 +343,9 @@ export const PracticeRunner = ({
       </>
     )
     primary =
-      state.failure === 'unauthorized' || state.failure === 'closed' ? null : (
+      state.failure === 'unauthorized' ||
+      state.failure === 'closed' ||
+      state.failure === 'contract' ? null : (
         <Button onClick={retry}>{text.errors.retry}</Button>
       )
   } else if (phase === 'summary' && state.summary) {

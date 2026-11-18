@@ -257,8 +257,8 @@ export class PracticeMock {
                   publication_state:
                     this.options.unpublished && id !== 'act-gram' ? 'draft' : 'published',
                   step_count: a.steps.length,
-                  role: null,
-                  can_do: [],
+                  role: a.skill === 'dialogue' ? 'Recepcionista' : null,
+                  can_do: ['Presentarte en inglés'],
                   state: 'not_started',
                   best_percent: null,
                 }))
@@ -321,24 +321,7 @@ export class PracticeMock {
       return delayMs ? { status: 0, body: null, delayMs, then: answer } : answer()
     }
 
-    let m = path.match(/^\/activities\/([^/]+)$/)
-    if (method === 'GET' && m) {
-      const a = ACTIVITIES[m[1]]
-      if (!a) return { status: 404, body: { detail: { code: 'not_found' } } }
-      return {
-        status: 200,
-        body: {
-          id: m[1],
-          title: a.title,
-          skill: a.skill,
-          lesson_id: 'les1',
-          role: a.skill === 'dialogue' ? 'Recepcionista' : null,
-          can_do: ['Presentarte en inglés'],
-          step_count: a.steps.length,
-        },
-      }
-    }
-
+    // There is no route for one activity: the catalog carries what the intro shows.
     if (method === 'POST' && path === '/sessions') {
       const a = ACTIVITIES[String(b.activity_id)]
       if (!a) return { status: 404, body: { detail: { code: 'not_found' } } }
@@ -355,7 +338,7 @@ export class PracticeMock {
       }
     }
 
-    m = path.match(/^\/sessions\/([^/]+)\/answers$/)
+    let m = path.match(/^\/sessions\/([^/]+)\/answers$/)
     if (method === 'POST' && m) {
       const session = this.sessions.get(m[1])
       if (!session) return { status: 404, body: { detail: { code: 'not_found' } } }

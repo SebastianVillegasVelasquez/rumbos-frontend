@@ -2,7 +2,6 @@ import { apiRequest } from '../course-map/data/client.ts'
 import { checked } from '../course-map/data/contract.ts'
 import { parseCatalog } from './catalogContract.ts'
 import type {
-  ActivityInfo,
   AnswerResult,
   Catalog,
   SessionStart,
@@ -21,7 +20,6 @@ export const trainerApi = {
   // not a TypeError in a component.
   catalog: async (): Promise<Catalog> =>
     checked('GET /trainer/catalog', parseCatalog)(await apiRequest<unknown>(`${BASE}/catalog`)),
-  activity: (id: string) => apiRequest<ActivityInfo>(`${BASE}/activities/${id}`),
   start: (activityId: string) =>
     apiRequest<SessionStart>(`${BASE}/sessions`, {
       method: 'POST',
