@@ -7,6 +7,15 @@ import type { Catalog } from './types.ts'
 
 const text = esTrainer
 
+// Editors in preview learn which items students cannot see yet. Said in words, and
+// only when the catalog says so (a backend without the field shows nothing).
+const Unpublished = ({ published }: { published?: boolean }) =>
+  published === false ? (
+    <span className="rounded-pill bg-sun-tint px-2 text-xs font-bold text-sun-dark">
+      {text.publication.unpublished}
+    </span>
+  ) : null
+
 // S3 "Elige una lección": the catalog's lessons grouped by module, each with its
 // activities. A locked lesson or activity says so in words, not only with a lock.
 export const Lessons = ({
@@ -54,6 +63,7 @@ export const Lessons = ({
                     <p className="flex flex-wrap items-center gap-2 font-bold">
                       <span className="rounded-pill border-soft px-2 text-sm">{lesson.code}</span>
                       {lesson.title}
+                      {catalog.preview && <Unpublished published={lesson.published} />}
                       {lesson.locked && (
                         <span className="inline-flex items-center gap-1 text-sm text-ink-soft">
                           <Lock size={14} strokeWidth={2.5} aria-hidden />
@@ -72,7 +82,10 @@ export const Lessons = ({
                             className="flex flex-wrap items-center justify-between gap-2 rounded-md bg-surface-muted p-2"
                           >
                             <span className="min-w-0">
-                              <span className="block font-semibold">{activity.title}</span>
+                              <span className="flex flex-wrap items-center gap-2 font-semibold">
+                                {activity.title}
+                                {catalog.preview && <Unpublished published={activity.published} />}
+                              </span>
                               <span className="block text-xs text-ink-soft">
                                 {text.home.skillNames[activity.skill]} ·{' '}
                                 {text.lessons.minutes(activity.estimated_minutes)} ·{' '}

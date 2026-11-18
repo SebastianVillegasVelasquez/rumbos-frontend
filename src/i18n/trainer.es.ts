@@ -7,7 +7,20 @@ export const esTrainer = {
   back: 'Volver al mapa',
   backToHome: 'Volver al inicio',
   preview: 'Vista previa: no se guarda tu práctica',
-  unavailable: 'El entrenamiento no está disponible por ahora.',
+  // The stage's own answers when the catalog has nothing to open. The generic
+  // "could not load" line lives in errors.loadFailed and always comes with a retry.
+  unavailable: {
+    no_content: 'Pronto habrá ejercicios disponibles.',
+    disabled_for_map: 'El entrenamiento no está activado en este mapa.',
+    // Added for editors in preview, who can act on it.
+    noContentEditor:
+      'Todavía no hay contenido publicado: los estudiantes verán el botón sin ejercicios hasta que se publique.',
+    disabledEditor: 'Actívalo en «Entrenamiento y evaluación», en Apariencia.',
+  },
+  publication: {
+    unpublished: 'Sin publicar: los estudiantes no lo verán',
+    published: 'Publicado',
+  },
   button: {
     label: 'Entrenar',
     waiting: 'Se activa al terminar la bienvenida',
@@ -125,6 +138,8 @@ export const esTrainer = {
   },
   errors: {
     unreachable: 'No pudimos comprobar tu respuesta.',
+    loadFailed: 'No pudimos cargar el entrenamiento.',
+    loadHint: 'Revisa tu conexión e inténtalo de nuevo. Tu progreso está a salvo.',
     offline: 'Estás sin conexión.',
     retry: 'Reintentar',
     keep: 'Tu respuesta sigue aquí; no se perdió.',
