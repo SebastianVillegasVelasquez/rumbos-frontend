@@ -273,7 +273,8 @@ test.describe('practice trainer', () => {
   test('reviews due words and records each answer once', async ({ page, context }) => {
     const server = await open(page, context, { practice: { dueWords: 2 } })
     await openStage(page)
-    await stage(page).getByRole('button', { name: 'Repasar 2 palabras' }).click()
+    await stage(page).getByRole('button', { name: 'Mi progreso' }).click()
+    await stage(page).getByRole('button', { name: 'Repasar palabras' }).click()
     await expect(stage(page).getByText('Palabra 1 de 2')).toBeVisible()
     await expect(stage(page).getByRole('button', { name: 'La sabía' })).toHaveCount(0)
     await stage(page).getByRole('button', { name: 'Ver traducción' }).click()

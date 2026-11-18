@@ -43,10 +43,7 @@ export const esTrainer = {
   home: {
     title: (language: string) => `Entrenamiento de ${language}`,
     level: (level: string) => `Nivel ${level}`,
-    suggestion: { next: 'Sigue con esto', review: 'Te conviene repasar' },
-    start: 'Empezar',
     chooseLesson: 'Elige una lección',
-    skills: 'Habilidades',
     skillNames: {
       dialogue: 'Diálogo',
       listening: 'Escucha',
@@ -54,8 +51,6 @@ export const esTrainer = {
       writing: 'Escritura',
       vocabulary: 'Vocabulario',
     },
-    skillSoon: 'Pronto',
-    reviewWords: (n: number) => (n === 1 ? 'Repasar 1 palabra' : `Repasar ${n} palabras`),
     progress: 'Mi progreso',
     myWords: 'Mi vocabulario',
     deleteData: 'Borrar mis datos de práctica',

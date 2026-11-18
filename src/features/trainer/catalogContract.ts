@@ -19,7 +19,6 @@ export const parseCatalog = (value: unknown, endpoint = ENDPOINT): Catalog => {
   issues.boolean('preview', value.preview)
   issues.optional('level', value.level, (path, v) => issues.string(path, v))
   issues.optional('content_version', value.content_version, (path, v) => issues.string(path, v))
-  issues.optional('vocab_due', value.vocab_due, (path, v) => issues.number(path, v))
 
   if (value.enabled === true) {
     issues.optional('title', value.title, (path, v) => issues.string(path, v))
@@ -49,8 +48,6 @@ export const parseCatalog = (value: unknown, endpoint = ENDPOINT): Catalog => {
         })
       })
     })
-    for (const name of ['skills'] as const)
-      issues.optional(name, value[name], (path, v) => issues.array(path, v))
   }
   const language = value.language
   if (language !== undefined && language !== null && typeof language !== 'string')

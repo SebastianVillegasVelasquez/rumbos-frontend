@@ -267,15 +267,6 @@ export class PracticeMock {
           ],
         },
       ],
-      skills: [
-        { skill: 'dialogue', available: true },
-        { skill: 'listening', available: true },
-        { skill: 'grammar', available: true },
-        { skill: 'writing', available: true },
-        { skill: 'vocabulary', available: true },
-      ],
-      suggestion: { activity_id: 'act-gram', reason: 'next' },
-      vocab_due: this.options.dueWords ?? 0,
     }
   }
 

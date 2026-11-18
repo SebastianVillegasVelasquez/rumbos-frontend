@@ -192,10 +192,8 @@ const TrainerStage = ({ imageUrl, onClose }: TrainerStageProps) => {
       <TrainerHome
         catalog={catalog.data}
         onBack={close}
-        onStart={(activityId) => setView({ name: 'practice', activityId })}
         onLessons={() => setView({ name: 'lessons' })}
         onProgress={() => setView({ name: 'progress' })}
-        onReview={() => setView({ name: 'review' })}
         onFinal={(item, list) => setView({ name: 'exam', item, list })}
       />
     )

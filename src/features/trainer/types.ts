@@ -52,9 +52,6 @@ export interface Catalog {
   // Whether the caller is an editor in preview (required by Catalog and CatalogUnavailable).
   preview: boolean
   modules?: CatalogModule[]
-  skills?: { skill: Skill; available: boolean }[]
-  suggestion?: { activity_id: string; reason: 'next' | 'review' } | null
-  vocab_due?: number
 }
 
 export interface ActivityInfo {
