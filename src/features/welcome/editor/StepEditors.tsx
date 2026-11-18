@@ -412,11 +412,39 @@ export const PdfEditor = ({ step, onChange, problems }: EditorProps<WelcomePdfSt
 // ---- native check-in --------------------------------------------------------------
 
 // Nothing to configure here: the policy (attempts, time, pass rule) is the map's, set
-// in "Entrenamiento y evaluación". The purpose is fixed to the check-in.
-export const AssessmentEditor = () => (
+// in "Entrenamiento y evaluación". The purpose is fixed to the check-in. What the step
+// does depend on is said out loud: the assessments switch and a form, both there.
+export const AssessmentEditor = ({
+  enabled,
+  autoEnabled,
+  formId,
+  onEnable,
+}: {
+  enabled: boolean
+  autoEnabled: boolean
+  formId: string
+  onEnable: () => void
+}) => (
   <>
     <p className="text-sm font-semibold text-ink">{text.assessment.body}</p>
     <p className={hintClass}>{text.assessment.where}</p>
+    <p className={hintClass}>{text.assessment.requires}</p>
+    {enabled ? (
+      <p role="status" className="border-soft rounded-md bg-surface p-2 text-xs font-bold text-ink">
+        {autoEnabled && <span className="block">{text.assessment.autoEnabled}</span>}
+        <span className="block">{text.assessment.form(formId)}</span>
+      </p>
+    ) : (
+      <div
+        role="alert"
+        className="space-y-2 rounded-md bg-danger-tint p-2 text-xs font-bold text-danger"
+      >
+        <p>{text.assessment.disabledNow}</p>
+        <Button size="sm" variant="secondary" onClick={onEnable}>
+          {text.assessment.enableNow}
+        </Button>
+      </div>
+    )}
     <p className={hintClass}>{text.assessment.fallback}</p>
   </>
 )

@@ -21,6 +21,7 @@ export const LIMITS = {
   attempts: { min: 1, max: 10 },
   minutes: { min: 5, max: 240 },
   percent: { min: 0, max: 100 },
+  formIdMax: 64,
 } as const
 
 // ASSUMPTION (contract v2 names a form_id but no list of forms): the A1 Forma A
@@ -74,10 +75,12 @@ export type Purpose = 'check_in' | 'final'
 export const setRules = (
   settings: MapSettings,
   purpose: Purpose,
-  patch: Partial<Pick<AssessmentRules, 'max_attempts' | 'time_limit_min'>>
+  patch: Partial<Pick<AssessmentRules, 'max_attempts' | 'time_limit_min' | 'form_id'>>
 ): MapSettings => {
   const current = assessmentsOf(settings)
   const rules = { ...current[purpose] }
+  // Kept as typed (a blank one is the author's to fix, and the save says so).
+  if (patch.form_id !== undefined) rules.form_id = patch.form_id.slice(0, LIMITS.formIdMax)
   if (patch.max_attempts !== undefined)
     rules.max_attempts = clamp(patch.max_attempts, LIMITS.attempts.min, LIMITS.attempts.max)
   if (patch.time_limit_min !== undefined)
@@ -100,6 +103,11 @@ export const setPolicy = (
   if (patch.exemption !== undefined) next.exemption = { enabled: patch.exemption }
   return { ...settings, assessments: next }
 }
+
+// Turn the assessments on for the check-in step, which cannot work without them. The
+// rest of the rules stay as they are. Returns the same object when already on.
+export const enableAssessments = (settings: MapSettings): MapSettings =>
+  assessmentsOf(settings).enabled ? settings : setPolicy(settings, { enabled: true })
 
 // Editing is available only where the backend knows the feature.
 export const trainingSupported = (settings: MapSettings): boolean =>

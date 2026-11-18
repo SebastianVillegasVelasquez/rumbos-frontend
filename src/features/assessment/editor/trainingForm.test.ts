@@ -6,6 +6,7 @@ import {
   clamp,
   defaultAssessments,
   defaultTrainer,
+  enableAssessments,
   levelHasContent,
   setPolicy,
   setRules,
@@ -82,5 +83,24 @@ describe('training settings model', () => {
   it('is offered only where the backend knows the feature', () => {
     assert.equal(trainingSupported(base), false)
     assert.equal(trainingSupported({ ...base, trainer: null }), true)
+  })
+
+  it('keeps the form id as typed, up to its limit, and per purpose', () => {
+    const typed = setRules(base, 'check_in', { form_id: ' forma_b ' })
+    assert.equal(typed.assessments?.check_in.form_id, ' forma_b ')
+    assert.equal(typed.assessments?.final.form_id, 'forma_a')
+    assert.equal(
+      setRules(base, 'final', { form_id: 'x'.repeat(200) }).assessments?.final.form_id.length,
+      64
+    )
+  })
+
+  it('turns the assessments on for the check-in step without touching the rules', () => {
+    const tuned = setRules(base, 'check_in', { max_attempts: 4 })
+    const on = enableAssessments(tuned)
+    assert.equal(on.assessments?.enabled, true)
+    assert.equal(on.assessments?.check_in.max_attempts, 4)
+    // Already on: nothing to change.
+    assert.equal(enableAssessments(on), on)
   })
 })
