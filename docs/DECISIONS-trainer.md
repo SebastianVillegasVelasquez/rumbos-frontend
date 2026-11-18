@@ -155,3 +155,92 @@ is added.
 - The final exam launches from the trainer home card ("Evaluación final"), reusing the exam runner inside the stage. The mock treats both purposes with one attempt counter.
 - Proposal, not built: the final exam could also appear as a map node. Map nodes only open Moodle URLs (`activityOpener.ts`), so this needs a decision on a new node kind. Until then the entry point is the trainer card.
 - For students who cannot hear: the exam's listening items cannot be answered without audio and the transcript is deliberately hidden in the exam. The client must decide the alternative (an accommodation, a transcript on request, or an exemption by the teacher).
+
+## 6. Honest unavailable states and editor errors (branch `fix/training-partial-settings`)
+
+### 6.1 Audit (before the changes)
+
+**The button and the text.**
+
+- Visibility: `App.tsx` showed "Entrenar" whenever `settings.trainer.enabled`, with no request. Enabled or disabled came
+  only from the welcome flow (`welcomePending && !isEditor`). `isEditor` there is `viewMode === 'edit'`, and the HUD is
+  not drawn in edit mode, so it was always false: editors were held by the flow after all, against the rule in section 5.
+- Click: `StudentStage.tsx` opened `TrainerStage` (a lazy chunk) unconditionally when not disabled.
+- The text "El entrenamiento no está disponible por ahora." was `esTrainer.unavailable`, shown by `TrainerStage` on two
+  paths: catalog `enabled: false` (any reason, no way out but "Volver") and a catalog failure classified `closed` (404, 403,
+  409). Every other failure said "No pudimos comprobar tu respuesta." (copy written for answers, wrong for a catalog).
+- Paths that reached a dead end: catalog 404/403/409; `enabled: false`; an enabled catalog with no content (it rendered an
+  empty home); a failed lazy chunk (offline, or hashes changed by a deploy): `lazy()` throws in render and nothing in the
+  stage catches it (in the embed, the global boundary would replace the whole map).
+
+**The payload of the check-in step.** Adding it creates
+`{ key, title, mandatory: true, revision: 1, type: "assessment", purpose: "check_in" }`, which matches
+`WelcomeAssessmentStep` and the contract's `{ type: "assessment", purpose: "check_in" }`. No drift in the step.
+The drift is in the settings: `settings.assessments` is `null` until the author opens "Entrenamiento y evaluación"
+and touches it. Adding the step alone therefore sent a flow with a check-in and `assessments: null` (or
+`enabled: false`), which is what the backend refuses with `trainer_settings_invalid`. This is the most likely cause of the
+reported 422. I could not confirm it against the real backend (I have no access to its answer), only that the editor
+allowed that state.
+
+**The message.** `useUpdateAppearance` → `AppearanceStudio` → `describeSaveFailure`. That function has a branch for
+`422 welcome_invalid` (with `problems[]`) and falls through to `text.other(status, code)` for everything else, which is
+exactly "No se pudo guardar (422, trainer_settings_invalid)".
+
+**Part 3.** No built-in instruction component lists the HUD buttons: the coach marks (`es.coach`) are a first-run tour
+(move, bubble, Misiones, audio) and the html step templates ("Reglas", "Acuerdo", "Instrucciones") do not name them.
+Nothing was added; the welcome text stays what the author writes.
+
+### 6.2 States of the button and the stage
+
+| Catalog answer                                         | Button (student)                                                                | Button (editor in preview)           | Stage                                                              |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------- | ------------------------------------ | ------------------------------------------------------------------ |
+| pending                                                | spinner, `aria-busy`, not pressable; pressing says "Cargando…"                  | same                                 | loading card                                                       |
+| `enabled: true`                                        | ready                                                                           | ready                                | home                                                               |
+| `enabled: false`, `reason: disabled_for_map` (or none) | hidden                                                                          | disabled, note always visible        | "no está activado en este mapa" (+ how, in preview)                |
+| `enabled: false`, `reason: no_published_content`       | disabled; "Pronto habrá ejercicios disponibles" on press and `aria-describedby` | disabled, note always visible        | "Pronto habrá ejercicios disponibles" (+ publish hint in preview)  |
+| welcome flow not finished                              | disabled, "Se activa al terminar la bienvenida"                                 | ready (never held by the flow)       | -                                                                  |
+| 404, 403, 409                                          | hidden                                                                          | disabled, "desactivado en este mapa" | same as `disabled_for_map`                                         |
+| 401                                                    | pressable                                                                       | pressable                            | "Tu sesión venció…" (no retry: the host refreshes the token)       |
+| network, 5xx, 429, other                               | pressable; opening the stage retries                                            | same                                 | "No pudimos cargar el entrenamiento" + Reintentar + Volver al mapa |
+
+### 6.3 Decisions
+
+- (D6) One decision function (`trainer/availability.ts`, pure and tested) feeds the button and the stage, and one query key
+  (`useCatalog`) is shared, so pressing the button does not ask the server twice (`staleTime` 30 s).
+- (D7) `enabled: false` without `reason` (a backend that predates it) is treated as `disabled_for_map`: hidden for
+  students. It is the safe reading when the server does not say why.
+- (D8) 404/403/409 on the catalog means "no trainer here", not "broken": hidden for students. Only network and server
+  failures are errors with a retry.
+- (D9) "Editor" in the HUD is `exitPreview !== null` (the app's own preview) or `catalog.preview === true` (the server's
+  word; section 0 settled that the server decides preview). The test harness's "editing off" is the host's student mode,
+  where only the server's flag identifies the editor.
+- (D10) The button is `aria-disabled`, not `disabled`, so it stays focusable and pressing it says why (4 s), as before.
+  Playwright treats `aria-disabled` as not actionable; the tests press with `force`, which is what a person does.
+- (D11) Editors in preview see which lessons and activities are unpublished through an additive `published?: boolean` on
+  the catalog's lessons and activities. ASSUMPTION: the field name, and that `false` means students cannot see it.
+- (D12) Editor errors: `errors[].path` is read as the editor's own path (`assessments.check_in.form_id`,
+  `welcome.steps[2]`); a leading `settings.` or `body.settings.` and `.2` indexes are normalized. `message_key` is
+  translated from a dictionary of ASSUMED keys (`form_not_found`, `assessments_disabled`, `attempts_out_of_range`...).
+  An unknown key is shown as "revisa este valor (key)", never hidden, so the first real answer tells us which keys to add.
+- (D13) `warnings` are read from the successful response of the settings save (`CourseMapRead.warnings`). ASSUMPTION:
+  same shape as `errors`, at the top level of the response. A known key (`content_unpublished`) has its own sentence.
+- (D14) A check-in step with the assessments off is caught before the request (`checkTrainingSettings`) and shown in the
+  same list. Adding the step switches the assessments on and says so inside the step (blocking would make the author do a
+  second step to add a step). If they turn them off later, the step says it cannot be saved and offers to switch them on.
+- (D15) The form of each evaluation became an editable text field (default `forma_a`, section 3). There is no catalog of
+  forms to choose from, and without a field "el formulario seleccionado no existe" would not be fixable. Replace it with
+  a select when the backend lists forms.
+- (D16) The mock backend now answers `422 trainer_settings_invalid` with `errors[]`, and a save with `warnings[]`
+  (`?mockTrainerUnpublished=1`). It mocks a shape the backend has not published; it is not the contract.
+- (D17) A trainer chunk that fails to download (offline, or a deploy changed its hash) is caught by a boundary in
+  `LazyTrainerStage`: it says "No pudimos cargar el entrenamiento" with Reintentar and Volver al mapa, and the map
+  stays. The failed lazy component is renewed on catch, so a later press loads it. Its copy lives in `es.hud`
+  because the trainer dictionary is in the chunk that failed. Tested with the chunk request blocked, in Chromium and
+  WebKit; the in-place Reintentar button uses the same remount and has no test of its own.
+
+### 6.4 Test status
+
+- Full Playwright run (Chromium and WebKit, 386 tests): 380 passed, 6 failed. `welcome-editor.spec.ts:174` fails in both
+  engines and is the one section 4 records as failing on clean `main`. The other four (three in
+  `welcome-quiz-checkin`, one WebKit `welcome-flow-visual` at 768) passed on a rerun of those files: load flakes of a
+  4-worker run.
