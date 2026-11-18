@@ -137,7 +137,9 @@ export const TrainerHome = ({
           </h3>
           <p className="font-heading text-lg font-extrabold">{suggested.title}</p>
           <p className="text-sm">
-            {text.lessons.minutes(suggested.estimated_minutes)} · {copy.skillNames[suggested.skill]}
+            {suggested.estimated_minutes !== null &&
+              `${text.lessons.minutes(suggested.estimated_minutes)} · `}
+            {copy.skillNames[suggested.skill]}
           </p>
           <div className="mt-2">
             <Button size="sm" onClick={() => onStart(suggested.id)}>

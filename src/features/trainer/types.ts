@@ -19,11 +19,13 @@ export interface CatalogActivity {
   lesson_id: string
   skill: Skill
   title: string
-  estimated_minutes: number
-  step_count: number
+  estimated_minutes: number | null
+  step_count: number | null
   locked: boolean
   completed_count: number
   best_score: number | null
+  // The backend's own words: `state` (not_started, ...) and `best_percent`.
+  state?: string
   publication_state?: string
 }
 

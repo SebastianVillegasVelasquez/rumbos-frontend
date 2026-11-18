@@ -7,7 +7,9 @@ const lesson = {
   id: '1.1',
   code: '1.1',
   title: 'Greetings',
-  activities: [{ id: 'en-a1-1.1-dialogue', skill: 'dialogue', state: 'not_started' }],
+  activities: [
+    { id: 'en-a1-1.1-dialogue', skill: 'dialogue', title: 'Hello', state: 'not_started' },
+  ],
 }
 // The answer the production backend sends, trimmed to the fields that matter here.
 const real = (lessons: unknown[]) => ({
@@ -80,6 +82,7 @@ describe('parseCatalog', () => {
     ])
     assert.deepEqual(issuesOf(real([{ code: 'x' }])), [
       'modules[0].lessons[0].id: expected a string, got undefined',
+      'modules[0].lessons[0].title: expected a string, got undefined',
     ])
   })
 

@@ -97,8 +97,10 @@ export const Lessons = ({
                               </span>
                               <span className="block text-xs text-ink-soft">
                                 {text.home.skillNames[activity.skill]} ·{' '}
-                                {text.lessons.minutes(activity.estimated_minutes)} ·{' '}
-                                {text.intro.steps(activity.step_count)} ·{' '}
+                                {activity.estimated_minutes !== null &&
+                                  `${text.lessons.minutes(activity.estimated_minutes)} · `}
+                                {activity.step_count !== null &&
+                                  `${text.intro.steps(activity.step_count)} · `}
                                 {text.lessons.done(activity.completed_count)}
                                 {activity.best_score !== null &&
                                   ` · ${text.lessons.best(Math.round(activity.best_score))}`}
