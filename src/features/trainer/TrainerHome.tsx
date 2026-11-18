@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { ArrowLeft, ArrowRight, BookOpen, ChartNoAxesColumn, Layers, Repeat } from 'lucide-react'
+import { ArrowLeft, ChartNoAxesColumn, Layers } from 'lucide-react'
 import { Button } from '../../components/ui/Button.tsx'
 import { esAssessment } from '../../i18n/assessment.es.ts'
 import { esTrainer } from '../../i18n/trainer.es.ts'
@@ -79,24 +79,14 @@ const FinalCard = ({
 export interface HomeProps {
   catalog: Catalog
   onBack: () => void
-  onStart: (activityId: string) => void
   onLessons: () => void
   onProgress: () => void
-  onReview: () => void
   onFinal: (item: AssessmentListItem, list: EnabledAssessmentList) => void
 }
 
-// S2: the suggestion, the way to the lessons, the skills, the words due and the
-// final exam card (clearly separated from practice).
-export const TrainerHome = ({
-  catalog,
-  onBack,
-  onStart,
-  onLessons,
-  onProgress,
-  onReview,
-  onFinal,
-}: HomeProps) => {
+// S2: the way to the lessons and to the progress, and the final exam card (clearly
+// separated from practice). The words due live in the progress screen.
+export const TrainerHome = ({ catalog, onBack, onLessons, onProgress, onFinal }: HomeProps) => {
   const ref = useRef<HTMLHeadingElement>(null)
   const client = useQueryClient()
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -109,15 +99,12 @@ export const TrainerHome = ({
     retry: false,
   })
   const examList = exams.data?.enabled ? exams.data : null
-  const suggested = catalog.suggestion
-    ? catalog.activities?.find((a) => a.id === catalog.suggestion?.activity_id)
-    : undefined
   const copy = text.home
 
   return (
     <TrainerCard
       ref={ref}
-      title={copy.title(catalog.language?.name ?? '')}
+      title={catalog.title ?? copy.title(catalog.language?.name ?? '')}
       kicker={catalog.level ? copy.level(catalog.level) : undefined}
       preview={catalog.preview}
       footer={
@@ -127,27 +114,6 @@ export const TrainerHome = ({
         </Button>
       }
     >
-      {suggested && catalog.suggestion && (
-        <section
-          aria-labelledby="trainer-next"
-          className="rounded-lg border-strong bg-primary-tint p-4"
-        >
-          <h3 id="trainer-next" className="text-xs font-extrabold tracking-wide uppercase">
-            {copy.suggestion[catalog.suggestion.reason]}
-          </h3>
-          <p className="font-heading text-lg font-extrabold">{suggested.title}</p>
-          <p className="text-sm">
-            {text.lessons.minutes(suggested.estimated_minutes)} · {copy.skillNames[suggested.skill]}
-          </p>
-          <div className="mt-2">
-            <Button size="sm" onClick={() => onStart(suggested.id)}>
-              {copy.start}
-              <ArrowRight size={16} strokeWidth={3} aria-hidden />
-            </Button>
-          </div>
-        </section>
-      )}
-
       <div className="flex flex-wrap gap-2">
         <Button onClick={onLessons}>
           <Layers size={18} strokeWidth={2.5} aria-hidden />
@@ -157,31 +123,7 @@ export const TrainerHome = ({
           <ChartNoAxesColumn size={18} strokeWidth={2.5} aria-hidden />
           {copy.progress}
         </Button>
-        {(catalog.vocab_due ?? 0) > 0 && (
-          <Button variant="secondary" onClick={onReview}>
-            <Repeat size={18} strokeWidth={2.5} aria-hidden />
-            {copy.reviewWords(catalog.vocab_due ?? 0)}
-          </Button>
-        )}
       </div>
-
-      {catalog.skills && catalog.skills.length > 0 && (
-        <section>
-          <h3 className="text-sm font-extrabold">{copy.skills}</h3>
-          <ul className="flex flex-wrap gap-2">
-            {catalog.skills.map((entry) => (
-              <li
-                key={entry.skill}
-                className="inline-flex items-center gap-1 rounded-pill border-hair px-3 py-1 text-sm font-semibold"
-              >
-                <BookOpen size={14} strokeWidth={2.5} aria-hidden />
-                {copy.skillNames[entry.skill]}
-                {!entry.available && <span className="text-ink-soft"> · {copy.skillSoon}</span>}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
 
       {examList && <FinalCard list={examList} onOpen={(item) => onFinal(item, examList)} />}
 

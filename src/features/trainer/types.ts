@@ -3,28 +3,39 @@
 export type Skill = 'dialogue' | 'listening' | 'grammar' | 'writing' | 'vocabulary'
 export type TrainerLevel = 'A1' | 'A2' | 'B1' | 'B2'
 
-export interface CatalogLesson {
-  id: string
-  module: string
-  code: string
-  title: string
-  description: string
-  locked: boolean
-  // Editors in preview only (additive field): see publication.ts.
-  publication_state?: string
-}
+// The catalog as GET /trainer/catalog sends it (openapi.json: Catalog, CatalogModule,
+// CatalogLesson, CatalogActivity). Nothing here is the front's own invention: a field the
+// backend does not send (locked, completed_count, best_score) is not in these types.
+export type PublicationState = 'draft' | 'reviewed' | 'published'
+export type ActivityState = 'not_started' | 'in_progress' | 'finished'
 
 export interface CatalogActivity {
   id: string
-  lesson_id: string
   skill: Skill
   title: string
   estimated_minutes: number
   step_count: number
-  locked: boolean
-  completed_count: number
-  best_score: number | null
-  publication_state?: string
+  role: string | null
+  can_do: string[]
+  // Editors in preview get draft and reviewed too; students, published only.
+  publication_state: PublicationState
+  state: ActivityState
+  best_percent: number | null
+}
+
+export interface CatalogLesson {
+  id: string
+  code: string
+  title: string
+  description: string
+  vocabulary_count: number
+  activities: CatalogActivity[]
+}
+
+export interface CatalogModule {
+  key: string
+  title: string
+  lessons: CatalogLesson[]
 }
 
 // Why a catalog has nothing to offer (additive field; a backend that predates it
@@ -34,18 +45,13 @@ export type CatalogReason = 'disabled_for_map' | 'no_published_content'
 export interface Catalog {
   enabled: boolean
   reason?: CatalogReason
+  title?: string
   language?: { code: string; name: string }
   level?: TrainerLevel
   content_version?: string
-  preview?: boolean
-  // The backend nests the lessons under their module; the screens still read the flat
-  // `lessons` and `activities` below (see DECISIONS-trainer.md).
-  modules?: { key: string; title: string; lessons?: { id: string }[] }[]
-  lessons?: CatalogLesson[]
-  activities?: CatalogActivity[]
-  skills?: { skill: Skill; available: boolean }[]
-  suggestion?: { activity_id: string; reason: 'next' | 'review' } | null
-  vocab_due?: number
+  // Whether the caller is an editor in preview (required by Catalog and CatalogUnavailable).
+  preview: boolean
+  modules?: CatalogModule[]
 }
 
 export interface ActivityInfo {

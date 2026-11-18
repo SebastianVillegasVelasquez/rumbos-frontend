@@ -3,15 +3,30 @@ import { describe, it } from 'node:test'
 import { ContractError } from '../course-map/data/contract.ts'
 import { hasContent, parseCatalog } from './catalogContract.ts'
 
+const activity = {
+  id: 'en-a1-1.1-dialogue',
+  skill: 'dialogue',
+  title: 'Talk it through 1.1',
+  estimated_minutes: 5,
+  publication_state: 'published',
+  step_count: 6,
+  role: null,
+  can_do: ['I can greet a guest.'],
+  state: 'not_started',
+  best_percent: null,
+}
 const lesson = {
   id: '1.1',
   code: '1.1',
   title: 'Greetings',
-  activities: [{ id: 'en-a1-1.1-dialogue', skill: 'dialogue', state: 'not_started' }],
+  description: 'Greet people.',
+  vocabulary_count: 8,
+  activities: [activity],
 }
-// The answer the production backend sends, trimmed to the fields that matter here.
+// The answer the production backend sends, trimmed to what matters here.
 const real = (lessons: unknown[]) => ({
   enabled: true,
+  preview: false,
   language: 'en',
   level: 'A1',
   title: 'Inglés A1 · Turismo',
@@ -31,7 +46,7 @@ const issuesOf = (value: unknown) => {
 
 describe('parseCatalog', () => {
   it('(a) accepts a map without a trainer, with nothing else on it', () => {
-    const catalog = parseCatalog({ enabled: false, reason: 'disabled_for_map' })
+    const catalog = parseCatalog({ enabled: false, reason: 'disabled_for_map', preview: false })
     assert.equal(catalog.enabled, false)
     assert.equal(catalog.reason, 'disabled_for_map')
   })
@@ -55,43 +70,52 @@ describe('parseCatalog', () => {
     assert.deepEqual(catalog.language, { code: 'en', name: '' })
   })
 
-  it('accepts the flat form the mock server sends', () => {
-    const catalog = parseCatalog({
-      enabled: true,
-      language: { code: 'en', name: 'inglés' },
-      modules: [{ key: 'M1', title: 'M' }],
-      lessons: [{ id: 'les1' }],
-      activities: [],
-    })
-    assert.equal(catalog.language?.name, 'inglés')
-    assert.equal(hasContent(catalog), true)
-  })
-
   it('refuses an enabled catalog without modules, naming the field', () => {
-    assert.deepEqual(issuesOf({ enabled: true }), ['modules: expected an array, got undefined'])
+    assert.deepEqual(issuesOf({ enabled: true, preview: false }), [
+      'modules: expected an array, got undefined',
+    ])
   })
 
-  it('refuses modules that are not a list, lack their key, or hold a lesson without id', () => {
-    assert.deepEqual(issuesOf({ enabled: true, modules: {} }), [
+  it('refuses modules that are not a list, lack their key, or hold a lesson without its fields', () => {
+    assert.deepEqual(issuesOf({ enabled: true, preview: false, modules: {} }), [
       'modules: expected an array, got object',
     ])
-    assert.deepEqual(issuesOf({ enabled: true, modules: [{ title: 'x' }] }), [
+    assert.deepEqual(issuesOf({ enabled: true, preview: false, modules: [{ title: 'x' }] }), [
       'modules[0].key: expected a string, got undefined',
+      'modules[0].lessons: expected an array, got undefined',
     ])
     assert.deepEqual(issuesOf(real([{ code: 'x' }])), [
       'modules[0].lessons[0].id: expected a string, got undefined',
+      'modules[0].lessons[0].title: expected a string, got undefined',
+      'modules[0].lessons[0].description: expected a string, got undefined',
+      'modules[0].lessons[0].vocabulary_count: expected a number, got undefined',
+      'modules[0].lessons[0].activities: expected an array, got undefined',
+    ])
+  })
+
+  it('refuses a catalog or an unavailable answer without preview', () => {
+    assert.deepEqual(issuesOf({ enabled: false, reason: 'disabled_for_map' }), [
+      'preview: expected a boolean, got undefined',
     ])
   })
 
   it('refuses a body that is not an object, and a missing or mistyped enabled', () => {
     assert.deepEqual(issuesOf(null), ['body: expected an object, got null'])
     assert.deepEqual(issuesOf([]), ['body: expected an object, got array'])
-    assert.deepEqual(issuesOf({ modules: [] }), ['enabled: expected a boolean, got undefined'])
-    assert.deepEqual(issuesOf({ enabled: 'yes' }), ['enabled: expected a boolean, got string'])
+    assert.deepEqual(issuesOf({ modules: [], preview: false }), [
+      'enabled: expected a boolean, got undefined',
+    ])
+    assert.deepEqual(issuesOf({ enabled: 'yes', preview: false }), [
+      'enabled: expected a boolean, got string',
+    ])
   })
 
   it('reports every wrong field in one error', () => {
-    const found = issuesOf({ enabled: true, modules: [], lessons: 3, activities: 'x', skills: {} })
-    assert.equal(found.length, 3)
+    const found = issuesOf({ enabled: true, modules: {}, title: 3 })
+    assert.deepEqual(found, [
+      'preview: expected a boolean, got undefined',
+      'title: expected a string, got number',
+      'modules: expected an array, got object',
+    ])
   })
 })

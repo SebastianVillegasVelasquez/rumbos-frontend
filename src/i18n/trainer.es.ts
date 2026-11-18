@@ -20,6 +20,7 @@ export const esTrainer = {
   publication: {
     published: 'Publicado',
     draft: 'Borrador: los estudiantes no lo verán',
+    reviewed: 'Revisado: los estudiantes aún no lo verán',
     unpublished: 'Sin publicar: los estudiantes no lo verán',
     archived: 'Archivado: los estudiantes no lo verán',
     other: (state: string) => `Estado: ${state}`,
@@ -42,10 +43,7 @@ export const esTrainer = {
   home: {
     title: (language: string) => `Entrenamiento de ${language}`,
     level: (level: string) => `Nivel ${level}`,
-    suggestion: { next: 'Sigue con esto', review: 'Te conviene repasar' },
-    start: 'Empezar',
     chooseLesson: 'Elige una lección',
-    skills: 'Habilidades',
     skillNames: {
       dialogue: 'Diálogo',
       listening: 'Escucha',
@@ -53,8 +51,6 @@ export const esTrainer = {
       writing: 'Escritura',
       vocabulary: 'Vocabulario',
     },
-    skillSoon: 'Pronto',
-    reviewWords: (n: number) => (n === 1 ? 'Repasar 1 palabra' : `Repasar ${n} palabras`),
     progress: 'Mi progreso',
     myWords: 'Mi vocabulario',
     deleteData: 'Borrar mis datos de práctica',
@@ -65,14 +61,11 @@ export const esTrainer = {
   lessons: {
     title: 'Elige una lección',
     module: (title: string) => title,
-    locked: 'Bloqueada',
-    lockedHint: 'Termina la lección anterior para abrirla.',
     activities: (n: number) => (n === 1 ? '1 actividad' : `${n} actividades`),
     minutes: (n: number) => `${n} min`,
-    done: (n: number) => (n === 0 ? 'Sin hacer' : n === 1 ? 'Hecha 1 vez' : `Hecha ${n} veces`),
+    state: { not_started: 'Sin hacer', in_progress: 'En curso', finished: 'Terminada' },
     best: (percent: number) => `Mejor: ${percent} %`,
     open: 'Abrir',
-    activityLocked: 'Bloqueada',
   },
   intro: {
     role: (role: string) => `Tu papel: ${role}`,
