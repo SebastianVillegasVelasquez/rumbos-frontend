@@ -15,7 +15,7 @@ import {
   tabFor,
   warningsOf,
 } from './settingsIssues.ts'
-import { defaultAssessments, setPolicy } from './trainingForm.ts'
+import { setPolicy, setRules } from './trainingForm.ts'
 
 const copy = es.studio.training.issues
 
@@ -185,26 +185,33 @@ describe('checking before the request', () => {
     steps,
   })
 
-  it('refuses a check-in step while the assessments are off, and says why', () => {
+  it('refuses a check-in step while the assessments are off, and asks for the form', () => {
     const issues = checkTrainingSettings(base({ welcome: welcome([checkIn]) }))
     assert.deepEqual(
       issues.map((issue) => [issue.path, issue.messageKey]),
-      [['assessments.enabled', 'assessments_disabled']]
+      [
+        ['assessments.enabled', 'assessments_disabled'],
+        ['assessments.check_in.form_id', 'form_required'],
+      ]
     )
   })
 
-  it('accepts a check-in step once they are on', () => {
-    const settings = setPolicy(base({ welcome: welcome([checkIn]) }), { enabled: true })
-    assert.deepEqual(checkTrainingSettings(settings), [])
+  it('accepts a check-in step once they are on and each form is chosen', () => {
+    const on = setPolicy(base({ welcome: welcome([checkIn]) }), { enabled: true })
+    const chosen = setRules(setRules(on, 'check_in', { form_id: 'a1-form-a' }), 'final', {
+      form_id: 'a1-form-a',
+    })
+    assert.deepEqual(checkTrainingSettings(chosen), [])
   })
 
-  it('asks for a form when the assessments are on without one', () => {
-    const assessments = { ...defaultAssessments(), enabled: true }
-    assessments.check_in = { ...assessments.check_in, form_id: '  ' }
-    const issues = checkTrainingSettings(base({ assessments }))
+  it('never picks a form for the author: switched on without one, both are asked for', () => {
+    const issues = checkTrainingSettings(setPolicy(base(), { enabled: true }))
     assert.deepEqual(
       issues.map((issue) => [issue.path, issue.messageKey]),
-      [['assessments.check_in.form_id', 'form_required']]
+      [
+        ['assessments.check_in.form_id', 'form_required'],
+        ['assessments.final.form_id', 'form_required'],
+      ]
     )
   })
 

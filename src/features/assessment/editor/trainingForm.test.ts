@@ -88,7 +88,8 @@ describe('training settings model', () => {
   it('keeps the form id as typed, up to its limit, and per purpose', () => {
     const typed = setRules(base, 'check_in', { form_id: ' forma_b ' })
     assert.equal(typed.assessments?.check_in.form_id, ' forma_b ')
-    assert.equal(typed.assessments?.final.form_id, 'forma_a')
+    // Nothing is chosen for the author.
+    assert.equal(typed.assessments?.final.form_id, '')
     assert.equal(
       setRules(base, 'final', { form_id: 'x'.repeat(200) }).assessments?.final.form_id.length,
       64

@@ -4,7 +4,8 @@ import { app } from './support.ts'
 // What the editor says when the trainer settings cannot be saved, against the mock
 // host (an editor with editing on) and the mock backend, which answers like the
 // contract: a 422 with errors[] { path, rule, message_key } and, on a save that goes
-// through, warnings[]. Also the check-in step's dependency on the assessments.
+// through, warnings[]. Also the check-in step's dependency on the assessments, and
+// the rule that no form is chosen for the author (a1-form-a is the only one offered).
 
 const welcomeWithoutSteps = encodeURIComponent(
   JSON.stringify({
@@ -43,12 +44,57 @@ const goTo = (page: Page, tab: string) =>
   studio(page).getByRole('button', { name: tab, exact: true }).click()
 const assessmentsSwitch = (page: Page) =>
   studio(page).getByRole('switch', { name: /Activar la evaluación/ })
-const checkInForm = (page: Page) =>
-  studio(page).getByRole('group', { name: 'Evaluación de entrada' }).getByLabel('Formulario')
+const formOf = (page: Page, group: 'Evaluación de entrada' | 'Evaluación final') =>
+  studio(page).getByRole('group', { name: group }).getByLabel('Formulario')
 const unsaved = (page: Page) => studio(page).getByText('Cambios sin guardar', { exact: true })
+const issueList = (page: Page) =>
+  studio(page).getByRole('alert').filter({ hasText: 'Corrige estos campos' })
+const addCheckIn = (page: Page) =>
+  studio(page).getByRole('button', { name: 'Evaluación de Rumbos (check-in)', exact: true }).click()
+// The author's own choice, one purpose at a time: nothing picks it for them.
+const chooseForms = async (page: Page) => {
+  await formOf(page, 'Evaluación de entrada').selectOption('a1-form-a')
+  await formOf(page, 'Evaluación final').selectOption('a1-form-a')
+}
+
+test.describe('the form is chosen, never defaulted', () => {
+  test('starts with none selected and offers a1-form-a', async ({ page }) => {
+    await openStudio(page)
+    await goTo(page, 'Entrenamiento')
+    for (const group of ['Evaluación de entrada', 'Evaluación final'] as const) {
+      await expect(formOf(page, group)).toHaveValue('')
+      await expect(formOf(page, group).locator('option')).toHaveText([
+        'Elige un formulario',
+        'a1-form-a',
+      ])
+    }
+  })
+
+  test('switching the assessments on without a form is refused, naming each one', async ({
+    page,
+  }) => {
+    await openStudio(page)
+    await goTo(page, 'Entrenamiento')
+    await assessmentsSwitch(page).check()
+    await save(page).click()
+    const list = issueList(page)
+    await expect(
+      list.getByRole('button', { name: 'Evaluación de entrada: falta elegir el formulario' })
+    ).toBeVisible()
+    await expect(
+      list.getByRole('button', { name: 'Evaluación final: falta elegir el formulario' })
+    ).toBeVisible()
+    await expect(formOf(page, 'Evaluación de entrada')).toBeFocused()
+    await expect(formOf(page, 'Evaluación de entrada')).toHaveAttribute('aria-invalid', 'true')
+    await chooseForms(page)
+    await expect(list).toHaveCount(0)
+    await save(page).click()
+    await expect(unsaved(page)).toHaveCount(0)
+  })
+})
 
 test.describe('check-in step and its dependency', () => {
-  test('offers both kinds and turns the assessments on when the check-in is added', async ({
+  test('offers both kinds and turns the assessments on, but leaves the form to the author', async ({
     page,
   }) => {
     await openStudio(page)
@@ -59,13 +105,19 @@ test.describe('check-in step and its dependency', () => {
     await expect(
       studio(page).getByRole('button', { name: 'Evaluación de Moodle', exact: true })
     ).toBeVisible()
-    await studio(page)
-      .getByRole('button', { name: 'Evaluación de Rumbos (check-in)', exact: true })
-      .click()
-    // The dependency is said in the step, with the form it will use.
+    await addCheckIn(page)
+    // The dependency is said in the step, and so is what is still missing.
     await expect(studio(page).getByText(/Activamos las evaluaciones/)).toBeVisible()
-    await expect(studio(page).getByText('Formulario: forma_a')).toBeVisible()
-    // And it saves: nothing fails without a reason.
+    await expect(studio(page).getByText('Formulario: sin elegir todavía')).toBeVisible()
+    // Saving now says why it cannot, instead of failing at the server.
+    await save(page).click()
+    await expect(
+      issueList(page).getByRole('button', {
+        name: 'Evaluación de entrada: falta elegir el formulario',
+      })
+    ).toBeVisible()
+    await expect(formOf(page, 'Evaluación de entrada')).toBeFocused()
+    await chooseForms(page)
     await save(page).click()
     await expect(unsaved(page)).toHaveCount(0)
     await goTo(page, 'Entrenamiento')
@@ -85,26 +137,22 @@ test.describe('check-in step and its dependency', () => {
   }) => {
     await openStudio(page)
     await goTo(page, 'Flujo de bienvenida')
-    await studio(page)
-      .getByRole('button', { name: 'Evaluación de Rumbos (check-in)', exact: true })
-      .click()
+    await addCheckIn(page)
     await goTo(page, 'Entrenamiento')
+    await chooseForms(page)
     await assessmentsSwitch(page).uncheck()
     await save(page).click()
-    const list = studio(page).getByRole('alert').filter({ hasText: 'Corrige estos campos' })
-    await expect(list).toBeVisible()
+    const list = issueList(page)
     await expect(
       list.getByRole('button', { name: /^Evaluaciones: las evaluaciones están desactivadas/ })
     ).toBeVisible()
-    // The focus is on the field, which says it in text and not only by color.
     await expect(assessmentsSwitch(page)).toBeFocused()
     await expect(assessmentsSwitch(page)).toHaveAttribute('aria-invalid', 'true')
     await expect(
       studio(page).getByText(/Error: las evaluaciones están desactivadas/)
     ).toBeAttached()
-    // What the author did is still there.
     await expect(unsaved(page)).toBeVisible()
-    // Fixing the field clears its error.
+    await expect(formOf(page, 'Evaluación de entrada')).toHaveValue('a1-form-a')
     await assessmentsSwitch(page).check()
     await expect(list).toHaveCount(0)
     await save(page).click()
@@ -114,10 +162,9 @@ test.describe('check-in step and its dependency', () => {
   test('the step itself offers to switch them on again', async ({ page }) => {
     await openStudio(page)
     await goTo(page, 'Flujo de bienvenida')
-    await studio(page)
-      .getByRole('button', { name: 'Evaluación de Rumbos (check-in)', exact: true })
-      .click()
+    await addCheckIn(page)
     await goTo(page, 'Entrenamiento')
+    await chooseForms(page)
     await assessmentsSwitch(page).uncheck()
     await goTo(page, 'Flujo de bienvenida')
     await studio(page)
@@ -132,56 +179,53 @@ test.describe('check-in step and its dependency', () => {
 })
 
 test.describe('a refused save', () => {
-  test('lists the failing field in words, focuses it and keeps what was typed', async ({
+  test('lists the failing field in words, focuses it and keeps what was chosen', async ({
     page,
   }) => {
-    await openStudio(page)
+    // The form was deleted after it was chosen: the server says so.
+    await openStudio(page, '&mockFormsGone=1')
     await goTo(page, 'Entrenamiento')
     await assessmentsSwitch(page).check()
-    await checkInForm(page).fill('nope')
+    await chooseForms(page)
     await save(page).click()
 
-    const list = studio(page).getByRole('alert').filter({ hasText: 'Corrige estos campos' })
+    const list = issueList(page)
     await expect(
       list.getByRole('button', {
         name: 'Evaluación de entrada: el formulario seleccionado no existe',
       })
     ).toBeVisible()
-    // Not the old line that told nothing.
     await expect(studio(page).getByText(/422, trainer_settings_invalid/)).toHaveCount(0)
 
-    // The first failing field has the focus and an error that is more than a color.
-    await expect(checkInForm(page)).toBeFocused()
-    await expect(checkInForm(page)).toHaveAttribute('aria-invalid', 'true')
-    await expect(checkInForm(page)).toHaveAccessibleDescription(
-      /el formulario seleccionado no existe/
-    )
-    await expect(
-      studio(page).getByText('el formulario seleccionado no existe').last()
-    ).toBeVisible()
-    // What the author typed is still there, and still unsaved.
-    await expect(checkInForm(page)).toHaveValue('nope')
+    const field = formOf(page, 'Evaluación de entrada')
+    await expect(field).toBeFocused()
+    await expect(field).toHaveAttribute('aria-invalid', 'true')
+    await expect(field).toHaveAccessibleDescription(/el formulario seleccionado no existe/)
+    await expect(field).toHaveValue('a1-form-a')
     await expect(unsaved(page)).toBeVisible()
 
-    // Correcting it clears the error and the next save goes through.
-    await checkInForm(page).fill('forma_b')
-    await expect(list).toHaveCount(0)
-    await expect(checkInForm(page)).not.toHaveAttribute('aria-invalid', 'true')
-    await save(page).click()
-    await expect(unsaved(page)).toHaveCount(0)
+    // Changing that field drops its error; the other one stays until fixed.
+    await field.selectOption('')
+    await expect(field).not.toHaveAttribute('aria-invalid', 'true')
+    await expect(
+      list.getByRole('button', { name: /^Evaluación de entrada: el formulario/ })
+    ).toHaveCount(0)
+    await expect(
+      list.getByRole('button', { name: 'Evaluación final: el formulario seleccionado no existe' })
+    ).toBeVisible()
   })
 
   test('the list takes you to the field, even from another tab', async ({ page }) => {
-    await openStudio(page)
+    await openStudio(page, '&mockFormsGone=1')
     await goTo(page, 'Entrenamiento')
     await assessmentsSwitch(page).check()
-    await checkInForm(page).fill('nope')
+    await chooseForms(page)
     await save(page).click()
-    const list = studio(page).getByRole('alert').filter({ hasText: 'Corrige estos campos' })
+    const list = issueList(page)
     await expect(list).toBeVisible()
     await goTo(page, 'Flujo de bienvenida')
     await list.getByRole('button', { name: /^Evaluación de entrada: el formulario/ }).click()
-    await expect(checkInForm(page)).toBeFocused()
+    await expect(formOf(page, 'Evaluación de entrada')).toBeFocused()
   })
 })
 
@@ -189,8 +233,8 @@ test.describe('a save with warnings', () => {
   test('goes through and says what the author should know, without blocking', async ({ page }) => {
     await openStudio(page, '&mockTrainerUnpublished=1')
     await goTo(page, 'Entrenamiento')
-    // The mock map already has the trainer on; the assessments are what changes.
     await assessmentsSwitch(page).check()
+    await chooseForms(page)
     await save(page).click()
     await expect(unsaved(page)).toHaveCount(0)
     const notice = studio(page).getByRole('status').filter({ hasText: 'Se guardó, con avisos' })
@@ -205,8 +249,8 @@ test.describe('a save with warnings', () => {
   test('says nothing when the save has no warnings', async ({ page }) => {
     await openStudio(page)
     await goTo(page, 'Entrenamiento')
-    // The mock map already has the trainer on; the assessments are what changes.
     await assessmentsSwitch(page).check()
+    await chooseForms(page)
     await save(page).click()
     await expect(unsaved(page)).toHaveCount(0)
     await expect(studio(page).getByText('Se guardó, con avisos')).toHaveCount(0)

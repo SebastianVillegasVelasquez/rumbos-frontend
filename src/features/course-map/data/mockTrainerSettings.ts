@@ -12,9 +12,10 @@ export interface WireIssue {
 }
 
 // The forms the mock knows. Anything else is "not found", like the real catalog.
-export const MOCK_FORMS: readonly string[] = ['forma_a', 'forma_b']
+export const MOCK_FORMS: readonly string[] = ['a1-form-a']
 
-export const trainerSettingsErrors = (settings: MapSettings): WireIssue[] => {
+// `formsGone` (?mockFormsGone=1) stands for a form deleted after it was chosen.
+export const trainerSettingsErrors = (settings: MapSettings, formsGone = false): WireIssue[] => {
   const errors: WireIssue[] = []
   const assessments = settings.assessments
   const steps = settings.welcome?.steps ?? []
@@ -24,12 +25,18 @@ export const trainerSettingsErrors = (settings: MapSettings): WireIssue[] => {
     errors.push({
       path: `welcome.steps[${stepIndex}]`,
       rule: 'check_in_requires_assessments',
-      message_key: 'assessments_disabled',
+      message_key: 'assessment_step_needs_check_in',
     })
   if (assessments?.enabled) {
     for (const purpose of ['check_in', 'final'] as const) {
       const formId = assessments[purpose]?.form_id
-      if (typeof formId === 'string' && !MOCK_FORMS.includes(formId))
+      if (typeof formId !== 'string' || formId === '')
+        errors.push({
+          path: `assessments.${purpose}.form_id`,
+          rule: 'form_required',
+          message_key: 'form_required',
+        })
+      else if (formsGone || !MOCK_FORMS.includes(formId))
         errors.push({
           path: `assessments.${purpose}.form_id`,
           rule: 'form_exists',

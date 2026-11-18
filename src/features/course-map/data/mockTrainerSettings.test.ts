@@ -33,7 +33,7 @@ describe('the mock backend trainer rules', () => {
       {
         path: 'welcome.steps[0]',
         rule: 'check_in_requires_assessments',
-        message_key: 'assessments_disabled',
+        message_key: 'assessment_step_needs_check_in',
       },
     ])
   })
@@ -41,15 +41,30 @@ describe('the mock backend trainer rules', () => {
   it('refuses a form that does not exist, per purpose', () => {
     const assessments = defaultAssessments()
     assessments.enabled = true
+    assessments.check_in.form_id = 'a1-form-a'
     assessments.final.form_id = 'nope'
     assert.deepEqual(trainerSettingsErrors(withStep(assessments)), [
       { path: 'assessments.final.form_id', rule: 'form_exists', message_key: 'form_not_found' },
     ])
   })
 
-  it('accepts the defaults once switched on', () => {
+  it('requires a form for each purpose: none is chosen for the author', () => {
     const assessments = { ...defaultAssessments(), enabled: true }
+    assert.deepEqual(
+      trainerSettingsErrors(withStep(assessments)).map((issue) => [issue.path, issue.message_key]),
+      [
+        ['assessments.check_in.form_id', 'form_required'],
+        ['assessments.final.form_id', 'form_required'],
+      ]
+    )
+  })
+
+  it('accepts a chosen form, and refuses it when it is gone', () => {
+    const assessments = { ...defaultAssessments(), enabled: true }
+    assessments.check_in.form_id = 'a1-form-a'
+    assessments.final.form_id = 'a1-form-a'
     assert.deepEqual(trainerSettingsErrors(withStep(assessments)), [])
+    assert.equal(trainerSettingsErrors(withStep(assessments), true).length, 2)
   })
 
   it('warns only when asked to and something is switched on', () => {

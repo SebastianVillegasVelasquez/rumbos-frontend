@@ -433,6 +433,7 @@ export const AssessmentEditor = ({
       <p role="status" className="border-soft rounded-md bg-surface p-2 text-xs font-bold text-ink">
         {autoEnabled && <span className="block">{text.assessment.autoEnabled}</span>}
         <span className="block">{text.assessment.form(formId)}</span>
+        {formId === '' && <span className="block">{text.assessment.pickForm}</span>}
       </p>
     ) : (
       <div

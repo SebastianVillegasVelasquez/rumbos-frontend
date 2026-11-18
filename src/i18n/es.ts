@@ -860,7 +860,9 @@ export const es = {
         'Atención: quien apruebe la evaluación de entrada o la final completará el curso y recibirá el certificado, sin hacer el resto de actividades.',
       previewNote: 'Quien tenga permiso de edición lo prueba como vista previa: no se guarda nada.',
       formId: 'Formulario',
-      formIdHint: 'Identificador del formulario de preguntas. Tiene que existir y estar publicado.',
+      formPlaceholder: 'Elige un formulario',
+      formGone: (id: string) => `${id} (ya no está disponible)`,
+      formIdHint: 'Hay que elegir uno: no se elige solo.',
       fieldError: 'Error',
       // What a failed (or refused) save says: the fields that are wrong, in words.
       issues: {
@@ -888,6 +890,8 @@ export const es = {
             'las evaluaciones están desactivadas; actívalas en «Entrenamiento y evaluación» para usar este paso',
           trainer_disabled: 'el entrenamiento está desactivado',
           form_required: 'falta elegir el formulario',
+          assessment_step_needs_check_in:
+            'este paso necesita la evaluación de entrada activada y con un formulario elegido',
           form_not_found: 'el formulario seleccionado no existe',
           form_not_published: 'el formulario seleccionado todavía no está publicado',
           level_without_content: 'ese nivel todavía no tiene contenido',
@@ -1057,10 +1061,11 @@ export const es = {
         requires:
           'Este paso necesita dos cosas en «Entrenamiento y evaluación»: las evaluaciones activadas y un formulario válido.',
         autoEnabled:
-          'Activamos las evaluaciones en «Entrenamiento y evaluación» para que este paso funcione. Revisa allí el formulario.',
+          'Activamos las evaluaciones en «Entrenamiento y evaluación» para que este paso funcione. Falta que elijas allí el formulario.',
         disabledNow: 'Las evaluaciones están desactivadas, así que este paso no se podrá guardar.',
         enableNow: 'Activar las evaluaciones',
-        form: (id: string) => `Formulario: ${id}`,
+        form: (id: string) => (id ? `Formulario: ${id}` : 'Formulario: sin elegir todavía'),
+        pickForm: 'Elígelo en «Entrenamiento y evaluación» antes de guardar.',
         body: 'Evaluación de entrada del curso, dentro de Rumbos. Cuenta como hecha cuando el estudiante la entrega o se acaba el tiempo, sea cual sea el resultado.',
         where:
           'Los intentos, el tiempo y la nota mínima se definen en «Entrenamiento y evaluación» del mapa.',

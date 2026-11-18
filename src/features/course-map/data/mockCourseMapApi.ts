@@ -1684,7 +1684,10 @@ const impl: Omit<CourseMapApi, TransferMethods> = {
       throw businessError(422, 'welcome_invalid', 'La bienvenida no es válida', {
         problems: flowProblems.map((problem) => ({ ...problem, message: problem.code })),
       })
-    const trainerErrors = trainerSettingsErrors(input.settings)
+    const trainerErrors = trainerSettingsErrors(
+      input.settings,
+      Boolean(queryParam('mockFormsGone'))
+    )
     if (trainerErrors.length > 0)
       throw businessError(422, 'trainer_settings_invalid', 'The trainer settings are not valid', {
         errors: trainerErrors,

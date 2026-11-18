@@ -14,6 +14,7 @@ import { View3dTab } from '../../view3d/editor/View3dTab.tsx'
 import { TrainingTab } from '../../assessment/editor/TrainingTab.tsx'
 import { SettingsIssuesList, SettingsWarnings } from '../../assessment/editor/SettingsIssues.tsx'
 import { checkTrainingSettings, issuesFromError } from '../../assessment/editor/settingsIssues.ts'
+import { useAssessmentForms } from '../../assessment/editor/useAssessmentForms.ts'
 import { useSettingsIssues } from '../../assessment/editor/useSettingsIssues.ts'
 import { trainingSupported } from '../../assessment/editor/trainingForm.ts'
 import { useAnimationQuality, type QualitySetting } from '../../../fx/quality.ts'
@@ -92,6 +93,7 @@ export const AppearanceStudio = ({
     edited: settingsEdited,
     dismissWarnings,
   } = useSettingsIssues({ rootRef, setTab })
+  const { forms } = useAssessmentForms()
   const updateAppearance = useUpdateAppearance(courseMap.id)
   // A backend that predates audio answers the library listing with an error:
   // the Música tab then does not exist.
@@ -254,7 +256,12 @@ export const AppearanceStudio = ({
           <MusicTab settings={settings} onChange={setSettings} />
         )}
         {tab === 'training' && trainingAvailable && (
-          <TrainingTab settings={settings} onChange={changeSettings} issues={settingsIssues} />
+          <TrainingTab
+            settings={settings}
+            onChange={changeSettings}
+            issues={settingsIssues}
+            forms={forms}
+          />
         )}
         {tab === 'welcome' && welcomeSupported && (
           <FlowTab

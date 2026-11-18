@@ -128,7 +128,7 @@ export const sectionLabel = (
 }
 
 export const issueMessage = (issue: SettingsIssue, copy: IssueCopy): string =>
-  copy.messages[issue.messageKey] ?? copy.unknown(issue.messageKey)
+  copy.messages[issue.messageKey] ?? copy.messages[issue.rule] ?? copy.unknown(issue.messageKey)
 
 // "Evaluación de entrada: el formulario seleccionado no existe".
 export const describeIssue = (

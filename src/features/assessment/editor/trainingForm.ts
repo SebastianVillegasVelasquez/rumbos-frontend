@@ -24,16 +24,16 @@ export const LIMITS = {
   formIdMax: 64,
 } as const
 
-// ASSUMPTION (contract v2 names a form_id but no list of forms): the A1 Forma A
-// form has this id until the backend says otherwise.
-export const DEFAULT_FORM_ID = 'forma_a'
+// No form is chosen for the author: an empty form_id means "not selected yet", and a
+// map with the assessments on cannot be saved until each purpose has one.
+export const NO_FORM = ''
 
 export const defaultTrainer = (): MapTrainer => ({ enabled: false, language: 'en', level: 'A1' })
 
 export const defaultAssessments = (): MapAssessments => ({
   enabled: false,
-  check_in: { form_id: DEFAULT_FORM_ID, max_attempts: 1, time_limit_min: 60 },
-  final: { form_id: DEFAULT_FORM_ID, max_attempts: 3, time_limit_min: 60 },
+  check_in: { form_id: NO_FORM, max_attempts: 1, time_limit_min: 60 },
+  final: { form_id: NO_FORM, max_attempts: 3, time_limit_min: 60 },
   pass_percent: 80,
   pass_operator: 'gt',
   exemption: { enabled: true },

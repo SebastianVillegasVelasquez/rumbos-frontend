@@ -2,6 +2,7 @@ import { useId } from 'react'
 import { AlertCircle } from 'lucide-react'
 import { es } from '../../../i18n/es.ts'
 import type { MapSettings, TrainerLevel } from '../../course-map/data/types.ts'
+import type { AssessmentForm } from './forms.ts'
 import { issueMessage, normalizePath, type SettingsIssue } from './settingsIssues.ts'
 import {
   ALL_LEVELS,
@@ -138,11 +139,13 @@ const PurposeRules = ({
   settings,
   onChange,
   issues,
+  forms,
 }: {
   purpose: Purpose
   settings: MapSettings
   onChange: (settings: MapSettings) => void
   issues: Issues
+  forms: readonly AssessmentForm[]
 }) => {
   const rules = assessmentsOf(settings)[purpose]
   const base = `assessments.${purpose}`
@@ -166,19 +169,26 @@ const PurposeRules = ({
         <label htmlFor={formId} className={labelClass}>
           {text.formId}
         </label>
-        <input
+        <select
           id={formId}
-          type="text"
-          autoComplete="off"
-          spellCheck={false}
-          maxLength={LIMITS.formIdMax}
           className={`${fieldClass} ${formError ? invalidClass : ''}`}
           value={rules.form_id}
           onChange={(event) =>
             onChange(setRules(settings, purpose, { form_id: event.target.value }))
           }
           {...fieldProps(`${base}.form_id`, formError, formErrorId)}
-        />
+        >
+          <option value="">{text.formPlaceholder}</option>
+          {forms.map((form) => (
+            <option key={form.id} value={form.id}>
+              {form.title}
+            </option>
+          ))}
+          {/* A saved form the list no longer has stays visible, so it can be replaced. */}
+          {rules.form_id !== '' && !forms.some((form) => form.id === rules.form_id) && (
+            <option value={rules.form_id}>{text.formGone(rules.form_id)}</option>
+          )}
+        </select>
         <FieldError id={formErrorId} message={formError} />
         <p className={hintClass}>{text.formIdHint}</p>
       </div>
@@ -213,10 +223,12 @@ export const TrainingTab = ({
   settings,
   onChange,
   issues = [],
+  forms,
 }: {
   settings: MapSettings
   onChange: (settings: MapSettings) => void
   issues?: Issues
+  forms: readonly AssessmentForm[]
 }) => {
   const trainer = trainerOf(settings)
   const assessments = assessmentsOf(settings)
@@ -281,8 +293,20 @@ export const TrainingTab = ({
           issues={issues}
           onChange={(enabled) => onChange(setPolicy(settings, { enabled }))}
         />
-        <PurposeRules purpose="check_in" settings={settings} onChange={onChange} issues={issues} />
-        <PurposeRules purpose="final" settings={settings} onChange={onChange} issues={issues} />
+        <PurposeRules
+          purpose="check_in"
+          settings={settings}
+          onChange={onChange}
+          issues={issues}
+          forms={forms}
+        />
+        <PurposeRules
+          purpose="final"
+          settings={settings}
+          onChange={onChange}
+          issues={issues}
+          forms={forms}
+        />
 
         <NumberField
           label={text.passPercent}
