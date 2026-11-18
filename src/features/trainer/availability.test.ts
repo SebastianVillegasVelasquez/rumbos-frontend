@@ -10,7 +10,12 @@ import {
 } from './availability.ts'
 import type { Catalog } from './types.ts'
 
-const ok: Catalog = { enabled: true }
+const ok: Catalog = {
+  enabled: true,
+  modules: [{ key: 'M1', title: 'Módulo', lessons: [{ id: '1.1' }] }],
+}
+// Enabled, with modules that hold no lesson yet (the third answer a catalog can give).
+const hollow: Catalog = { enabled: true, modules: [{ key: 'M1', title: 'Módulo', lessons: [] }] }
 const base = { welcomePending: false, isEditor: false }
 
 describe('entryState', () => {
@@ -155,5 +160,31 @@ describe('stageScreen', () => {
     })
     assert.deepEqual(stageScreen({ status: 'success', catalog: ok }), { kind: 'content' })
     assert.deepEqual(stageScreen({ status: 'pending' }), { kind: 'loading' })
+  })
+})
+
+describe('an enabled catalog with no lessons', () => {
+  const base = { welcomePending: false, isEditor: false }
+
+  it('is no content for the entry button, as for the stage', () => {
+    assert.equal(catalogReason(hollow), 'no_content')
+    assert.deepEqual(entryState({ ...base, status: 'success', catalog: hollow }), {
+      kind: 'disabled',
+      reason: 'no_content',
+      busy: false,
+    })
+    assert.deepEqual(stageScreen({ status: 'success', catalog: hollow }), {
+      kind: 'unavailable',
+      reason: 'no_content',
+    })
+  })
+
+  it('counts lessons in the flat form too, and reads no modules when disabled', () => {
+    const flat = { enabled: true, modules: [], lessons: [] } as Catalog
+    assert.equal(catalogReason(flat), 'no_content')
+    assert.equal(catalogReason({ ...flat, lessons: [{ id: 'x' }] as Catalog['lessons'] }), null)
+    // Disabled: the verdict comes from `enabled` and `reason`, whatever else is there.
+    const off = { enabled: false, reason: 'disabled_for_map', modules: null } as unknown as Catalog
+    assert.equal(catalogReason(off), 'disabled_for_map')
   })
 })

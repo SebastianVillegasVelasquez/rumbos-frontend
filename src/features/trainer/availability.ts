@@ -1,3 +1,4 @@
+import { hasContent } from './catalogContract.ts'
 import type { Catalog } from './types.ts'
 import type { FailureKind } from './sessionReducer.ts'
 
@@ -27,10 +28,13 @@ export interface AvailabilityInput {
 }
 
 // The reason a successful but unusable catalog carries. A backend that predates
-// `reason` sends `enabled: false` alone: that is a map without a trainer.
+// `reason` sends `enabled: false` alone: that is a map without a trainer. `enabled`
+// and `reason` are read first and alone; the modules are looked at only once the
+// catalog says it is on, to tell a trainer with lessons from one that has none yet.
 export const catalogReason = (catalog: Catalog): 'no_content' | 'disabled_for_map' | null => {
-  if (catalog.enabled) return null
-  return catalog.reason === 'no_published_content' ? 'no_content' : 'disabled_for_map'
+  if (!catalog.enabled)
+    return catalog.reason === 'no_published_content' ? 'no_content' : 'disabled_for_map'
+  return hasContent(catalog) ? null : 'no_content'
 }
 
 const disabled = (reason: TrainerReason, busy = false): TrainerEntryState => ({

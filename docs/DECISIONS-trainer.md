@@ -244,3 +244,17 @@ Nothing was added; the welcome text stays what the author writes.
   engines and is the one section 4 records as failing on clean `main`. The other four (three in
   `welcome-quiz-checkin`, one WebKit `welcome-flow-visual` at 768) passed on a rerun of those files: load flakes of a
   4-worker run.
+
+## Catalog contract at the edge
+
+- The crash ("reading 'find'" of undefined, in `FinalCard`) came from `GET /trainer/assessments`
+  answering `{ enabled: false }` with no `items`, not from the catalog. It needed an enabled
+  catalog to reach the home screen, so it showed with the third answer only.
+- `parseCatalog` and `parseAssessmentList` check the response in the API client and raise
+  `ContractError` (endpoint + fields) instead of letting a wrong shape reach a render. A disabled
+  assessment list leaves with `items: []`; its type no longer promises a policy.
+- An enabled catalog with no lessons (flat or nested) is `no_content`, for the button and the stage.
+- **Open drift, not fixed here:** the backend nests lessons and activities under `modules[]`, names
+  `language` by code, and has `state`/`best_percent` where the code reads `completed_count`/
+  `best_score`/`locked`. The screens still read the flat shape, so with real data the lesson list
+  is empty. No `openapi.json` is in the repo to compare against.

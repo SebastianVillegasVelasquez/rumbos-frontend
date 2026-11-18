@@ -1,4 +1,6 @@
 import { apiRequest } from '../course-map/data/client.ts'
+import { checked } from '../course-map/data/contract.ts'
+import { parseCatalog } from './catalogContract.ts'
 import type {
   ActivityInfo,
   AnswerResult,
@@ -15,7 +17,10 @@ import type {
 const BASE = '/trainer'
 
 export const trainerApi = {
-  catalog: () => apiRequest<Catalog>(`${BASE}/catalog`),
+  // Checked at the edge: a catalog the screens cannot read is a ContractError here,
+  // not a TypeError in a component.
+  catalog: async (): Promise<Catalog> =>
+    checked('GET /trainer/catalog', parseCatalog)(await apiRequest<unknown>(`${BASE}/catalog`)),
   activity: (id: string) => apiRequest<ActivityInfo>(`${BASE}/activities/${id}`),
   start: (activityId: string) =>
     apiRequest<SessionStart>(`${BASE}/sessions`, {
