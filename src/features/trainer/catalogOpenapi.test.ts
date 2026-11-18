@@ -5,15 +5,15 @@ import { catalogFixture } from './fixtures/catalogFixture.ts'
 import { parseCatalog } from './catalogContract.ts'
 
 // The real catalog answer against the backend's openapi.json: the fixture must satisfy
-// the schema (required fields, types, enums, nothing undeclared), and so must a catalog
-// the front accepts. Point OPENAPI_JSON at the spec; otherwise ./openapi.json or the
-// sibling ../rumbos-backend/openapi.json is used. Without any, the suite is skipped.
-const path = [process.env.OPENAPI_JSON, 'openapi.json', '../rumbos-backend/openapi.json'].find(
-  (candidate) => candidate && existsSync(candidate)
-)
+// the schema (required fields, types, enums, nothing undeclared) and the front must accept it.
+// The spec is the committed copy at contracts/openapi.json (see contracts/README.md);
+// OPENAPI_JSON points at another one. A missing spec FAILS the suite: a contract test that
+// skips itself in CI checks nothing.
+const path = process.env.OPENAPI_JSON ?? 'contracts/openapi.json'
 
 type Node = Record<string, unknown>
-const spec = (path ? JSON.parse(readFileSync(path, 'utf8')) : {}) as Node
+const present = existsSync(path)
+const spec = (present ? JSON.parse(readFileSync(path, 'utf8')) : {}) as Node
 
 const deref = (node: Node): Node => {
   let current = node
@@ -85,7 +85,14 @@ const catalogSchema = (): Node => {
   return json.schema as Node
 }
 
-describe('GET /trainer/catalog against openapi.json', { skip: !path }, () => {
+describe('GET /trainer/catalog against openapi.json', () => {
+  it('has the spec to compare with', () => {
+    assert.ok(
+      present,
+      `openapi.json not found at ${path}: copy the backend export (contracts/README.md)`
+    )
+  })
+
   it('the real preview answer satisfies the schema', () => {
     assert.deepEqual(check(catalogFixture(), catalogSchema(), 'catalog'), [])
   })
