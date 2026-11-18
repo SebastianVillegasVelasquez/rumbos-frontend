@@ -742,7 +742,16 @@ export const es = {
     levels: 'Niveles',
     quests: 'Misiones',
     trainer: 'Entrenar',
-    trainerWaiting: 'Se activa al terminar la bienvenida',
+    // What the "Entrenar" button says about itself when it cannot just open.
+    trainerNote: {
+      loading: 'Cargando el entrenamiento…',
+      waiting_welcome: 'Se activa al terminar la bienvenida',
+      no_content: 'Pronto habrá ejercicios disponibles',
+      // Editors only: students never see a button for a map without a trainer.
+      disabled_for_map: 'El entrenamiento está desactivado en este mapa',
+      load_error: 'No pudimos cargar el entrenamiento. Toca para reintentar.',
+      unauthorized: 'Tu sesión venció. Vuelve a entrar para entrenar.',
+    },
     recenter: 'Recentrar el mapa',
     levelPosition: (index: number, count: number) => `Nivel ${index} de ${count}`,
     chipProgress: (done: number, total: number) => `· ${done}/${total}`,

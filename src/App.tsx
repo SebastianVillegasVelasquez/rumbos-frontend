@@ -32,6 +32,14 @@ import {
   type ContinueAction,
 } from './features/hud/StudentStage.tsx'
 import { LazyTrainerStage } from './features/trainer/LazyTrainerStage.tsx'
+import {
+  entryMode,
+  entryReason,
+  entryState,
+  noteIsPersistent,
+} from './features/trainer/availability.ts'
+import { classifyFailure } from './features/trainer/failure.ts'
+import { useCatalog } from './features/trainer/useCatalog.ts'
 import { StudentLevelsChrome } from './features/hud/StudentLevelsChrome.tsx'
 import { WriteSyncHost } from './features/course-map/components/WriteSyncHost.tsx'
 import { PublicationBar } from './features/course-map/components/publication/PublicationBar.tsx'
@@ -750,13 +758,23 @@ export function AppShell() {
         onDone={welcomeState.dismiss}
       />
     ) : null
-  // The practice trainer: its button shows only when the map has one. Until the
-  // welcome flow is finished it is disabled with the reason (a convention, never a
-  // lock); an editor is never disabled.
+  // The practice trainer: its button shows only when the map has one, and its state
+  // comes from the catalog (loading, empty, failed, or ready). Until the welcome flow
+  // is finished it is disabled with the reason (a convention, never a lock); an editor
+  // looking at the student view is never held by the flow.
   const [trainerOpen, setTrainerOpen] = useState(false)
   const trainerOn = Boolean(renderable?.settings.trainer?.enabled)
   const welcomePending =
     flowGate !== null && (flowGate.state.status === 'run' || flowGate.state.status === 'checking')
+  const trainerCatalog = useCatalog(trainerOn && immersive)
+  const trainerState = entryState({
+    status: trainerCatalog.status,
+    catalog: trainerCatalog.data,
+    failure: trainerCatalog.isError ? classifyFailure(trainerCatalog.error) : undefined,
+    welcomePending,
+    isEditor: exitPreview !== null,
+  })
+  const trainerReason = entryReason(trainerState)
   const closeTrainer = () => setTrainerOpen(false)
   // The HUD is inert while the stage is open: when it closes, the focus goes back to
   // the "Entrenar" button (after the HUD is live again).
@@ -1284,10 +1302,12 @@ export function AppShell() {
                 questsOpen={questsOpen}
                 onToggleQuests={toggleQuests}
                 trainer={
-                  trainerOn
+                  trainerOn && trainerState.kind !== 'hidden'
                     ? {
                         onOpen: () => setTrainerOpen(true),
-                        disabledReason: welcomePending && !isEditor ? es.hud.trainerWaiting : null,
+                        mode: entryMode(trainerState),
+                        note: trainerReason ? es.hud.trainerNote[trainerReason] : null,
+                        persistentNote: noteIsPersistent(trainerState, exitPreview !== null),
                       }
                     : null
                 }

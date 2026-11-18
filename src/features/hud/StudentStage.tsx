@@ -7,6 +7,7 @@ import {
   Dumbbell,
   Layers,
   ListChecks,
+  Loader2,
   Map as MapIcon,
   Maximize2,
   Minus,
@@ -28,12 +29,18 @@ import { isCoarsePointer } from './pointer.ts'
 
 export const TRAINER_BUTTON_ID = 'hud-trainer-button'
 
-// "Entrenar": absent when the map has no trainer. While the welcome flow is not
-// finished it is disabled with the reason in visible text (a UI convention, not a
-// lock; editors are never disabled).
+// "Entrenar": absent when the map has no trainer. Its state comes from the catalog
+// (see trainer/availability.ts) and is never only implied: a button that cannot open
+// says why in visible text (a UI convention, not a lock; editors are never blocked
+// by the welcome flow).
 export interface TrainerEntry {
   onOpen: () => void
-  disabledReason: string | null
+  // `ready` and `error` open the stage (the error screen retries); the others cannot.
+  mode: 'ready' | 'loading' | 'disabled' | 'error'
+  // The words that go with the state; null when there is nothing to say.
+  note: string | null
+  // Editors keep the note on screen; students see it when they press the button.
+  persistentNote: boolean
 }
 
 export type ContinueAction =
@@ -118,12 +125,14 @@ export const StudentStage = ({
 }: StudentStageProps) => {
   const stageRef = useRef<HTMLDivElement>(null)
   // Pressing the disabled button shows why, as text, for a few seconds.
-  const [reasonShown, setReasonShown] = useState(false)
+  const [pressed, setPressed] = useState(false)
   useEffect(() => {
-    if (!reasonShown) return
-    const timer = window.setTimeout(() => setReasonShown(false), 4000)
+    if (!pressed) return
+    const timer = window.setTimeout(() => setPressed(false), 4000)
     return () => window.clearTimeout(timer)
-  }, [reasonShown])
+  }, [pressed])
+  const cannotOpen = trainer?.mode === 'loading' || trainer?.mode === 'disabled'
+  const reasonShown = Boolean(trainer?.note) && (trainer?.persistentNote || pressed)
   const { width, height } = useStageSize(stageRef)
   const dimmed = useIdleDim(questsOpen)
   useHudInsets(stageRef, reportInsets)
@@ -246,19 +255,25 @@ export const StudentStage = ({
               dense
               className="hud-dimmable pointer-events-auto min-w-[44px] data-[disabled=true]:opacity-60"
               id={TRAINER_BUTTON_ID}
-              aria-disabled={trainer.disabledReason !== null}
-              aria-describedby={trainer.disabledReason ? `${TRAINER_BUTTON_ID}-why` : undefined}
-              data-disabled={trainer.disabledReason !== null}
-              title={trainer.disabledReason ?? es.hud.trainer}
-              onClick={() => (trainer.disabledReason ? setReasonShown(true) : trainer.onOpen())}
+              aria-disabled={cannotOpen}
+              aria-busy={trainer.mode === 'loading'}
+              aria-describedby={trainer.note ? `${TRAINER_BUTTON_ID}-why` : undefined}
+              data-disabled={cannotOpen}
+              data-trainer-mode={trainer.mode}
+              title={trainer.note ?? es.hud.trainer}
+              onClick={() => (cannotOpen ? setPressed(true) : trainer.onOpen())}
             >
-              <Dumbbell size={18} strokeWidth={2.5} aria-hidden />
+              {trainer.mode === 'loading' ? (
+                <Loader2 size={18} strokeWidth={2.5} aria-hidden className="animate-spin" />
+              ) : (
+                <Dumbbell size={18} strokeWidth={2.5} aria-hidden />
+              )}
               <span className={labelClass}>{es.hud.trainer}</span>
             </Button>
           )}
           <SettingsPopover onShowWelcome={onShowWelcome} />
         </div>
-        {trainer?.disabledReason && (
+        {trainer?.note && (
           <p
             id={`${TRAINER_BUTTON_ID}-why`}
             role="status"
@@ -278,7 +293,7 @@ export const StudentStage = ({
                 : undefined
             }
           >
-            {trainer.disabledReason}
+            {trainer.note}
           </p>
         )}
 
