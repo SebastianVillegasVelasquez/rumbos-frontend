@@ -23,6 +23,10 @@ const Publication = ({ state }: { state?: string }) => {
   )
 }
 
+// An activity state the front does not know (a student's catalog tolerates it) is shown as it came.
+const stateLabel = (state: string): string =>
+  (text.lessons.state as Record<string, string>)[state] ?? state
+
 // S3 "Elige una lección": the catalog's lessons grouped by module, each with its
 // activities. A locked lesson or activity says so in words, not only with a lock.
 export const Lessons = ({
@@ -85,8 +89,7 @@ export const Lessons = ({
                             <span className="block text-xs text-ink-soft">
                               {text.home.skillNames[activity.skill]} ·{' '}
                               {text.lessons.minutes(activity.estimated_minutes)} ·{' '}
-                              {text.intro.steps(activity.step_count)} ·{' '}
-                              {text.lessons.state[activity.state]}
+                              {text.intro.steps(activity.step_count)} · {stateLabel(activity.state)}
                               {activity.best_percent !== null &&
                                 ` · ${text.lessons.best(Math.round(activity.best_percent))}`}
                             </span>

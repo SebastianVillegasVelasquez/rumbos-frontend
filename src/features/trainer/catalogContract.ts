@@ -40,8 +40,15 @@ export const parseCatalog = (value: unknown, endpoint = ENDPOINT): Catalog => {
           issues.number(`${actPath}.step_count`, act.step_count)
           issues.optional(`${actPath}.role`, act.role, (p, v) => issues.string(p, v))
           issues.array(`${actPath}.can_do`, act.can_do, (p, v) => issues.string(p, v))
-          issues.oneOf(`${actPath}.publication_state`, act.publication_state, PUBLICATION_STATES)
-          issues.oneOf(`${actPath}.state`, act.state, ACTIVITY_STATES)
+          // An enum value the front does not know: an error for an editor in preview (where
+          // contract drift must show) and in CI (the contract test), tolerated for a student,
+          // who should still practise. See DECISIONS-trainer.md (D18).
+          for (const [name, allowed] of [
+            ['publication_state', PUBLICATION_STATES],
+            ['state', ACTIVITY_STATES],
+          ] as const)
+            if (value.preview === true) issues.oneOf(`${actPath}.${name}`, act[name], allowed)
+            else issues.string(`${actPath}.${name}`, act[name])
           issues.optional(`${actPath}.best_percent`, act.best_percent, (p, v) =>
             issues.number(p, v)
           )

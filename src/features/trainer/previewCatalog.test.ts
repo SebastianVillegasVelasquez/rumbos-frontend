@@ -48,6 +48,20 @@ describe('production answer for an editor in preview: only draft activities', ()
     assert.equal(studentsCanSee('published'), true)
   })
 
+  it('tolerates a state it does not know for a student, and refuses it for an editor', () => {
+    const unknown = (preview: boolean) => {
+      const body = { ...raw(), preview }
+      const activity = body.modules[0]?.lessons[0]?.activities[0]
+      assert.ok(activity)
+      activity.publication_state = 'archived'
+      activity.state = 'abandoned'
+      return body
+    }
+    const student = parseCatalog(unknown(false))
+    assert.equal(student.modules?.[0]?.lessons[0]?.activities[0]?.publication_state, 'archived')
+    assert.throws(() => parseCatalog(unknown(true)), ContractError)
+  })
+
   it('says there is no content only when the server list is empty', () => {
     const empty = parseCatalog({
       ...(catalogFixture() as object),
