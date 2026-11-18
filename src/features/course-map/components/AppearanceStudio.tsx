@@ -47,6 +47,7 @@ type Tab =
   | 'animation'
   | 'music'
   | 'welcome'
+  | 'closing'
   | 'training'
 
 interface AppearanceStudioProps {
@@ -101,6 +102,8 @@ export const AppearanceStudio = ({
   // A backend that predates the welcome curtain never sends the key (it sends
   // null when it knows the feature and nothing is set).
   const welcomeSupported = 'welcome' in courseMap.settings
+  // DRAFT: a backend that declares the closing flow sends the key (null while unset).
+  const closingSupported = 'closing' in courseMap.settings
   // The trainer and the assessments exist only where the backend sends their keys.
   const trainingAvailable = trainingSupported(courseMap.settings)
 
@@ -194,11 +197,13 @@ export const AppearanceStudio = ({
               'animation',
               'music',
               'welcome',
+              'closing',
               'training',
             ] as Tab[]
           )
             .filter((t) => t !== 'music' || audioSupported)
             .filter((t) => t !== 'welcome' || welcomeSupported)
+            .filter((t) => t !== 'closing' || closingSupported)
             .filter((t) => t !== 'training' || trainingAvailable)
             .map((t) => (
               <button
@@ -261,6 +266,20 @@ export const AppearanceStudio = ({
             onChange={changeSettings}
             issues={settingsIssues}
             forms={forms}
+          />
+        )}
+        {tab === 'closing' && closingSupported && (
+          <FlowTab
+            flowKey="closing"
+            settings={settings}
+            onChange={changeSettings}
+            issues={settingsIssues}
+            mapId={courseMap.id}
+            mapTitle={courseMap.title}
+            imageUrl={courseMap.imageUrl}
+            hasMusic={Boolean(settings.audio)}
+            activities={activities}
+            documents={courseMap.welcomeDocuments}
           />
         )}
         {tab === 'welcome' && welcomeSupported && (
