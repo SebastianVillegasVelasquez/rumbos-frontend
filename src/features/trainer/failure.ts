@@ -15,7 +15,10 @@ export const classifyFailure = (error: unknown): FailureKind => {
   if (error.status === 0) return 'unreachable'
   if (error.status === 401) return 'unauthorized'
   // Unknown, closed or disabled for this map.
-  if (error.status === 404 || error.status === 403 || error.status === 409) return 'closed'
+  if (error.status === 404 || error.status === 403) return 'closed'
+  // The session is not in a state that accepts this call (already finished, answered
+  // from another tab). It is about this practice, never about an exam.
+  if (error.status === 409) return 'conflict'
   if (error.status >= 500 || error.status === 429) return 'unreachable'
   return 'other'
 }
