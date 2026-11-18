@@ -293,3 +293,14 @@ Nothing was added; the welcome text stays what the author writes.
   prefix and versioning, not the bare `tutor.open` of the brief. The plugin prompt must use these names.
 - (D24) The HUD overlap test skips the preview pill when the screen is too short to hold the full five-button stack
   plus the pill; it is physically impossible there and only reachable on a 320 px-tall window.
+
+## Closing flow
+
+- (D25) One player and one editor, parametrised by `flowKey`; the closing flow reuses `MapWelcome`'s shape
+  (`MapClosing = MapWelcome`) so the editor, the validation and the reorder code are the welcome flow's. The
+  alternative, a second component, was rejected: it would drift.
+- (D26) The step type for authored content is the welcome flow's `html`, not a new `content`; the backend prompt
+  must confirm the name before the contract is declared.
+- (D27) A flow with no backing contract is never sent: `serializeAppearance` drops `closing`, and the editor tab is
+  hidden unless the backend sends the key, so an author cannot edit what would silently not be saved.
+- (D28) With six top-left HUD buttons they go icon-only (labels are kept for five or fewer).
