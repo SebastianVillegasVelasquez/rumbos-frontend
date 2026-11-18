@@ -31,6 +31,7 @@ const lesson = {
 }
 const enabled = (lessons: unknown[]) => ({
   enabled: true,
+  preview: false,
   language: 'en',
   level: 'A1',
   title: 'Inglés A1 · Turismo',
@@ -54,7 +55,7 @@ test.describe('trainer catalog contract', () => {
   test('(a) disabled for the map: no button, no error', async ({ page, context }) => {
     const problems = watch(page)
     await open(page, context, {
-      practice: { catalogBody: { enabled: false, reason: 'disabled_for_map' } },
+      practice: { catalogBody: { enabled: false, reason: 'disabled_for_map', preview: false } },
     })
     await expect(app(page).getByRole('button', { name: 'Misiones' })).toBeVisible()
     await expect(hud(page)).toHaveCount(0)
@@ -67,7 +68,7 @@ test.describe('trainer catalog contract', () => {
   }) => {
     const problems = watch(page)
     await open(page, context, {
-      practice: { catalogBody: { enabled: false, reason: 'no_published_content' } },
+      practice: { catalogBody: { enabled: false, reason: 'no_published_content', preview: false } },
     })
     await expect(hud(page)).toHaveAttribute('aria-disabled', 'true')
     await expect(hud(page)).toHaveAccessibleDescription('Pronto habrá ejercicios disponibles')
@@ -113,7 +114,7 @@ test.describe('trainer catalog contract', () => {
   }) => {
     const problems = watch(page)
     // Enabled, but no modules: not one of the three answers.
-    await open(page, context, { practice: { catalogBody: { enabled: true } } })
+    await open(page, context, { practice: { catalogBody: { enabled: true, preview: false } } })
     await hud(page).click()
     const dialog = stage(page)
     await expect(dialog.getByRole('alert')).toContainText('No pudimos cargar el entrenamiento')

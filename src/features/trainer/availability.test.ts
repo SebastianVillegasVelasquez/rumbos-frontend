@@ -20,10 +20,15 @@ const lesson = {
 }
 const ok: Catalog = {
   enabled: true,
+  preview: false,
   modules: [{ key: 'M1', title: 'Módulo', lessons: [lesson] }],
 }
 // Enabled, with modules that hold no lesson yet (the third answer a catalog can give).
-const hollow: Catalog = { enabled: true, modules: [{ key: 'M1', title: 'Módulo', lessons: [] }] }
+const hollow: Catalog = {
+  enabled: true,
+  preview: false,
+  modules: [{ key: 'M1', title: 'Módulo', lessons: [] }],
+}
 const base = { welcomePending: false, isEditor: false }
 
 describe('entryState', () => {
@@ -40,7 +45,7 @@ describe('entryState', () => {
   })
 
   it('hides for students and explains to editors when disabled for the map', () => {
-    const catalog: Catalog = { enabled: false, reason: 'disabled_for_map' }
+    const catalog: Catalog = { enabled: false, reason: 'disabled_for_map', preview: false }
     assert.deepEqual(entryState({ ...base, status: 'success', catalog }), { kind: 'hidden' })
     assert.deepEqual(entryState({ ...base, isEditor: true, status: 'success', catalog }), {
       kind: 'disabled',
@@ -50,13 +55,13 @@ describe('entryState', () => {
   })
 
   it('treats enabled:false without a reason as disabled for the map', () => {
-    const catalog: Catalog = { enabled: false }
+    const catalog: Catalog = { enabled: false, preview: false }
     assert.equal(catalogReason(catalog), 'disabled_for_map')
     assert.deepEqual(entryState({ ...base, status: 'success', catalog }), { kind: 'hidden' })
   })
 
   it('is disabled with the reason when there is no published content', () => {
-    const catalog: Catalog = { enabled: false, reason: 'no_published_content' }
+    const catalog: Catalog = { enabled: false, reason: 'no_published_content', preview: false }
     assert.deepEqual(entryState({ ...base, status: 'success', catalog }), {
       kind: 'disabled',
       reason: 'no_content',
@@ -82,7 +87,7 @@ describe('entryState', () => {
   })
 
   it('a map without a trainer stays hidden even during the welcome flow', () => {
-    const catalog: Catalog = { enabled: false, reason: 'disabled_for_map' }
+    const catalog: Catalog = { enabled: false, reason: 'disabled_for_map', preview: false }
     assert.deepEqual(entryState({ ...base, welcomePending: true, status: 'success', catalog }), {
       kind: 'hidden',
     })
@@ -121,7 +126,7 @@ describe('entryMode and entryReason', () => {
     const empty = entryState({
       ...base,
       status: 'success',
-      catalog: { enabled: false, reason: 'no_published_content' },
+      catalog: { enabled: false, reason: 'no_published_content', preview: false },
     })
     assert.equal(entryMode(empty as Exclude<typeof empty, { kind: 'hidden' }>), 'disabled')
   })
@@ -133,7 +138,7 @@ describe('noteIsPersistent', () => {
       ...base,
       isEditor: true,
       status: 'success',
-      catalog: { enabled: false, reason: 'no_published_content' },
+      catalog: { enabled: false, reason: 'no_published_content', preview: false },
     })
     assert.equal(noteIsPersistent(no, true), true)
     assert.equal(noteIsPersistent(no, false), false)
@@ -157,15 +162,18 @@ describe('stageScreen', () => {
   })
 
   it('names why a successful catalog has nothing to offer', () => {
-    const none: Catalog = { enabled: false, reason: 'no_published_content' }
+    const none: Catalog = { enabled: false, reason: 'no_published_content', preview: false }
     assert.deepEqual(stageScreen({ status: 'success', catalog: none }), {
       kind: 'unavailable',
       reason: 'no_content',
     })
-    assert.deepEqual(stageScreen({ status: 'success', catalog: { enabled: false } }), {
-      kind: 'unavailable',
-      reason: 'disabled_for_map',
-    })
+    assert.deepEqual(
+      stageScreen({ status: 'success', catalog: { enabled: false, preview: false } }),
+      {
+        kind: 'unavailable',
+        reason: 'disabled_for_map',
+      }
+    )
     assert.deepEqual(stageScreen({ status: 'success', catalog: ok }), { kind: 'content' })
     assert.deepEqual(stageScreen({ status: 'pending' }), { kind: 'loading' })
   })

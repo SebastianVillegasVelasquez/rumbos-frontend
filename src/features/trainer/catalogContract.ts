@@ -14,7 +14,9 @@ export const parseCatalog = (value: unknown, endpoint = ENDPOINT): Catalog => {
     throw new ContractError(endpoint, [`body: expected an object, got ${kindOf(value)}`])
   issues.boolean('enabled', value.enabled)
   issues.optional('reason', value.reason, (path, v) => issues.string(path, v))
-  issues.optional('preview', value.preview, (path, v) => issues.boolean(path, v))
+  // Required by both answers (Catalog and CatalogUnavailable): it says whether the caller
+  // is an editor in preview, so the banner shows even when there is no content.
+  issues.boolean('preview', value.preview)
   issues.optional('level', value.level, (path, v) => issues.string(path, v))
   issues.optional('content_version', value.content_version, (path, v) => issues.string(path, v))
   issues.optional('vocab_due', value.vocab_due, (path, v) => issues.number(path, v))
@@ -55,25 +57,14 @@ export const parseCatalog = (value: unknown, endpoint = ENDPOINT): Catalog => {
     issues.record('language', language)
   issues.settle(endpoint)
 
-  // The backend names the language by its code; older mocks send { code, name }.
   // The backend names the language by its code; the screens read { code, name }.
-  const catalog = (typeof language === 'string'
+  return (typeof language === 'string'
     ? { ...value, language: { code: language, name: '' } }
     : value) as unknown as Catalog
-  return catalog.enabled
-    ? { ...catalog, preview: catalog.preview ?? hasUnpublished(catalog) }
-    : catalog
 }
 
 const PUBLICATION_STATES = ['draft', 'reviewed', 'published']
 const ACTIVITY_STATES = ['not_started', 'in_progress', 'finished']
-
-// The backend sends non-published items to editors in preview only, and its Catalog
-// schema has no `preview` flag: an item that is not published is the signal.
-const hasUnpublished = (catalog: Catalog): boolean =>
-  (catalog.modules ?? []).some((m) =>
-    m.lessons.some((l) => l.activities.some((a) => a.publication_state !== 'published'))
-  )
 
 // Whether an enabled catalog has any lesson to practice. Only called after `enabled`
 // is known to be true. The server's list, as it came: nothing is filtered here.

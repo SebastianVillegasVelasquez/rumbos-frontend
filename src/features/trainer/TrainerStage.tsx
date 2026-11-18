@@ -135,7 +135,7 @@ const TrainerStage = ({ imageUrl, onClose }: TrainerStageProps) => {
         ? text.unavailable.noContentEditor
         : text.unavailable.disabledEditor
     screen = (
-      <TrainerCard title={text.title} footer={backFooter}>
+      <TrainerCard title={text.title} preview={preview} footer={backFooter}>
         <p role="status">{text.unavailable[screenKind.reason]}</p>
         {preview && <p className="text-sm">{hint}</p>}
       </TrainerCard>

@@ -49,8 +49,8 @@ export interface Catalog {
   language?: { code: string; name: string }
   level?: TrainerLevel
   content_version?: string
-  // Not in the OpenAPI's Catalog: parseCatalog derives it (any item that is not published).
-  preview?: boolean
+  // Whether the caller is an editor in preview (required by Catalog and CatalogUnavailable).
+  preview: boolean
   modules?: CatalogModule[]
   skills?: { skill: Skill; available: boolean }[]
   suggestion?: { activity_id: string; reason: 'next' | 'review' } | null

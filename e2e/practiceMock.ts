@@ -234,6 +234,7 @@ export class PracticeMock {
       level: this.options.level ?? 'A1',
       title: 'Inglés A1 · Turismo',
       content_version: 'v1',
+      preview: this.preview,
       // The backend's shape: lessons and activities nested under the module, and a
       // student gets published items only (the server decides, not the client).
       modules: [
@@ -321,7 +322,7 @@ export class PracticeMock {
             body: {
               enabled: false,
               ...(o.reason ? { reason: o.reason } : {}),
-              ...(o.preview ? { preview: true } : {}),
+              preview: this.preview,
             },
           }
         return { status: 200, body: this.catalog() }

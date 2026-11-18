@@ -29,22 +29,15 @@ describe('production answer for an editor in preview: only draft activities', ()
     assert.ok(activitiesOf(catalog).every((a) => a.publication_state === 'draft'))
   })
 
-  it('is in preview because the server sent unpublished items, though it sends no flag', () => {
+  it('reads preview from the server, whatever the items say', () => {
     assert.equal(catalog.preview, true)
+    const student = { ...(catalogFixture() as object), preview: false }
+    assert.equal(parseCatalog(student).preview, false)
   })
 
   it('keeps the backend names, with nothing invented', () => {
     assert.deepEqual(activitiesOf(catalog)[0], raw().modules[0]?.lessons[0]?.activities[0])
     assert.equal(catalog.modules?.[0]?.lessons[0]?.vocabulary_count, 8)
-  })
-
-  it('is not in preview when every item is published', () => {
-    const published = { ...raw(), preview: undefined } as ReturnType<typeof raw> & {
-      preview?: boolean
-    }
-    for (const m of published.modules)
-      for (const l of m.lessons) for (const a of l.activities) a.publication_state = 'published'
-    assert.equal(parseCatalog(published).preview, false) // derived: this commit predates the flag
   })
 
   it('labels draft and reviewed in words; only published is visible to students', () => {
