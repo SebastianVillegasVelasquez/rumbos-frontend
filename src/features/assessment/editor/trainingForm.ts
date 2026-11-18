@@ -44,9 +44,23 @@ export const levelHasContent = (language: 'en', level: TrainerLevel): boolean =>
 export const clamp = (value: number, min: number, max: number): number =>
   Math.min(max, Math.max(min, Math.round(Number.isFinite(value) ? value : min)))
 
-export const trainerOf = (settings: MapSettings): MapTrainer => settings.trainer ?? defaultTrainer()
-export const assessmentsOf = (settings: MapSettings): MapAssessments =>
-  settings.assessments ?? defaultAssessments()
+// The server may send a partial object (e.g. `{ enabled: false }`), so every part is
+// merged over its default; the editor never reads a missing rule.
+export const trainerOf = (settings: MapSettings): MapTrainer => ({
+  ...defaultTrainer(),
+  ...settings.trainer,
+})
+export const assessmentsOf = (settings: MapSettings): MapAssessments => {
+  const base = defaultAssessments()
+  const given: Partial<MapAssessments> = settings.assessments ?? {}
+  return {
+    ...base,
+    ...given,
+    check_in: { ...base.check_in, ...given.check_in },
+    final: { ...base.final, ...given.final },
+    exemption: { ...base.exemption, ...given.exemption },
+  }
+}
 
 export const setTrainer = (settings: MapSettings, patch: Partial<MapTrainer>): MapSettings => {
   const next = { ...trainerOf(settings), ...patch }
