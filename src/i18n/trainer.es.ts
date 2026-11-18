@@ -66,14 +66,11 @@ export const esTrainer = {
   lessons: {
     title: 'Elige una lección',
     module: (title: string) => title,
-    locked: 'Bloqueada',
-    lockedHint: 'Termina la lección anterior para abrirla.',
     activities: (n: number) => (n === 1 ? '1 actividad' : `${n} actividades`),
     minutes: (n: number) => `${n} min`,
-    done: (n: number) => (n === 0 ? 'Sin hacer' : n === 1 ? 'Hecha 1 vez' : `Hecha ${n} veces`),
+    state: { not_started: 'Sin hacer', in_progress: 'En curso', finished: 'Terminada' },
     best: (percent: number) => `Mejor: ${percent} %`,
     open: 'Abrir',
-    activityLocked: 'Bloqueada',
   },
   intro: {
     role: (role: string) => `Tu papel: ${role}`,

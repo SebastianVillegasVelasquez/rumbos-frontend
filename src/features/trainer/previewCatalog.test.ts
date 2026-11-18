@@ -1,45 +1,53 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import { ContractError } from '../course-map/data/contract.ts'
+import { esTrainer } from '../../i18n/trainer.es.ts'
 import { catalogReason, stageScreen } from './availability.ts'
 import { hasContent, parseCatalog } from './catalogContract.ts'
-import { previewCatalog } from './fixtures/previewCatalog.ts'
+import { catalogFixture } from './fixtures/catalogFixture.ts'
 import { publicationLabel, studentsCanSee } from './publication.ts'
-import { esTrainer } from '../../i18n/trainer.es.ts'
 
-describe('an editor in preview with only draft activities', () => {
-  const catalog = parseCatalog(structuredClone(previewCatalog))
+type Raw = { modules: { lessons: { activities: Record<string, unknown>[] }[] }[] }
+const raw = () => catalogFixture() as Raw
 
-  it('has content and opens the lesson stage', () => {
+const activitiesOf = (catalog: ReturnType<typeof parseCatalog>) =>
+  (catalog.modules ?? []).flatMap((m) => m.lessons.flatMap((l) => l.activities))
+
+describe('production answer for an editor in preview: only draft activities', () => {
+  const catalog = parseCatalog(catalogFixture())
+
+  it('has content and opens the lesson stage, not "no lessons yet"', () => {
     assert.equal(hasContent(catalog), true)
     assert.equal(catalogReason(catalog), null)
     assert.deepEqual(stageScreen({ status: 'success', catalog }), { kind: 'content' })
   })
 
-  it('hands every lesson and activity to the screens, draft and reviewed included', () => {
-    assert.deepEqual(
-      catalog.lessons?.map((l) => [l.id, l.module]),
-      [['1.1', 'M1']]
-    )
-    assert.deepEqual(
-      catalog.activities?.map((a) => [a.id, a.lesson_id, a.publication_state]),
-      [
-        ['en-a1-1.1-dialogue', '1.1', 'draft'],
-        ['en-a1-1.1-grammar', '1.1', 'reviewed'],
-      ]
-    )
+  it('hands every module, lesson and activity of the server to the screens', () => {
+    assert.equal(catalog.modules?.length, 4)
+    assert.equal(catalog.modules?.flatMap((m) => m.lessons).length, 15)
+    assert.equal(activitiesOf(catalog).length, 45)
+    assert.ok(activitiesOf(catalog).every((a) => a.publication_state === 'draft'))
   })
 
-  it('keeps what the backend sent where it did not send the old fields', () => {
-    const [first] = catalog.activities ?? []
-    assert.equal(first?.state, 'not_started')
-    assert.equal(first?.best_score, null)
-    assert.equal(first?.completed_count, 0)
-    assert.equal(first?.locked, false)
-    assert.equal(first?.estimated_minutes, null)
+  it('is in preview because the server sent unpublished items, though it sends no flag', () => {
+    assert.equal(catalog.preview, true)
   })
 
-  it('labels each state in words and calls only published visible to students', () => {
+  it('keeps the backend names, with nothing invented', () => {
+    assert.deepEqual(activitiesOf(catalog)[0], raw().modules[0]?.lessons[0]?.activities[0])
+    assert.equal(catalog.modules?.[0]?.lessons[0]?.vocabulary_count, 8)
+  })
+
+  it('is not in preview when every item is published', () => {
+    const published = { ...raw(), preview: undefined } as ReturnType<typeof raw> & {
+      preview?: boolean
+    }
+    for (const m of published.modules)
+      for (const l of m.lessons) for (const a of l.activities) a.publication_state = 'published'
+    assert.equal(parseCatalog(published).preview, false) // derived: this commit predates the flag
+  })
+
+  it('labels draft and reviewed in words; only published is visible to students', () => {
     assert.match(publicationLabel('draft', esTrainer.publication) ?? '', /Borrador/)
     assert.match(publicationLabel('reviewed', esTrainer.publication) ?? '', /Revisado/)
     assert.equal(studentsCanSee('draft'), false)
@@ -49,26 +57,26 @@ describe('an editor in preview with only draft activities', () => {
 
   it('says there is no content only when the server list is empty', () => {
     const empty = parseCatalog({
-      ...previewCatalog,
+      ...(catalogFixture() as object),
       modules: [{ key: 'M1', title: 'M', lessons: [] }],
     })
     assert.equal(catalogReason(empty), 'no_content')
   })
 
-  it('refuses, naming the field, a lesson or activity missing what the screens need', () => {
-    const broken = structuredClone(previewCatalog)
-    const lesson = broken.modules[0]?.lessons[0]
-    assert.ok(lesson)
-    delete (lesson as Partial<typeof lesson>).title
-    delete (lesson.activities[0] as Partial<(typeof lesson.activities)[0]>).skill
+  it('refuses, naming the fields, an activity that lacks what the backend promises', () => {
+    const broken = raw()
+    const activity = broken.modules[0]?.lessons[0]?.activities[0]
+    assert.ok(activity)
+    delete activity.step_count
+    activity.publication_state = 'archived'
     try {
       parseCatalog(broken)
       assert.fail('expected a ContractError')
     } catch (error) {
       assert.ok(error instanceof ContractError)
       assert.deepEqual(error.issues, [
-        'modules[0].lessons[0].title: expected a string, got undefined',
-        'modules[0].lessons[0].activities[0].skill: expected a string, got undefined',
+        'modules[0].lessons[0].activities[0].step_count: expected a number, got undefined',
+        'modules[0].lessons[0].activities[0].publication_state: expected one of draft, reviewed, published, got archived',
       ])
     }
   })

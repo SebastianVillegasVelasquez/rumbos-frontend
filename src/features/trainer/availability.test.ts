@@ -10,9 +10,17 @@ import {
 } from './availability.ts'
 import type { Catalog } from './types.ts'
 
+const lesson = {
+  id: '1.1',
+  code: '1.1',
+  title: 'Greetings',
+  description: '',
+  vocabulary_count: 0,
+  activities: [],
+}
 const ok: Catalog = {
   enabled: true,
-  modules: [{ key: 'M1', title: 'Módulo', lessons: [{ id: '1.1' }] }],
+  modules: [{ key: 'M1', title: 'Módulo', lessons: [lesson] }],
 }
 // Enabled, with modules that hold no lesson yet (the third answer a catalog can give).
 const hollow: Catalog = { enabled: true, modules: [{ key: 'M1', title: 'Módulo', lessons: [] }] }
@@ -179,10 +187,7 @@ describe('an enabled catalog with no lessons', () => {
     })
   })
 
-  it('counts lessons in the flat form too, and reads no modules when disabled', () => {
-    const flat = { enabled: true, modules: [], lessons: [] } as Catalog
-    assert.equal(catalogReason(flat), 'no_content')
-    assert.equal(catalogReason({ ...flat, lessons: [{ id: 'x' }] as Catalog['lessons'] }), null)
+  it('reads no modules when disabled', () => {
     // Disabled: the verdict comes from `enabled` and `reason`, whatever else is there.
     const off = { enabled: false, reason: 'disabled_for_map', modules: null } as unknown as Catalog
     assert.equal(catalogReason(off), 'disabled_for_map')

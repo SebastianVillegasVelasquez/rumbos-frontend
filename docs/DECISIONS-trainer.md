@@ -254,7 +254,11 @@ Nothing was added; the welcome text stays what the author writes.
   `ContractError` (endpoint + fields) instead of letting a wrong shape reach a render. A disabled
   assessment list leaves with `items: []`; its type no longer promises a policy.
 - An enabled catalog with no lessons (flat or nested) is `no_content`, for the button and the stage.
-- **Open drift, not fixed here:** the backend nests lessons and activities under `modules[]`, names
-  `language` by code, and has `state`/`best_percent` where the code reads `completed_count`/
-  `best_score`/`locked`. The screens still read the flat shape, so with real data the lesson list
-  is empty. No `openapi.json` is in the repo to compare against.
+- **Drift closed (against `rumbos-backend/openapi.json`):** the catalog types are now the backend's own nested shape
+  (`modules[].lessons[].activities[]`, with `estimated_minutes`, `step_count`, `role`, `can_do`, `state`,
+  `best_percent`, `publication_state`; `vocabulary_count` per lesson). `locked`, `completed_count` and `best_score` are
+  gone: the backend does not send them. Nothing is filtered in the client: students get published items from the server,
+  editors in preview get draft and reviewed too, each labelled. `Catalog` has no `preview` flag in the OpenAPI, so
+  `parseCatalog` derives it (any item not published). Known gap: an editor whose whole catalog is published sees no
+  preview banner on the lessons screen. `suggestion`, `skills` and `vocab_due` are not in the OpenAPI `Catalog` either;
+  the home screen shows them only if sent.

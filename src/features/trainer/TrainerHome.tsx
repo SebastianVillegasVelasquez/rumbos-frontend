@@ -110,14 +110,16 @@ export const TrainerHome = ({
   })
   const examList = exams.data?.enabled ? exams.data : null
   const suggested = catalog.suggestion
-    ? catalog.activities?.find((a) => a.id === catalog.suggestion?.activity_id)
+    ? catalog.modules
+        ?.flatMap((m) => m.lessons.flatMap((l) => l.activities))
+        .find((a) => a.id === catalog.suggestion?.activity_id)
     : undefined
   const copy = text.home
 
   return (
     <TrainerCard
       ref={ref}
-      title={copy.title(catalog.language?.name ?? '')}
+      title={catalog.title ?? copy.title(catalog.language?.name ?? '')}
       kicker={catalog.level ? copy.level(catalog.level) : undefined}
       preview={catalog.preview}
       footer={
@@ -137,9 +139,7 @@ export const TrainerHome = ({
           </h3>
           <p className="font-heading text-lg font-extrabold">{suggested.title}</p>
           <p className="text-sm">
-            {suggested.estimated_minutes !== null &&
-              `${text.lessons.minutes(suggested.estimated_minutes)} · `}
-            {copy.skillNames[suggested.skill]}
+            {text.lessons.minutes(suggested.estimated_minutes)} · {copy.skillNames[suggested.skill]}
           </p>
           <div className="mt-2">
             <Button size="sm" onClick={() => onStart(suggested.id)}>

@@ -230,45 +230,42 @@ export class PracticeMock {
   private catalog() {
     return {
       enabled: this.options.enabled ?? true,
-      language: { code: 'en', name: 'inglés' },
+      language: 'en',
       level: this.options.level ?? 'A1',
+      title: 'Inglés A1 · Turismo',
       content_version: 'v1',
-      preview: this.preview,
-      modules: [{ key: 'M1', title: 'Módulo I · Primeros pasos' }],
-      lessons: [
+      // The backend's shape: lessons and activities nested under the module, and a
+      // student gets published items only (the server decides, not the client).
+      modules: [
         {
-          id: 'les1',
-          module: 'M1',
-          code: '1.1',
-          title: 'Presentarse',
-          description: 'Saluda y di quién eres.',
-          locked: false,
-          ...(this.options.unpublished ? { publication_state: 'published' } : {}),
-        },
-        {
-          id: 'les2',
-          module: 'M1',
-          code: '1.2',
-          title: 'La casa',
-          description: 'Habitaciones y objetos.',
-          locked: true,
-          ...(this.options.unpublished ? { publication_state: 'draft' } : {}),
+          key: 'M1',
+          title: 'Módulo I · Primeros pasos',
+          lessons: [
+            {
+              id: 'les1',
+              code: '1.1',
+              title: 'Presentarse',
+              description: 'Saluda y di quién eres.',
+              vocabulary_count: 8,
+              activities: Object.entries(ACTIVITIES)
+                .map(([id, a]) => ({
+                  id,
+                  skill: a.skill,
+                  title: a.title,
+                  estimated_minutes: 5,
+                  publication_state:
+                    this.options.unpublished && id !== 'act-gram' ? 'draft' : 'published',
+                  step_count: a.steps.length,
+                  role: null,
+                  can_do: [],
+                  state: 'not_started',
+                  best_percent: null,
+                }))
+                .filter((a) => this.preview || a.publication_state === 'published'),
+            },
+          ],
         },
       ],
-      activities: Object.entries(ACTIVITIES).map(([id, a]) => ({
-        id,
-        lesson_id: 'les1',
-        skill: a.skill,
-        title: a.title,
-        estimated_minutes: 5,
-        step_count: a.steps.length,
-        locked: false,
-        completed_count: 0,
-        best_score: null,
-        ...(this.options.unpublished
-          ? { publication_state: id === 'act-gram' ? 'published' : 'draft' }
-          : {}),
-      })),
       skills: [
         { skill: 'dialogue', available: true },
         { skill: 'listening', available: true },

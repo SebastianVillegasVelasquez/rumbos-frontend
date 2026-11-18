@@ -44,6 +44,13 @@ export class Issues {
     if (typeof value !== 'boolean') this.add(path, 'a boolean', value)
   }
 
+  oneOf(path: string, value: unknown, allowed: readonly string[]) {
+    if (typeof value !== 'string' || !allowed.includes(value))
+      this.list.push(
+        `${path}: expected one of ${allowed.join(', ')}, got ${typeof value === 'string' ? value : kindOf(value)}`
+      )
+  }
+
   // Absent is fine; present with another type is not.
   optional(path: string, value: unknown, check: (path: string, value: unknown) => void) {
     if (value !== undefined && value !== null) check(path, value)

@@ -63,14 +63,12 @@ test.describe('practice trainer', () => {
     await expect(stage(page)).toHaveCount(0)
   })
 
-  test('lists lessons by module, with a locked one saying so', async ({ page, context }) => {
+  test('lists lessons by module', async ({ page, context }) => {
     await open(page, context)
     await openStage(page)
     await stage(page).getByRole('button', { name: 'Elige una lección' }).click()
     await expect(stage(page).getByRole('heading', { name: /Módulo I/ })).toBeVisible()
     await expect(stage(page).getByText('Presentarse')).toBeVisible()
-    await expect(stage(page).getByText('Bloqueada').first()).toBeVisible()
-    await expect(stage(page).getByText(/Termina la lección anterior/)).toBeVisible()
   })
 
   test('a grammar run through every step type, then the summary', async ({ page, context }) => {
@@ -297,7 +295,12 @@ test.describe('practice trainer', () => {
   })
 
   test('an editor sees the preview banner', async ({ page, context }) => {
-    await open(page, context, { practice: { preview: true } }, { role: 'editor' })
+    await open(
+      page,
+      context,
+      { practice: { preview: true, unpublished: true } },
+      { role: 'editor' }
+    )
     await openStage(page)
     await expect(stage(page).getByText('Vista previa: no se guarda tu práctica')).toBeVisible()
   })

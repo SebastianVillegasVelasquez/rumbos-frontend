@@ -1,85 +1,121 @@
 import assert from 'node:assert/strict'
 import { existsSync, readFileSync } from 'node:fs'
 import { describe, it } from 'node:test'
-import { previewCatalog } from './fixtures/previewCatalog.ts'
+import { catalogFixture } from './fixtures/catalogFixture.ts'
+import { parseCatalog } from './catalogContract.ts'
 
-// The catalog fixture against the backend's OpenAPI: every field of the fixture is in
-// the schema, and every field the screens require is one the schema declares. Point
-// OPENAPI_JSON at the spec (or put it at ./openapi.json, untracked). Without the file
-// the suite is skipped, never failed.
-const path = process.env.OPENAPI_JSON ?? 'openapi.json'
-const present = existsSync(path)
+// The real catalog answer against the backend's openapi.json: the fixture must satisfy
+// the schema (required fields, types, enums, nothing undeclared), and so must a catalog
+// the front accepts. Point OPENAPI_JSON at the spec; otherwise ./openapi.json or the
+// sibling ../rumbos-backend/openapi.json is used. Without any, the suite is skipped.
+const path = [process.env.OPENAPI_JSON, 'openapi.json', '../rumbos-backend/openapi.json'].find(
+  (candidate) => candidate && existsSync(candidate)
+)
 
 type Node = Record<string, unknown>
-const spec = (present ? JSON.parse(readFileSync(path, 'utf8')) : {}) as Node
+const spec = (path ? JSON.parse(readFileSync(path, 'utf8')) : {}) as Node
 
-const deref = (node: unknown): Node => {
-  let current = node as Node
-  for (let hops = 0; typeof current?.$ref === 'string' && hops < 20; hops++) {
+const deref = (node: Node): Node => {
+  let current = node
+  for (let hops = 0; typeof current.$ref === 'string' && hops < 20; hops++) {
     let target: unknown = spec
     for (const part of current.$ref.replace(/^#\//, '').split('/'))
       target = (target as Node)?.[part]
-    current = target as Node
+    current = (target as Node) ?? {}
   }
-  return current ?? {}
+  return current
 }
 
-// Properties of an object schema, following $ref, allOf and the non-null side of anyOf.
-const propsOf = (node: unknown): Record<string, unknown> => {
-  const schema = deref(node)
-  const found: Record<string, unknown> = { ...((schema.properties as Node) ?? {}) }
-  for (const key of ['allOf', 'anyOf', 'oneOf'] as const)
-    for (const part of (schema[key] as unknown[]) ?? []) Object.assign(found, propsOf(part))
-  return found
+const kind = (value: unknown) =>
+  value === null ? 'null' : Array.isArray(value) ? 'array' : typeof value
+
+// What is wrong with `value` against `schema`, by path. Empty when it conforms.
+const check = (value: unknown, raw: Node, at: string): string[] => {
+  const schema = deref(raw)
+  const branches = (schema.anyOf ?? schema.oneOf) as Node[] | undefined
+  if (branches) {
+    const results = branches.map((branch) => check(value, branch, at))
+    return results.some((r) => r.length === 0)
+      ? []
+      : (results.sort((a, b) => a.length - b.length)[0] ?? [])
+  }
+  const type = schema.type as string | undefined
+  const actual = kind(value)
+  if (type === 'null') return actual === 'null' ? [] : [`${at}: expected null, got ${actual}`]
+  if (type === 'integer' || type === 'number')
+    return typeof value === 'number' && (type === 'number' || Number.isInteger(value))
+      ? []
+      : [`${at}: expected ${type}, got ${actual}`]
+  if (type === 'string' || type === 'boolean') {
+    if (actual !== type) return [`${at}: expected ${type}, got ${actual}`]
+    const allowed = schema.enum as unknown[] | undefined
+    if (allowed && !allowed.includes(value)) return [`${at}: ${String(value)} is not in ${allowed}`]
+    if ('const' in schema && schema.const !== value)
+      return [`${at}: expected ${String(schema.const)}`]
+    return []
+  }
+  if (type === 'array') {
+    if (!Array.isArray(value)) return [`${at}: expected array, got ${actual}`]
+    return value.flatMap((item, i) => check(item, schema.items as Node, `${at}[${i}]`))
+  }
+  if (type === 'object' || schema.properties) {
+    if (actual !== 'object') return [`${at}: expected object, got ${actual}`]
+    const record = value as Record<string, unknown>
+    const props = (schema.properties ?? {}) as Record<string, Node>
+    const required = (schema.required ?? []) as string[]
+    return [
+      ...required.filter((key) => !(key in record)).map((key) => `${at}.${key}: required, missing`),
+      ...Object.keys(record)
+        .filter((key) => !(key in props))
+        .map((key) => `${at}.${key}: not in the schema`),
+      ...Object.entries(record).flatMap(([key, child]) =>
+        key in props ? check(child, props[key] as Node, `${at}.${key}`) : []
+      ),
+    ]
+  }
+  return []
 }
 
-const itemsOf = (node: unknown): unknown => {
-  const schema = deref(node)
-  if (schema.items) return schema.items
-  for (const key of ['anyOf', 'oneOf', 'allOf'] as const)
-    for (const part of (schema[key] as unknown[]) ?? []) {
-      const items = itemsOf(part)
-      if (items) return items
-    }
-  return undefined
+const catalogSchema = (): Node => {
+  const paths = spec.paths as Record<string, Node>
+  const get = paths['/api/v1/trainer/catalog']?.get as Node | undefined
+  const ok = (get?.responses as Node | undefined)?.['200'] as Node | undefined
+  const json = (ok?.content as Node | undefined)?.['application/json'] as Node | undefined
+  assert.ok(json?.schema, 'the spec has no 200 schema for GET /api/v1/trainer/catalog')
+  return json.schema as Node
 }
 
-const catalogSchema = (): unknown => {
-  const get = ((spec.paths as Node)?.['/api/v1/trainer/catalog'] ??
-    (spec.paths as Node)?.['/trainer/catalog']) as Node | undefined
-  const ok = ((get?.get as Node)?.responses as Node)?.['200'] as Node | undefined
-  return ((ok?.content as Node)?.['application/json'] as Node)?.schema
-}
-
-// Fields of `value` that the schema does not declare, by path.
-const undeclared = (value: unknown, schema: unknown, at: string): string[] => {
-  if (Array.isArray(value))
-    return value.flatMap((item) => undeclared(item, itemsOf(schema), `${at}[]`))
-  if (typeof value !== 'object' || value === null) return []
-  const props = propsOf(schema)
-  return Object.entries(value).flatMap(([key, child]) =>
-    key in props ? undeclared(child, props[key], `${at}.${key}`) : [`${at}.${key}`]
-  )
-}
-
-describe('GET /trainer/catalog against the OpenAPI', { skip: !present }, () => {
-  it('declares every field of the preview fixture', () => {
-    const schema = catalogSchema()
-    assert.ok(schema, 'the spec has no 200 schema for GET /trainer/catalog')
-    assert.deepEqual(undeclared(previewCatalog, schema, 'catalog'), [])
+describe('GET /trainer/catalog against openapi.json', { skip: !path }, () => {
+  it('the real preview answer satisfies the schema', () => {
+    assert.deepEqual(check(catalogFixture(), catalogSchema(), 'catalog'), [])
   })
 
-  it('declares every field the screens require', () => {
-    const modules = itemsOf(propsOf(catalogSchema()).modules)
-    const lessons = itemsOf(propsOf(modules).lessons)
-    const activities = itemsOf(propsOf(lessons).activities)
-    const missing = [
-      ...['key', 'title'].filter((f) => !(f in propsOf(modules))).map((f) => `module.${f}`),
-      ...['id', 'title'].filter((f) => !(f in propsOf(lessons))).map((f) => `lesson.${f}`),
-      ...['id', 'title', 'skill']
-        .filter((f) => !(f in propsOf(activities)))
-        .map((f) => `activity.${f}`),
-    ]
-    assert.deepEqual(missing, [])
+  it('the two documented answers of a catalog that is off satisfy the schema', () => {
+    for (const reason of ['disabled_for_map', 'no_published_content'])
+      assert.deepEqual(
+        check({ enabled: false, reason, preview: true }, catalogSchema(), 'catalog'),
+        []
+      )
+  })
+
+  it('the front accepts the real answer', () => {
+    const activity = parseCatalog(catalogFixture()).modules?.[0]?.lessons[0]?.activities[0]
+    assert.equal(activity?.publication_state, 'draft')
+  })
+
+  it('a fixture that drifts from the schema is reported', () => {
+    const drifted = catalogFixture() as {
+      modules: { lessons: { activities: Record<string, unknown>[] }[] }[]
+    }
+    const first = drifted.modules[0]?.lessons[0]?.activities[0]
+    assert.ok(first)
+    delete first.step_count
+    first.publication_state = 'archived'
+    first.locked = false
+    assert.deepEqual(check(drifted, catalogSchema(), 'catalog').sort(), [
+      'catalog.modules[0].lessons[0].activities[0].locked: not in the schema',
+      'catalog.modules[0].lessons[0].activities[0].publication_state: archived is not in draft,reviewed,published',
+      'catalog.modules[0].lessons[0].activities[0].step_count: required, missing',
+    ])
   })
 })

@@ -1,5 +1,5 @@
 import { ContractError, Issues, isRecord, kindOf } from '../course-map/data/contract.ts'
-import type { Catalog, CatalogActivity, CatalogLesson } from './types.ts'
+import type { Catalog } from './types.ts'
 
 // The catalog as the screens will read it, checked at the edge. `enabled` decides what
 // else must be there: a catalog that is off carries nothing but its reason (and
@@ -20,40 +20,34 @@ export const parseCatalog = (value: unknown, endpoint = ENDPOINT): Catalog => {
   issues.optional('vocab_due', value.vocab_due, (path, v) => issues.number(path, v))
 
   if (value.enabled === true) {
+    issues.optional('title', value.title, (path, v) => issues.string(path, v))
+    // Every field below is required by the OpenAPI (Catalog* schemas) and read by a screen.
     issues.array('modules', value.modules, (path, module) => {
       if (!issues.record(path, module)) return
       issues.string(`${path}.key`, module.key)
       issues.string(`${path}.title`, module.title)
-      issues.optional(`${path}.lessons`, module.lessons, (lessonsPath, lessons) =>
-        issues.array(lessonsPath, lessons, (lessonPath, lesson) => {
-          if (!issues.record(lessonPath, lesson)) return
-          issues.string(`${lessonPath}.id`, lesson.id)
-          issues.string(`${lessonPath}.title`, lesson.title)
-          issues.optional(`${lessonPath}.publication_state`, lesson.publication_state, (p, v) =>
-            issues.string(p, v)
-          )
-          // What the lesson list needs of each activity. Nothing else is asked: a
-          // field the backend does not send is not invented, and not required.
-          issues.optional(`${lessonPath}.activities`, lesson.activities, (actsPath, acts) =>
-            issues.array(actsPath, acts, (actPath, act) => {
-              if (!issues.record(actPath, act)) return
-              issues.string(`${actPath}.id`, act.id)
-              issues.string(`${actPath}.title`, act.title)
-              issues.string(`${actPath}.skill`, act.skill)
-              issues.optional(`${actPath}.publication_state`, act.publication_state, (p, v) =>
-                issues.string(p, v)
-              )
-              issues.optional(`${actPath}.state`, act.state, (p, v) => issues.string(p, v))
-              issues.optional(`${actPath}.best_percent`, act.best_percent, (p, v) =>
-                issues.number(p, v)
-              )
-            })
+      issues.array(`${path}.lessons`, module.lessons, (lessonPath, lesson) => {
+        if (!issues.record(lessonPath, lesson)) return
+        for (const name of ['id', 'code', 'title', 'description'] as const)
+          issues.string(`${lessonPath}.${name}`, lesson[name])
+        issues.number(`${lessonPath}.vocabulary_count`, lesson.vocabulary_count)
+        issues.array(`${lessonPath}.activities`, lesson.activities, (actPath, act) => {
+          if (!issues.record(actPath, act)) return
+          for (const name of ['id', 'skill', 'title'] as const)
+            issues.string(`${actPath}.${name}`, act[name])
+          issues.number(`${actPath}.estimated_minutes`, act.estimated_minutes)
+          issues.number(`${actPath}.step_count`, act.step_count)
+          issues.optional(`${actPath}.role`, act.role, (p, v) => issues.string(p, v))
+          issues.array(`${actPath}.can_do`, act.can_do, (p, v) => issues.string(p, v))
+          issues.oneOf(`${actPath}.publication_state`, act.publication_state, PUBLICATION_STATES)
+          issues.oneOf(`${actPath}.state`, act.state, ACTIVITY_STATES)
+          issues.optional(`${actPath}.best_percent`, act.best_percent, (p, v) =>
+            issues.number(p, v)
           )
         })
-      )
+      })
     })
-    // The flat form the screens read: absent is allowed, a wrong type is not.
-    for (const name of ['lessons', 'activities', 'skills'] as const)
+    for (const name of ['skills'] as const)
       issues.optional(name, value[name], (path, v) => issues.array(path, v))
   }
   const language = value.language
@@ -62,59 +56,26 @@ export const parseCatalog = (value: unknown, endpoint = ENDPOINT): Catalog => {
   issues.settle(endpoint)
 
   // The backend names the language by its code; older mocks send { code, name }.
+  // The backend names the language by its code; the screens read { code, name }.
   const catalog = (typeof language === 'string'
     ? { ...value, language: { code: language, name: '' } }
     : value) as unknown as Catalog
-  return catalog.enabled ? flatten(catalog) : catalog
+  return catalog.enabled
+    ? { ...catalog, preview: catalog.preview ?? hasUnpublished(catalog) }
+    : catalog
 }
 
-const asRecords = (value: unknown): Record<string, unknown>[] =>
-  Array.isArray(value) ? (value as Record<string, unknown>[]) : []
+const PUBLICATION_STATES = ['draft', 'reviewed', 'published']
+const ACTIVITY_STATES = ['not_started', 'in_progress', 'finished']
 
-// The screens read flat `lessons` and `activities`; the backend nests them under their
-// module. This only reshapes: nothing is dropped, whatever the publication_state, because
-// who may see a draft is the server's decision (it sends students published items only).
-// The flat form the mock sends is left as it is.
-const flatten = (catalog: Catalog): Catalog => {
-  const nested = (catalog.modules ?? []).some((m) => Array.isArray(m.lessons) && m.lessons.length)
-  if (!nested) return catalog
-  const lessons: CatalogLesson[] = [...(catalog.lessons ?? [])]
-  const activities: CatalogActivity[] = [...(catalog.activities ?? [])]
-  for (const module of catalog.modules ?? []) {
-    for (const lesson of asRecords(module.lessons)) {
-      lessons.push({
-        id: lesson.id as string,
-        module: module.key,
-        code: (lesson.code as string | undefined) ?? '',
-        title: lesson.title as string,
-        description: (lesson.description as string | undefined) ?? '',
-        locked: lesson.locked === true,
-        publication_state: lesson.publication_state as string | undefined,
-      })
-      for (const act of asRecords(lesson.activities)) {
-        const best = typeof act.best_percent === 'number' ? act.best_percent : null
-        activities.push({
-          id: act.id as string,
-          lesson_id: lesson.id as string,
-          skill: act.skill as CatalogActivity['skill'],
-          title: act.title as string,
-          estimated_minutes: (act.estimated_minutes as number | undefined) ?? null,
-          step_count: (act.step_count as number | undefined) ?? null,
-          locked: act.locked === true,
-          completed_count:
-            (act.completed_count as number | undefined) ?? (act.state === 'completed' ? 1 : 0),
-          best_score: (act.best_score as number | null | undefined) ?? best,
-          state: act.state as string | undefined,
-          publication_state: act.publication_state as string | undefined,
-        })
-      }
-    }
-  }
-  return { ...catalog, lessons, activities }
-}
+// The backend sends non-published items to editors in preview only, and its Catalog
+// schema has no `preview` flag: an item that is not published is the signal.
+const hasUnpublished = (catalog: Catalog): boolean =>
+  (catalog.modules ?? []).some((m) =>
+    m.lessons.some((l) => l.activities.some((a) => a.publication_state !== 'published'))
+  )
 
-// Whether an enabled catalog has any lesson to practice, in either form. Only called
-// after `enabled` is known to be true.
+// Whether an enabled catalog has any lesson to practice. Only called after `enabled`
+// is known to be true. The server's list, as it came: nothing is filtered here.
 export const hasContent = (catalog: Catalog): boolean =>
-  (catalog.lessons?.length ?? 0) > 0 ||
-  (catalog.modules ?? []).some((module) => (module.lessons?.length ?? 0) > 0)
+  (catalog.modules ?? []).some((module) => module.lessons.length > 0)

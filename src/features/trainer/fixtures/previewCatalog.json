@@ -1,0 +1,817 @@
+{
+  "enabled": true,
+  "preview": true,
+  "language": "en",
+  "level": "A1",
+  "title": "Inglés A1 · Turismo",
+  "content_version": "cd21235a2e5ee4e4",
+  "modules": [
+    {
+      "key": "M1",
+      "title": "Asking for and giving personal information",
+      "lessons": [
+        {
+          "id": "1.1",
+          "code": "1.1",
+          "title": "Greetings and making introductions",
+          "description": "Greet people and introduce yourself.",
+          "vocabulary_count": 8,
+          "activities": [
+            {
+              "id": "en-a1-1.1-dialogue",
+              "skill": "dialogue",
+              "title": "Talk it through 1.1",
+              "estimated_minutes": 5,
+              "publication_state": "draft",
+              "step_count": 6,
+              "role": "Receptionist welcoming a guest",
+              "can_do": [
+                "I can greet a guest and say my name.",
+                "I can ask a guest for their name."
+              ],
+              "state": "not_started",
+              "best_percent": null
+            },
+            {
+              "id": "en-a1-1.1-grammar",
+              "skill": "grammar",
+              "title": "Practice 1.1",
+              "estimated_minutes": 6,
+              "publication_state": "draft",
+              "step_count": 6,
+              "role": "Receptionist welcoming a guest",
+              "can_do": [
+                "I can greet a guest and say my name.",
+                "I can ask a guest for their name."
+              ],
+              "state": "not_started",
+              "best_percent": null
+            },
+            {
+              "id": "en-a1-1.1-listening",
+              "skill": "listening",
+              "title": "Listen and choose 1.1",
+              "estimated_minutes": 4,
+              "publication_state": "draft",
+              "step_count": 3,
+              "role": "Receptionist welcoming a guest",
+              "can_do": [
+                "I can greet a guest and say my name.",
+                "I can ask a guest for their name."
+              ],
+              "state": "not_started",
+              "best_percent": null
+            }
+          ]
+        },
+        {
+          "id": "1.2",
+          "code": "1.2",
+          "title": "Nationalities and languages",
+          "description": "Say where people are from and what languages they speak.",
+          "vocabulary_count": 8,
+          "activities": [
+            {
+              "id": "en-a1-1.2-dialogue",
+              "skill": "dialogue",
+              "title": "Talk it through 1.2",
+              "estimated_minutes": 5,
+              "publication_state": "draft",
+              "step_count": 6,
+              "role": "Guide meeting visitors from other countries",
+              "can_do": [
+                "I can say where I am from.",
+                "I can ask a visitor where they are from and what languages they speak."
+              ],
+              "state": "not_started",
+              "best_percent": null
+            },
+            {
+              "id": "en-a1-1.2-grammar",
+              "skill": "grammar",
+              "title": "Practice 1.2",
+              "estimated_minutes": 6,
+              "publication_state": "draft",
+              "step_count": 6,
+              "role": "Guide meeting visitors from other countries",
+              "can_do": [
+                "I can say where I am from.",
+                "I can ask a visitor where they are from and what languages they speak."
+              ],
+              "state": "not_started",
+              "best_percent": null
+            },
+            {
+              "id": "en-a1-1.2-listening",
+              "skill": "listening",
+              "title": "Listen and choose 1.2",
+              "estimated_minutes": 4,
+              "publication_state": "draft",
+              "step_count": 3,
+              "role": "Guide meeting visitors from other countries",
+              "can_do": [
+                "I can say where I am from.",
+                "I can ask a visitor where they are from and what languages they speak."
+              ],
+              "state": "not_started",
+              "best_percent": null
+            }
+          ]
+        },
+        {
+          "id": "1.3",
+          "code": "1.3",
+          "title": "Talking about schedules",
+          "description": "Say and ask the time, and talk about daily schedules.",
+          "vocabulary_count": 8,
+          "activities": [
+            {
+              "id": "en-a1-1.3-dialogue",
+              "skill": "dialogue",
+              "title": "Talk it through 1.3",
+              "estimated_minutes": 5,
+              "publication_state": "draft",
+              "step_count": 6,
+              "role": "Front desk telling guests the hours",
+              "can_do": [
+                "I can say and ask the time.",
+                "I can tell a guest the hours of meals and tours."
+              ],
+              "state": "not_started",
+              "best_percent": null
+            },
+            {
+              "id": "en-a1-1.3-grammar",
+              "skill": "grammar",
+              "title": "Practice 1.3",
+              "estimated_minutes": 6,
+              "publication_state": "draft",
+              "step_count": 6,
+              "role": "Front desk telling guests the hours",
+              "can_do": [
+                "I can say and ask the time.",
+                "I can tell a guest the hours of meals and tours."
+              ],
+              "state": "not_started",
+              "best_percent": null
+            },
+            {
+              "id": "en-a1-1.3-listening",
+              "skill": "listening",
+              "title": "Listen and choose 1.3",
+              "estimated_minutes": 4,
+              "publication_state": "draft",
+              "step_count": 3,
+              "role": "Front desk telling guests the hours",
+              "can_do": [
+                "I can say and ask the time.",
+                "I can tell a guest the hours of meals and tours."
+              ],
+              "state": "not_started",
+              "best_percent": null
+            }
+          ]
+        },
+        {
+          "id": "1.4",
+          "code": "1.4",
+          "title": "Asking for and giving personal information",
+          "description": "Ask for and give names, ages, numbers and contact details.",
+          "vocabulary_count": 8,
+          "activities": [
+            {
+              "id": "en-a1-1.4-dialogue",
+              "skill": "dialogue",
+              "title": "Talk it through 1.4",
+              "estimated_minutes": 5,
+              "publication_state": "draft",
+              "step_count": 6,
+              "role": "Receptionist filling in a guest card",
+              "can_do": [
+                "I can ask for and give names, ages and phone numbers.",
+                "I can spell a name."
+              ],
+              "state": "not_started",
+              "best_percent": null
+            },
+            {
+              "id": "en-a1-1.4-grammar",
+              "skill": "grammar",
+              "title": "Practice 1.4",
+              "estimated_minutes": 6,
+              "publication_state": "draft",
+              "step_count": 6,
+              "role": "Receptionist filling in a guest card",
+              "can_do": [
+                "I can ask for and give names, ages and phone numbers.",
+                "I can spell a name."
+              ],
+              "state": "not_started",
+              "best_percent": null
+            },
+            {
+              "id": "en-a1-1.4-listening",
+              "skill": "listening",
+              "title": "Listen and choose 1.4",
+              "estimated_minutes": 4,
+              "publication_state": "draft",
+              "step_count": 3,
+              "role": "Receptionist filling in a guest card",
+              "can_do": [
+                "I can ask for and give names, ages and phone numbers.",
+                "I can spell a name."
+              ],
+              "state": "not_started",
+              "best_percent": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "M2",
+      "title": "Describing destinations and managing visitor services",
+      "lessons": [
+        {
+          "id": "2.1",
+          "code": "2.1",
+          "title": "Food and drinks",
+          "description": "Order food and drinks and ask about prices.",
+          "vocabulary_count": 8,
+          "activities": [
+            {
+              "id": "en-a1-2.1-dialogue",
+              "skill": "dialogue",
+              "title": "Talk it through 2.1",
+              "estimated_minutes": 5,
+              "publication_state": "draft",
+              "step_count": 6,
+              "role": "Waiter taking an order",
+              "can_do": [
+                "I can order food and drinks.",
+                "I can ask and say how much something costs."
+              ],
+              "state": "not_started",
+              "best_percent": null
+            },
+            {
+              "id": "en-a1-2.1-grammar",
+              "skill": "grammar",
+              "title": "Practice 2.1",
+              "estimated_minutes": 6,
+              "publication_state": "draft",
+              "step_count": 6,
+              "role": "Waiter taking an order",
+              "can_do": [
+                "I can order food and drinks.",
+                "I can ask and say how much something costs."
+              ],
+              "state": "not_started",
+              "best_percent": null
+            },
+            {
+              "id": "en-a1-2.1-listening",
+              "skill": "listening",
+              "title": "Listen and choose 2.1",
+              "estimated_minutes": 4,
+              "publication_state": "draft",
+              "step_count": 3,
+              "role": "Waiter taking an order",
+              "can_do": [
+                "I can order food and drinks.",
+                "I can ask and say how much something costs."
+              ],
+              "state": "not_started",
+              "best_percent": null
+            }
+          ]
+        },
+        {
+          "id": "2.2",
+          "code": "2.2",
+          "title": "Means of transportation",
+          "description": "Talk about how to get to places.",
+          "vocabulary_count": 8,
+          "activities": [
+            {
+              "id": "en-a1-2.2-dialogue",
+              "skill": "dialogue",
+              "title": "Talk it through 2.2",
+              "estimated_minutes": 5,
+              "publication_state": "draft",
+              "step_count": 6,
+              "role": "Guide explaining how to get somewhere",
+              "can_do": ["I can name means of transportation.", "I can say how to get to a place."],
+              "state": "not_started",
+              "best_percent": null
+            },
+            {
+              "id": "en-a1-2.2-grammar",
+              "skill": "grammar",
+              "title": "Practice 2.2",
+              "estimated_minutes": 6,
+              "publication_state": "draft",
+              "step_count": 6,
+              "role": "Guide explaining how to get somewhere",
+              "can_do": ["I can name means of transportation.", "I can say how to get to a place."],
+              "state": "not_started",
+              "best_percent": null
+            },
+            {
+              "id": "en-a1-2.2-listening",
+              "skill": "listening",
+              "title": "Listen and choose 2.2",
+              "estimated_minutes": 4,
+              "publication_state": "draft",
+              "step_count": 3,
+              "role": "Guide explaining how to get somewhere",
+              "can_do": ["I can name means of transportation.", "I can say how to get to a place."],
+              "state": "not_started",
+              "best_percent": null
+            }
+          ]
+        },
+        {
+          "id": "2.3",
+          "code": "2.3",
+          "title": "Where you and other people are from",
+          "description": "Describe where you and other people are from.",
+          "vocabulary_count": 8,
+          "activities": [
+            {
+              "id": "en-a1-2.3-dialogue",
+              "skill": "dialogue",
+              "title": "Talk it through 2.3",
+              "estimated_minutes": 5,
+              "publication_state": "draft",
+              "step_count": 6,
+              "role": "Host talking about people and places of origin",
+              "can_do": ["I can say where people are from.", "I can describe where I live."],
+              "state": "not_started",
+              "best_percent": null
+            },
+            {
+              "id": "en-a1-2.3-grammar",
+              "skill": "grammar",
+              "title": "Practice 2.3",
+              "estimated_minutes": 6,
+              "publication_state": "draft",
+              "step_count": 6,
+              "role": "Host talking about people and places of origin",
+              "can_do": ["I can say where people are from.", "I can describe where I live."],
+              "state": "not_started",
+              "best_percent": null
+            },
+            {
+              "id": "en-a1-2.3-listening",
+              "skill": "listening",
+              "title": "Listen and choose 2.3",
+              "estimated_minutes": 4,
+              "publication_state": "draft",
+              "step_count": 3,
+              "role": "Host talking about people and places of origin",
+              "can_do": ["I can say where people are from.", "I can describe where I live."],
+              "state": "not_started",
+              "best_percent": null
+            }
+          ]
+        },
+        {
+          "id": "2.4",
+          "code": "2.4",
+          "title": "Animals and plants of the region",
+          "description": "Name common animals and plants found in the region.",
+          "vocabulary_count": 8,
+          "activities": [
+            {
+              "id": "en-a1-2.4-dialogue",
+              "skill": "dialogue",
+              "title": "Talk it through 2.4",
+              "estimated_minutes": 5,
+              "publication_state": "draft",
+              "step_count": 6,
+              "role": "Nature guide naming animals and plants",
+              "can_do": [
+                "I can name common animals and plants of the region.",
+                "I can say what a plant or animal is like."
+              ],
+              "state": "not_started",
+              "best_percent": null
+            },
+            {
+              "id": "en-a1-2.4-grammar",
+              "skill": "grammar",
+              "title": "Practice 2.4",
+              "estimated_minutes": 6,
+              "publication_state": "draft",
+              "step_count": 6,
+              "role": "Nature guide naming animals and plants",
+              "can_do": [
+                "I can name common animals and plants of the region.",
+                "I can say what a plant or animal is like."
+              ],
+              "state": "not_started",
+              "best_percent": null
+            },
+            {
+              "id": "en-a1-2.4-listening",
+              "skill": "listening",
+              "title": "Listen and choose 2.4",
+              "estimated_minutes": 4,
+              "publication_state": "draft",
+              "step_count": 3,
+              "role": "Nature guide naming animals and plants",
+              "can_do": [
+                "I can name common animals and plants of the region.",
+                "I can say what a plant or animal is like."
+              ],
+              "state": "not_started",
+              "best_percent": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "M3",
+      "title": "Giving information about places of interest and weather conditions",
+      "lessons": [
+        {
+          "id": "3.1",
+          "code": "3.1",
+          "title": "Directions to tourist places",
+          "description": "Ask for and give directions to places and attractions.",
+          "vocabulary_count": 8,
+          "activities": [
+            {
+              "id": "en-a1-3.1-dialogue",
+              "skill": "dialogue",
+              "title": "Talk it through 3.1",
+              "estimated_minutes": 5,
+              "publication_state": "draft",
+              "step_count": 6,
+              "role": "Guide giving directions to a tourist place",
+              "can_do": ["I can ask where a place is.", "I can give simple directions."],
+              "state": "not_started",
+              "best_percent": null
+            },
+            {
+              "id": "en-a1-3.1-grammar",
+              "skill": "grammar",
+              "title": "Practice 3.1",
+              "estimated_minutes": 6,
+              "publication_state": "draft",
+              "step_count": 6,
+              "role": "Guide giving directions to a tourist place",
+              "can_do": ["I can ask where a place is.", "I can give simple directions."],
+              "state": "not_started",
+              "best_percent": null
+            },
+            {
+              "id": "en-a1-3.1-listening",
+              "skill": "listening",
+              "title": "Listen and choose 3.1",
+              "estimated_minutes": 4,
+              "publication_state": "draft",
+              "step_count": 3,
+              "role": "Guide giving directions to a tourist place",
+              "can_do": ["I can ask where a place is.", "I can give simple directions."],
+              "state": "not_started",
+              "best_percent": null
+            }
+          ]
+        },
+        {
+          "id": "3.2",
+          "code": "3.2",
+          "title": "The weather",
+          "description": "Talk about the weather.",
+          "vocabulary_count": 8,
+          "activities": [
+            {
+              "id": "en-a1-3.2-dialogue",
+              "skill": "dialogue",
+              "title": "Talk it through 3.2",
+              "estimated_minutes": 5,
+              "publication_state": "draft",
+              "step_count": 6,
+              "role": "Guide talking about the weather",
+              "can_do": [
+                "I can say what the weather is like.",
+                "I can suggest what to wear or bring."
+              ],
+              "state": "not_started",
+              "best_percent": null
+            },
+            {
+              "id": "en-a1-3.2-grammar",
+              "skill": "grammar",
+              "title": "Practice 3.2",
+              "estimated_minutes": 6,
+              "publication_state": "draft",
+              "step_count": 6,
+              "role": "Guide talking about the weather",
+              "can_do": [
+                "I can say what the weather is like.",
+                "I can suggest what to wear or bring."
+              ],
+              "state": "not_started",
+              "best_percent": null
+            },
+            {
+              "id": "en-a1-3.2-listening",
+              "skill": "listening",
+              "title": "Listen and choose 3.2",
+              "estimated_minutes": 4,
+              "publication_state": "draft",
+              "step_count": 3,
+              "role": "Guide talking about the weather",
+              "can_do": [
+                "I can say what the weather is like.",
+                "I can suggest what to wear or bring."
+              ],
+              "state": "not_started",
+              "best_percent": null
+            }
+          ]
+        },
+        {
+          "id": "3.3",
+          "code": "3.3",
+          "title": "Free time and leisure activities",
+          "description": "Talk about free time and leisure.",
+          "vocabulary_count": 8,
+          "activities": [
+            {
+              "id": "en-a1-3.3-dialogue",
+              "skill": "dialogue",
+              "title": "Talk it through 3.3",
+              "estimated_minutes": 5,
+              "publication_state": "draft",
+              "step_count": 6,
+              "role": "Guide asking visitors about free time",
+              "can_do": [
+                "I can say what I like to do in my free time.",
+                "I can ask a visitor about their hobbies."
+              ],
+              "state": "not_started",
+              "best_percent": null
+            },
+            {
+              "id": "en-a1-3.3-grammar",
+              "skill": "grammar",
+              "title": "Practice 3.3",
+              "estimated_minutes": 6,
+              "publication_state": "draft",
+              "step_count": 6,
+              "role": "Guide asking visitors about free time",
+              "can_do": [
+                "I can say what I like to do in my free time.",
+                "I can ask a visitor about their hobbies."
+              ],
+              "state": "not_started",
+              "best_percent": null
+            },
+            {
+              "id": "en-a1-3.3-listening",
+              "skill": "listening",
+              "title": "Listen and choose 3.3",
+              "estimated_minutes": 4,
+              "publication_state": "draft",
+              "step_count": 3,
+              "role": "Guide asking visitors about free time",
+              "can_do": [
+                "I can say what I like to do in my free time.",
+                "I can ask a visitor about their hobbies."
+              ],
+              "state": "not_started",
+              "best_percent": null
+            }
+          ]
+        },
+        {
+          "id": "3.4",
+          "code": "3.4",
+          "title": "Health problems and symptoms",
+          "description": "Say what is wrong and describe simple symptoms.",
+          "vocabulary_count": 8,
+          "activities": [
+            {
+              "id": "en-a1-3.4-dialogue",
+              "skill": "dialogue",
+              "title": "Talk it through 3.4",
+              "estimated_minutes": 5,
+              "publication_state": "draft",
+              "step_count": 6,
+              "role": "Hotel staff helping a guest who feels ill",
+              "can_do": [
+                "I can say what is wrong with me.",
+                "I can understand simple advice about health."
+              ],
+              "state": "not_started",
+              "best_percent": null
+            },
+            {
+              "id": "en-a1-3.4-grammar",
+              "skill": "grammar",
+              "title": "Practice 3.4",
+              "estimated_minutes": 6,
+              "publication_state": "draft",
+              "step_count": 6,
+              "role": "Hotel staff helping a guest who feels ill",
+              "can_do": [
+                "I can say what is wrong with me.",
+                "I can understand simple advice about health."
+              ],
+              "state": "not_started",
+              "best_percent": null
+            },
+            {
+              "id": "en-a1-3.4-listening",
+              "skill": "listening",
+              "title": "Listen and choose 3.4",
+              "estimated_minutes": 4,
+              "publication_state": "draft",
+              "step_count": 3,
+              "role": "Hotel staff helping a guest who feels ill",
+              "can_do": [
+                "I can say what is wrong with me.",
+                "I can understand simple advice about health."
+              ],
+              "state": "not_started",
+              "best_percent": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "M4",
+      "title": "Fundamental pillars of the training program",
+      "lessons": [
+        {
+          "id": "4.1",
+          "code": "4.1",
+          "title": "Sustainable tourism (green communication)",
+          "description": "Recycling bins, basic conservation instructions, colours and green signs.",
+          "vocabulary_count": 8,
+          "activities": [
+            {
+              "id": "en-a1-4.1-dialogue",
+              "skill": "dialogue",
+              "title": "Talk it through 4.1",
+              "estimated_minutes": 5,
+              "publication_state": "draft",
+              "step_count": 6,
+              "role": "Lodge staff explaining recycling and green signs",
+              "can_do": [
+                "I can name the colours of recycling bins.",
+                "I can understand and give basic conservation instructions."
+              ],
+              "state": "not_started",
+              "best_percent": null
+            },
+            {
+              "id": "en-a1-4.1-grammar",
+              "skill": "grammar",
+              "title": "Practice 4.1",
+              "estimated_minutes": 6,
+              "publication_state": "draft",
+              "step_count": 6,
+              "role": "Lodge staff explaining recycling and green signs",
+              "can_do": [
+                "I can name the colours of recycling bins.",
+                "I can understand and give basic conservation instructions."
+              ],
+              "state": "not_started",
+              "best_percent": null
+            },
+            {
+              "id": "en-a1-4.1-listening",
+              "skill": "listening",
+              "title": "Listen and choose 4.1",
+              "estimated_minutes": 4,
+              "publication_state": "draft",
+              "step_count": 3,
+              "role": "Lodge staff explaining recycling and green signs",
+              "can_do": [
+                "I can name the colours of recycling bins.",
+                "I can understand and give basic conservation instructions."
+              ],
+              "state": "not_started",
+              "best_percent": null
+            }
+          ]
+        },
+        {
+          "id": "4.2",
+          "code": "4.2",
+          "title": "Tourism as a culture for peace (intercultural mediation)",
+          "description": "Welcome international guests with courtesy; greetings from around the world.",
+          "vocabulary_count": 8,
+          "activities": [
+            {
+              "id": "en-a1-4.2-dialogue",
+              "skill": "dialogue",
+              "title": "Talk it through 4.2",
+              "estimated_minutes": 5,
+              "publication_state": "draft",
+              "step_count": 6,
+              "role": "Host welcoming guests from many countries",
+              "can_do": [
+                "I can welcome international guests politely.",
+                "I can use greetings and polite phrases from around the world."
+              ],
+              "state": "not_started",
+              "best_percent": null
+            },
+            {
+              "id": "en-a1-4.2-grammar",
+              "skill": "grammar",
+              "title": "Practice 4.2",
+              "estimated_minutes": 6,
+              "publication_state": "draft",
+              "step_count": 6,
+              "role": "Host welcoming guests from many countries",
+              "can_do": [
+                "I can welcome international guests politely.",
+                "I can use greetings and polite phrases from around the world."
+              ],
+              "state": "not_started",
+              "best_percent": null
+            },
+            {
+              "id": "en-a1-4.2-listening",
+              "skill": "listening",
+              "title": "Listen and choose 4.2",
+              "estimated_minutes": 4,
+              "publication_state": "draft",
+              "step_count": 3,
+              "role": "Host welcoming guests from many countries",
+              "can_do": [
+                "I can welcome international guests politely.",
+                "I can use greetings and polite phrases from around the world."
+              ],
+              "state": "not_started",
+              "best_percent": null
+            }
+          ]
+        },
+        {
+          "id": "4.3",
+          "code": "4.3",
+          "title": "Tourism culture (service and storytelling)",
+          "description": "Give simple directions to landmarks or hotel facilities; places in the city and telling the time.",
+          "vocabulary_count": 8,
+          "activities": [
+            {
+              "id": "en-a1-4.3-dialogue",
+              "skill": "dialogue",
+              "title": "Talk it through 4.3",
+              "estimated_minutes": 5,
+              "publication_state": "draft",
+              "step_count": 6,
+              "role": "Concierge giving directions to hotel facilities and landmarks",
+              "can_do": [
+                "I can give simple directions inside a hotel.",
+                "I can name places in the city and say when they are open."
+              ],
+              "state": "not_started",
+              "best_percent": null
+            },
+            {
+              "id": "en-a1-4.3-grammar",
+              "skill": "grammar",
+              "title": "Practice 4.3",
+              "estimated_minutes": 6,
+              "publication_state": "draft",
+              "step_count": 6,
+              "role": "Concierge giving directions to hotel facilities and landmarks",
+              "can_do": [
+                "I can give simple directions inside a hotel.",
+                "I can name places in the city and say when they are open."
+              ],
+              "state": "not_started",
+              "best_percent": null
+            },
+            {
+              "id": "en-a1-4.3-listening",
+              "skill": "listening",
+              "title": "Listen and choose 4.3",
+              "estimated_minutes": 4,
+              "publication_state": "draft",
+              "step_count": 3,
+              "role": "Concierge giving directions to hotel facilities and landmarks",
+              "can_do": [
+                "I can give simple directions inside a hotel.",
+                "I can name places in the city and say when they are open."
+              ],
+              "state": "not_started",
+              "best_percent": null
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
