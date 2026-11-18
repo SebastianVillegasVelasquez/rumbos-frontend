@@ -1,4 +1,5 @@
 import { expect, test, type Page } from '@playwright/test'
+import { routeForms } from './formsMock.ts'
 import { app } from './support.ts'
 
 // The editor's "Entrenamiento y evaluación" panel against the mock host (an editor
@@ -7,6 +8,7 @@ import { app } from './support.ts'
 // Guardar button.
 
 const openPanel = async (page: Page) => {
+  await routeForms(page.context())
   await page.goto('/mock-host/index.html')
   await page.locator('label:has-text("role") select').selectOption('editor')
   await page.locator('label:has-text("editing on") input').check()
@@ -56,6 +58,15 @@ test.describe('training and assessments panel', () => {
     await expect(panel.getByLabel('Nota para aprobar (%)')).toHaveValue('100')
     await panel.getByLabel('Nota para aprobar (%)').fill('85')
     await panel.getByRole('switch', { name: /Dar el curso por completado/ }).uncheck()
+    // The author chooses a form for each exam: with none, the save is refused.
+    await panel
+      .getByRole('group', { name: 'Evaluación de entrada' })
+      .getByLabel('Formulario')
+      .selectOption('a1-form-a')
+    await panel
+      .getByRole('group', { name: 'Evaluación final' })
+      .getByLabel('Formulario')
+      .selectOption('a1-form-a')
     await expect(panel.getByText(/completará el curso y recibirá el certificado/)).toHaveCount(0)
     // The studio's own panel (the publication bar has its own "Cambios sin guardar").
     const studio = panel.locator('.fixed.inset-y-0.right-0')

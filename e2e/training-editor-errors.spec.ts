@@ -1,11 +1,13 @@
 import { expect, test, type Page } from '@playwright/test'
+import { routeForms } from './formsMock.ts'
 import { app } from './support.ts'
 
 // What the editor says when the trainer settings cannot be saved, against the mock
 // host (an editor with editing on) and the mock backend, which answers like the
 // contract: a 422 with errors[] { path, rule, message_key } and, on a save that goes
 // through, warnings[]. Also the check-in step's dependency on the assessments, and
-// the rule that no form is chosen for the author (a1-form-a is the only one offered).
+// the rule that no form is chosen for the author (the list comes from the backend and,
+// when it cannot be had, the picker says so instead of offering a form of its own).
 
 const welcomeWithoutSteps = encodeURIComponent(
   JSON.stringify({
@@ -19,7 +21,8 @@ const welcomeWithoutSteps = encodeURIComponent(
   })
 )
 
-const openStudio = async (page: Page, extra = '') => {
+const openStudio = async (page: Page, extra = '', forms: { status?: number } = {}) => {
+  await routeForms(page.context(), forms)
   await page.goto('/mock-host/index.html')
   await page.locator('label:has-text("role") select').selectOption('editor')
   await page.locator('label:has-text("editing on") input').check()
@@ -58,14 +61,31 @@ const chooseForms = async (page: Page) => {
 }
 
 test.describe('the form is chosen, never defaulted', () => {
-  test('starts with none selected and offers a1-form-a', async ({ page }) => {
+  test('when the list cannot be had, it says so and offers no form of its own', async ({
+    page,
+  }) => {
+    await openStudio(page, '', { status: 503 })
+    await goTo(page, 'Entrenamiento')
+    await expect(
+      studio(page)
+        .getByText(/No pudimos cargar la lista de formularios/)
+        .first()
+    ).toBeVisible()
+    for (const group of ['Evaluación de entrada', 'Evaluación final'] as const) {
+      await expect(formOf(page, group)).toBeDisabled()
+      await expect(formOf(page, group).locator('option')).toHaveText(['Elige un formulario'])
+    }
+  })
+
+  test('starts with none selected and offers the forms the backend lists', async ({ page }) => {
     await openStudio(page)
     await goTo(page, 'Entrenamiento')
     for (const group of ['Evaluación de entrada', 'Evaluación final'] as const) {
       await expect(formOf(page, group)).toHaveValue('')
       await expect(formOf(page, group).locator('option')).toHaveText([
         'Elige un formulario',
-        'a1-form-a',
+        'A1 · Forma A',
+        'A1 · Forma B (borrador)',
       ])
     }
   })

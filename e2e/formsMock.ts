@@ -1,0 +1,27 @@
+import type { BrowserContext } from '@playwright/test'
+import { validated } from '../src/contracts/openapiExample.ts'
+
+// GET /trainer/assessments/forms for the editor specs (editors only, drafts included),
+// answered with a body checked against the response schema of contracts/openapi.json.
+export const FORMS = [
+  { id: 'a1-form-a', title: 'A1 · Forma A', publication_state: 'published' },
+  { id: 'a1-form-b', title: 'A1 · Forma B', publication_state: 'draft' },
+] as const
+
+// `status` makes the list fail with that status instead (0: the connection drops).
+export const routeForms = async (context: BrowserContext, { status }: { status?: number } = {}) => {
+  await context.route('**/api/v1/trainer/assessments/forms', (route) => {
+    if (status === 0) return route.abort('connectionrefused')
+    if (status !== undefined)
+      return route.fulfill({
+        status,
+        contentType: 'application/json',
+        body: JSON.stringify({ detail: { code: 'down', message: 'down' } }),
+      })
+    return route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(validated('GET', '/trainer/assessments/forms', 200, FORMS)),
+    })
+  })
+}
