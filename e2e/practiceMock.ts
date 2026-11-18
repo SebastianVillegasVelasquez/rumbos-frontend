@@ -20,6 +20,9 @@ export interface PracticeOptions {
   catalogFailures?: number
   // How long the catalog takes to answer, to show the loading state.
   catalogDelayMs?: number
+  // The catalog answers exactly this body with a 200, whatever else is set: for the
+  // shapes the production backend sends that the fixture below does not model.
+  catalogBody?: unknown
   // Mark the second lesson and the listening activity as not yet published.
   unpublished?: boolean
   // Words due for review.
@@ -314,6 +317,7 @@ export class PracticeMock {
       const answer = (): PracticeReply => {
         if (failing && o.catalogStatus === 0) return { status: 0, body: null, abort: true }
         if (failing) return { status: o.catalogStatus!, body: { detail: { code: 'down' } } }
+        if (o.catalogBody !== undefined) return { status: 200, body: o.catalogBody }
         if (o.enabled === false)
           return {
             status: 200,

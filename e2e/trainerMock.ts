@@ -17,6 +17,9 @@ export interface MockOptions {
   operator?: 'gt' | 'gte'
   // The list answers this status (503, 404...) instead of the list.
   listStatus?: number
+  // The list answers exactly this body with a 200 (the shapes production sends that
+  // the fixture does not model, such as { enabled: false } with no items).
+  listBody?: unknown
   // The first N save calls fail with this status (0 = the connection drops).
   failSaves?: number
   failSaveStatus?: number
@@ -352,6 +355,7 @@ export class TrainerMock {
 
     if (method === 'GET' && path === '/assessments') {
       if (o.listStatus) return this.err(route, o.listStatus, 'down')
+      if (o.listBody !== undefined) return this.json(route, 200, o.listBody)
       const active = this.active()
       if (active) this.expireIfLate(active)
       const live = this.active()
