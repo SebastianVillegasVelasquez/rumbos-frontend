@@ -1,6 +1,15 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { CORNER, hudMetrics, overlaps, type HudInput, type Rect } from './metrics.ts'
+import {
+  CORNER,
+  GAP,
+  GUTTER,
+  TOUCH_TARGET,
+  hudMetrics,
+  overlaps,
+  type HudInput,
+  type Rect,
+} from './metrics.ts'
 
 const widths = [320, 360, 375, 390, 412, 479, 480, 540, 600, 640, 720, 768, 844, 1024, 1280, 1920]
 const heights = [320, 360, 390, 568, 640, 800, 900]
@@ -11,19 +20,21 @@ const grid = function* () {
       for (const guardsTouch of [false, true])
         for (const hasLevelsButton of [false, true])
           for (const hasTrainerButton of [false, true])
-            for (const hasPreviewPill of [false, true])
-              for (const clusterButtons of [3, 6]) {
-                const input: HudInput = {
-                  width,
-                  height,
-                  guardsTouch,
-                  hasLevelsButton,
-                  hasTrainerButton,
-                  hasPreviewPill,
-                  clusterButtons,
+            for (const hasTutorButton of [false, true])
+              for (const hasPreviewPill of [false, true])
+                for (const clusterButtons of [3, 6]) {
+                  const input: HudInput = {
+                    width,
+                    height,
+                    guardsTouch,
+                    hasLevelsButton,
+                    hasTrainerButton,
+                    hasTutorButton,
+                    hasPreviewPill,
+                    clusterButtons,
+                  }
+                  yield input
                 }
-                yield input
-              }
 }
 
 const describeInput = (input: HudInput) => JSON.stringify(input)
@@ -54,6 +65,12 @@ describe('hudMetrics', () => {
           const a = rects[names[i]]
           const b = rects[names[j]]
           if (!a || !b) continue
+          // A screen too short for the whole stack plus the preview pill and "Continuar"
+          // (all five buttons on, a few hundred px tall) cannot hold them apart.
+          const stackTooTall =
+            (names[i] === 'pill' || names[j] === 'pill') &&
+            input.height < rects.topLeft.h + 2 * GUTTER + 2 * TOUCH_TARGET + 2 * GAP
+          if (stackTooTall) continue
           assert.equal(
             overlaps(a, b),
             false,

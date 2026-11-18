@@ -133,6 +133,7 @@ import {
   useHostCompletionEnabled,
   useHostSupportsActivitySettings,
 } from './features/embed/hostState.ts'
+import { useHostTutorAvailable } from './features/embed/hostCapabilities.ts'
 import { useHostOverlayOpen } from './features/embed/hostOverlay.ts'
 import { RESERVED_CORNER_PX, useHostFullscreen } from './features/embed/hostFullscreen.ts'
 import { useFullscreenEntry } from './features/embed/useFullscreenEntry.ts'
@@ -600,6 +601,7 @@ export function AppShell() {
   // completion is on for the course and whether it can open the settings page).
   const completionEnabled = useHostCompletionEnabled()
   const supportsActivitySettings = useHostSupportsActivitySettings()
+  const tutorAvailable = useHostTutorAvailable()
   const untrackedCount = isEditor
     ? bubbles.filter(
         (bubble) => bubble.tracked === false && getAvailabilityForBubble(bubble) !== 'missing'
@@ -1313,6 +1315,13 @@ export function AppShell() {
                         persistentNote: noteIsPersistent(trainerState, trainerViewerIsEditor),
                       }
                     : null
+                }
+                tutor={
+                  embed && tutorAvailable
+                    ? { kind: 'ready', onOpen: embed.openTutor }
+                    : embed && exitPreview
+                      ? { kind: 'not-enabled' }
+                      : null
                 }
                 overlay={
                   trainerOpen && renderable ? (

@@ -66,6 +66,8 @@ const config = {
   followPreferredSize: false,
   // Contract v5.6: host-init.courseName; "absent" plays a plugin that predates it.
   courseName: 'present' as 'present' | 'absent',
+  // Contract v5.10: host-init.capabilities.tutor; "off" plays a plugin that does not announce it.
+  tutor: 'off' as 'on' | 'off',
   // What the mock backend reports for this tenant (GET /auth/me) and supports.
   widgets: false,
   contentSupport: true,
@@ -376,6 +378,7 @@ window.addEventListener('message', (event) => {
         locale: 'es',
         courseId: config.courseId,
         ...(config.courseName === 'present' ? { courseName: 'Introducción a la Ecología' } : {}),
+        ...(config.tutor === 'on' ? { capabilities: { tutor: true } } : {}),
         assertion: assertion(),
         state: buildState(),
       })
@@ -451,6 +454,10 @@ window.addEventListener('message', (event) => {
       })
       return
     }
+    case 'rumbos:tutor-open':
+      // The plugin owns the URL and the frame; here the tutor "opens" and closes at once.
+      setTimeout(() => send({ type: 'rumbos:host-tutor-closed', v: 1 }), 150)
+      return
     case 'rumbos:request-fullscreen':
       setFullscreen(data.on === true)
       return
@@ -681,6 +688,13 @@ const buildControls = () => {
       'courseName (v5.6)',
       select(['present', 'absent'] as const, config.courseName, (value) => {
         config.courseName = value
+        mountFrame()
+      })
+    ),
+    labelled(
+      'tutor capability (v5.10)',
+      select(['on', 'off'] as const, config.tutor, (value) => {
+        config.tutor = value
         mountFrame()
       })
     ),

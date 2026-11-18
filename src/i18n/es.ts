@@ -742,6 +742,10 @@ export const es = {
     levels: 'Niveles',
     quests: 'Misiones',
     trainer: 'Entrenar',
+    // The virtual tutor: a separate service the host opens. Wording pending approval.
+    tutor: 'Tutor virtual',
+    tutorHint: 'Asistente con inteligencia artificial',
+    tutorNotEnabled: 'El tutor no está habilitado en este sitio',
     // The trainer's code could not be downloaded (offline, or the site was updated).
     trainerChunk: {
       failed: 'No pudimos cargar el entrenamiento. Revisa tu conexión e inténtalo de nuevo.',

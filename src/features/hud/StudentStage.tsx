@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { subscribeHostTutorClosed } from '../embed/hostCapabilities.ts'
 import {
   ArrowLeft,
   ArrowRight,
+  Bot,
   Box,
   CheckCircle2,
   Dumbbell,
@@ -28,6 +30,12 @@ import { useStageSize } from './useStageSize.ts'
 import { isCoarsePointer } from './pointer.ts'
 
 export const TRAINER_BUTTON_ID = 'hud-trainer-button'
+export const TUTOR_BUTTON_ID = 'hud-tutor-button'
+
+// "Tutor virtual": shown only when the host announced it can open the tutor (never a
+// dead button). An editor previewing the student view on a host without it sees a
+// quiet note instead.
+export type TutorEntry = { kind: 'ready'; onOpen: () => void } | { kind: 'not-enabled' }
 
 // "Entrenar": absent when the map has no trainer. Its state comes from the catalog
 // (see trainer/availability.ts) and is never only implied: a button that cannot open
@@ -57,6 +65,7 @@ interface StudentStageProps {
   onOpenLevels?: () => void
   onToggleQuests: () => void
   trainer?: TrainerEntry | null
+  tutor?: TutorEntry | null
   // The trainer's stage, while it is open: drawn over the map, the HUD behind it inert.
   overlay?: ReactNode
   // The 2D/3D switch; absent when the published map has no 3D view.
@@ -107,6 +116,7 @@ export const StudentStage = ({
   onOpenLevels,
   onToggleQuests,
   trainer = null,
+  tutor = null,
   overlay = null,
   view,
   zoom,
@@ -137,6 +147,12 @@ export const StudentStage = ({
   const dimmed = useIdleDim(questsOpen)
   useHudInsets(stageRef, reportInsets)
 
+  // The host closed the tutor it opened: the button gets focus back.
+  useEffect(
+    () => subscribeHostTutorClosed(() => document.getElementById(TUTOR_BUTTON_ID)?.focus()),
+    []
+  )
+
   // The toast stack would sit on top of "Continuar".
   useEffect(() => {
     document.documentElement.style.setProperty('--hud-toast-lift', '4rem')
@@ -154,6 +170,7 @@ export const StudentStage = ({
     clusterButtons,
     hasLevelsButton: Boolean(onOpenLevels),
     hasTrainerButton: Boolean(trainer),
+    hasTutorButton: tutor?.kind === 'ready',
     hasPreviewPill: Boolean(exitPreview),
   })
 
@@ -271,6 +288,24 @@ export const StudentStage = ({
               <span className={labelClass}>{es.hud.trainer}</span>
             </Button>
           )}
+          {tutor?.kind === 'ready' && (
+            <Button
+              variant="surface"
+              size="sm"
+              dense
+              className="hud-dimmable pointer-events-auto min-w-[44px]"
+              id={TUTOR_BUTTON_ID}
+              aria-describedby={`${TUTOR_BUTTON_ID}-what`}
+              title={es.hud.tutorHint}
+              onClick={tutor.onOpen}
+            >
+              <Bot size={18} strokeWidth={2.5} aria-hidden />
+              <span className={labelClass}>{es.hud.tutor}</span>
+              <span id={`${TUTOR_BUTTON_ID}-what`} className="sr-only">
+                {es.hud.tutorHint}
+              </span>
+            </Button>
+          )}
           <SettingsPopover onShowWelcome={onShowWelcome} />
         </div>
         {trainer?.note && (
@@ -294,6 +329,21 @@ export const StudentStage = ({
             }
           >
             {trainer.note}
+          </p>
+        )}
+
+        {tutor?.kind === 'not-enabled' && (
+          <p
+            role="note"
+            className="hud-chip pointer-events-none absolute z-10 rounded-md px-3 py-1.5 text-sm font-bold text-white"
+            style={{
+              background: 'var(--hud-scrim)',
+              top: trainer?.note ? '6.5rem' : '3.5rem',
+              left: inset('left'),
+              maxWidth: 'min(22rem, 80%)',
+            }}
+          >
+            {es.hud.tutorNotEnabled}
           </p>
         )}
 
