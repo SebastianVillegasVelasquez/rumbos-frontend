@@ -767,12 +767,15 @@ export function AppShell() {
   const welcomePending =
     flowGate !== null && (flowGate.state.status === 'run' || flowGate.state.status === 'checking')
   const trainerCatalog = useCatalog(trainerOn && immersive)
+  // An editor looking at the student view, by the app's own preview or by the server's
+  // word (the catalog says `preview` for someone who can edit).
+  const trainerViewerIsEditor = exitPreview !== null || trainerCatalog.data?.preview === true
   const trainerState = entryState({
     status: trainerCatalog.status,
     catalog: trainerCatalog.data,
     failure: trainerCatalog.isError ? classifyFailure(trainerCatalog.error) : undefined,
     welcomePending,
-    isEditor: exitPreview !== null,
+    isEditor: trainerViewerIsEditor,
   })
   const trainerReason = entryReason(trainerState)
   const closeTrainer = () => setTrainerOpen(false)
@@ -1307,7 +1310,7 @@ export function AppShell() {
                         onOpen: () => setTrainerOpen(true),
                         mode: entryMode(trainerState),
                         note: trainerReason ? es.hud.trainerNote[trainerReason] : null,
-                        persistentNote: noteIsPersistent(trainerState, exitPreview !== null),
+                        persistentNote: noteIsPersistent(trainerState, trainerViewerIsEditor),
                       }
                     : null
                 }
