@@ -84,17 +84,23 @@ test.describe('welcome video gate', () => {
     await expect(next(page)).toHaveAttribute('aria-disabled', 'false', { timeout: 10_000 })
   })
 
-  test('a video that plays and does not end stays locked, with no escape offered', async ({
+  test('a video that plays and never ends offers the way out after the maximum wait', async ({
     page,
     context,
   }) => {
     await open(page, context, 'loops', flow())
+    await page.clock.install()
     await dialog(page)
       .getByRole('button', { name: /Reproducir/ })
       .click()
-    await page.waitForTimeout(1500)
+    await page.clock.runFor(5_000)
     await expect(next(page)).toHaveAttribute('aria-disabled', 'true')
     await expect(dialog(page).getByRole('button', { name: /problemas/i })).toHaveCount(0)
+    await page.clock.runFor(30_000)
+    const out = dialog(page).getByRole('button', { name: /problemas/i })
+    await expect(out).toBeVisible()
+    await out.click()
+    await expect(next(page)).toHaveAttribute('aria-disabled', 'false')
   })
 
   test('a silent player offers the recorded way out', async ({ page, context }) => {

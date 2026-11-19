@@ -31,6 +31,7 @@ import { isHostOverlayOpen, subscribeHostOverlay } from '../../embed/hostOverlay
 import { subscribeHostStateReceived, useHostState } from '../../embed/hostState.ts'
 import {
   VIDEO_LOAD_TIMEOUT_MS,
+  VIDEO_MAX_WAIT_MS,
   playerOrigin,
   playerUrl,
   signalOf,
@@ -105,6 +106,16 @@ export const StepVideo = ({
     const timer = window.setTimeout(
       () => dispatch({ type: 'video', event: { type: 'timeout' } }),
       VIDEO_LOAD_TIMEOUT_MS
+    )
+    return () => window.clearTimeout(timer)
+  }, [video.phase, dispatch])
+
+  // The way out also exists for a video that started and never ends.
+  useEffect(() => {
+    if (video.phase !== 'started') return
+    const timer = window.setTimeout(
+      () => dispatch({ type: 'video', event: { type: 'stall' } }),
+      VIDEO_MAX_WAIT_MS
     )
     return () => window.clearTimeout(timer)
   }, [video.phase, dispatch])
