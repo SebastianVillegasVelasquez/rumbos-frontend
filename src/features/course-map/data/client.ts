@@ -74,9 +74,12 @@ export async function apiRequest<T>(
     auth?: boolean
     // The answer is a file, not JSON (the export archive).
     blob?: boolean
+    // `path` is already a full address the server gave (an audio `url`), not one under
+    // the API base.
+    absolute?: boolean
   } = {}
 ): Promise<T> {
-  const { method = 'GET', body, ifMatch, auth = true, blob = false } = options
+  const { method = 'GET', body, ifMatch, auth = true, blob = false, absolute = false } = options
   const attempt = async (): Promise<Response> => {
     const headers: Record<string, string> = {}
     if (body !== undefined) headers['Content-Type'] = 'application/json'
@@ -84,7 +87,7 @@ export async function apiRequest<T>(
     const token = auth ? authHooks?.getToken() : null
     if (token) headers['Authorization'] = `Bearer ${token}`
     try {
-      return await fetch(`${API_BASE_URL}${path}`, {
+      return await fetch(absolute ? path : `${API_BASE_URL}${path}`, {
         method,
         headers: Object.keys(headers).length > 0 ? headers : undefined,
         body: body !== undefined ? JSON.stringify(body) : undefined,

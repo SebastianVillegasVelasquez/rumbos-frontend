@@ -78,9 +78,10 @@ const read = (page: Page, window = 500): Promise<Snap> =>
       /* @vite-ignore */ url
     )) as typeof import('../src/features/audio/audioSession.ts')
     const all = (window as unknown as { __audios: HTMLAudioElement[] }).__audios
-    // The clip is the element whose file is the exam's tone; the ambient track is the
-    // other one (it only exists once the music has started).
-    const isClip = (el: HTMLAudioElement) => (el.currentSrc || el.src).includes('/__tone.wav')
+    // The clip is fetched with the token and played from a blob URL, so its address no
+    // longer names the file. The ambient track loops (the mock's music) and a clip does not;
+    // the ambient only exists once the music has started.
+    const isClip = (el: HTMLAudioElement) => !el.loop
     const clip = all.find(isClip)
     const ambient = all.find((el) => !isClip(el))
     const t0 = { a: ambient?.currentTime ?? 0, c: clip?.currentTime ?? 0 }
@@ -197,7 +198,7 @@ test.describe('exam audio against the real session and real elements', () => {
         .toBe(true)
     } else {
       await expect.poll(async () => (await read(page, 200)).clip !== null).toBe(true)
-      expect((await read(page, 200)).clip?.src).toContain('/__tone.wav')
+      expect((await read(page, 200)).clip?.src).toMatch(/tone\.|^blob:/)
     }
     // The transcript is never shown in the exam.
     await expect(dialog(page).getByText('Transcripción')).toHaveCount(0)
