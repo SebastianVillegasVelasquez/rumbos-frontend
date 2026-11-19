@@ -68,7 +68,9 @@ describe('training settings model', () => {
 
   it('only a level with content can be chosen', () => {
     assert.equal(levelHasContent('en', 'A1'), true)
+    assert.equal(levelHasContent('en', 'A2'), true)
     assert.equal(levelHasContent('en', 'B2'), false)
+    assert.equal(setTrainer(base, { level: 'A2' }).trainer?.level, 'A2')
     assert.equal(setTrainer(base, { level: 'B2' }).trainer?.level, 'A1')
     assert.equal(setTrainer(base, { enabled: true }).trainer?.enabled, true)
   })

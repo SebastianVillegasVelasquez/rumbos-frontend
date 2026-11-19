@@ -40,7 +40,7 @@ test.describe('training and assessments panel', () => {
     ).toBeVisible()
     // The warning that a pass completes the course.
     await expect(panel.getByText(/completará el curso y recibirá el certificado/)).toBeVisible()
-    // Language and level belong to the course, not the student; only A1 has content.
+    // Language and level belong to the course, not the student; A1 and A2 have content.
     await expect(panel.getByText('Lo define el curso, no el estudiante.')).toBeVisible()
     await expect(panel.getByRole('option', { name: 'B2 · sin contenido todavía' })).toBeDisabled()
   })
