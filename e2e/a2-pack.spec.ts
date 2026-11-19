@@ -47,7 +47,7 @@ test.describe('the A2 pack', () => {
     await openEditorPanel(page)
     const panel = app(page)
     await expect(panel.getByRole('option', { name: 'A2', exact: true })).toBeEnabled()
-    await expect(panel.getByRole('option', { name: 'B2 · sin contenido todavía' })).toBeDisabled()
+    await expect(panel.getByRole('option', { name: 'B1 · sin contenido todavía' })).toBeDisabled()
     const level = panel.getByLabel('Nivel', { exact: true })
     await level.selectOption('A2')
     await expect(level).toHaveValue('A2')
