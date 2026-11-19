@@ -13,12 +13,14 @@ export const FlowStepper = ({
   state,
   steps,
   dispatch,
+  label = text.progress,
 }: {
   state: FlowState
   steps: WelcomeStep[]
   dispatch: Dispatch<FlowEvent>
+  label?: string
 }) => (
-  <ol aria-label={text.progress} className="mt-2 flex items-center">
+  <ol aria-label={label} className="mt-2 flex items-center">
     {stepperSegments(state).map((segment) => (
       <li key={segment.key} className="flex min-w-0 flex-1">
         <button

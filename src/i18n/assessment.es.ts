@@ -204,18 +204,39 @@ export const esAssessment = {
     available: 'Evaluación de entrada: te dice por dónde empezar.',
     inProgress: (clock: string) => `Tienes una evaluación en curso. Te quedan ${clock}.`,
     exhausted: 'Ya usaste tus intentos.',
-    passed: 'Ya hiciste esta evaluación.',
+    passed: 'Ya aprobaste.',
     locked: 'Esta evaluación todavía no está disponible.',
+    // Why the step cannot offer the exam. Keys are ours, never the backend's codes.
+    reasons: {
+      not_available: 'La evaluación de entrada todavía no está lista en este curso.',
+      locked: 'Esta evaluación todavía no está disponible.',
+      disabled: 'Este curso no tiene evaluación de entrada.',
+      no_form: 'La evaluación de entrada todavía no tiene preguntas.',
+    },
     checking: 'Comprobando…',
     open: 'Empezar la evaluación',
     resume: 'Continuar la evaluación',
     retry: 'Reintentar',
-    unreachable: 'No pudimos conectar con la evaluación.',
-    unreachableHelp: 'Puedes reintentar o continuar sin hacerla.',
+    unreachable: 'No pudimos cargar la evaluación.',
+    unreachableHelp: 'Revisa tu conexión e inténtalo de nuevo.',
     skip: 'Continuar de todos modos',
     skipNote: 'No se tomó tu punto de partida. Podrás hacer la evaluación más adelante.',
     done: 'Evaluación entregada.',
     waiting: 'Termina la evaluación para continuar.',
+    editorNote: 'Vista previa: puedes continuar sin hacer la evaluación.',
+  },
+
+  // The same step in the closing flow (the final exam): only the words that name the
+  // exam differ; the rest comes from `step`.
+  stepFinal: {
+    available: 'Evaluación final: muestra lo que aprendiste.',
+    reasons: {
+      not_available: 'La evaluación final todavía no está lista en este curso.',
+      locked: 'Esta evaluación todavía no está disponible.',
+      disabled: 'Este curso no tiene evaluación final.',
+      no_form: 'La evaluación final todavía no tiene preguntas.',
+    },
+    skipNote: 'No se hizo la evaluación final. Podrás hacerla más adelante.',
     editorNote: 'Vista previa: puedes continuar sin hacer la evaluación.',
   },
 

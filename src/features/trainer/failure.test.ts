@@ -28,6 +28,11 @@ describe('classifying a practice failure', () => {
     assert.equal(logged.length, 0)
   })
 
+  it('gives a 409 its own class, apart from a closed practice', () => {
+    const conflict = new ApiError(409, { detail: { code: 'session_finished', message: 'x' } })
+    assert.equal(classifyFailure(conflict), 'conflict')
+  })
+
   it('keeps the other classes', () => {
     assert.equal(classifyFailure(new ApiError(0, undefined)), 'unreachable')
     assert.equal(classifyFailure(new ApiError(401, undefined)), 'unauthorized')

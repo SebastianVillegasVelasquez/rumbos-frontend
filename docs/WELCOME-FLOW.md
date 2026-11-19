@@ -218,3 +218,27 @@ The studio tab "Flujo de bienvenida" (replacing "Bienvenida" on a backend with f
   block nothing by themselves; the backend answer wins.
 - "Reiniciar mi progreso de bienvenida" (inside Moodle only) resets the editor's own
   progress, and only works with Moodle editing mode on.
+
+## Closing flow (draft, not in the contract yet)
+
+A second guided flow, shown when the student finishes the level, built from the same steps, the
+same player (`WelcomeFlow` with `flowKey: "closing"`) and the same editor (`FlowTab` with
+`flowKey: "closing"`, including add, remove and reorder) as the welcome flow. Nothing is
+duplicated: only what differs lives in a table (`STEP_TYPES_BY_FLOW`, `PURPOSE_BY_FLOW`) and in the
+copy.
+
+- **Steps:** authored HTML (`html`, as the welcome flow's) and `assessment` with `purpose: "final"`.
+  The welcome flow keeps `check_in` only. The gate is the same as step 5: completing the attempt
+  opens "Terminar", passing is not required; a pass in either exam shows "Ya aprobaste".
+- **Entry:** a "Cierre" button in the HUD, present when the map has a closing flow and enabled when
+  the backend says it is open (`closingAvailable`; the backend decides the criterion). An editor in
+  preview can always open it. It is never opened over the map by itself.
+- **Draft shapes** (`MapClosing`, `settings.closing`, `closingAvailable`) are NOT in
+  `contracts/openapi.json`. `serializeAppearance` drops `closing`, so nothing is saved or read from the
+  backend until the contract declares it (it would answer 422 `extra_forbidden`). The mock API gives a
+  map a closing flow with `?mockClosingJson=` and availability with `?mockClosing=available`. The
+  "Cierre" editor tab shows only when the backend sends the `closing` key.
+- **No progress record:** the closing flow persists nothing (no host progress). Each opening starts
+  at the first step. Whether the host should keep a record is for the backend/plugin prompt.
+- **Deploy order:** backend first (declares `closing`, `closingAvailable` and the `final` purpose in
+  the step schema), then this front end with the draft types replaced by the generated ones.

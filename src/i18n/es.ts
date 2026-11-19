@@ -363,6 +363,8 @@ export const es = {
   // The welcome flow: the steps a viewer goes through when a level opens.
   flow: {
     dialog: 'Bienvenida',
+    closingDialog: 'Cierre',
+    closingProgress: 'Pasos del cierre',
     stepOf: (current: number, total: number) => `Paso ${current} de ${total}`,
     announce: (current: number, total: number, title: string) =>
       `Paso ${current} de ${total}: ${title}`,
@@ -742,6 +744,12 @@ export const es = {
     levels: 'Niveles',
     quests: 'Misiones',
     trainer: 'Entrenar',
+    // The virtual tutor: a separate service the host opens. Wording pending approval.
+    tutor: 'Tutor virtual',
+    tutorHint: 'Asistente con inteligencia artificial',
+    closing: 'Cierre',
+    closingNotYet: 'Todavía no puedes cerrar el nivel.',
+    tutorNotEnabled: 'El tutor no está habilitado en este sitio',
     // The trainer's code could not be downloaded (offline, or the site was updated).
     trainerChunk: {
       failed: 'No pudimos cargar el entrenamiento. Revisa tu conexión e inténtalo de nuevo.',
@@ -818,6 +826,7 @@ export const es = {
       cancel: 'Seguir editando',
     },
     tabs: {
+      closing: 'Cierre',
       bubbles: 'Burbujas',
       map: 'Mapa',
       ambient: 'Ambiente',
@@ -827,6 +836,18 @@ export const es = {
       music: 'Música',
       welcome: 'Bienvenida',
       training: 'Entrenamiento',
+    },
+    // The closing flow's editor: the welcome flow's words where they differ.
+    closingFlow: {
+      tab: 'Flujo de cierre',
+      title: 'Flujo de cierre',
+      intro:
+        'Una secuencia de pasos que tus estudiantes recorren al terminar el nivel: texto con formato y la evaluación final. Se abre desde el botón Cierre; nunca por sí sola.',
+      enable: 'Ofrecer el flujo de cierre',
+      empty: 'Todavía no hay pasos de cierre. Agrega el primero.',
+      types: { html: 'Texto con formato', assessment: 'Evaluación final' },
+      newTitles: { html: 'Texto', assessment: 'Evaluación final' },
+      previewEmpty: 'Agrega al menos un paso para ver cómo lo recorrerá tu estudiante.',
     },
     training: {
       title: 'Entrenamiento y evaluación',

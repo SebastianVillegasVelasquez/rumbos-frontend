@@ -17,6 +17,7 @@ import { es } from '../../../i18n/es.ts'
 import { useAssets } from '../../course-map/data/queries.ts'
 import {
   type Activity,
+  type FlowKey,
   type AssetListParams,
   type MapSettings,
   type MapWelcome,
@@ -29,7 +30,12 @@ import { useHostCourseName } from '../../embed/hostCourse.ts'
 import { useEmbed } from '../../embed/EmbedContext.ts'
 import { getHostFlowProgress, subscribeHostFlow } from '../../embed/hostFlow.ts'
 import { LazyWelcomeFlow } from '../flow/LazyWelcomeFlow.tsx'
-import { convertLegacyToSteps, validateFlow, type FlowProblem } from '../flow/flowSteps.ts'
+import {
+  STEP_TYPES_BY_FLOW,
+  convertLegacyToSteps,
+  validateFlow,
+  type FlowProblem,
+} from '../flow/flowSteps.ts'
 import { resolveWelcome } from '../welcome.ts'
 import {
   addStep,
@@ -59,12 +65,19 @@ import {
 } from './StepEditors.tsx'
 import { WelcomeTab } from './WelcomeTab.tsx'
 
-const text = es.studio.flow
+const flowText = es.studio.flow
+const text = flowText
+// The label of a step's kind; the final exam is not the check-in.
+const kindLabel = (step: WelcomeStep) =>
+  step.type === 'assessment' && step.purpose === 'final'
+    ? es.studio.closingFlow.types.assessment
+    : text.types[step.type]
 const checkboxClass = 'h-5 w-5 shrink-0 accent-primary'
-const TYPES: WelcomeStepType[] = ['welcome', 'video', 'html', 'pdf', 'quiz', 'assessment']
 const DOCUMENT_PARAMS: AssetListParams = { kind: 'document', scope: 'tenant', limit: 100 }
 
 interface FlowTabProps {
+  // Which guided flow this edits; the welcome flow when absent. Same editor, same steps.
+  flowKey?: FlowKey
   settings: MapSettings
   onChange: (settings: MapSettings) => void
   mapId: string
@@ -100,8 +113,8 @@ const problemsByStep = (problems: readonly FlowProblem[]) => {
 // form until the author converts it; the conversion turns the message and the
 // video into steps and clears the old fields (the backend refuses both at once).
 export const FlowTab = (props: FlowTabProps) => {
-  const { settings, onChange, documents } = props
-  const welcome = resolveWelcome(settings.welcome)
+  const { settings, onChange, documents, flowKey = 'welcome' } = props
+  const welcome = resolveWelcome(settings[flowKey])
   const labels = useMemo(
     () => ({
       welcomeTitle: es.welcome.defaultTitle,
@@ -109,6 +122,15 @@ export const FlowTab = (props: FlowTabProps) => {
     }),
     []
   )
+  // The closing flow has no legacy form to convert from: it starts as an empty list.
+  if (flowKey === 'closing')
+    return (
+      <StepsEditor
+        {...props}
+        documents={documents ?? []}
+        welcome={{ ...welcome, steps: welcome.steps ?? [], show: 'always' }}
+      />
+    )
   // ASSUMPTION: a backend with flows always returns welcomeDocuments (an array).
   if (documents === undefined) return <WelcomeTab {...props} />
   if (!Array.isArray(welcome.steps))
@@ -144,7 +166,22 @@ const StepsEditor = ({
   documents,
   welcome,
   issues = [],
+  flowKey = 'welcome',
 }: FlowTabProps & { documents: readonly WelcomeDocument[]; welcome: MapWelcome }) => {
+  // The words of the closing flow replace the welcome flow's where they differ.
+  const text = useMemo(
+    () =>
+      flowKey === 'closing'
+        ? {
+            ...flowText,
+            ...es.studio.closingFlow,
+            types: { ...flowText.types, ...es.studio.closingFlow.types },
+            newTitles: { ...flowText.newTitles, ...es.studio.closingFlow.newTitles },
+          }
+        : flowText,
+    [flowKey]
+  )
+  const types = STEP_TYPES_BY_FLOW[flowKey]
   const steps = useMemo(() => welcome.steps ?? [], [welcome.steps])
   const courseName = useHostCourseName()
   const library = useAssets(DOCUMENT_PARAMS)
@@ -157,9 +194,9 @@ const StepsEditor = ({
   const assessments = assessmentsOf(settings)
 
   const setSteps = (next: WelcomeStep[]) =>
-    onChange({ ...settings, welcome: { ...welcome, steps: next } })
+    onChange({ ...settings, [flowKey]: { ...welcome, steps: next } })
   const patchWelcome = (patch: Partial<MapWelcome>) =>
-    onChange({ ...settings, welcome: { ...welcome, ...patch } })
+    onChange({ ...settings, [flowKey]: { ...welcome, ...patch } })
 
   const availableDocuments = useMemo(() => {
     if (!library.data) return undefined
@@ -169,8 +206,8 @@ const StepsEditor = ({
     ])
   }, [library.data, documents])
   const problems = useMemo(
-    () => validateFlow({ ...welcome, steps }, { availableDocuments }),
-    [welcome, steps, availableDocuments]
+    () => validateFlow({ ...welcome, steps }, { availableDocuments, flowKey }),
+    [welcome, steps, availableDocuments, flowKey]
   )
   const { byStep, general } = problemsByStep(problems)
   const flags = flowFlags(steps, availableDocuments)
@@ -197,8 +234,8 @@ const StepsEditor = ({
       return
     }
     setRefusal(null)
-    const step = createStep(type, steps, text.newTitles)
-    const next = { ...settings, welcome: { ...welcome, steps: addStep(steps, step) } }
+    const step = createStep(type, steps, text.newTitles, undefined, flowKey)
+    const next = { ...settings, [flowKey]: { ...welcome, steps: addStep(steps, step) } }
     // The check-in cannot work with the assessments off: switch them on, and say so in
     // the step instead of letting the save fail later.
     if (type === 'assessment' && !assessments.enabled) {
@@ -259,7 +296,7 @@ const StepsEditor = ({
               assessment={{
                 enabled: assessments.enabled,
                 autoEnabled: autoEnabledFor === step.key,
-                formId: assessments.checkIn.formId,
+                formId: (flowKey === 'closing' ? assessments.final : assessments.checkIn).formId,
                 onEnable: () => {
                   onChange(enableAssessments(settings))
                   setAutoEnabledFor(step.key)
@@ -285,7 +322,7 @@ const StepsEditor = ({
             {text.add}
           </span>
           <div className="flex flex-wrap gap-2">
-            {TYPES.map((type) => (
+            {types.map((type) => (
               <Button key={type} size="sm" variant="secondary" onClick={() => add(type)}>
                 <Plus size={16} strokeWidth={2.5} aria-hidden />
                 {text.types[type]}
@@ -351,7 +388,7 @@ const StepsEditor = ({
         </ul>
       </details>
 
-      <ResetProgress mapId={mapId} />
+      {flowKey === 'welcome' && <ResetProgress mapId={mapId} />}
 
       <ConfirmDialog
         open={removing !== null}
@@ -370,6 +407,7 @@ const StepsEditor = ({
       {previewing && (
         <div className="fixed inset-0 z-[60]">
           <LazyWelcomeFlow
+            flowKey={flowKey}
             steps={steps}
             mode="preview"
             entries={[]}
@@ -433,7 +471,7 @@ const StepCard = ({
 }: StepCardProps) => {
   const [askedAgain, setAskedAgain] = useState(false)
   const hasProblem = problems.size > 0 || serverMessages.length > 0
-  const label = text.stepLabel(index + 1, text.types[step.type], step.title)
+  const label = text.stepLabel(index + 1, kindLabel(step), step.title)
   const bodyId = `flow-step-${step.key}`
   const patch = onChange as (value: Partial<typeof step>) => void
   return (
@@ -456,7 +494,7 @@ const StepCard = ({
           </span>
           <span className="min-w-0 flex-1">
             <span className="block text-xs font-bold uppercase tracking-wide text-ink-soft">
-              {text.types[step.type]}
+              {kindLabel(step)}
               {!step.mandatory && ` · ${es.flow.optionalTag}`}
             </span>
             <span className="block truncate text-sm font-extrabold text-ink">{step.title}</span>

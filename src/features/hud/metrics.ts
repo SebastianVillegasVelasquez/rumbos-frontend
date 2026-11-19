@@ -21,6 +21,7 @@ export const COMPACT = 640
 const CHIP_HEIGHT = 52
 const GUARD_TEXT_WIDTH = 140
 const LABELED_BUTTON_WIDTH = 116
+const MAX_LABELED_BUTTONS = 5
 const MIN_CONTINUE_WIDTH = 96
 const MAX_CONTINUE_WIDTH = 320
 
@@ -35,6 +36,10 @@ export interface HudInput {
   hasLevelsButton: boolean
   // "Entrenar" is present only when the map has a trainer.
   hasTrainerButton?: boolean
+  // "Tutor virtual" is present only when the host announced the tutor.
+  hasTutorButton?: boolean
+  // "Cierre" is present only when the map has a closing flow.
+  hasClosingButton?: boolean
   hasPreviewPill: boolean
 }
 
@@ -76,11 +81,21 @@ const stack = (count: number) => (count <= 0 ? 0 : count * TOUCH_TARGET + (count
 export const hudMetrics = (input: HudInput): HudMetrics => {
   const { width, height, guardsTouch, clusterButtons, hasLevelsButton, hasPreviewPill } = input
   const hasTrainerButton = input.hasTrainerButton ?? false
+  const hasTutorButton = input.hasTutorButton ?? false
+  const hasClosingButton = input.hasClosingButton ?? false
 
   const chipOnTop = width < NARROW
   const guardCompact = guardsTouch && width < COMPACT
   const topLeftColumn = width < NARROW
-  const topLeftLabels = width >= COMPACT
+  // Niveles (optional), Misiones, Entrenar (optional), Tutor virtual (optional) and Ajustes. Ajustes is always icon-only.
+  const topLeftButtons =
+    (hasLevelsButton ? 1 : 0) +
+    (hasTrainerButton ? 1 : 0) +
+    (hasTutorButton ? 1 : 0) +
+    (hasClosingButton ? 1 : 0) +
+    2
+  // Six buttons in a labeled row would run past the chip; they go icon-only.
+  const topLeftLabels = width >= COMPACT && topLeftButtons <= MAX_LABELED_BUTTONS
   const guardWidth = guardsTouch ? (guardCompact ? TOUCH_TARGET : GUARD_TEXT_WIDTH) : 0
 
   // Below NARROW the chip is centered at the top between the buttons on the
@@ -106,8 +121,6 @@ export const hudMetrics = (input: HudInput): HudMetrics => {
   const continueIconOnly = rawContinue < MIN_CONTINUE_WIDTH
   const continueMaxWidth = Math.max(TOUCH_TARGET, rawContinue)
 
-  // Niveles (optional), Misiones, Entrenar (optional) and Ajustes. Ajustes is always icon-only.
-  const topLeftButtons = (hasLevelsButton ? 1 : 0) + (hasTrainerButton ? 1 : 0) + 2
   const topLeft: Rect = topLeftColumn
     ? { x: GUTTER, y: GUTTER, w: TOUCH_TARGET, h: stack(topLeftButtons) }
     : topLeftLabels

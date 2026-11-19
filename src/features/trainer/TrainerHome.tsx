@@ -7,6 +7,7 @@ import { esTrainer } from '../../i18n/trainer.es.ts'
 import { assessmentApi } from '../assessment/api.ts'
 import type { AssessmentListItem, EnabledAssessmentList } from '../assessment/types.ts'
 import { trainerApi } from './api.ts'
+import { lockedReasonText } from '../assessment/lockedReason.ts'
 import { rememberAccepted } from './firstUse.ts'
 import { TrainerCard } from './TrainerCard.tsx'
 import type { Catalog } from './types.ts'
@@ -66,7 +67,7 @@ const FinalCard = ({
       <p className="text-sm font-bold">
         {copy.attempts(item.attempts.used, item.attempts.max)} · {copy.states[item.state]}
       </p>
-      {item.locked_reason && <p className="text-sm">{item.locked_reason}</p>}
+      {item.locked_reason && <p className="text-sm">{lockedReasonText(item.locked_reason)}</p>}
       <div>
         <Button size="sm" disabled={!canOpen} onClick={() => onOpen(item)}>
           {copy.open}

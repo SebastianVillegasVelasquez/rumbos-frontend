@@ -493,3 +493,30 @@ describe('the native check-in step', () => {
     assert.equal(play(review, { type: 'assessment-escape' }), review)
   })
 })
+
+describe('the check-in gate when the exam cannot be offered', () => {
+  const steps: FlowStepInfo[] = [
+    {
+      key: 'checkin0001',
+      type: 'assessment',
+      mandatory: true,
+      revision: 1,
+      minSeconds: 0,
+      needsAck: false,
+      allowFallback: false,
+    },
+  ]
+  const fresh = () => createFlowState(steps, [], 'normal', false)
+
+  it('keeps "Terminar" closed until the attempt is submitted', () => {
+    assert.equal(gateOf(fresh()).canContinue, false)
+    // The old behaviour: an "unavailable" event opened it without a record of why.
+    assert.equal(gateOf(flowReducer(fresh(), { type: 'assessment-done' })).canContinue, true)
+  })
+
+  it('opens it through the recorded escape, as a fallback', () => {
+    const next = flowReducer(fresh(), { type: 'assessment-escape' })
+    assert.equal(next.finished, true)
+    assert.equal(next.done['checkin0001']?.method, 'fallback')
+  })
+})

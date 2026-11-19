@@ -340,32 +340,45 @@ test.describe('the deadline and the submit', () => {
 })
 
 test.describe('never a trap', () => {
-  test('an unreachable backend offers Reintentar and a recorded Continuar de todos modos', async ({
+  test('an unreachable backend offers Reintentar and keeps Terminar closed', async ({
     page,
     context,
   }) => {
     await open(page, context, { mock: { listStatus: 503 } })
-    await expect(dialog(page).getByText('No pudimos conectar con la evaluación.')).toBeVisible({
+    await expect(dialog(page).getByText('No pudimos cargar la evaluación.')).toBeVisible({
       timeout: 15_000,
     })
     await expect(dialog(page).getByRole('button', { name: 'Reintentar' })).toBeVisible()
-    await expect(dialog(page).getByText(/No se tomó tu punto de partida/)).toBeVisible()
+    await expect(nextButton(page)).toHaveAttribute('aria-disabled', 'true')
+    await expect(
+      dialog(page).getByRole('button', { name: 'Continuar de todos modos' })
+    ).toHaveCount(0)
+  })
+
+  test('a check-in that is disabled for the map says why and offers the recorded escape', async ({
+    page,
+    context,
+  }) => {
+    await open(page, context, { mock: { enabled: false } })
+    await expect(dialog(page).getByText('Este curso no tiene evaluación de entrada.')).toBeVisible()
+    await expect(nextButton(page)).toHaveAttribute('aria-disabled', 'true')
     await dialog(page).getByRole('button', { name: 'Continuar de todos modos' }).click()
     await expect(hostLog(page)).toContainText(recorded('fallback'), { timeout: 5000 })
-    await expect(dialog(page).getByRole('heading', { name: 'Listo' })).toBeVisible()
   })
 
-  test('a check-in that is disabled for the map does not block', async ({ page, context }) => {
-    await open(page, context, { mock: { enabled: false } })
-    await expect(nextButton(page)).toHaveAttribute('aria-disabled', 'false', { timeout: 5000 })
-    await nextButton(page).click()
-    await expect(hostLog(page)).toContainText(recorded('unavailable'), { timeout: 5000 })
-  })
-
-  test('a locked check-in says why and does not block', async ({ page, context }) => {
+  test('a locked check-in says why in words, never the raw code, and offers the escape', async ({
+    page,
+    context,
+  }) => {
     await open(page, context, { mock: { state: 'locked' } })
-    await expect(dialog(page).getByText('Termina primero el módulo 1.')).toBeVisible()
-    await expect(nextButton(page)).toHaveAttribute('aria-disabled', 'false', { timeout: 5000 })
+    await expect(
+      dialog(page).getByText('Esta evaluación todavía no está disponible.')
+    ).toBeVisible()
+    await expect(dialog(page).getByText('not_available')).toHaveCount(0)
+    await expect(nextButton(page)).toHaveAttribute('aria-disabled', 'true')
+    await expect(
+      dialog(page).getByRole('button', { name: 'Continuar de todos modos' })
+    ).toBeVisible()
   })
 
   test('the editing role sees the preview banner and is never blocked', async ({

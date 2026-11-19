@@ -15,7 +15,11 @@ export const serializeWelcome = (welcome: MapWelcome): MapWelcome =>
 // `trainer` and `assessments` are objects in the contract, never null: a null the editor
 // holds (nothing set yet) is left out, which the backend reads as the defaults (off).
 export const serializeAppearance = (input: AppearanceUpdate): AppearanceUpdate => {
-  const { trainer, assessments, ...rest } = input.settings
+  // `closing` is a draft shape: the backend rejects fields it does not declare (422
+  // extra_forbidden), so it is never sent until contracts/openapi.json has it.
+  const { trainer, assessments, ...withClosing } = input.settings
+  const rest = { ...withClosing }
+  delete rest.closing
   const settings = {
     ...rest,
     ...(trainer == null ? {} : { trainer }),

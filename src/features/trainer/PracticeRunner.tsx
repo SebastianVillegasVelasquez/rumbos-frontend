@@ -195,11 +195,13 @@ const failureText = (failure: SessionState['failure']) =>
     ? text.errors.unauthorized
     : failure === 'closed'
       ? text.errors.closed
-      : failure === 'contract'
-        ? text.errors.contract
-        : failure === 'unreachable'
-          ? text.errors.unreachable
-          : text.errors.other
+      : failure === 'conflict'
+        ? text.errors.conflict
+        : failure === 'contract'
+          ? text.errors.contract
+          : failure === 'unreachable'
+            ? text.errors.unreachable
+            : text.errors.other
 
 export interface PracticeRunnerProps {
   activityId: string
@@ -348,6 +350,7 @@ export const PracticeRunner = ({
     primary =
       state.failure === 'unauthorized' ||
       state.failure === 'closed' ||
+      state.failure === 'conflict' ||
       state.failure === 'contract' ? null : (
         <Button onClick={retry}>{text.errors.retry}</Button>
       )

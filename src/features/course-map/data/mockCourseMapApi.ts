@@ -396,6 +396,11 @@ const defaultSettings = (mode: MapSettings['mode']): MapSettings => ({
   ambient: { kind: 'none', intensity: 0 },
   intro: 'none',
   ...(mockWelcomeSeed() === undefined ? {} : { welcome: mockWelcomeSeed() }),
+  // DRAFT (branch-local, the backend does not declare it yet): ?mockClosingJson=<url-encoded
+  // MapClosing> gives the map a closing flow.
+  ...(queryParam('mockClosingJson') || queryParam('mockClosing')
+    ? { closing: queryParam('mockClosingJson') ? JSON.parse(queryParam('mockClosingJson')!) : null }
+    : {}),
   // A backend that knows the trainer and the assessments sends null while nothing is set.
   // ?mockTrainer=1 turns the practice trainer on (the e2e suite does).
   trainer: queryParam('mockTrainer') ? { enabled: true, language: 'en', level: 'A1' } : null,
@@ -1119,6 +1124,8 @@ const toRead = (map: MockMap): CourseMapRead => ({
   view3d: map.view3d,
   audioInfo: audioInfoOf(map.settings),
   welcomeDocuments: welcomeDocumentsOf(map.settings),
+  // DRAFT: ?mockClosing=available says the backend opened the closing flow.
+  closingAvailable: queryParam('mockClosing') === 'available',
   bubbles: wireBubbles(map.bubbles),
   revision: map.revision,
   createdAt: map.createdAt,
@@ -1170,6 +1177,7 @@ const toPublishedRead = (map: MockMap, publication: MockPublication): PublishedM
   view3d: publication.snapshot.view3d ?? null,
   audioInfo: audioInfoOf(publication.snapshot.settings),
   welcomeDocuments: welcomeDocumentsOf(publication.snapshot.settings),
+  closingAvailable: queryParam('mockClosing') === 'available',
   skins: publication.snapshot.skins,
   bubbles: wireBubbles(
     publication.snapshot.bubbles.map((bubble) => ({

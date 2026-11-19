@@ -316,6 +316,27 @@ Widgets run in a sandboxed frame, see [`WIDGET-SANDBOX.md`](WIDGET-SANDBOX.md).
   and falls back to the map's title when it is absent. The mock host can send it or omit
   it ("courseName (v5.6)").
 
+## Contract v5.10 (virtual tutor, additive)
+
+The tutor is a separate service. Its page answers with `X-Frame-Options: SAMEORIGIN`, so only a page on
+the Moodle origin can frame it: Rumbos cannot. The app therefore only asks the host to open it.
+
+Host to app:
+
+- `host-init` may carry `capabilities: { tutor: boolean }`. Absent (a host that predates v5.10) means
+  no capability; each flag is on only when it is exactly `true`.
+- `{ type: "rumbos:host-tutor-closed", v: 1 }`: the host closed the tutor; the app gives focus back to
+  its button. Optional: a host that never sends it only loses that focus return.
+
+App to host:
+
+- `{ type: "rumbos:tutor-open", v: 1 }`, sent when a student presses "Tutor virtual". **No URL and no
+  payload**: the host owns what it opens, and `toWireMessage` drops any other field. The button exists
+  only when `capabilities.tutor` is true; an editor previewing on a host without it sees a note instead.
+
+The app never requests the microphone and does not track the tutor. (Naming follows the existing
+`rumbos:` prefix and `v: 1` rather than the bare `tutor.open` of the brief; see DECISIONS-trainer.md.)
+
 ## Contract v5.8 (welcome flow)
 
 Four app messages and two host messages, all validated strictly (an invalid one is

@@ -1,4 +1,10 @@
-import { FLOW_LIMITS, type MapWelcome, type WelcomeStep } from '../../course-map/data/types.ts'
+import {
+  FLOW_LIMITS,
+  type FlowKey,
+  type MapWelcome,
+  type WelcomeStep,
+  type WelcomeStepType,
+} from '../../course-map/data/types.ts'
 import { isVideoId } from '../../content/validateContent.ts'
 import { findCssIssue, findHtmlIssue } from './htmlCheck.ts'
 
@@ -105,7 +111,19 @@ export interface FlowProblem {
   code: FlowProblemCode
 }
 
+// What each flow may contain. The closing flow is authored HTML and the final exam.
+export const STEP_TYPES_BY_FLOW: Record<FlowKey, readonly WelcomeStepType[]> = {
+  welcome: ['welcome', 'video', 'html', 'pdf', 'quiz', 'assessment'],
+  closing: ['html', 'assessment'],
+}
+export const PURPOSE_BY_FLOW: Record<FlowKey, 'check_in' | 'final'> = {
+  welcome: 'check_in',
+  closing: 'final',
+}
+
 export interface FlowValidationContext {
+  // Which flow is being checked; the welcome flow when absent.
+  flowKey?: FlowKey
   // Asset ids of documents the server can serve; undefined skips the check.
   availableDocuments?: ReadonlySet<string>
 }
@@ -122,7 +140,11 @@ const validateStep = (
   const problems: FlowProblem[] = []
   const add = (field: string, code: FlowProblemCode) =>
     problems.push({ path: field ? `${base}.${field}` : base, code })
-  if (!STEP_TYPES.includes((step as { type: string }).type)) {
+  const flowKey = context.flowKey ?? 'welcome'
+  if (
+    !STEP_TYPES.includes((step as { type: string }).type) ||
+    !STEP_TYPES_BY_FLOW[flowKey].includes(step.type)
+  ) {
     add('type', 'step_type_invalid')
     return problems
   }
@@ -156,8 +178,8 @@ const validateStep = (
       validateAcknowledgement(step, add)
       break
     case 'assessment':
-      // Only the check-in goes in the flow; the final exam is launched from the trainer.
-      if (step.purpose !== 'check_in') add('purpose', 'step_field_invalid')
+      // The welcome flow carries the check-in, the closing flow the final exam.
+      if (step.purpose !== PURPOSE_BY_FLOW[flowKey]) add('purpose', 'step_field_invalid')
       break
     case 'quiz':
       if (step.cmid !== null && (!Number.isSafeInteger(step.cmid) || step.cmid <= 0))

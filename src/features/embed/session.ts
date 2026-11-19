@@ -3,6 +3,7 @@ import { ApiError, setAuthHooks } from '../course-map/data/client.ts'
 import type { AuthRole, LaunchResult } from '../course-map/data/types.ts'
 import type { HostBridge } from './hostBridge.ts'
 import { setHostCourseName } from './hostCourse.ts'
+import { notifyHostTutorClosed, setHostCapabilities } from './hostCapabilities.ts'
 import { setHostFullscreen } from './hostFullscreen.ts'
 import { setHostState } from './hostState.ts'
 import { hostOriginMatches, parseLaunchResult } from './launch.ts'
@@ -123,6 +124,7 @@ export const createEmbedSession = (bridge: HostBridge): EmbedSession => {
       setAuthHooks({ getToken: () => token, refresh })
       setHostState(message.state)
       setHostCourseName(message.courseName)
+      setHostCapabilities(message.capabilities)
       setPhase({ name: 'ready', role: result.role, courseId: result.courseId, mode: message.mode })
     } catch (error) {
       const failure = failureFor(error)
@@ -186,6 +188,9 @@ export const createEmbedSession = (bridge: HostBridge): EmbedSession => {
       case 'rumbos:host-fullscreen':
         // The host's word on whether the iframe is expanded; once launched.
         if (identity) setHostFullscreen(message.on)
+        return
+      case 'rumbos:host-tutor-closed':
+        if (identity) notifyHostTutorClosed()
         return
       case 'rumbos:host-overlay':
         // Like the other host state messages, only once launched.

@@ -29,6 +29,7 @@ import { CourseLevels } from './features/course-map/components/CourseLevels.tsx'
 import {
   StudentStage,
   TRAINER_BUTTON_ID,
+  CLOSING_BUTTON_ID,
   type ContinueAction,
 } from './features/hud/StudentStage.tsx'
 import { LazyTrainerStage } from './features/trainer/LazyTrainerStage.tsx'
@@ -133,6 +134,7 @@ import {
   useHostCompletionEnabled,
   useHostSupportsActivitySettings,
 } from './features/embed/hostState.ts'
+import { useHostTutorAvailable } from './features/embed/hostCapabilities.ts'
 import { useHostOverlayOpen } from './features/embed/hostOverlay.ts'
 import { RESERVED_CORNER_PX, useHostFullscreen } from './features/embed/hostFullscreen.ts'
 import { useFullscreenEntry } from './features/embed/useFullscreenEntry.ts'
@@ -600,6 +602,7 @@ export function AppShell() {
   // completion is on for the course and whether it can open the settings page).
   const completionEnabled = useHostCompletionEnabled()
   const supportsActivitySettings = useHostSupportsActivitySettings()
+  const tutorAvailable = useHostTutorAvailable()
   const untrackedCount = isEditor
     ? bubbles.filter(
         (bubble) => bubble.tracked === false && getAvailabilityForBubble(bubble) !== 'missing'
@@ -791,6 +794,24 @@ export function AppShell() {
     trainerWasOpen.current = false
     document.getElementById(TRAINER_BUTTON_ID)?.focus()
   }, [trainerOpen])
+  // The closing flow: opened only by the student's press on "Cierre", never over the map
+  // by itself. Its steps come from the map; the backend says when it is open (an editor in
+  // preview can always open it). Nothing about it is saved: it has no progress record yet.
+  const [closingOpen, setClosingOpen] = useState(false)
+  const closingSteps = renderable?.settings.closing?.enabled
+    ? (renderable.settings.closing.steps ?? [])
+    : []
+  const closingOpenable = exitPreview !== null || renderable?.closingAvailable === true
+  const closingWasOpen = useRef(false)
+  useEffect(() => {
+    if (closingOpen) {
+      closingWasOpen.current = true
+      return
+    }
+    if (!closingWasOpen.current) return
+    closingWasOpen.current = false
+    document.getElementById(CLOSING_BUTTON_ID)?.focus()
+  }, [closingOpen])
   const resumeCourseId = renderable?.moodleCourseId ?? null
   const resumeMapId = renderable?.id ?? null
   useResume({
@@ -1314,9 +1335,39 @@ export function AppShell() {
                       }
                     : null
                 }
+                tutor={
+                  embed && tutorAvailable
+                    ? { kind: 'ready', onOpen: embed.openTutor }
+                    : embed && exitPreview
+                      ? { kind: 'not-enabled' }
+                      : null
+                }
+                closing={
+                  closingSteps.length > 0
+                    ? {
+                        onOpen: () => setClosingOpen(true),
+                        enabled: closingOpenable,
+                        note: closingOpenable ? null : es.hud.closingNotYet,
+                      }
+                    : null
+                }
                 overlay={
                   trainerOpen && renderable ? (
                     <LazyTrainerStage imageUrl={renderable.imageUrl} onClose={closeTrainer} />
+                  ) : closingOpen && renderable && closingSteps.length > 0 ? (
+                    <LazyWelcomeFlow
+                      key={`${renderable.id}:closing`}
+                      flowKey="closing"
+                      steps={closingSteps}
+                      mode={exitPreview !== null ? 'preview' : 'normal'}
+                      entries={[]}
+                      persistence={null}
+                      documents={renderable.welcomeDocuments ?? []}
+                      courseName={hostCourseName?.trim() || renderable.title}
+                      imageUrl={renderable.imageUrl}
+                      hasMusic={false}
+                      onFinish={() => setClosingOpen(false)}
+                    />
                   ) : null
                 }
                 questsPanel={({ compact, bottomOffset }) => (

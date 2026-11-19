@@ -14,7 +14,8 @@ import type {
 
 // `contract`: the backend has no such route (a 404 without a business code), so retrying
 // or telling the student it is closed would both be wrong. The route goes to the console.
-export type FailureKind = 'unreachable' | 'unauthorized' | 'closed' | 'contract' | 'other'
+export type FailureKind =
+  'unreachable' | 'unauthorized' | 'closed' | 'conflict' | 'contract' | 'other'
 
 export type SessionPhase =
   | 'idle'

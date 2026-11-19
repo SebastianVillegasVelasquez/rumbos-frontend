@@ -1,6 +1,7 @@
 import {
   FLOW_LIMITS,
   type WelcomeHtmlStep,
+  type FlowKey,
   type WelcomeStep,
   type WelcomeStepType,
 } from '../../course-map/data/types.ts'
@@ -35,7 +36,8 @@ export const createStep = (
   type: WelcomeStepType,
   steps: readonly WelcomeStep[],
   labels: NewStepLabels,
-  random?: () => number
+  random?: () => number,
+  flowKey: FlowKey = 'welcome'
 ): WelcomeStep => {
   const common = {
     key: newStepKey(
@@ -61,7 +63,7 @@ export const createStep = (
     case 'pdf':
       return { ...common, type, assetId: '', ack: null, minSeconds: 0 }
     case 'assessment':
-      return { ...common, type, purpose: 'check_in' }
+      return { ...common, type, purpose: flowKey === 'closing' ? 'final' : 'check_in' }
     case 'quiz':
       return { ...common, type, cmid: null, intro: null, outcomeAbove: null, outcomeBelow: null }
   }
