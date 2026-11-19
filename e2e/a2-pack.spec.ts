@@ -54,9 +54,9 @@ test.describe('the A2 pack', () => {
     const checkIn = panel.getByRole('group', { name: 'Evaluación de entrada' })
     await expect(checkIn.locator('option')).toHaveText([
       'Elige un formulario',
-      'A1 · Forma A',
-      'A1 · Forma B (borrador)',
-      'A2 · Forma A (borrador)',
+      'A1 · Evaluación de entrada — A1 · Forma A',
+      'A1 · Evaluación de entrada — A1 · Forma B (borrador)',
+      'A2 · Evaluación de entrada — A2 · Forma A (borrador)',
     ])
     await checkIn.getByRole('combobox').selectOption('a2-form-a')
     await expect(checkIn.getByRole('combobox')).toHaveValue('a2-form-a')

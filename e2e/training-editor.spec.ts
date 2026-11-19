@@ -75,3 +75,36 @@ test.describe('training and assessments panel', () => {
     await expect(studio.getByText('Cambios sin guardar', { exact: true })).toHaveCount(0)
   })
 })
+
+test.describe('exam form picker with two levels', () => {
+  test('lists A1 and A2 forms that share a title with the level in the name', async ({ page }) => {
+    const same = (id: string, level: string) => ({
+      id,
+      title: 'Forma A',
+      language: 'en',
+      level,
+      purpose: 'check_in',
+      publication_state: 'published',
+    })
+    await routeForms(page.context(), { forms: [same('a1-form-a', 'A1'), same('a2-form-a', 'A2')] })
+    await page.goto('/mock-host/index.html')
+    await page.locator('label:has-text("role") select').selectOption('editor')
+    await page.locator('label:has-text("editing on") input').check()
+    await page.getByRole('button', { name: '(Re)load app' }).click()
+    const level = app(page).getByRole('button', { name: /^1/ }).first()
+    await level.waitFor()
+    await level.click()
+    await app(page)
+      .getByRole('button', { name: /^Apariencia/ })
+      .first()
+      .click()
+    await app(page).getByRole('button', { name: 'Entrenamiento', exact: true }).click()
+    const picker = app(page).getByRole('combobox', { name: 'Formulario' }).first()
+    await expect(
+      picker.getByRole('option', { name: 'A1 · Evaluación de entrada — Forma A' })
+    ).toHaveCount(1)
+    await expect(
+      picker.getByRole('option', { name: 'A2 · Evaluación de entrada — Forma A' })
+    ).toHaveCount(1)
+  })
+})

@@ -4,15 +4,36 @@ import { validated } from '../src/contracts/openapiExample.ts'
 // GET /trainer/assessments/forms for the editor specs (editors only, drafts included),
 // answered with a body checked against the response schema of contracts/openapi.json.
 export const FORMS = [
-  { id: 'a1-form-a', title: 'A1 · Forma A', publication_state: 'published' },
-  { id: 'a1-form-b', title: 'A1 · Forma B', publication_state: 'draft' },
+  {
+    id: 'a1-form-a',
+    title: 'A1 · Forma A',
+    language: 'en',
+    level: 'A1',
+    purpose: 'check_in',
+    publication_state: 'published',
+  },
+  {
+    id: 'a1-form-b',
+    title: 'A1 · Forma B',
+    language: 'en',
+    level: 'A1',
+    purpose: 'check_in',
+    publication_state: 'draft',
+  },
 ] as const
 
 // `status` makes the list fail with that status instead (0: the connection drops).
 // What the A2 pack adds: its Forma A, a draft until it is published (the picker shows it).
 export const A2_FORMS = [
   ...FORMS,
-  { id: 'a2-form-a', title: 'A2 · Forma A', publication_state: 'draft' },
+  {
+    id: 'a2-form-a',
+    title: 'A2 · Forma A',
+    language: 'en',
+    level: 'A2',
+    purpose: 'check_in',
+    publication_state: 'draft',
+  },
 ] as const
 
 export const routeForms = async (

@@ -2,7 +2,8 @@ import { useId } from 'react'
 import { AlertCircle } from 'lucide-react'
 import { es } from '../../../i18n/es.ts'
 import type { MapSettings, TrainerLevel } from '../../course-map/data/types.ts'
-import type { FormsState } from './forms.ts'
+import { formOptionLabel, groupForms } from './formOptions.ts'
+import type { AssessmentForm, FormsState } from './forms.ts'
 import { issueMessage, normalizePath, type SettingsIssue } from './settingsIssues.ts'
 import {
   ALL_LEVELS,
@@ -135,20 +136,28 @@ const NumberField = ({
   )
 }
 
+const FormOption = ({ form }: { form: AssessmentForm }) => (
+  <option value={form.id}>{formOptionLabel(form)}</option>
+)
+
 const PurposeRules = ({
   purpose,
   settings,
   onChange,
   issues,
   forms,
+  course,
 }: {
   purpose: Purpose
   settings: MapSettings
   onChange: (settings: MapSettings) => void
   issues: Issues
   forms: FormsState
+  // The course's language and level when the trainer is on (the server checks them).
+  course: { language: string; level: string } | null
 }) => {
   const rules = assessmentsOf(settings)[rulesKey(purpose)]
+  const groups = groupForms(forms.forms, course)
   const base = `assessments.${rulesKey(purpose)}`
   const formId = useId()
   const formErrorId = useId()
@@ -181,13 +190,22 @@ const PurposeRules = ({
           {...fieldProps(`${base}.formId`, formError, formErrorId)}
         >
           <option value="">{text.formPlaceholder}</option>
-          {forms.forms.map((form) => (
-            <option key={form.id} value={form.id}>
-              {form.publication_state === 'published'
-                ? form.title
-                : text.formUnpublished(form.title, form.publication_state)}
-            </option>
-          ))}
+          {groups.others.length === 0 ? (
+            groups.matching.map((form) => <FormOption key={form.id} form={form} />)
+          ) : (
+            <>
+              <optgroup label={text.formsOfLevel(course?.level ?? '')}>
+                {groups.matching.map((form) => (
+                  <FormOption key={form.id} form={form} />
+                ))}
+              </optgroup>
+              <optgroup label={text.formOtherLevels(course?.level ?? '')}>
+                {groups.others.map((form) => (
+                  <FormOption key={form.id} form={form} />
+                ))}
+              </optgroup>
+            </>
+          )}
           {/* A saved form the list does not have stays visible, so it can be replaced. While
               the list is missing that says nothing about the form, so it shows only its id. */}
           {rules.formId !== '' && !forms.forms.some((form) => form.id === rules.formId) && (
@@ -311,6 +329,7 @@ export const TrainingTab = ({
           onChange={onChange}
           issues={issues}
           forms={forms}
+          course={trainer.enabled ? { language: trainer.language, level: trainer.level } : null}
         />
         <PurposeRules
           purpose="final"
@@ -318,6 +337,7 @@ export const TrainingTab = ({
           onChange={onChange}
           issues={issues}
           forms={forms}
+          course={trainer.enabled ? { language: trainer.language, level: trainer.level } : null}
         />
 
         <NumberField

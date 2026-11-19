@@ -6,8 +6,22 @@ import { check, responseSchema } from './openapiSchema.ts'
 // The forms list the picker is written for, against the schema of its answer.
 describe('GET /trainer/assessments/forms against openapi.json', () => {
   const answer = [
-    { id: 'a1-form-a', title: 'A1 Forma A', publication_state: 'published' },
-    { id: 'a1-form-b', title: 'A1 Forma B', publication_state: 'draft' },
+    {
+      id: 'a1-form-a',
+      title: 'A1 Forma A',
+      language: 'en',
+      level: 'A1',
+      purpose: 'check_in',
+      publication_state: 'published',
+    },
+    {
+      id: 'a1-form-b',
+      title: 'A1 Forma B',
+      language: 'en',
+      level: 'A1',
+      purpose: 'check_in',
+      publication_state: 'draft',
+    },
   ]
 
   it('an answer the front reads satisfies the schema, and the other way round', () => {

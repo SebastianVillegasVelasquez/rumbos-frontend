@@ -885,6 +885,14 @@ export const es = {
       formGone: (id: string) => `${id} (ya no está disponible)`,
       formUnpublished: (title: string, state: 'draft' | 'reviewed') =>
         `${title} (${state === 'draft' ? 'borrador' : 'en revisión'})`,
+      // "A2 · Evaluación de entrada — Forma A": level and purpose make two forms with the
+      // same title tell apart. A form from an older backend has neither: it is its title.
+      formOption: (level: string | null, purpose: string | null, title: string) => {
+        const prefix = [level, purpose].filter(Boolean).join(' · ')
+        return prefix ? `${prefix} — ${title}` : title
+      },
+      formOtherLevels: (level: string) => `Otros niveles (el curso es ${level})`,
+      formsOfLevel: (level: string) => `Nivel del curso: ${level}`,
       formsUnavailable:
         'No pudimos cargar la lista de formularios. Recarga el editor para intentarlo de nuevo.',
       formIdHint: 'Hay que elegir uno: no se elige solo.',
@@ -918,6 +926,8 @@ export const es = {
           assessment_step_needs_check_in:
             'este paso necesita la evaluación de entrada activada y con un formulario elegido',
           form_not_found: 'el formulario seleccionado no existe',
+          form_level_mismatch:
+            'este formulario es de otro idioma o nivel que el curso. Elige uno del nivel del curso o cambia el nivel del entrenamiento',
           form_not_published: 'el formulario seleccionado todavía no está publicado',
           level_without_content: 'ese nivel todavía no tiene contenido',
           language_unsupported: 'ese idioma todavía no está disponible',

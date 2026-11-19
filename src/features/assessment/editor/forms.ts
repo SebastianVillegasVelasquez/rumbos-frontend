@@ -7,9 +7,17 @@ import { ContractError, Issues, isRecord, kindOf } from '../../course-map/data/c
 export const FORM_PUBLICATION_STATES = ['draft', 'reviewed', 'published'] as const
 export type FormPublicationState = (typeof FORM_PUBLICATION_STATES)[number]
 
+export const FORM_PURPOSES = ['check_in', 'final'] as const
+export type FormPurpose = (typeof FORM_PURPOSES)[number]
+
+// `language`, `level` and `purpose` are required by the contract; they stay optional here
+// so a backend that predates them still fills the picker (the option then has no level).
 export interface AssessmentForm {
   id: string
   title: string
+  language?: string
+  level?: string
+  purpose?: FormPurpose
   publication_state: FormPublicationState
 }
 
@@ -33,6 +41,9 @@ export const parseForms = (value: unknown, endpoint = FORMS_ENDPOINT): Assessmen
     if (!isRecord(item)) return issues.add(path, 'an object', item)
     issues.string(`${path}.id`, item.id)
     issues.string(`${path}.title`, item.title)
+    if (item.language !== undefined) issues.string(`${path}.language`, item.language)
+    if (item.level !== undefined) issues.string(`${path}.level`, item.level)
+    if (item.purpose !== undefined) issues.oneOf(`${path}.purpose`, item.purpose, FORM_PURPOSES)
     issues.oneOf(`${path}.publication_state`, item.publication_state, FORM_PUBLICATION_STATES)
   })
   issues.settle(endpoint)
