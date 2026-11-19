@@ -145,6 +145,12 @@ const answerEverything = async (page: Page) => {
         .first()
     ).toBeVisible()
     await answerVisible(dialog(page))
+    if (section === 5) {
+      // The written task's length hints: a counter, and the character limit on the box.
+      await expect(dialog(page).getByText('4 palabras · entre 2 y 40')).toBeVisible()
+      await expect(dialog(page).getByText('9 de 120 caracteres')).toBeVisible()
+      await expect(dialog(page).locator('textarea').first()).toHaveAttribute('maxlength', '120')
+    }
     if (section < 5) await toNextSection(page)
   }
 }

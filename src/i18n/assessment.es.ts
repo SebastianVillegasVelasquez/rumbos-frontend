@@ -119,6 +119,7 @@ export const esAssessment = {
     wordsBelow: (n: number) => `Te ${plural(n, 'falta', 'faltan')} ${n}`,
     wordsAbove: (n: number) => `Te ${'pasaste'} por ${n}`,
     wordsWithin: 'En el rango',
+    charsCounter: (used: number, max: number) => `${used} de ${max} caracteres`,
     fieldLabel: (label: string) => label,
     blank: (n: number) => `Espacio ${n}`,
   },

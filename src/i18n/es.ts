@@ -926,6 +926,11 @@ export const es = {
           assessment_step_needs_check_in:
             'este paso necesita la evaluación de entrada activada y con un formulario elegido',
           form_not_found: 'el formulario seleccionado no existe',
+          unknown_form: 'el formulario seleccionado no existe',
+          unknown_pack: 'ese idioma y nivel todavía no tienen contenido',
+          no_exam_configured: 'configura la evaluación de entrada, la final o ambas',
+          assessment_step_needs_final:
+            'este paso necesita la evaluación final activada y con un formulario elegido',
           form_level_mismatch:
             'este formulario es de otro idioma o nivel que el curso. Elige uno del nivel del curso o cambia el nivel del entrenamiento',
           form_not_published: 'el formulario seleccionado todavía no está publicado',
@@ -939,6 +944,7 @@ export const es = {
         warningMessages: {
           content_unpublished: 'El contenido aún no está publicado: los estudiantes no lo verán.',
           no_published_content: 'El contenido aún no está publicado: los estudiantes no lo verán.',
+          content_not_published: 'El contenido aún no está publicado: los estudiantes no lo verán.',
         } as Record<string, string>,
         unknown: (key: string) => `revisa este valor (${key})`,
       },

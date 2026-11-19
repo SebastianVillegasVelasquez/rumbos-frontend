@@ -3,7 +3,7 @@ import { describe, it } from 'node:test'
 import { es } from '../../../i18n/es.ts'
 import { formOptionLabel, groupForms, sortForms } from './formOptions.ts'
 import { parseForms, type AssessmentForm } from './forms.ts'
-import { describeIssue, issueMessage } from './settingsIssues.ts'
+import { describeIssue, describeWarning, issueMessage } from './settingsIssues.ts'
 
 const form = (over: Partial<AssessmentForm>): AssessmentForm => ({
   id: 'x',
@@ -76,5 +76,32 @@ describe('the level mismatch the server refuses on save', () => {
     assert.ok(copy.messages.form_level_mismatch)
     assert.equal(issueMessage(issue, copy), copy.messages.form_level_mismatch)
     assert.doesNotMatch(describeIssue(issue, copy), /form_level_mismatch/)
+  })
+})
+
+describe('the keys the backend really sends', () => {
+  // settings_check.py: message_key is `trainer_settings.<rule>` for every rule it has.
+  const rules = [
+    'unknown_pack',
+    'no_exam_configured',
+    'unknown_form',
+    'form_level_mismatch',
+    'assessment_step_needs_check_in',
+    'assessment_step_needs_final',
+  ]
+  for (const rule of rules)
+    it(`${rule} is translated, not shown as a key`, () => {
+      const issue = { path: 'assessments', rule, messageKey: `trainer_settings.${rule}` }
+      const text = issueMessage(issue, es.studio.training.issues)
+      assert.doesNotMatch(text, /trainer_settings|revisa este valor/)
+    })
+
+  it('content_not_published has its warning sentence', () => {
+    const issue = {
+      path: 'trainer.level',
+      rule: 'content_not_published',
+      messageKey: 'trainer_settings.content_not_published',
+    }
+    assert.match(describeWarning(issue, es.studio.training.issues), /no está publicado/)
   })
 })
