@@ -141,8 +141,14 @@ export const sectionLabel = (
   return copy.sections.other
 }
 
+// The server's key is `trainer_settings.<rule>`; the dictionary is keyed by the bare rule.
+const bare = (key: string): string => key.replace(/^trainer_settings\./, '')
+
 export const issueMessage = (issue: SettingsIssue, copy: IssueCopy): string =>
-  copy.messages[issue.messageKey] ?? copy.messages[issue.rule] ?? copy.unknown(issue.messageKey)
+  copy.messages[issue.messageKey] ??
+  copy.messages[bare(issue.messageKey)] ??
+  copy.messages[issue.rule] ??
+  copy.unknown(bare(issue.messageKey))
 
 // "Evaluación de entrada: el formulario seleccionado no existe".
 export const describeIssue = (
@@ -156,7 +162,11 @@ export const describeWarning = (
   issue: SettingsIssue,
   copy: IssueCopy,
   stepTitle?: (index: number) => string | undefined
-): string => copy.warningMessages[issue.messageKey] ?? describeIssue(issue, copy, stepTitle)
+): string =>
+  copy.warningMessages[issue.messageKey] ??
+  copy.warningMessages[bare(issue.messageKey)] ??
+  copy.warningMessages[issue.rule] ??
+  describeIssue(issue, copy, stepTitle)
 
 // ---- Before the request ------------------------------------------------------------
 
