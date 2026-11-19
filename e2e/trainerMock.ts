@@ -210,6 +210,9 @@ export class TrainerMock {
   readonly calls: Call[] = []
   readonly responses: string[] = []
   readonly attempts = new Map<string, Attempt>()
+  audioCalls = 0
+  // While true every clip request answers 404 (a clip that is missing).
+  audioMissing = false
   private used = 0
   private saveFailures = 0
   private submitFailures = 0
@@ -240,6 +243,9 @@ export class TrainerMock {
     // Answered by range, as the real backend does: WebKit refuses media it cannot
     // read by range.
     await context.route('**/__tone.wav', (route) => {
+      this.audioCalls += 1
+      if (this.audioMissing)
+        return route.fulfill({ status: 404, contentType: 'application/json', body: '{}' })
       const range = /^bytes=(\d+)-(\d*)$/.exec(route.request().headers()['range'] ?? '')
       const headers = { 'Content-Type': 'audio/wav', 'Accept-Ranges': 'bytes' }
       if (!range) return route.fulfill({ status: 200, body: wav, headers })

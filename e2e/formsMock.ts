@@ -9,7 +9,16 @@ export const FORMS = [
 ] as const
 
 // `status` makes the list fail with that status instead (0: the connection drops).
-export const routeForms = async (context: BrowserContext, { status }: { status?: number } = {}) => {
+// What the A2 pack adds: its Forma A, a draft until it is published (the picker shows it).
+export const A2_FORMS = [
+  ...FORMS,
+  { id: 'a2-form-a', title: 'A2 · Forma A', publication_state: 'draft' },
+] as const
+
+export const routeForms = async (
+  context: BrowserContext,
+  { status, forms = FORMS }: { status?: number; forms?: readonly object[] } = {}
+) => {
   await context.route('**/api/v1/trainer/assessments/forms', (route) => {
     if (status === 0) return route.abort('connectionrefused')
     if (status !== undefined)
@@ -21,7 +30,7 @@ export const routeForms = async (context: BrowserContext, { status }: { status?:
     return route.fulfill({
       status: 200,
       contentType: 'application/json',
-      body: JSON.stringify(validated('GET', '/trainer/assessments/forms', 200, FORMS)),
+      body: JSON.stringify(validated('GET', '/trainer/assessments/forms', 200, forms)),
     })
   })
 }
