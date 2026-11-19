@@ -304,3 +304,32 @@ Nothing was added; the welcome text stays what the author writes.
 - (D27) A flow with no backing contract is never sent: `serializeAppearance` drops `closing`, and the editor tab is
   hidden unless the backend sends the key, so an author cannot edit what would silently not be saved.
 - (D28) With six top-left HUD buttons they go icon-only (labels are kept for five or fewer).
+
+## English A2 pack
+
+The backend added A2 behind the same endpoints and payloads as A1 (no contract change; see
+`rumbos-backend/docs/TRAINER-A2-CONSUMPTION.md`). Auditing the frontend for A1 assumptions found two that were wrong
+and one stale input; everything else already reads the API.
+
+- (D29) The editor's level list is a constant (`TRAINER_PACKS`): the API has no endpoint that lists packs, since the
+  level is the editor's map setting. It named only A1, so A2 was disabled in the picker and `setTrainer` silently put
+  it back to A1. It now names A1 and A2. B1 and B2 stay "sin contenido todavía". A draft pack is chosen like a
+  published one; the save only warns (`content_not_published`).
+- (D30) Audio is fetched, not linked. An exam or practice clip's `url` needs the bearer token and an `<audio src>`
+  cannot send it; with an absolute API base the host-relative `url` would also have gone to the page's origin. The
+  mocks served `/__tone.wav` with no auth, which hid it. `ClipPlayer` now fetches the bytes with the token
+  (`loadClip`, refreshing the token once like any call), resolves the url against the API origin, and plays a blob
+  URL. The fetch starts when the player is shown, so the click can still call `play()` in the same stack (iOS);
+  a click while it loads plays when it arrives. Cost: every clip on screen is downloaded up front (small mono MP3s).
+- (D31) A clip that cannot be fetched, or cannot be played, shows "No pudimos reproducir el audio." and a retry that
+  asks the network again; the button's accessible name says "Reintentar el audio" in that state too (it said
+  "Escuchar").
+- (D32) Slow audio sets `preservesPitch = true` explicitly next to `playbackRate`; the speed buttons (0.75, 1, 1.25)
+  already existed and are shown where the level's aids allow them. The exam never shows them (no `speeds`).
+- (D33) `levelConfig.ts` keeps A2 as written (translation, starters, hints and slow audio on; word bank off): that is
+  a product decision about how much help A2 gets, not a data fact, and nobody has asked to change it.
+- (D34) The exam runner assumes nothing A1: sections, items and counts come from the API; the five section names are
+  the A1 and A2 ones; Speaking is a typed answer and the intro already says the microphone is not used.
+- (D35) `contracts/openapi.json` was behind the backend export (`closing`, the `final` purpose, `already_passed`), for
+  reasons unrelated to A2. Refreshed; the contract tests give the same result before and after. The closing-flow
+  code that waits on that contract (D27) is not touched here.
