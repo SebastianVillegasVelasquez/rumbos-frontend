@@ -333,3 +333,19 @@ and one stale input; everything else already reads the API.
 - (D35) `contracts/openapi.json` was behind the backend export (`closing`, the `final` purpose, `already_passed`), for
   reasons unrelated to A2. Refreshed; the contract tests give the same result before and after. The closing-flow
   code that waits on that contract (D27) is not touched here.
+
+## Welcome video gate and tutor wire names
+
+- (D36) A video that started and sends no `ended` within `VIDEO_MAX_WAIT_MS` (30 s) opens the recorded way out
+  ("¿Problemas con el video?", `fallback`). This amends the earlier rule that a playing video is never in
+  trouble: a loop, a stream or a dropped message made a mandatory step a lock. `ended` still completes it, and
+  later start signals do not close the way out. The provider's own events were checked against real YouTube in
+  Chromium and WebKit (onReady, playerState 1, then 0): the app side was correct.
+- (D37) The tutor click was confirmed correct: the app sends `rumbos:tutor-open` (v1) and the plugin owner
+  confirmed the host must listen to `rumbos:tutor-open` and answer `rumbos:host-tutor-closed`. The silent drop
+  was the plugin ignoring unknown types. No app change.
+- (D38) Exam picker: each option reads "A2 · Evaluación de entrada — title", sorted by language and level. When the
+  trainer is on, forms of the course's level come first and other levels stay choosable under "Otros niveles"
+  (proposal, the author decides: hiding them is one line in `groupForms`). With the trainer off nothing is grouped,
+  because the server only enforces the level while the trainer is on. `form_level_mismatch` has its own message.
+  The new list fields are optional in the parser so an older backend still fills the picker.

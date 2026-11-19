@@ -20,15 +20,22 @@ export type VideoPhase =
   | 'trouble'
 
 export type VideoEvent =
-  { type: 'click' } | { type: 'signal'; signal: VideoSignal } | { type: 'timeout' }
+  | { type: 'click' }
+  | { type: 'signal'; signal: VideoSignal }
+  | { type: 'timeout' }
+  // The video started and no `ended` came within VIDEO_MAX_WAIT_MS: a looping
+  // video, a stream or a browser that dropped the message must not be a lock.
+  | { type: 'stall' }
 
 export interface VideoState {
   phase: VideoPhase
   // The viewer used the way out: the step completes as `fallback`.
   usedFallback: boolean
+  // The way out was opened by the maximum wait; later start signals do not close it.
+  stalled: boolean
 }
 
-export const initialVideoState: VideoState = { phase: 'idle', usedFallback: false }
+export const initialVideoState: VideoState = { phase: 'idle', usedFallback: false, stalled: false }
 
 export const videoReducer = (state: VideoState, event: VideoEvent): VideoState => {
   // The end is final: nothing that arrives later un-ends a video.
@@ -39,6 +46,8 @@ export const videoReducer = (state: VideoState, event: VideoEvent): VideoState =
     case 'timeout':
       // Only a video still waiting for its first signal is in trouble.
       return state.phase === 'loading' ? { ...state, phase: 'trouble' } : state
+    case 'stall':
+      return state.phase === 'started' ? { ...state, phase: 'trouble', stalled: true } : state
     case 'signal':
       // Signals before the click are not ours (nothing is loaded before it).
       if (state.phase === 'idle') return state
@@ -49,8 +58,8 @@ export const videoReducer = (state: VideoState, event: VideoEvent): VideoState =
           return { ...state, phase: 'trouble' }
         default:
           // ready, playing, paused: the events work. A late one also recovers a
-          // video that had been declared in trouble.
-          return { ...state, phase: 'started' }
+          // video that had been declared in trouble, unless the maximum wait did.
+          return state.stalled ? state : { ...state, phase: 'started' }
       }
   }
 }

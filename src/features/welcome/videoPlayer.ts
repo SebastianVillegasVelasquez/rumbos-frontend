@@ -118,6 +118,10 @@ export const signalOf = (provider: VideoProvider, data: unknown): VideoSignal | 
 // then offers its way out). It never limits how long a working video plays.
 export const VIDEO_LOAD_TIMEOUT_MS = 10_000
 
+// The longest a video may play without telling us it ended before the viewer is
+// offered the recorded way out. Mandatory steps are a convention, never a lock.
+export const VIDEO_MAX_WAIT_MS = 30_000
+
 export type VideoLoad = 'loading' | 'loaded' | 'failed'
 
 // The only signals a cross-origin iframe gives: its load event and our own
