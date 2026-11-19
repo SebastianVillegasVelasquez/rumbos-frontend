@@ -7,6 +7,7 @@ import {
   pairUp,
   placeOf,
   splitTemplate,
+  countWords,
   templateWordCount,
   unpair,
   wordLimit,
@@ -247,7 +248,17 @@ const WrittenAnswers = ({
   onChange,
 }: ViewProps<Extract<AssessmentItem, { type: 'written_answers' }>>) => {
   const id = useId()
+  const counterId = useId()
   const values = valuesOf(response)
+  const { max_chars: maxChars } = item
+  const words =
+    item.min_words !== undefined && item.max_words !== undefined
+      ? { min: item.min_words, max: item.max_words }
+      : null
+  const typed = item.questions.map((q) => values[q.q_id] ?? '')
+  const count = countWords(typed.join(' '))
+  const limit = words ? wordLimit(count, words.min, words.max) : null
+  const hasCounter = words !== null || maxChars !== undefined
   return (
     <div className="flex flex-col gap-3">
       <Question number={number} prompt={item.prompt} id={id} />
@@ -258,6 +269,8 @@ const WrittenAnswers = ({
             className="exam-field min-h-[88px] text-base font-medium"
             autoComplete="off"
             rows={3}
+            maxLength={maxChars}
+            aria-describedby={hasCounter ? counterId : undefined}
             value={values[question.q_id] ?? ''}
             onChange={(event) =>
               onChange({ values: { ...values, [question.q_id]: event.target.value } })
@@ -265,6 +278,24 @@ const WrittenAnswers = ({
           />
         </label>
       ))}
+      {/* Not a live region: a count announced on every key would drown the student. */}
+      {hasCounter && (
+        <p id={counterId} className="flex flex-wrap items-center gap-x-3 text-sm font-bold">
+          {words && <span>{text.wordsCounter(count, words.min, words.max)}</span>}
+          {limit && (
+            <span className="rounded-md border-hair px-2 py-0.5" data-limit={limit}>
+              {limit === 'below'
+                ? `▼ ${text.wordsBelow((words?.min ?? 0) - count)}`
+                : limit === 'above'
+                  ? `▲ ${text.wordsAbove(count - (words?.max ?? 0))}`
+                  : `✓ ${text.wordsWithin}`}
+            </span>
+          )}
+          {maxChars !== undefined && (
+            <span>{text.charsCounter(Math.max(...typed.map((v) => v.length)), maxChars)}</span>
+          )}
+        </p>
+      )}
     </div>
   )
 }

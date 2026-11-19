@@ -108,6 +108,11 @@ export interface TemplateTextItem extends ItemBase {
 export interface WrittenAnswersItem extends ItemBase {
   type: 'written_answers'
   questions: { q_id: string; prompt: string }[]
+  // Length hints for the UI, declared only when the form sets them (B2 Writing: 120, 160,
+  // 1500). The server enforces the character limit; these only keep the student informed.
+  min_words?: number
+  max_words?: number
+  max_chars?: number
 }
 
 export type AssessmentItem =
