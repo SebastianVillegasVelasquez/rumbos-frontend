@@ -34,7 +34,7 @@ export interface PracticeOptions {
   unpublished?: boolean
   // Words due for review.
   dueWords?: number
-  // The course's level (a fixture: only A1 has content in production).
+  // The course's level (the catalog says it; A1 and A2 have content).
   level?: 'A1' | 'A2' | 'B1' | 'B2'
 }
 
@@ -264,7 +264,7 @@ export class PracticeMock {
       enabled: this.options.enabled ?? true,
       language: 'en',
       level: this.options.level ?? 'A1',
-      title: 'Inglés A1 · Turismo',
+      title: `Inglés ${this.options.level ?? 'A1'} · Turismo`,
       content_version: 'v1',
       preview: this.preview,
       // The backend's shape: lessons and activities nested under the module, and a

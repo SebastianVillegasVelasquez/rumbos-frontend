@@ -1,7 +1,7 @@
 import type { TrainerLevel } from './types.ts'
 
 // How much help the practice gives at each level, as data (not branches in the
-// screens). Only A1 has content today; the other levels exist so the same screens
+// screens). A1 and A2 have content; the other levels exist so the same screens
 // render with less help when their content arrives. The server decides which steps
 // exist; this decides which aids are shown around them.
 

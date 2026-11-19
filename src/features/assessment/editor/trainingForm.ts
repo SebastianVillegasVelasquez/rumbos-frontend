@@ -10,10 +10,12 @@ import type {
 // inputs clamp to, and pure updates of the settings. Pure so the rules are tested.
 // Values are clamped as they are typed, so the settings never hold an invalid one.
 
-// The packs that have content. Language and level are data, but only A1 in English
-// exists; the other levels are listed as "sin contenido todavía" and cannot be chosen.
+// The packs that have content. The API has no endpoint that lists them (the level is the
+// editor's map setting), so this is the one place that says which exist: English A1 and
+// A2. The other levels are listed as "sin contenido todavía" and cannot be chosen. While a
+// pack is a draft the save only warns (`content_not_published`), so it can be set up early.
 export const TRAINER_PACKS: ReadonlyArray<{ language: 'en'; levels: readonly TrainerLevel[] }> = [
-  { language: 'en', levels: ['A1'] },
+  { language: 'en', levels: ['A1', 'A2'] },
 ]
 export const ALL_LEVELS: readonly TrainerLevel[] = ['A1', 'A2', 'B1', 'B2']
 

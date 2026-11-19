@@ -4374,6 +4374,11 @@
                 "type": "null"
               }
             ]
+          },
+          "already_passed": {
+            "type": "boolean",
+            "title": "Already Passed",
+            "default": false
           }
         },
         "type": "object",
@@ -4490,7 +4495,7 @@
           },
           "purpose": {
             "type": "string",
-            "const": "check_in",
+            "enum": ["check_in", "final"],
             "title": "Purpose"
           }
         },
@@ -4498,7 +4503,7 @@
         "type": "object",
         "required": ["key", "title", "type", "purpose"],
         "title": "AssessmentStep",
-        "description": "The native check-in exam (see `MapSettings.assessments`). The existing\n`quiz` step stays as a fallback until the passback is verified."
+        "description": "A native exam (see `MapSettings.assessments`): the check-in in the\nwelcome flow, the final exam in the closing flow (`flow_problems` refuses\nthe wrong one in each). The existing `quiz` step stays as a fallback until\nthe passback is verified."
       },
       "AssetKind": {
         "type": "string",
@@ -6837,6 +6842,16 @@
           },
           "welcome": {
             "$ref": "#/components/schemas/Welcome"
+          },
+          "closing": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Welcome"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "trainer": {
             "$ref": "#/components/schemas/TrainerSettings"
