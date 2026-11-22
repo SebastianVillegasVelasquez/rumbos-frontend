@@ -42,6 +42,8 @@ export interface ClosingEntry {
   enabled: boolean
   // Why it is closed, when it is; shown as text after a press.
   note: string | null
+  // "Continuar": takes the student to the next pending bubble. Null when there is none.
+  onContinue?: (() => void) | null
 }
 
 // "Tutor virtual": shown only when the host announced it can open the tutor (never a
@@ -157,11 +159,12 @@ export const StudentStage = ({
   }, [pressed])
   // Pressing the closed "Cierre" says why, as text, for a few seconds.
   const [closingPressed, setClosingPressed] = useState(false)
+  const closingStays = Boolean(closing?.onContinue)
   useEffect(() => {
-    if (!closingPressed) return
+    if (!closingPressed || closingStays) return
     const timer = window.setTimeout(() => setClosingPressed(false), 4000)
     return () => window.clearTimeout(timer)
-  }, [closingPressed])
+  }, [closingPressed, closingStays])
   const cannotOpen = trainer?.mode === 'loading' || trainer?.mode === 'disabled'
   const reasonShown = Boolean(trainer?.note) && (trainer?.persistentNote || pressed)
   const { width, height } = useStageSize(stageRef)
@@ -387,12 +390,10 @@ export const StudentStage = ({
         )}
 
         {closing?.note && (
-          <p
-            id={`${CLOSING_BUTTON_ID}-why`}
-            role="status"
+          <div
             className={
               closingPressed
-                ? 'hud-chip pointer-events-none absolute z-10 rounded-md px-3 py-1.5 text-sm font-bold text-white'
+                ? 'hud-chip pointer-events-auto absolute z-10 flex flex-col items-start gap-2 rounded-md px-3 py-1.5 text-sm font-bold text-white'
                 : 'sr-only'
             }
             style={
@@ -406,8 +407,23 @@ export const StudentStage = ({
                 : undefined
             }
           >
-            {closing.note}
-          </p>
+            <p id={`${CLOSING_BUTTON_ID}-why`} role="status">
+              {closing.note}
+            </p>
+            {closingPressed && closing.onContinue && (
+              <Button
+                variant="surface"
+                size="sm"
+                dense
+                onClick={() => {
+                  setClosingPressed(false)
+                  closing.onContinue?.()
+                }}
+              >
+                {es.hud.closingContinue}
+              </Button>
+            )}
+          </div>
         )}
 
         {chip}

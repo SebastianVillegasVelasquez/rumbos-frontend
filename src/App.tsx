@@ -1,3 +1,4 @@
+import { closingEntryView } from './features/hud/closingEntry.ts'
 import {
   Suspense,
   lazy,
@@ -801,7 +802,14 @@ export function AppShell() {
   const closingSteps = renderable?.settings.closing?.enabled
     ? (renderable.settings.closing.steps ?? [])
     : []
-  const closingOpenable = exitPreview !== null || renderable?.closingAvailable === true
+  // The backend's word (with its reason and SCORM counts); an older draft sends only the boolean.
+  const closingView = closingEntryView(
+    renderable?.closingAvailability ??
+      (renderable?.closingAvailable === undefined
+        ? null
+        : { available: renderable.closingAvailable, reason: null }),
+    exitPreview !== null
+  )
   const closingWasOpen = useRef(false)
   useEffect(() => {
     if (closingOpen) {
@@ -1346,8 +1354,17 @@ export function AppShell() {
                   closingSteps.length > 0
                     ? {
                         onOpen: () => setClosingOpen(true),
-                        enabled: closingOpenable,
-                        note: closingOpenable ? null : es.hud.closingNotYet,
+                        enabled: closingView.enabled,
+                        note: closingView.note,
+                        // Never opens the flow: it only walks them to the next pending bubble.
+                        onContinue:
+                          closingView.offersContinue && nextTarget
+                            ? () => {
+                                setActiveQuestBubbleId(nextTarget.id)
+                                setFocusBubbleId(nextTarget.id)
+                                setArmedBubbleId(nextTarget.id)
+                              }
+                            : null,
                       }
                     : null
                 }
