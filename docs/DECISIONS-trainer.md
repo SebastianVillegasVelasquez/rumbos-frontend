@@ -354,3 +354,22 @@ and one stale input; everything else already reads the API.
   no longer calls `GET /assessments`. There was never a URL for the exam (the trainer's view is in-memory and the
   router knows only `?map`, `?course`, `?entry`, `?view`), so a stale bookmark cannot reach it; the deep-link case is
   covered where a parameter can actually be wrong (see the closing flow entries).
+- (D40) Closing flow deltas, built against a branch-local mock because `contracts/openapi.json` does not declare the
+  availability payload, the reason codes, the guard error or a per-attempt `preview` flag. Assumed shapes (all in one
+  place, to be replaced by generated types): `closingAvailability: { available, reason, scorm?: { completed, required } }`
+  on the map read; reasons `scorm_incomplete`, `not_configured`, `already_passed`, `attempts_exhausted` (anything else reads
+  neutral); `locked_reason: "scorm_incomplete"` on the exam list item; the guard `closing_not_available` as a 409 or a 403.
+  Nothing new is sent to the backend: `closing` is still dropped on save until it is declared.
+- (D41) "Continuar" on the locked "Cierre" reuses the HUD's own next-bubble walk (focus and arm the next pending
+  bubble). It never opens the flow and never opens the activity by itself. The note stays until the student acts, because
+  an action that disappears after four seconds cannot be used by a keyboard.
+- (D42) The guard error has no "Reintentar": retrying a closed gate cannot help. The runner offers "Volver", and the step
+  (which re-reads the list on mount) shows the true state. Copy for the new states and the preview labels is pending
+  approval.
+- (D43) The preview label and the "not a student's result" note come from the existing `preview` the backend sets on the
+  assessments list. An editor who is in Moodle's student mode (editing off) is not in the preview view, so the backend
+  decides there, as for any student.
+- (D44) Known, not mine: `e2e/welcome-editor.spec.ts` "Probar el flujo previews without saving" fails on `origin/main`
+  (the "Descartar" button stays after the click) in Chromium and WebKit. Left untouched.
+- (D45) The old stale-link case has no URL to guard (see D39); an unknown `?exam=` or `?view=exam` lands on the map, covered by
+  an e2e test.
