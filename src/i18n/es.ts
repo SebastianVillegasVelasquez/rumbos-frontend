@@ -858,6 +858,10 @@ export const es = {
       types: { html: 'Texto con formato', assessment: 'Evaluación final' },
       newTitles: { html: 'Texto', assessment: 'Evaluación final' },
       previewEmpty: 'Agrega al menos un paso para ver cómo lo recorrerá tu estudiante.',
+      // On the final-assessment step: why students cannot reach it yet. Pending approval.
+      assessmentBody:
+        'Evaluación final del curso, dentro de Rumbos. Cuenta como hecha cuando el estudiante la entrega o se acaba el tiempo, sea cual sea el resultado.',
+      gateNote: 'Este paso se desbloquea cuando el estudiante completa todos los contenidos SCORM.',
     },
     training: {
       title: 'Entrenamiento y evaluación',

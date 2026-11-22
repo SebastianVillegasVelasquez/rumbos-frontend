@@ -297,6 +297,13 @@ const StepsEditor = ({
                 enabled: assessments.enabled,
                 autoEnabled: autoEnabledFor === step.key,
                 formId: (flowKey === 'closing' ? assessments.final : assessments.checkIn).formId,
+                copy:
+                  flowKey === 'closing'
+                    ? {
+                        body: es.studio.closingFlow.assessmentBody,
+                        gateNote: es.studio.closingFlow.gateNote,
+                      }
+                    : undefined,
                 onEnable: () => {
                   onChange(enableAssessments(settings))
                   setAutoEnabledFor(step.key)
@@ -433,6 +440,8 @@ interface AssessmentState {
   autoEnabled: boolean
   formId: string
   onEnable: () => void
+  // The closing flow's words where the step is the final exam, not the check-in.
+  copy?: { body: string; gateNote: string }
 }
 
 interface StepCardProps {
