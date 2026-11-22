@@ -240,21 +240,6 @@ export const esAssessment = {
     skipNote: 'No se hizo la evaluación final. Podrás hacerla más adelante.',
     editorNote: 'Vista previa: puedes continuar sin hacer la evaluación.',
   },
-
-  // The final exam's card in the trainer home.
-  finalCard: {
-    title: 'Evaluación final',
-    body: (minutes: number) => `Dura ${minutes} minutos. El tiempo corre aunque cierres la página.`,
-    attempts: (used: number, max: number) => `Intentos: ${used} de ${max}`,
-    states: {
-      available: 'Disponible',
-      in_progress: 'En curso',
-      exhausted: 'Sin intentos',
-      locked: 'No disponible',
-      passed: 'Superada',
-    },
-    open: 'Abrir',
-  },
 } as const
 
 export type Es = typeof esAssessment

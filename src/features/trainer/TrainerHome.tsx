@@ -1,13 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQueryClient } from '@tanstack/react-query'
 import { ArrowLeft, ChartNoAxesColumn, Layers } from 'lucide-react'
 import { Button } from '../../components/ui/Button.tsx'
-import { esAssessment } from '../../i18n/assessment.es.ts'
 import { esTrainer } from '../../i18n/trainer.es.ts'
-import { assessmentApi } from '../assessment/api.ts'
-import type { AssessmentListItem, EnabledAssessmentList } from '../assessment/types.ts'
 import { trainerApi } from './api.ts'
-import { lockedReasonText } from '../assessment/lockedReason.ts'
 import { rememberAccepted } from './firstUse.ts'
 import { TrainerCard } from './TrainerCard.tsx'
 import type { Catalog } from './types.ts'
@@ -44,62 +40,21 @@ export const FirstUse = ({ onAccept, onBack }: { onAccept: () => void; onBack: (
   )
 }
 
-const FinalCard = ({
-  list,
-  onOpen,
-}: {
-  list: EnabledAssessmentList
-  onOpen: (item: AssessmentListItem) => void
-}) => {
-  const item = list.items.find((entry) => entry.purpose === 'final')
-  if (!item) return null
-  const copy = esAssessment.finalCard
-  const canOpen = item.state === 'available' || item.state === 'in_progress'
-  return (
-    <section
-      aria-labelledby="trainer-final"
-      className="flex flex-col gap-2 rounded-lg border-strong bg-sun-tint p-4"
-    >
-      <h3 id="trainer-final" className="font-heading text-lg font-extrabold">
-        {copy.title}
-      </h3>
-      <p>{copy.body(list.policy.time_limit_min)}</p>
-      <p className="text-sm font-bold">
-        {copy.attempts(item.attempts.used, item.attempts.max)} · {copy.states[item.state]}
-      </p>
-      {item.locked_reason && <p className="text-sm">{lockedReasonText(item.locked_reason)}</p>}
-      <div>
-        <Button size="sm" disabled={!canOpen} onClick={() => onOpen(item)}>
-          {copy.open}
-        </Button>
-      </div>
-    </section>
-  )
-}
-
 export interface HomeProps {
   catalog: Catalog
   onBack: () => void
   onLessons: () => void
   onProgress: () => void
-  onFinal: (item: AssessmentListItem, list: EnabledAssessmentList) => void
 }
 
-// S2: the way to the lessons and to the progress, and the final exam card (clearly
-// separated from practice). The words due live in the progress screen.
-export const TrainerHome = ({ catalog, onBack, onLessons, onProgress, onFinal }: HomeProps) => {
+// S2: the way to the lessons and to the progress. Practice only: the final exam is a step
+// of the closing flow. The words due live in the progress screen.
+export const TrainerHome = ({ catalog, onBack, onLessons, onProgress }: HomeProps) => {
   const ref = useRef<HTMLHeadingElement>(null)
   const client = useQueryClient()
   const [confirmDelete, setConfirmDelete] = useState(false)
   const [deleted, setDeleted] = useState(false)
   useEffect(() => ref.current?.focus(), [])
-  // The final exam is optional: a failure here never hides the practice.
-  const exams = useQuery({
-    queryKey: ['trainer', 'assessments'],
-    queryFn: () => assessmentApi.list(),
-    retry: false,
-  })
-  const examList = exams.data?.enabled ? exams.data : null
   const copy = text.home
 
   return (
@@ -125,8 +80,6 @@ export const TrainerHome = ({ catalog, onBack, onLessons, onProgress, onFinal }:
           {copy.progress}
         </Button>
       </div>
-
-      {examList && <FinalCard list={examList} onOpen={(item) => onFinal(item, examList)} />}
 
       <div className="border-t-soft pt-3">
         {deleted ? (

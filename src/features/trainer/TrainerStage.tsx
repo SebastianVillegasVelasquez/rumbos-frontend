@@ -4,8 +4,6 @@ import { ArrowLeft } from 'lucide-react'
 import { Button } from '../../components/ui/Button.tsx'
 import { esTrainer } from '../../i18n/trainer.es.ts'
 import { resolveImageUrl } from '../course-map/data/assets.ts'
-import type { AssessmentListItem, EnabledAssessmentList } from '../assessment/types.ts'
-import { LazyExamRunner } from '../assessment/LazyExamRunner.tsx'
 import { stageScreen } from './availability.ts'
 import { useCatalog } from './useCatalog.ts'
 import { classifyFailure } from './failure.ts'
@@ -28,7 +26,6 @@ type View =
   | { name: 'practice'; activityId: string }
   | { name: 'progress' }
   | { name: 'review' }
-  | { name: 'exam'; item: AssessmentListItem; list: EnabledAssessmentList }
 
 export interface TrainerStageProps {
   imageUrl: string
@@ -173,20 +170,6 @@ const TrainerStage = ({ imageUrl, onClose }: TrainerStageProps) => {
     screen = <Progress onBack={home} onReview={() => setView({ name: 'review' })} />
   } else if (view.name === 'review') {
     screen = <VocabReview onBack={home} />
-  } else if (view.name === 'exam') {
-    screen = (
-      <LazyExamRunner
-        purpose="final"
-        info={view.item}
-        policy={view.list.policy}
-        preview={view.list.preview}
-        onExit={() => {
-          void client.invalidateQueries({ queryKey: ['trainer', 'assessments'] })
-          home()
-        }}
-        onAgain={() => setView({ name: 'exam', item: view.item, list: view.list })}
-      />
-    )
   } else {
     screen = (
       <TrainerHome
@@ -194,7 +177,6 @@ const TrainerStage = ({ imageUrl, onClose }: TrainerStageProps) => {
         onBack={close}
         onLessons={() => setView({ name: 'lessons' })}
         onProgress={() => setView({ name: 'progress' })}
-        onFinal={(item, list) => setView({ name: 'exam', item, list })}
       />
     )
   }

@@ -198,10 +198,6 @@ export const esTrainer = {
     failed: 'No pudimos enviar el reporte. Inténtalo de nuevo.',
     cancel: 'Cancelar',
   },
-  exam: {
-    title: 'Evaluación final',
-    open: 'Abrir',
-  },
 }
 
 export type EsTrainer = typeof esTrainer
