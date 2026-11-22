@@ -19,6 +19,9 @@ export const esAssessment = {
     speaking: 'Speaking',
   },
   preview: 'Vista previa: no se guarda.',
+  // The final exam in preview (an editor): wording pending approval.
+  previewFinal: 'Vista previa: este intento no se guarda ni cuenta.',
+  previewResult: 'Esto es una vista previa: no es el resultado de un estudiante.',
   loading: 'Preparando la evaluación…',
   close: 'Volver al mapa',
 
@@ -131,6 +134,9 @@ export const esAssessment = {
       'Tu sesión venció. Vuelve a abrir la evaluación desde el curso y seguirás donde ibas.',
     no_attempts_left: 'Ya usaste todos tus intentos.',
     locked: 'Esta evaluación todavía no está disponible.',
+    closing_not_available:
+      'El cierre todavía no está disponible para ti. Vuelve y revisamos de nuevo tu avance.',
+    back: 'Volver',
     closed: 'La evaluación ya se cerró.',
     other: 'Algo salió mal.',
     retry: 'Reintentar',
@@ -206,10 +212,12 @@ export const esAssessment = {
     inProgress: (clock: string) => `Tienes una evaluación en curso. Te quedan ${clock}.`,
     exhausted: 'Ya usaste tus intentos.',
     passed: 'Ya aprobaste.',
+    passedNote: 'No necesitas hacer esta evaluación.',
     locked: 'Esta evaluación todavía no está disponible.',
     // Why the step cannot offer the exam. Keys are ours, never the backend's codes.
     reasons: {
       not_available: 'La evaluación de entrada todavía no está lista en este curso.',
+      scorm_incomplete: 'Completa todos los contenidos para abrir esta evaluación.',
       locked: 'Esta evaluación todavía no está disponible.',
       disabled: 'Este curso no tiene evaluación de entrada.',
       no_form: 'La evaluación de entrada todavía no tiene preguntas.',
@@ -233,10 +241,12 @@ export const esAssessment = {
     available: 'Evaluación final: muestra lo que aprendiste.',
     reasons: {
       not_available: 'La evaluación final todavía no está lista en este curso.',
+      scorm_incomplete: 'Completa todos los contenidos para abrir la evaluación final.',
       locked: 'Esta evaluación todavía no está disponible.',
       disabled: 'Este curso no tiene evaluación final.',
       no_form: 'La evaluación final todavía no tiene preguntas.',
     },
+    exhausted: 'Ya usaste todos los intentos de la evaluación final.',
     skipNote: 'No se hizo la evaluación final. Podrás hacerla más adelante.',
     editorNote: 'Vista previa: puedes continuar sin hacer la evaluación.',
   },

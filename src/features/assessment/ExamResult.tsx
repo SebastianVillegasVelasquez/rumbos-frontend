@@ -76,6 +76,12 @@ export const ExamResult = ({
         {purpose === 'check_in' && <p className="flow-prose">{text.checkInBody}</p>}
       </div>
 
+      {preview && (
+        <p role="note" className="rounded-md bg-sun-tint p-3 font-semibold text-sun-dark">
+          {esAssessment.previewResult}
+        </p>
+      )}
+
       {result.status === 'expired' && (
         <p role="status" className="rounded-md bg-sun-tint p-3 font-semibold text-sun-dark">
           {esAssessment.result.expired}

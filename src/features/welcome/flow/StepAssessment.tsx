@@ -141,6 +141,7 @@ export const StepAssessment = ({
         <p role="status" className="flow-prose font-semibold">
           {text.passed}
         </p>
+        <p className="flow-prose">{text.passedNote}</p>
       </div>
     )
 
@@ -188,17 +189,22 @@ export const StepAssessment = ({
   const remainingMs = inProgress ? Date.parse(inProgress.deadline_at) - loadedAt : null
   return (
     <div className="flow-pad flex flex-col gap-3">
-      {state.editor && (
+      {(state.editor || list.preview) && (
         <p
           role="note"
           className="rounded-md bg-sun-tint px-3 py-2 text-sm font-semibold text-sun-dark"
         >
-          {text.editorNote}
+          {step.purpose === 'final' ? esAssessment.previewFinal : text.editorNote}
+          {step.purpose === 'final' && state.editor && ` ${text.editorNote}`}
         </p>
       )}
       {done ? (
         <p role="status" className="flow-prose font-semibold">
-          {outcome === 'fallback' ? text.skipNote : text.done}
+          {outcome === 'fallback'
+            ? text.skipNote
+            : item?.state === 'exhausted'
+              ? text.exhausted
+              : text.done}
         </p>
       ) : (
         <>

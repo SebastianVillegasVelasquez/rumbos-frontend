@@ -19,4 +19,10 @@ describe('failure classes', () => {
     assert.equal(classifyFailure(api(422)), 'other')
     assert.equal(classifyFailure(new Error('x')), 'other')
   })
+
+  it('knows the closing flow guard (draft code), as a 409 or a 403', () => {
+    assert.equal(classifyFailure(api(409, 'closing_not_available')), 'closing_not_available')
+    assert.equal(classifyFailure(api(403, 'closing_not_available')), 'closing_not_available')
+    assert.equal(classifyFailure(api(403, 'something_else')), 'other')
+  })
 })
