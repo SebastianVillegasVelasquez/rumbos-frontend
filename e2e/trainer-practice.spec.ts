@@ -47,7 +47,8 @@ test.describe('practice trainer', () => {
     await expect(stage(page).getByRole('heading', { name: 'Antes de empezar' })).toBeVisible({
       timeout: 20_000,
     })
-    await expect(stage(page).getByText(/no usa inteligencia artificial/)).toBeVisible()
+    await expect(stage(page).getByText('Si ves un error, repórtalo.')).toBeVisible()
+    await expect(stage(page).getByText(/inteligencia artificial/i)).toHaveCount(0)
     // The microphone is never asked for.
     await expect(stage(page).getByText(/micr[oó]fono/i)).toHaveCount(0)
     await stage(page).getByRole('button', { name: 'Entendido, empezar' }).click()

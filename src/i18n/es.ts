@@ -865,8 +865,7 @@ export const es = {
     },
     training: {
       title: 'Entrenamiento y evaluación',
-      intro:
-        'Práctica guiada e inglés evaluado dentro de Rumbos. Todo está escrito de antemano; nada usa inteligencia artificial.',
+      intro: 'Práctica guiada e inglés evaluado dentro de Rumbos.',
       trainerTitle: 'Entrenamiento',
       trainerSwitch: 'Mostrar el botón «Entrenar» a los estudiantes',
       language: 'Idioma',

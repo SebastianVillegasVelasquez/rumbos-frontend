@@ -32,9 +32,7 @@ export const esTrainer = {
   first: {
     title: 'Antes de empezar',
     what: 'Aquí practicas inglés con ejercicios cortos: escuchar, gramática, escritura, vocabulario y diálogos guiados.',
-    // LEGAL
-    notice:
-      'Las preguntas y las correcciones están escritas de antemano. Esta práctica no usa inteligencia artificial para corregirte. Si ves un error, repórtalo.',
+    notice: 'Si ves un error, repórtalo.',
     // LEGAL
     store:
       'Guardamos tus respuestas, tu progreso y las palabras que guardes, durante 90 días. Puedes borrar tus datos de práctica cuando quieras.',
