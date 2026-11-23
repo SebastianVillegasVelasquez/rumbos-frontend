@@ -111,10 +111,21 @@ export interface FlowProblem {
   code: FlowProblemCode
 }
 
-// What each flow may contain. The closing flow is authored HTML and the final exam.
+// The content steps both flows offer, in one table: a type added here is available in
+// the editor, the validation and the player of the welcome flow and the closing flow
+// alike. Only two things differ by flow: the greeting (`welcome`, a hero screen with
+// the course's welcome copy, so the welcome flow only) and the assessment's purpose.
+export const SHARED_STEP_TYPES = [
+  'video',
+  'html',
+  'pdf',
+  'quiz',
+] as const satisfies readonly WelcomeStepType[]
+
+// What each flow may contain, in the order the add-step menu lists it.
 export const STEP_TYPES_BY_FLOW: Record<FlowKey, readonly WelcomeStepType[]> = {
-  welcome: ['welcome', 'video', 'html', 'pdf', 'quiz', 'assessment'],
-  closing: ['html', 'assessment'],
+  welcome: ['welcome', ...SHARED_STEP_TYPES, 'assessment'],
+  closing: [...SHARED_STEP_TYPES, 'assessment'],
 }
 export const PURPOSE_BY_FLOW: Record<FlowKey, 'check_in' | 'final'> = {
   welcome: 'check_in',
@@ -128,7 +139,7 @@ export interface FlowValidationContext {
   availableDocuments?: ReadonlySet<string>
 }
 
-const STEP_TYPES: readonly string[] = ['welcome', 'video', 'html', 'pdf', 'quiz', 'assessment']
+const KNOWN_STEP_TYPES: readonly string[] = Object.values(STEP_TYPES_BY_FLOW).flat()
 const byteLength = (text: string) => new TextEncoder().encode(text).length
 
 const validateStep = (
@@ -142,7 +153,7 @@ const validateStep = (
     problems.push({ path: field ? `${base}.${field}` : base, code })
   const flowKey = context.flowKey ?? 'welcome'
   if (
-    !STEP_TYPES.includes((step as { type: string }).type) ||
+    !KNOWN_STEP_TYPES.includes((step as { type: string }).type) ||
     !STEP_TYPES_BY_FLOW[flowKey].includes(step.type)
   ) {
     add('type', 'step_type_invalid')
