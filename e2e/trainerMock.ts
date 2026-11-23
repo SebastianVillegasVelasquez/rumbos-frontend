@@ -311,7 +311,7 @@ export class TrainerMock {
       band: p >= 80 ? 'achieved' : p >= 60 ? 'consolidating' : p >= 40 ? 'developing' : 'emerging',
       by_section: SECTIONS.map((s) => ({
         key: s.key,
-        points: 0,
+        points: '0',
         max: BODY[s.key].item_count,
         percent: percent,
         weight: 20,

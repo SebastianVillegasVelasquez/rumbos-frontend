@@ -734,6 +734,14 @@ export function AppShell() {
           track={audioForWelcome}
           onEnterFullscreen={curtainFullscreen}
           onFinish={flowGate.finish}
+          // Editor's test tools only: "Ver cierre" after a simulated pass opens these in preview.
+          closingPreviewSteps={
+            embed?.role === 'editor'
+              ? renderable.settings.closing?.enabled
+                ? (renderable.settings.closing.steps ?? [])
+                : []
+              : undefined
+          }
         />
       ) : flowGate.state.status === 'checking' ? (
         <div className="absolute inset-0 z-50 bg-ink" />

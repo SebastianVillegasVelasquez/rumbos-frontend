@@ -373,3 +373,28 @@ and one stale input; everything else already reads the API.
   (the "Descartar" button stays after the click) in Chromium and WebKit. Left untouched.
 - (D45) The old stale-link case has no URL to guard (see D39); an unknown `?exam=` or `?view=exam` lands on the map, covered by
   an e2e test.
+
+## Editor preview: simulate the result screens
+
+- (D46) The test tools are a UI simulation and nothing else. A simulated result is a value of the submit endpoint's `Result`
+  type drawn by the real `ExamResult`; no attempt is started, nothing is saved or submitted, no flow event is dispatched
+  (so no completion is recorded and no host message is sent), and the report form and "Intentar de nuevo" are hidden because
+  both are real calls. A contract test checks the synthetic value against the spec's `Result` schema; that check also caught
+  that `SectionResult.points` is a string in the contract (the hand-written type said number), now fixed.
+- (D47) The gate has two keys, both required: `preview` (the backend's own derivation on `GET /assessments`, or the editor's
+  own flow preview) and the host's role being `editor` (`simulationAllowed`). The runner, the step and the handler each check
+  it, so editing client state in a student's view reveals nothing and the handler is a no-op anyway. The tools show only on the
+  exam's idle screen and on a simulated result, never in the middle of a real attempt.
+- (D48) "Simular justo N %" uses the policy's own threshold as its percent and the policy's operator to decide: with `gt`
+  (today's rule) exactly N % does not pass, and the screen says so. The label follows the policy instead of a fixed "80".
+- (D49) Pass copy now names the percent and the threshold ("con 92.00 %, más del 80 % que se pide"; "al menos" for `gte`), for
+  the check-in ("evaluación diagnóstica") and the final ("evaluación final") apart. This is the real result component, so it
+  also changes what a real student sees on a pass, where it used to say "Superaste la evaluación." All of it is wording pending
+  approval. Revert for students by not passing `policy` to `ExamResult`.
+- (D50) "Ver cierre" exists only on a simulated pass of the check-in, as a button that opens the closing flow in preview (no
+  persistence, no host fullscreen) over the welcome flow, from the player and from the editor's "Probar el flujo". Inside the
+  closing flow it is not offered. No "Ver cierre" was added to real results: that needs your decision. Note the HUD's
+  `already_passed` reason says a student who passed "no necesita hacer el cierre", which sits oddly with offering the closing
+  after a pass; the simulation is for the screens, not for that product question.
+- (D51) The "not pass" simulation says the Cierre button "sigue como lo defina el curso" rather than claiming it stays locked:
+  the contract does not say that a failed attempt locks the closing flow.

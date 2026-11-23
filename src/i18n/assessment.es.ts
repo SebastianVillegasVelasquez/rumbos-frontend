@@ -22,6 +22,30 @@ export const esAssessment = {
   // The final exam in preview (an editor): wording pending approval.
   previewFinal: 'Vista previa: este intento no se guarda ni cuenta.',
   previewResult: 'Esto es una vista previa: no es el resultado de un estudiante.',
+  // The editor's test tools (UI-only simulation of the result screens). All wording pending approval.
+  simulation: {
+    title: 'Herramientas de prueba · solo para editores',
+    intro:
+      'Mira las pantallas de resultado sin responder la evaluación. Es solo una simulación de la pantalla: no crea un intento ni guarda nada.',
+    pass: 'Simular aprobar',
+    fail: 'Simular no aprobar',
+    boundary: (threshold: number) => `Simular justo ${threshold} %`,
+    banner: 'Simulación: no se guardó nada ni se envió nada a Moodle.',
+    boundaryNote: (threshold: number, strict: boolean) =>
+      strict
+        ? `Con exactamente ${threshold} % no se aprueba: hay que superar el ${threshold} %.`
+        : `Con exactamente ${threshold} % se aprueba: basta con alcanzarlo.`,
+    failNote:
+      'Así lo vería un estudiante. Si no aprueba, el botón Cierre sigue como lo defina el curso.',
+    openClosing: 'Ver cierre',
+    noClosing: 'Este curso no tiene un flujo de cierre configurado.',
+    again: 'Volver a las herramientas',
+    announce: {
+      pass: 'Simulación: resultado aprobado.',
+      fail: 'Simulación: resultado no aprobado.',
+      boundary: 'Simulación: justo en el umbral.',
+    },
+  },
   loading: 'Preparando la evaluación…',
   close: 'Volver al mapa',
 
@@ -152,6 +176,14 @@ export const esAssessment = {
     checkInTitle: 'Tu punto de partida',
     checkInBody: 'Esta evaluación nos dice por dónde empezar. No es una nota que te limite.',
     passed: 'Superaste la evaluación.',
+    // Wording pending approval. The threshold is the policy's; "más del" only when it must be
+    // strictly exceeded.
+    congrats: {
+      check_in: (percent: string, threshold: number, strict: boolean) =>
+        `¡Felicidades! Completaste la evaluación diagnóstica con ${percent} %, ${strict ? 'más' : 'al menos'} del ${threshold} % que se pide.`,
+      final: (percent: string, threshold: number, strict: boolean) =>
+        `¡Felicidades! Aprobaste la evaluación final con ${percent} %, ${strict ? 'más' : 'al menos'} del ${threshold} % que se pide.`,
+    },
     notPassedCheckIn: 'Este es tu punto de partida. A partir de aquí vas a avanzar.',
     notPassedFinal: (left: number) =>
       left > 0

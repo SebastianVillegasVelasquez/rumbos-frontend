@@ -1,9 +1,10 @@
 import { CheckCircle2, Clock, Flag, Info } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Button } from '../../components/ui/Button.tsx'
 import { esAssessment } from '../../i18n/assessment.es.ts'
 import { ReportForm } from './ReportForm.tsx'
-import type { AssessmentPurpose, AssessmentResult } from './types.ts'
+import type { SimulatedOutcome } from './simulation.ts'
+import type { AssessmentPolicy, AssessmentPurpose, AssessmentResult } from './types.ts'
 
 const text = esAssessment.result
 
@@ -52,23 +53,47 @@ export const ExamResult = ({
   result,
   preview,
   onAgain,
+  policy,
+  simulated,
 }: {
   purpose: AssessmentPurpose
   result: AssessmentResult
   preview: boolean
   // Offered on the final exam only, while attempts remain.
   onAgain?: () => void
+  // The pass rule, to say what the congratulations rest on; without it the plain sentence.
+  policy?: AssessmentPolicy
+  // An editor's simulation: the result is synthetic, so nothing here may start an attempt,
+  // send a report or look like a student's result. `closing` is the "Ver cierre" action.
+  simulated?: { outcome: SimulatedOutcome; closing?: 'none' | (() => void) } | null
 }) => {
   const [reporting, setReporting] = useState(false)
   const left = Math.max(0, result.attempts.max - result.attempts.used)
+  const strict = policy?.pass_operator !== 'gte'
   const statement = result.passed
-    ? text.passed
+    ? policy
+      ? text.congrats[purpose](result.percent, policy.pass_percent, strict)
+      : text.passed
     : purpose === 'check_in'
       ? text.notPassedCheckIn
       : text.notPassedFinal(left)
   const title = purpose === 'check_in' ? text.checkInTitle : text.title
+  // The result is the screen's news: focus its heading when a (new) result is drawn.
+  const shown = `${result.percent}|${result.passed}|${simulated?.outcome ?? ''}`
+  useEffect(() => {
+    if (simulated) document.getElementById('exam-result-title')?.focus()
+  }, [shown, simulated])
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-5" data-simulated={simulated ? 'true' : undefined}>
+      {simulated && (
+        <p
+          role="note"
+          data-testid="simulation-banner"
+          className="rounded-md border-2 border-dashed border-sun-dark bg-sun-tint p-3 font-extrabold text-sun-dark"
+        >
+          {esAssessment.simulation.banner}
+        </p>
+      )}
       <div className="flex flex-col gap-1">
         <h2 tabIndex={-1} id="exam-result-title" className="flow-title font-heading font-extrabold">
           {title}
@@ -92,7 +117,17 @@ export const ExamResult = ({
         <p className="font-heading text-5xl font-extrabold">{text.percent(result.percent)}</p>
         <p className="font-bold">{text.band(text.bands[result.band])}</p>
       </div>
-      <p className="flow-prose font-semibold">{statement}</p>
+      <p role="status" aria-live="polite" className="flow-prose font-semibold">
+        {statement}
+      </p>
+      {simulated?.outcome === 'boundary' && policy && (
+        <p className="flow-prose font-semibold">
+          {esAssessment.simulation.boundaryNote(policy.pass_percent, strict)}
+        </p>
+      )}
+      {simulated && !result.passed && (
+        <p className="flow-prose">{esAssessment.simulation.failNote}</p>
+      )}
       {!preview && <SyncNote result={result} />}
 
       <section aria-labelledby="exam-profile" className="flex flex-col gap-2">
@@ -139,7 +174,23 @@ export const ExamResult = ({
       </p>
       <p className="text-sm text-ink-soft">{text.noAnswers}</p>
 
-      {reporting ? (
+      {simulated ? (
+        // No report and no new attempt: both would be real calls.
+        result.passed &&
+        simulated.closing && (
+          <div className="flex flex-col items-start gap-2">
+            {simulated.closing === 'none' ? (
+              <p className="text-sm font-semibold text-ink-soft">
+                {esAssessment.simulation.noClosing}
+              </p>
+            ) : (
+              <Button variant="secondary" onClick={simulated.closing}>
+                {esAssessment.simulation.openClosing}
+              </Button>
+            )}
+          </div>
+        )
+      ) : reporting ? (
         <div className="rounded-md border-soft p-4">
           <ReportForm onClose={() => setReporting(false)} />
         </div>
