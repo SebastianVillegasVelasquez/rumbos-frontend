@@ -373,3 +373,23 @@ and one stale input; everything else already reads the API.
   (the "Descartar" button stays after the click) in Chromium and WebKit. Left untouched.
 - (D45) The old stale-link case has no URL to guard (see D39); an unknown `?exam=` or `?view=exam` lands on the map, covered by
   an e2e test.
+
+## Closing flow offers the welcome flow's content steps
+
+- (D46) One table decides what each flow may contain (`SHARED_STEP_TYPES` in `flowSteps.ts`): the closing flow is the
+  welcome flow's list without the greeting, so a type added to the table reaches both editors, both validations and both
+  players. Everything else was already shared: the add-step menu, step editors, previews, reordering, and the player's
+  gating (`flowReducer.ts`) never looked at the flow. Only the assessment differs, by `purpose` (`check_in` / `final`).
+- (D47) The greeting (`welcome`) stays welcome-only. It is a hero screen with the course's welcome copy ("Comenzar", the
+  eyebrow), which would read wrong at the end of a level. Bringing it back is one entry: add `'welcome'` to the closing list in `STEP_TYPES_BY_FLOW`.
+- (D48) `quiz` (the Moodle fallback) is offered in the closing flow too, because the rule is "every content type". It needs a
+  linked activity and a host answer exactly as in the welcome flow; the 3-quiz and 12-step limits apply per flow.
+- (D49) Still not wired: `closing` is dropped on save (`serializeAppearance`) because `contracts/openapi.json` declares the
+  field (`MapSettings.closing`, a `Welcome`) but nothing about which step types it accepts or how its progress and its PDFs are
+  served. Everything here is checked against the branch-local mock only. Two gaps the backend must answer before this is real:
+  (a) the player resolves a PDF step through `welcomeDocuments`, so the closing flow's PDFs must travel in that list (the mock
+  now merges them; a real backend that does not will show "no disponible" and record `unavailable`, which the player then
+  never persists); (b) the closing flow runs with `persistence={null}`, so a recorded escape (video way out, quiz exit,
+  unavailable document) is computed but not stored, and "Pedir de nuevo" has no effect there.
+- (D50) The closing editor's help text drops the line "Su avance lo guarda Moodle" because the closing flow records no progress
+  yet; it comes back with the persistence.
