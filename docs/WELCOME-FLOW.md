@@ -230,13 +230,36 @@ copy.
 - **Steps:** authored HTML (`html`, as the welcome flow's) and `assessment` with `purpose: "final"`.
   The welcome flow keeps `check_in` only. The gate is the same as step 5: completing the attempt
   opens "Terminar", passing is not required; a pass in either exam shows "Ya aprobaste".
-- **Entry:** a "Cierre" button in the HUD, present when the map has a closing flow and enabled when
-  the backend says it is open (`closingAvailable`; the backend decides the criterion). An editor in
-  preview can always open it. It is never opened over the map by itself.
-- **Draft shapes** (`MapClosing`, `settings.closing`, `closingAvailable`) are NOT in
+- **Entry:** a "Cierre" button in the HUD, present when the map has a closing flow and enabled when the
+  backend says it is open. It is never opened over the map by itself. An editor in the preview view can always
+  open it. When closed, pressing it says why in words (`hud/closingEntry.ts`): with `scorm_incomplete` and the
+  counts, "Completa los 7 contenidos para abrir el cierre. Llevas 5." plus "Continuar", which only walks to the
+  next pending bubble; other reasons and unknown codes read as plain sentences, never as the code.
+- **Final-assessment step states** (the same component as the check-in, with the final exam's words):
+
+  | State                                             | Says                                                                                                         | "Terminar"            |
+  | ------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ | --------------------- |
+  | loading                                           | "Comprobando…" (`aria-busy`)                                                                                 | closed                |
+  | available / in progress (resumes from the server) | invitation, "Empezar" or "Continuar la evaluación"                                                           | closed                |
+  | submitted (any result)                            | "Evaluación entregada."                                                                                      | open                  |
+  | already passed                                    | "Ya aprobaste." and "No necesitas hacer esta evaluación."                                                    | open                  |
+  | attempts exhausted                                | "Ya usaste todos los intentos de la evaluación final."                                                       | open                  |
+  | not available (reason)                            | the reason as a sentence, plus the recorded escape                                                           | open after the escape |
+  | network / server error                            | "No pudimos cargar la evaluación." and Reintentar                                                            | closed                |
+  | guard (`closing_not_available`, 409 or 403)       | "El cierre todavía no está disponible para ti…", only "Volver" (no retry); the step looks the state up again | closed                |
+
+  A test fails when a state, a reason or a failure has no translation (`stepStates.test.ts`, `closingEntry.test.ts`).
+
+- **Preview:** an editor's attempt is labelled "Vista previa: este intento no se guarda ni cuenta." (banner in the
+  runner, note on the step) and its result carries "Esto es una vista previa: no es el resultado de un estudiante."
+  The preview is the backend's (`preview` on the assessments list); the client never simulates completion or the gate.
+- **Editor:** the final-assessment step says "Este paso se desbloquea cuando el estudiante completa todos los
+  contenidos SCORM." The final exam is no longer in Entrenar.
+- **Draft shapes** (`MapClosing`, `settings.closing`, `closingAvailable`, `closingAvailability`, the reason codes and the `closing_not_available` guard) are NOT in
   `contracts/openapi.json`. `serializeAppearance` drops `closing`, so nothing is saved or read from the
   backend until the contract declares it (it would answer 422 `extra_forbidden`). The mock API gives a
-  map a closing flow with `?mockClosingJson=` and availability with `?mockClosing=available`. The
+  map a closing flow with `?mockClosingJson=` and availability with `?mockClosing=available` or
+  `?mockClosing=<reason>` (`&mockClosingDone=5&mockClosingTotal=7` for the counts). The
   "Cierre" editor tab shows only when the backend sends the `closing` key.
 - **No progress record:** the closing flow persists nothing (no host progress). Each opening starts
   at the first step. Whether the host should keep a record is for the backend/plugin prompt.

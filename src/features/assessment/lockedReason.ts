@@ -7,10 +7,10 @@ import { esAssessment } from '../../i18n/assessment.es.ts'
 
 export type UnavailableReason = keyof typeof esAssessment.step.reasons
 
-export const KNOWN_LOCKED_CODES = ['not_available'] as const
+export const KNOWN_LOCKED_CODES = ['not_available', 'scorm_incomplete'] as const
 
 export const reasonOfLockedCode = (code: string | null | undefined): UnavailableReason =>
-  code === 'not_available' ? 'not_available' : 'locked'
+  code === 'not_available' || code === 'scorm_incomplete' ? code : 'locked'
 
 export const reasonText = (
   reason: UnavailableReason,

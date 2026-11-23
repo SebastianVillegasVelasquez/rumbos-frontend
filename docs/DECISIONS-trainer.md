@@ -152,8 +152,7 @@ is added.
 - A failed answer keeps the draft and the same `attempt_id`; there is no offline queue. A double submit is ignored by the reducer.
 - A 401 in practice shows a banner ("Tu sesión venció..."); the embed layer already refreshes the token and reports `session_expired` to the host.
 - Level aids (translation, starters, word bank, hints, slow audio) are configuration keyed by level (`levelConfig.ts`). Only A1 has content; A2 and B2 are proven with a fixture catalog.
-- The final exam launches from the trainer home card ("Evaluación final"), reusing the exam runner inside the stage. The mock treats both purposes with one attempt counter.
-- Proposal, not built: the final exam could also appear as a map node. Map nodes only open Moodle URLs (`activityOpener.ts`), so this needs a decision on a new node kind. Until then the entry point is the trainer card.
+- (Superseded, D39) The final exam no longer launches from the trainer home: it is a step of the closing flow.
 - For students who cannot hear: the exam's listening items cannot be answered without audio and the transcript is deliberately hidden in the exam. The client must decide the alternative (an accommodation, a transcript on request, or an exemption by the teacher).
 
 ## 6. Honest unavailable states and editor errors (branch `fix/training-partial-settings`)
@@ -349,3 +348,28 @@ and one stale input; everything else already reads the API.
   (proposal, the author decides: hiding them is one line in `groupForms`). With the trainer off nothing is grouped,
   because the server only enforces the level while the trainer is on. `form_level_mismatch` has its own message.
   The new list fields are optional in the parser so an older backend still fills the picker.
+- (D39) Product decision: the final evaluation leaves "Entrenar". The trainer home is practice only (lessons, progress,
+  review): the "Evaluación final" card, its `exam` view, its copy (`finalCard`, `esTrainer.exam`) and its test are
+  deleted. The exam runner stays: the closing flow's `assessment` step (`purpose: "final"`) reuses it. The trainer
+  no longer calls `GET /assessments`. There was never a URL for the exam (the trainer's view is in-memory and the
+  router knows only `?map`, `?course`, `?entry`, `?view`), so a stale bookmark cannot reach it; the deep-link case is
+  covered where a parameter can actually be wrong (see the closing flow entries).
+- (D40) Closing flow deltas, built against a branch-local mock because `contracts/openapi.json` does not declare the
+  availability payload, the reason codes, the guard error or a per-attempt `preview` flag. Assumed shapes (all in one
+  place, to be replaced by generated types): `closingAvailability: { available, reason, scorm?: { completed, required } }`
+  on the map read; reasons `scorm_incomplete`, `not_configured`, `already_passed`, `attempts_exhausted` (anything else reads
+  neutral); `locked_reason: "scorm_incomplete"` on the exam list item; the guard `closing_not_available` as a 409 or a 403.
+  Nothing new is sent to the backend: `closing` is still dropped on save until it is declared.
+- (D41) "Continuar" on the locked "Cierre" reuses the HUD's own next-bubble walk (focus and arm the next pending
+  bubble). It never opens the flow and never opens the activity by itself. The note stays until the student acts, because
+  an action that disappears after four seconds cannot be used by a keyboard.
+- (D42) The guard error has no "Reintentar": retrying a closed gate cannot help. The runner offers "Volver", and the step
+  (which re-reads the list on mount) shows the true state. Copy for the new states and the preview labels is pending
+  approval.
+- (D43) The preview label and the "not a student's result" note come from the existing `preview` the backend sets on the
+  assessments list. An editor who is in Moodle's student mode (editing off) is not in the preview view, so the backend
+  decides there, as for any student.
+- (D44) Known, not mine: `e2e/welcome-editor.spec.ts` "Probar el flujo previews without saving" fails on `origin/main`
+  (the "Descartar" button stays after the click) in Chromium and WebKit. Left untouched.
+- (D45) The old stale-link case has no URL to guard (see D39); an unknown `?exam=` or `?view=exam` lands on the map, covered by
+  an e2e test.

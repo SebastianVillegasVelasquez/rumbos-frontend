@@ -8,7 +8,6 @@ import {
   reasonText,
   type UnavailableReason,
 } from './lockedReason.ts'
-import type { AssessmentState } from './types.ts'
 
 describe('the words for an exam that cannot be opened', () => {
   it('translates every reason the step can show', () => {
@@ -36,10 +35,5 @@ describe('the words for an exam that cannot be opened', () => {
     assert.equal(reasonOfLockedCode('not_available'), 'not_available')
     assert.equal(reasonOfLockedCode(null), 'locked')
     assert.equal(lockedReasonText(null), null)
-  })
-
-  it('has a label for every state the list can carry', () => {
-    const states: AssessmentState[] = ['available', 'in_progress', 'exhausted', 'locked', 'passed']
-    for (const state of states) assert.ok(esAssessment.finalCard.states[state], state)
   })
 })

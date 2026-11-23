@@ -33,6 +33,12 @@ export interface MockOptions {
   failSubmits?: number
   // A state to report for the check-in in the list.
   state?: 'available' | 'exhausted' | 'locked' | 'passed'
+  // The machine code `locked_reason` carries when the state is locked.
+  lockedReason?: string
+  // Starting an attempt is refused with this status and code (the closing guard, a draft).
+  startError?: { status: number; code: string }
+  // The list answers this many milliseconds late (to see the loading state).
+  listDelayMs?: number
   // The practice half (catalog, sessions, vocabulary); see practiceMock.ts.
   practice?: PracticeOptions
 }
@@ -363,6 +369,7 @@ export class TrainerMock {
     }
 
     if (method === 'GET' && path === '/assessments') {
+      if (o.listDelayMs) await new Promise((resolve) => setTimeout(resolve, o.listDelayMs))
       if (o.listStatus) return this.err(route, o.listStatus, 'down')
       if (o.listBody !== undefined) return this.json(route, 200, o.listBody)
       const active = this.active()
@@ -385,7 +392,8 @@ export class TrainerMock {
           state:
             o.state ??
             (live ? 'in_progress' : this.used >= this.opts.maxAttempts ? 'exhausted' : 'available'),
-          locked_reason: o.state === 'locked' ? 'Termina primero el módulo 1.' : null,
+          locked_reason:
+            o.state === 'locked' ? (o.lockedReason ?? 'Termina primero el módulo 1.') : null,
           in_progress: live
             ? { attempt_id: live.id, deadline_at: new Date(live.deadline).toISOString() }
             : null,
@@ -396,6 +404,7 @@ export class TrainerMock {
 
     let match = path.match(/^\/assessments\/(check_in|final)\/attempts$/)
     if (method === 'POST' && match) {
+      if (o.startError) return this.err(route, o.startError.status, o.startError.code)
       const live = this.active()
       if (live) this.expireIfLate(live)
       const again = this.active()

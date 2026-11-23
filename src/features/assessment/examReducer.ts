@@ -35,7 +35,14 @@ export type Phase =
   | 'error'
 
 export type FailureKind =
-  'unreachable' | 'unauthorized' | 'no_attempts_left' | 'locked' | 'closed' | 'other'
+  | 'unreachable'
+  | 'unauthorized'
+  | 'no_attempts_left'
+  | 'locked'
+  // DRAFT guard of the closing flow: the backend refused because the gate is closed.
+  | 'closing_not_available'
+  | 'closed'
+  | 'other'
 
 // What "Reintentar" does after a failure.
 export type RetryAction = 'start' | 'section' | 'submit'

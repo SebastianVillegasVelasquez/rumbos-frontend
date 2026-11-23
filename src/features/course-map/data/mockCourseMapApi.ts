@@ -24,6 +24,7 @@ import { validateFlow } from '../../welcome/flow/flowSteps.ts'
 import { inspectPdf } from './pdfInspect.ts'
 import type { CourseMapApi } from './courseMapApi.ts'
 import type {
+  ClosingAvailability,
   Activity,
   AppearanceUpdate,
   Asset,
@@ -120,6 +121,22 @@ const now = () => new Date().toISOString()
 
 const queryParam = (name: string) =>
   typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get(name)
+
+// DRAFT, branch-local (the backend does not declare it yet; nothing derives from openapi.json):
+// ?mockClosing=available | <reason> says the closing availability. With a reason, the SCORM
+// counts come from &mockClosingDone= and &mockClosingTotal= (default 5 of 7).
+const mockClosingAvailability = (): ClosingAvailability | null => {
+  const value = queryParam('mockClosing')
+  if (!value) return null
+  if (value === 'available') return { available: true, reason: null }
+  const done = Number(queryParam('mockClosingDone') ?? 5)
+  const total = Number(queryParam('mockClosingTotal') ?? 7)
+  return {
+    available: false,
+    reason: value,
+    scorm: value === 'scorm_incomplete' ? { completed: done, required: total } : null,
+  }
+}
 
 const mockMoodleOverride = (): 'down' | 'hidden' | 'missing' | 'cached' | null => {
   const value = queryParam('mockMoodle')
@@ -1125,7 +1142,8 @@ const toRead = (map: MockMap): CourseMapRead => ({
   audioInfo: audioInfoOf(map.settings),
   welcomeDocuments: welcomeDocumentsOf(map.settings),
   // DRAFT: ?mockClosing=available says the backend opened the closing flow.
-  closingAvailable: queryParam('mockClosing') === 'available',
+  closingAvailable: mockClosingAvailability()?.available === true,
+  closingAvailability: mockClosingAvailability(),
   bubbles: wireBubbles(map.bubbles),
   revision: map.revision,
   createdAt: map.createdAt,
@@ -1177,7 +1195,8 @@ const toPublishedRead = (map: MockMap, publication: MockPublication): PublishedM
   view3d: publication.snapshot.view3d ?? null,
   audioInfo: audioInfoOf(publication.snapshot.settings),
   welcomeDocuments: welcomeDocumentsOf(publication.snapshot.settings),
-  closingAvailable: queryParam('mockClosing') === 'available',
+  closingAvailable: mockClosingAvailability()?.available === true,
+  closingAvailability: mockClosingAvailability(),
   skins: publication.snapshot.skins,
   bubbles: wireBubbles(
     publication.snapshot.bubbles.map((bubble) => ({

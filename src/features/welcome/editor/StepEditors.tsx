@@ -419,14 +419,24 @@ export const AssessmentEditor = ({
   autoEnabled,
   formId,
   onEnable,
+  copy,
 }: {
   enabled: boolean
   autoEnabled: boolean
   formId: string
   onEnable: () => void
+  copy?: { body: string; gateNote: string }
 }) => (
   <>
-    <p className="text-sm font-semibold text-ink">{text.assessment.body}</p>
+    <p className="text-sm font-semibold text-ink">{copy?.body ?? text.assessment.body}</p>
+    {copy && (
+      <p
+        role="note"
+        className="rounded-md bg-sun-tint px-3 py-2 text-sm font-semibold text-sun-dark"
+      >
+        {copy.gateNote}
+      </p>
+    )}
     <p className={hintClass}>{text.assessment.where}</p>
     <p className={hintClass}>{text.assessment.requires}</p>
     {enabled ? (

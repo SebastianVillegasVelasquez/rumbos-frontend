@@ -748,7 +748,17 @@ export const es = {
     tutor: 'Tutor virtual',
     tutorHint: 'Asistente con inteligencia artificial',
     closing: 'Cierre',
-    closingNotYet: 'Todavía no puedes cerrar el nivel.',
+    closingContinue: 'Continuar',
+    // Why "Cierre" is closed. Wording pending approval; keys are ours, never the backend's codes.
+    closingReasons: {
+      scorm_incomplete: (done: number, total: number) =>
+        `Completa los ${total} contenidos para abrir el cierre. Llevas ${done}.`,
+      scorm_incomplete_unknown: 'Completa todos los contenidos para abrir el cierre.',
+      not_configured: 'El cierre todavía no está listo en este curso.',
+      already_passed: 'Ya aprobaste: no necesitas hacer el cierre.',
+      attempts_exhausted: 'Ya usaste todos los intentos de la evaluación final.',
+      other: 'Todavía no puedes abrir el cierre.',
+    },
     tutorNotEnabled: 'El tutor no está habilitado en este sitio',
     // The trainer's code could not be downloaded (offline, or the site was updated).
     trainerChunk: {
@@ -848,6 +858,10 @@ export const es = {
       types: { html: 'Texto con formato', assessment: 'Evaluación final' },
       newTitles: { html: 'Texto', assessment: 'Evaluación final' },
       previewEmpty: 'Agrega al menos un paso para ver cómo lo recorrerá tu estudiante.',
+      // On the final-assessment step: why students cannot reach it yet. Pending approval.
+      assessmentBody:
+        'Evaluación final del curso, dentro de Rumbos. Cuenta como hecha cuando el estudiante la entrega o se acaba el tiempo, sea cual sea el resultado.',
+      gateNote: 'Este paso se desbloquea cuando el estudiante completa todos los contenidos SCORM.',
     },
     training: {
       title: 'Entrenamiento y evaluación',

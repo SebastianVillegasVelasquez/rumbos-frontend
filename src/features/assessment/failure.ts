@@ -6,6 +6,12 @@ export const classifyFailure = (error: unknown): FailureKind => {
   if (!(error instanceof ApiError)) return 'other'
   if (error.status === 0) return 'unreachable'
   if (error.status === 401) return 'unauthorized'
+  // The closing flow's guard (DRAFT code, not in openapi.json): 409 or 403.
+  if (
+    (error.status === 409 || error.status === 403) &&
+    error.detail.code === 'closing_not_available'
+  )
+    return 'closing_not_available'
   if (error.status === 409) {
     const code = error.detail.code
     if (code === 'no_attempts_left') return 'no_attempts_left'

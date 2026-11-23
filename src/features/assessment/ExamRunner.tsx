@@ -136,6 +136,13 @@ export const ExamRunner = ({
           {exitLabel ?? text.result.toMap}
         </Button>
       )
+    // The gate is closed: retrying cannot help. Back to the step, which looks again.
+    if (state.phase === 'error' && state.error?.kind === 'closing_not_available')
+      return (
+        <Button variant="secondary" onClick={onExit}>
+          {text.errors.back}
+        </Button>
+      )
     if (state.phase === 'error')
       return (
         <Button variant="secondary" onClick={exam.retry}>
@@ -219,7 +226,7 @@ export const ExamRunner = ({
               : text.errors[state.error.kind]}
           </p>
           {state.attemptId && <p className="flow-prose">{text.errors.keepsAnswers}</p>}
-          {onFallback && (
+          {onFallback && state.error.kind !== 'closing_not_available' && (
             <div className="flex flex-col items-start gap-1">
               <Button variant="surface" dense onClick={onFallback}>
                 {text.step.skip}
@@ -319,7 +326,9 @@ export const ExamRunner = ({
           )}
         </header>
 
-        {preview && <Banner tone="sun">{text.preview}</Banner>}
+        {preview && (
+          <Banner tone="sun">{purpose === 'final' ? text.previewFinal : text.preview}</Banner>
+        )}
         {live && state.error?.kind === 'unauthorized' && (
           <Banner tone="danger">{text.errors.unauthorized}</Banner>
         )}

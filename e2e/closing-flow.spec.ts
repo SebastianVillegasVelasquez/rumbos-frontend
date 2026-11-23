@@ -85,7 +85,7 @@ test.describe('closing flow', () => {
     await open(page, withClosing)
     await expect(button(page)).toHaveAttribute('aria-disabled', 'true')
     await button(page).click({ force: true })
-    await expect(app(page).getByText('Todavía no puedes cerrar el nivel.').first()).toBeVisible()
+    await expect(app(page).getByText('Todavía no puedes abrir el cierre.').first()).toBeVisible()
     await expect(dialog(page)).toHaveCount(0)
   })
 

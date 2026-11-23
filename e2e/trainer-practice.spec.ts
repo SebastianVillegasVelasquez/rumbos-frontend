@@ -312,18 +312,15 @@ test.describe('practice trainer', () => {
     await expect(stage(page)).toHaveCount(0)
   })
 
-  test('shows the final exam card and opens the exam from it', async ({ page, context }) => {
+  test('Entrenar is practice only: no final exam entry, even when the backend lists one', async ({
+    page,
+    context,
+  }) => {
     await open(page, context)
     await openStage(page)
-    const card = stage(page).getByRole('region', { name: 'Evaluación final' })
-    await expect(card).toBeVisible()
-    await expect(card.getByText(/Intentos: 0 de/)).toBeVisible()
-    await card.getByRole('button', { name: 'Abrir' }).click()
-    await expect(
-      stage(page)
-        .getByRole('button', { name: /Empezar la evaluación|Empezar/ })
-        .first()
-    ).toBeVisible()
+    await expect(stage(page).getByRole('button', { name: /Elige una lección/ })).toBeVisible()
+    await expect(stage(page).getByText('Evaluación final')).toHaveCount(0)
+    await expect(stage(page).getByRole('button', { name: 'Abrir' })).toHaveCount(0)
   })
 })
 
