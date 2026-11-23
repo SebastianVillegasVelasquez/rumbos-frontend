@@ -160,7 +160,7 @@ export interface SaveAck {
 
 export interface SectionResult {
   key: string
-  points: number
+  points: string
   max: number
   percent: string
   weight: number
