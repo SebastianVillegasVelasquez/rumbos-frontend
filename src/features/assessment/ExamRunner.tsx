@@ -1,6 +1,8 @@
 import { ArrowLeft, ArrowRight, ClipboardCheck, Timer } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button } from '../../components/ui/Button.tsx'
+import { announce } from '../../components/ui/announce.ts'
+import { useEmbed } from '../embed/EmbedContext.ts'
 import { esAssessment } from '../../i18n/assessment.es.ts'
 import {
   allSectionsLoaded,
@@ -13,6 +15,8 @@ import {
 } from './examReducer.ts'
 import { ExamResult } from './ExamResult.tsx'
 import { ItemView, SharedBlock } from './ItemViews.tsx'
+import { SimulationTools } from './SimulationTools.tsx'
+import { simulateResult, simulationAllowed, type SimulatedOutcome } from './simulation.ts'
 import { itemStatus } from './answers.ts'
 import { formatClock } from './serverClock.ts'
 import { useExam } from './useExam.ts'
@@ -45,6 +49,10 @@ export interface ExamRunnerProps {
   onAgain?: () => void
   // What the exit button says once there is a result ("Continuar" inside the flow).
   exitLabel?: string
+  // Editor's test tools only (see simulation.ts): a simulation to show at once, and what "Ver
+  // cierre" does after a simulated pass. Both are ignored unless the viewer is an editor in preview.
+  initialSimulation?: SimulatedOutcome | null
+  closingPreview?: 'none' | (() => void)
 }
 
 const Dots = ({ state, goto }: { state: ExamState; goto: (index: number) => void }) => (
@@ -95,9 +103,27 @@ export const ExamRunner = ({
   onFallback,
   onAgain,
   exitLabel,
+  initialSimulation = null,
+  closingPreview,
 }: ExamRunnerProps) => {
   const exam = useExam(purpose, onFinished)
   const { state } = exam
+  // The test tools: a simulation draws a synthetic result and calls nothing (no attempt, no
+  // save, no submit, no host message). The gate is the backend's preview plus the host's role.
+  const embed = useEmbed()
+  const canSimulate = simulationAllowed({ preview, editorRole: embed?.role === 'editor' })
+  const [simulated, setSimulated] = useState<SimulatedOutcome | null>(
+    canSimulate ? initialSimulation : null
+  )
+  const simulate = (outcome: SimulatedOutcome) => {
+    if (!canSimulate || state.phase !== 'idle') return
+    setSimulated(outcome)
+    announce(text.simulation.announce[outcome])
+  }
+  const simulatedResult = useMemo(
+    () => (canSimulate && simulated ? simulateResult(simulated, policy, info.attempts) : null),
+    [canSimulate, simulated, policy, info.attempts]
+  )
   const headingRef = useRef<HTMLHeadingElement>(null)
   const title = info.title || text.titles[purpose]
   const left = Math.max(0, info.attempts.max - info.attempts.used)
@@ -123,6 +149,12 @@ export const ExamRunner = ({
 
   // ---- what the footer's primary action is
   const primary = (() => {
+    if (simulatedResult)
+      return (
+        <Button variant="secondary" onClick={onExit}>
+          {text.result.toMap}
+        </Button>
+      )
     if (state.phase === 'idle')
       return (
         <Button variant="secondary" onClick={() => exam.start(resume)}>
@@ -164,7 +196,25 @@ export const ExamRunner = ({
     return null
   })()
 
+  const tools =
+    canSimulate && state.phase === 'idle' ? (
+      <SimulationTools policy={policy} active={simulated} onSimulate={simulate} />
+    ) : null
+
   const body = (() => {
+    if (simulatedResult && simulated)
+      return (
+        <div className="flow-pad flex flex-col gap-5">
+          <ExamResult
+            purpose={purpose}
+            result={simulatedResult}
+            preview
+            policy={policy}
+            simulated={{ outcome: simulated, closing: closingPreview }}
+          />
+          {tools}
+        </div>
+      )
     if (state.phase === 'idle')
       return (
         <div className="flow-pad flex flex-col gap-4">
@@ -193,6 +243,7 @@ export const ExamRunner = ({
           <p className="flow-prose font-semibold">{text.intro.timeRuns}</p>
           <p className="flow-prose">{text.intro.autosave}</p>
           <p className="flow-prose">{text.intro.speaking}</p>
+          {tools}
         </div>
       )
     if (state.phase === 'starting' || state.phase === 'resuming')
@@ -239,7 +290,13 @@ export const ExamRunner = ({
     if (isFinished(state.phase) && state.result)
       return (
         <div className="flow-pad">
-          <ExamResult purpose={purpose} result={state.result} preview={preview} onAgain={onAgain} />
+          <ExamResult
+            purpose={purpose}
+            result={state.result}
+            preview={preview}
+            policy={policy}
+            onAgain={onAgain}
+          />
         </div>
       )
     if (state.view === 'review')

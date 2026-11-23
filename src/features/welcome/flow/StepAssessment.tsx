@@ -10,6 +10,8 @@ import {
   type UnavailableReason,
 } from '../../assessment/lockedReason.ts'
 import { formatClock } from '../../assessment/serverClock.ts'
+import { SimulationTools } from '../../assessment/SimulationTools.tsx'
+import { simulationAllowed, type SimulatedOutcome } from '../../assessment/simulation.ts'
 import type { AssessmentListItem, EnabledAssessmentList } from '../../assessment/types.ts'
 import type { WelcomeAssessmentStep } from '../../course-map/data/types.ts'
 import type { FlowEvent, FlowState } from './flowReducer.ts'
@@ -34,6 +36,8 @@ export interface Launch {
   info: AssessmentListItem
   policy: EnabledAssessmentList['policy']
   preview: boolean
+  // Editor's test tools: open the runner showing this simulated result at once.
+  simulate?: SimulatedOutcome
 }
 
 // The check-in step. It reads GET /assessments, says the state in words, and
@@ -229,6 +233,19 @@ export const StepAssessment = ({
               </Button>
             </div>
           )}
+          {item &&
+            simulationAllowed({
+              preview: list.preview || state.mode === 'preview',
+              editorRole: state.editor,
+            }) && (
+              <SimulationTools
+                policy={list.policy}
+                active={null}
+                onSimulate={(outcome) =>
+                  onLaunch({ info: item, policy: list.policy, preview: true, simulate: outcome })
+                }
+              />
+            )}
         </>
       )}
     </div>

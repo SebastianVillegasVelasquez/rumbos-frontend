@@ -31,6 +31,7 @@ import type { FlowPersistence } from './flowPersistence.ts'
 import { StepHtml, StepPdf, StepQuiz, StepVideo, StepWelcome } from './FlowSteps.tsx'
 import { LazyExamRunner } from '../../assessment/LazyExamRunner.tsx'
 import { StepAssessment, type Launch } from './StepAssessment.tsx'
+import { LazyWelcomeFlow } from './LazyWelcomeFlow.tsx'
 import { FlowMusicChoice } from './FlowMusicChoice.tsx'
 import { FlowStatus } from './FlowStatus.tsx'
 import { FlowStepper } from './FlowStepper.tsx'
@@ -58,6 +59,9 @@ export interface WelcomeFlowProps {
   onEnterFullscreen?: (() => void) | null
   // The flow is over (completed, or a review or a preview closed), with what is done.
   onFinish: (done: ProgressEntry[]) => void
+  // Editor's test tools: the closing flow's steps, so "Ver cierre" after a simulated pass can
+  // open them in preview. Absent for the closing flow itself; `[]` says none is configured.
+  closingPreviewSteps?: WelcomeStep[]
 }
 
 const FOCUSABLE =
@@ -81,6 +85,7 @@ const WelcomeFlow = ({
   track = null,
   onEnterFullscreen = null,
   onFinish,
+  closingPreviewSteps,
 }: WelcomeFlowProps) => {
   const dataSaver = useDataSaver().active
   // The editing role (a teacher or manager) is usually not a student, so Moodle has
@@ -113,6 +118,8 @@ const WelcomeFlow = ({
   }, [fullStage])
   // The native check-in runs in this same stage once the student starts it.
   const [launch, setLaunch] = useState<Launch | null>(null)
+  // The closing flow opened over this one by an editor's simulated pass: preview, nothing recorded.
+  const [closingOpen, setClosingOpen] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
   const headingRef = useRef<HTMLHeadingElement>(null)
   const noteId = useId()
@@ -307,6 +314,14 @@ const WelcomeFlow = ({
           info={launch.info}
           policy={launch.policy}
           preview={launch.preview || mode === 'preview'}
+          initialSimulation={launch.simulate ?? null}
+          closingPreview={
+            closingPreviewSteps === undefined
+              ? undefined
+              : closingPreviewSteps.length === 0
+                ? 'none'
+                : () => setClosingOpen(true)
+          }
           // Submitted or expired, whatever the result: the check-in is a baseline.
           onFinished={() => dispatch({ type: 'assessment-done' })}
           onExit={() => {
@@ -458,6 +473,20 @@ const WelcomeFlow = ({
       <p aria-live="polite" role="status" className="sr-only">
         {text.announce(state.index + 1, total, title)}
       </p>
+      {closingOpen && closingPreviewSteps && closingPreviewSteps.length > 0 && (
+        <LazyWelcomeFlow
+          flowKey="closing"
+          steps={closingPreviewSteps}
+          mode="preview"
+          entries={[]}
+          persistence={null}
+          documents={documents}
+          courseName={courseName}
+          imageUrl={imageUrl}
+          hasMusic={false}
+          onFinish={() => setClosingOpen(false)}
+        />
+      )}
     </div>
   )
 }

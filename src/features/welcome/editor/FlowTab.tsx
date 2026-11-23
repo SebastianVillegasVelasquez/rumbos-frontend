@@ -423,6 +423,14 @@ const StepsEditor = ({
             courseName={courseName || mapTitle}
             imageUrl={imageUrl}
             hasMusic={hasMusic}
+            // The welcome preview can open the closing preview after a simulated pass.
+            closingPreviewSteps={
+              flowKey === 'welcome'
+                ? settings.closing?.enabled
+                  ? (settings.closing.steps ?? [])
+                  : []
+                : undefined
+            }
             onFinish={() => setPreviewing(false)}
           />
         </div>
