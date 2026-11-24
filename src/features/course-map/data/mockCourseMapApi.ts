@@ -1102,7 +1102,9 @@ export const MOCK_SEED_DOCUMENT_ID = '00000000-0000-4000-8000-0000000000d0'
 
 const welcomeDocumentsOf = (settings: MapSettings): WelcomeDocument[] => {
   const documents: WelcomeDocument[] = []
-  for (const step of settings.welcome?.steps ?? []) {
+  // DRAFT: the closing flow's PDFs travel in the same list (the player reads one list).
+  // Branch-local until the contract says where the closing flow's documents come from.
+  for (const step of [...(settings.welcome?.steps ?? []), ...(settings.closing?.steps ?? [])]) {
     if (step.type !== 'pdf' || documents.some((item) => item.assetId === step.assetId)) continue
     const asset = assets.find((item) => item.id === step.assetId && item.kind === 'document')
     if (!asset && step.assetId === MOCK_SEED_DOCUMENT_ID) {

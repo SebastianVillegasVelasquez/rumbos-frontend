@@ -30,16 +30,16 @@ describe('the closing flow', () => {
     assert.deepEqual(validateFlow(closing(steps), { flowKey: 'closing' }), [])
   })
 
-  it('refuses the check-in and the welcome-only step types', () => {
+  it('refuses the check-in and the greeting, which belongs to the welcome flow', () => {
     const checkIn = createStep('assessment', [], names, () => 0.3)
     const codes = (steps: MapWelcome['steps']) =>
       validateFlow(closing(steps), { flowKey: 'closing' }).map((p) => `${p.path}:${p.code}`)
     assert.deepEqual(codes([checkIn]), ['steps[0].purpose:step_field_invalid'])
-    for (const type of ['welcome', 'video', 'pdf', 'quiz'] as const)
-      assert.ok(
-        codes([createStep(type, [], names, () => 0.4)]).includes('steps[0].type:step_type_invalid'),
-        type
+    assert.ok(
+      codes([createStep('welcome', [], names, () => 0.4)]).includes(
+        'steps[0].type:step_type_invalid'
       )
+    )
   })
 
   it('keeps the welcome flow refusing the final exam', () => {
