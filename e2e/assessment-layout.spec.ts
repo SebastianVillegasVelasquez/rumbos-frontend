@@ -167,3 +167,26 @@ for (const [width, height, zoom] of SIZES) {
     await expectFits(page, 'result')
   })
 }
+
+// Answering saves the attempt, and a save is not a new screen: the scroll stays where the
+// student is. It used to jump to the top after every answer, because each save moved focus
+// back to the section's title.
+test('answering a question keeps the scroll where it is', async ({ page, context }) => {
+  await open(page, context, [360, 560], 1)
+  await dialog(page).getByRole('button', { name: 'Empezar la evaluación' }).click()
+  await dialog(page).getByRole('button', { name: 'Empezar', exact: true }).waitFor()
+  await dialog(page).getByRole('button', { name: 'Empezar', exact: true }).click()
+  await expect(
+    dialog(page)
+      .getByText(/Sección 1 de 5/)
+      .first()
+  ).toBeVisible()
+  const scroller = dialog(page).locator('.flow-card-scroll')
+  await scroller.evaluate((node) => node.scrollTo(0, node.scrollHeight))
+  const before = await scroller.evaluate((node) => node.scrollTop)
+  expect(before, 'the section has to scroll for this to prove anything').toBeGreaterThan(50)
+  await dialog(page).getByRole('radio', { name: 'Option B' }).last().check()
+  // The save went out and came back: running, then saving, then running again.
+  await expect(dialog(page).getByText('Guardado').first()).toBeVisible()
+  expect(await scroller.evaluate((node) => node.scrollTop)).toBe(before)
+})
