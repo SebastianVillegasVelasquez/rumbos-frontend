@@ -102,8 +102,9 @@ export const AppearanceStudio = ({
   // A backend that predates the welcome curtain never sends the key (it sends
   // null when it knows the feature and nothing is set).
   const welcomeSupported = 'welcome' in courseMap.settings
-  // DRAFT: a backend that declares the closing flow sends the key (null while unset).
-  const closingSupported = 'closing' in courseMap.settings
+  // The contract declares the closing flow, but the backend leaves the key out of a map
+  // that has none, so its absence says nothing: the tab is always there.
+  const closingSupported = true
   // The trainer and the assessments exist only where the backend sends their keys.
   const trainingAvailable = trainingSupported(courseMap.settings)
 

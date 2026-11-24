@@ -116,11 +116,27 @@ export const ExamRunner = ({
   const [simulated, setSimulated] = useState<SimulatedOutcome | null>(
     canSimulate ? initialSimulation : null
   )
+  // Winning the check-in in a simulation plays what a student's win would: the closing
+  // flow opens at once (the "Ver cierre" button on the result opens it again).
+  const playClosingOnWin = (outcome: SimulatedOutcome) => {
+    if (purpose !== 'check_in' || typeof closingPreview !== 'function') return
+    if (simulateResult(outcome, policy, info.attempts).passed) closingPreview()
+  }
   const simulate = (outcome: SimulatedOutcome) => {
     if (!canSimulate || state.phase !== 'idle') return
     setSimulated(outcome)
     announce(text.simulation.announce[outcome])
+    playClosingOnWin(outcome)
   }
+  // A simulation the exam opens with (from the editor's flow preview) counts the same.
+  const initialPlayed = useRef(false)
+  useEffect(() => {
+    if (initialPlayed.current) return
+    initialPlayed.current = true
+    if (canSimulate && initialSimulation) playClosingOnWin(initialSimulation)
+    // Once, on opening.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const simulatedResult = useMemo(
     () => (canSimulate && simulated ? simulateResult(simulated, policy, info.attempts) : null),
     [canSimulate, simulated, policy, info.attempts]

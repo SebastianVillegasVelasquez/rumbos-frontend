@@ -15,13 +15,17 @@ export const serializeWelcome = (welcome: MapWelcome): MapWelcome =>
 // `trainer` and `assessments` are objects in the contract, never null: a null the editor
 // holds (nothing set yet) is left out, which the backend reads as the defaults (off).
 export const serializeAppearance = (input: AppearanceUpdate): AppearanceUpdate => {
-  // `closing` is a draft shape: the backend rejects fields it does not declare (422
-  // extra_forbidden), so it is never sent until contracts/openapi.json has it.
-  const { trainer, assessments, ...withClosing } = input.settings
-  const rest = { ...withClosing }
-  delete rest.closing
+  const { trainer, assessments, closing, ...rest } = input.settings
+  // A closing flow with no steps is no closing flow: the backend refuses an empty one
+  // (`closing_needs_steps`), and "none" is `null`, which the editor's empty tab means.
+  const hasClosing = closing != null && (closing.steps?.length ?? 0) > 0
   const settings = {
     ...rest,
+    ...(hasClosing
+      ? { closing: serializeWelcome(closing) }
+      : closing === undefined
+        ? {}
+        : { closing: null }),
     ...(trainer == null ? {} : { trainer }),
     ...(assessments == null ? {} : { assessments }),
   }

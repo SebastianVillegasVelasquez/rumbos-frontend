@@ -21,13 +21,16 @@ export interface NewStepLabels {
   assessment: string
 }
 
-export type AddRefusal = 'too_many' | 'quiz_too_many' | 'welcome_exists'
+export type AddRefusal = 'too_many' | 'quiz_too_many' | 'welcome_exists' | 'assessment_exists'
 
 export const canAdd = (steps: readonly WelcomeStep[], type: WelcomeStepType): AddRefusal | null => {
   if (steps.length >= FLOW_LIMITS.stepsMax) return 'too_many'
   if (type === 'quiz' && steps.filter((step) => step.type === 'quiz').length >= FLOW_LIMITS.quizMax)
     return 'quiz_too_many'
   if (type === 'welcome' && steps.some((step) => step.type === 'welcome')) return 'welcome_exists'
+  // The backend allows one native exam per flow (`assessment_too_many`).
+  if (type === 'assessment' && steps.some((step) => step.type === 'assessment'))
+    return 'assessment_exists'
   return null
 }
 

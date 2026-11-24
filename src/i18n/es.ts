@@ -852,11 +852,18 @@ export const es = {
       tab: 'Flujo de cierre',
       title: 'Flujo de cierre',
       intro:
-        'Una secuencia de pasos que tus estudiantes recorren al terminar el nivel: texto con formato y la evaluación final. Se abre desde el botón Cierre; nunca por sí sola.',
+        'Una secuencia de pasos que tus estudiantes recorren al terminar el nivel: video, texto, documento, evaluación de Moodle y la evaluación final. Se abre desde el botón Cierre; nunca por sí sola.',
       enable: 'Ofrecer el flujo de cierre',
       empty: 'Todavía no hay pasos de cierre. Agrega el primero.',
-      types: { html: 'Texto con formato', assessment: 'Evaluación final' },
-      newTitles: { html: 'Texto', assessment: 'Evaluación final' },
+      // Only the final exam is worded differently: the other steps use the welcome flow's words.
+      types: { assessment: 'Evaluación final' },
+      newTitles: { assessment: 'Evaluación final' },
+      // The welcome flow's help minus the line about saved progress: the closing flow does not
+      // record any yet (the backend does not declare it).
+      help: [
+        'Los estudiantes ven los pasos en orden, a pantalla completa.',
+        'Los pasos obligatorios hacen que el botón Continuar espere; quien cierre la ventana puede volver a abrir el cierre.',
+      ],
       previewEmpty: 'Agrega al menos un paso para ver cómo lo recorrerá tu estudiante.',
       // On the final-assessment step: why students cannot reach it yet. Pending approval.
       assessmentBody:
@@ -1024,6 +1031,7 @@ export const es = {
         too_many: 'Un flujo puede tener hasta 12 pasos.',
         quiz_too_many: 'Un flujo puede tener hasta 3 evaluaciones.',
         welcome_exists: 'Ya hay un mensaje de bienvenida; es el primer paso.',
+        assessment_exists: 'Un flujo puede tener una sola evaluación.',
       },
       stepLabel: (n: number, type: string, title: string) => `Paso ${n}: ${type}, ${title}`,
       moveUp: 'Subir paso',

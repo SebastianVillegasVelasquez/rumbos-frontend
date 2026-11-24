@@ -116,7 +116,7 @@ const banner = (page: Page) =>
 const writes = (server: TrainerMock) => server.calls.filter((call) => call.method !== 'GET')
 
 test.describe('the editor’s test tools', () => {
-  test('simulate pass: congratulations, banner, Ver cierre opens the closing preview', async ({
+  test('simulate pass: congratulations, banner, and the closing flow opens by itself', async ({
     page,
     context,
   }) => {
@@ -132,21 +132,25 @@ test.describe('the editor’s test tools', () => {
         '¡Felicidades! Completaste la evaluación diagnóstica con 90.00 %, más del 80 % que se pide.'
       )
     ).toBeVisible()
-    // The result says it is live (a status region) and focus is on its heading.
+    // The result says it is live (a status region).
     await expect(
       dialog(page).getByRole('status').filter({ hasText: '¡Felicidades!' })
     ).toHaveAttribute('aria-live', 'polite')
-    await expect(dialog(page).getByRole('heading', { name: 'Tu punto de partida' })).toBeFocused()
     // A simulated screen offers no report and no new attempt, and never says it synced.
     await expect(dialog(page).getByRole('button', { name: 'Reportar un error' })).toHaveCount(0)
     await expect(dialog(page).getByText('Tu curso quedó completado.')).toHaveCount(0)
 
-    await dialog(page).getByRole('button', { name: 'Ver cierre' }).click()
+    // Winning the check-in plays what a student's win would: the closing flow opens at once.
     await expect(closingDialog(page)).toBeVisible()
     await expect(
       closingDialog(page).getByRole('heading', { name: 'Lo que lograste' })
     ).toBeVisible()
     await expect(closingDialog(page).getByText('Vista previa: no se guarda nada.')).toBeVisible()
+    // Leaving it returns to the result, where "Ver cierre" plays it again.
+    await closingDialog(page).getByRole('button', { name: 'Saltar vista previa' }).click()
+    await expect(closingDialog(page)).toHaveCount(0)
+    await dialog(page).getByRole('button', { name: 'Ver cierre' }).click()
+    await expect(closingDialog(page)).toBeVisible()
 
     // Nothing was written, nothing was sent to Moodle, nothing was even read.
     expect(server.calls.slice(before)).toEqual([])
@@ -199,6 +203,8 @@ test.describe('the editor’s test tools', () => {
     await open(page, context, { role: 'editor' })
     await tools(page).getByRole('button', { name: 'Simular aprobar' }).click()
     await expect(dialog(page).getByText(/¡Felicidades!/)).toBeVisible()
+    // The closing flow opened over it; leave it first.
+    await closingDialog(page).getByRole('button', { name: 'Saltar vista previa' }).click()
     await dialog(page).getByRole('button', { name: 'Volver al mapa' }).first().click()
     await expect(tools(page)).toBeVisible()
     await tools(page).getByRole('button', { name: 'Simular no aprobar' }).click()
@@ -215,6 +221,8 @@ test.describe('the editor’s test tools', () => {
     await expect(
       dialog(page).getByText('Este curso no tiene un flujo de cierre configurado.')
     ).toBeVisible()
+    // Nothing opened over it: focus is on the result's heading.
+    await expect(dialog(page).getByRole('heading', { name: 'Tu punto de partida' })).toBeFocused()
   })
 
   test('the final exam inside the closing preview has its own copy and no Ver cierre', async ({
@@ -223,7 +231,6 @@ test.describe('the editor’s test tools', () => {
   }) => {
     await open(page, context, { role: 'editor' })
     await tools(page).getByRole('button', { name: 'Simular aprobar' }).click()
-    await dialog(page).getByRole('button', { name: 'Ver cierre' }).click()
     await closingDialog(page).getByRole('button', { name: 'Continuar' }).click()
     const panel = closingDialog(page).getByRole('region', {
       name: 'Herramientas de prueba · solo para editores',

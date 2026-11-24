@@ -30,16 +30,16 @@ describe('the closing flow', () => {
     assert.deepEqual(validateFlow(closing(steps), { flowKey: 'closing' }), [])
   })
 
-  it('refuses the check-in and the welcome-only step types', () => {
+  it('refuses the check-in and the greeting, which belongs to the welcome flow', () => {
     const checkIn = createStep('assessment', [], names, () => 0.3)
     const codes = (steps: MapWelcome['steps']) =>
       validateFlow(closing(steps), { flowKey: 'closing' }).map((p) => `${p.path}:${p.code}`)
     assert.deepEqual(codes([checkIn]), ['steps[0].purpose:step_field_invalid'])
-    for (const type of ['welcome', 'video', 'pdf', 'quiz'] as const)
-      assert.ok(
-        codes([createStep(type, [], names, () => 0.4)]).includes('steps[0].type:step_type_invalid'),
-        type
+    assert.ok(
+      codes([createStep('welcome', [], names, () => 0.4)]).includes(
+        'steps[0].type:step_type_invalid'
       )
+    )
   })
 
   it('keeps the welcome flow refusing the final exam', () => {
@@ -49,14 +49,29 @@ describe('the closing flow', () => {
     )
   })
 
-  it('is never sent to the backend, which would answer 422 extra_forbidden', () => {
-    const body = {
-      settings: { closing: closing([html]), welcome: closing([html]) },
-      defaultSkinId: null,
-      skinRules: [],
-    } as unknown as AppearanceUpdate
-    const sent = JSON.parse(JSON.stringify(serializeAppearance(body)))
-    assert.equal('closing' in sent.settings, false)
+  const send = (closingFlow: MapWelcome | null | undefined) =>
+    JSON.parse(
+      JSON.stringify(
+        serializeAppearance({
+          settings: { closing: closingFlow, welcome: closing([html]) },
+          defaultSkinId: null,
+          skinRules: [],
+        } as unknown as AppearanceUpdate)
+      )
+    )
+
+  it('is sent to the backend, which declares it', () => {
+    const sent = send({ ...closing([html]), title: 'x' })
+    assert.equal(sent.settings.closing.steps.length, 1)
+    // The legacy fields go as explicit null, as in the welcome flow.
+    assert.equal(sent.settings.closing.title, null)
     assert.ok(sent.settings.welcome)
+  })
+
+  it('sends null, not an empty flow, when the author removed every step', () => {
+    // The backend answers `closing_needs_steps` to an empty one.
+    assert.equal(send(closing([])).settings.closing, null)
+    assert.equal(send(null).settings.closing, null)
+    assert.equal('closing' in send(undefined).settings, false)
   })
 })

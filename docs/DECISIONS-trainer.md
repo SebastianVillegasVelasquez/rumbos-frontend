@@ -413,3 +413,40 @@ and one stale input; everything else already reads the API.
   intelligence (an instruction, not a code finding). The card keeps "Si ves un error, repórtalo." and the `LEGAL` marker on
   that line went with the claim. The tutor button's hint, "Asistente con inteligencia artificial", is about the tutor and
   stays.
+
+## Closing flow offers the welcome flow's content steps
+
+- (D55) One table decides what each flow may contain (`SHARED_STEP_TYPES` in `flowSteps.ts`): the closing flow is the
+  welcome flow's list without the greeting, so a type added to the table reaches both editors, both validations and both
+  players. Everything else was already shared: the add-step menu, step editors, previews, reordering, and the player's
+  gating (`flowReducer.ts`) never looked at the flow. Only the assessment differs, by `purpose` (`check_in` / `final`).
+- (D56) The greeting (`welcome`) stays welcome-only. It is a hero screen with the course's welcome copy ("Comenzar", the
+  eyebrow), which would read wrong at the end of a level. Bringing it back is one entry: add `'welcome'` to the closing list in `STEP_TYPES_BY_FLOW`.
+- (D57) `quiz` (the Moodle fallback) is offered in the closing flow too, because the rule is "every content type". It needs a
+  linked activity and a host answer exactly as in the welcome flow; the 3-quiz and 12-step limits apply per flow.
+- (D58) Still not wired: `closing` is dropped on save (`serializeAppearance`) because `contracts/openapi.json` declares the
+  field (`MapSettings.closing`, a `Welcome`) but nothing about which step types it accepts or how its progress and its PDFs are
+  served. Everything here is checked against the branch-local mock only. Two gaps the backend must answer before this is real:
+  (a) the player resolves a PDF step through `welcomeDocuments`, so the closing flow's PDFs must travel in that list (the mock
+  now merges them; a real backend that does not will show "no disponible" and record `unavailable`, which the player then
+  never persists); (b) the closing flow runs with `persistence={null}`, so a recorded escape (video way out, quiz exit,
+  unavailable document) is computed but not stored, and "Pedir de nuevo" has no effect there.
+- (D59) The closing editor's help text drops the line "Su avance lo guarda Moodle" because the closing flow records no progress
+  yet; it comes back with the persistence.
+
+## Closing flow saved, simulated win, video fullscreen
+
+- (D60) Corrects D58 and D27: the contract declares `MapSettings.closing`, so it is saved. The backend leaves the
+  key out of a map that has no closing flow, so the "Cierre" tab no longer depends on the key being present. A
+  closing flow with no steps is sent as `null` (the backend answers `closing_needs_steps` to an empty one).
+- (D61) Corrects D55/D57 against `rumbos-backend/app/welcome_flow/flow.py`: the closing flow refuses the greeting
+  and the Moodle `quiz` (`step_type_not_allowed`), and a flow takes one `assessment` step (`assessment_too_many`).
+  So the closing menu is video, text, PDF and the final exam, and a second exam is refused in the editor.
+- (D62) Simulating a pass of the check-in opens the closing flow (in preview) by itself, as winning would for a
+  student; "Ver cierre" on the result opens it again. Only for the check-in, only for a simulated pass.
+- (D63) A video leaving its own fullscreen made the host collapse the stage (the host's stage is native fullscreen
+  on its wrapper; the browser ends the whole stack and the host reads it as the viewer leaving). The app now
+  asks for the stage back (`request-fullscreen`) when the host turns it off within 1.5 s of a video's fullscreen
+  ending, having been on before it began (`videoFullscreenGuard.ts`). The viewer's own exit is never undone. The
+  native request may be refused without a click; the host's CSS stage still returns. The cleaner fix is in the
+  plugin: ignore a `fullscreenchange` whose cause is a nested frame's fullscreen.
