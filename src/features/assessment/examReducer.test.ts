@@ -6,6 +6,7 @@ import {
   hasUnsaved,
   initialExam,
   isFinished,
+  screenKey,
   unansweredItems,
   type ExamEvent,
   type ExamState,
@@ -169,6 +170,27 @@ describe('answers and saving', () => {
       running()
     )
     assert.deepEqual(s.dirty.q1, { option_id: 'new' })
+  })
+  it('saving an answer does not change the screen, so focus is not moved to the title', () => {
+    const before = running()
+    let s = run([{ type: 'answer', itemId: 'q1', response: { option_id: 'o1' } }], before)
+    s = examReducer(s, { type: 'save-start' })
+    assert.equal(s.phase, 'saving')
+    assert.equal(screenKey(s), screenKey(before))
+    s = examReducer(s, {
+      type: 'save-ok',
+      ack: {
+        saved_at: '',
+        server_now: '2026-11-17T10:01:00Z',
+        deadline_at: attempt.deadline_at,
+      },
+      now: at(1),
+    })
+    assert.equal(s.phase, 'running')
+    assert.equal(screenKey(s), screenKey(before))
+    // A real change of screen still does.
+    assert.notEqual(screenKey({ ...s, view: 'review' }), screenKey(before))
+    assert.notEqual(screenKey({ ...s, sectionIndex: 1 }), screenKey(before))
   })
   it('a save refused as closed goes to submit, keeping the answers', () => {
     const s = run(

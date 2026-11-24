@@ -317,5 +317,11 @@ export const sectionLine = (state: ExamState) => ({
 
 export const isFinished = (phase: Phase): boolean => phase === 'submitted' || phase === 'expired'
 
+// Which screen the student is on, for moving focus to its title when it changes. Saving is
+// not a screen: every answer flips `running` to `saving` and back, and refocusing the title
+// at each flip sent the scroll to the top after every question.
+export const screenKey = (state: ExamState): string =>
+  `${state.phase === 'saving' ? 'running' : state.phase}|${state.view}|${state.sectionIndex}`
+
 // Used by tests and the hook to compare a pending save with what was sent.
 export const sameResponse = isSame

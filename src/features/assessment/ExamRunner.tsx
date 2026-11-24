@@ -9,6 +9,7 @@ import {
   hasUnsaved,
   isFinished,
   numberedItems,
+  screenKey,
   sectionLine,
   unansweredItems,
   type ExamState,
@@ -132,8 +133,8 @@ export const ExamRunner = ({
   const numbered = useMemo(() => numberedItems(state), [state])
   const unanswered = useMemo(() => unansweredItems(state), [state])
 
-  // Focus goes to the title of whatever is on screen when it changes.
-  const screen = `${state.phase}|${state.view}|${state.sectionIndex}`
+  // Focus goes to the title of whatever is on screen when it changes (not when it only saves).
+  const screen = screenKey(state)
   useEffect(() => {
     headingRef.current?.focus()
   }, [screen])
