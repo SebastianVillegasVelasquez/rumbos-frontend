@@ -36,6 +36,22 @@ export const A2_FORMS = [
   },
 ] as const
 
+// The four English check-ins with the same title, so only their level tells them apart. B1
+// is a draft until it is published (the picker shows it).
+export const FOUR_LEVEL_FORMS = [
+  { level: 'A1', state: 'published' },
+  { level: 'A2', state: 'published' },
+  { level: 'B1', state: 'draft' },
+  { level: 'B2', state: 'published' },
+].map(({ level, state }) => ({
+  id: `${level.toLowerCase()}-form-a`,
+  title: 'Forma A',
+  language: 'en',
+  level,
+  purpose: 'check_in',
+  publication_state: state,
+}))
+
 export const routeForms = async (
   context: BrowserContext,
   { status, forms = FORMS }: { status?: number; forms?: readonly object[] } = {}

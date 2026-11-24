@@ -398,3 +398,18 @@ and one stale input; everything else already reads the API.
   after a pass; the simulation is for the screens, not for that product question.
 - (D51) The "not pass" simulation says the Cierre button "sigue como lo defina el curso" rather than claiming it stays locked:
   the contract does not say that a failed attempt locks the closing flow.
+
+## The B1 pack and the four levels
+
+- (D52) Audit of the frontend against a B1 pack, with no contract change: the practice screens, the exam runner and the
+  clip player read everything from the API (catalog, steps, items, `by_section`, `item_count`, `section_count`), and
+  `SCAFFOLDING` already has a B1 row. The one hardcoded assumption that mattered was the editor's `TRAINER_PACKS`, which
+  listed A1, A2 and B2: B1 showed as "sin contenido todavía" and `setTrainer` reset it to A1. B1 is now in the list. The
+  contract has no endpoint that lists which packs exist, so the list stays in the frontend until it has.
+- (D53) Not changed, and why: `SECTION_ORDER` in `types.ts` is used only by the simulated results of the editor's preview
+  (five sections of Forma A, equal weights). A real result draws `by_section` as the server sends it. If a B1 form has other
+  sections, the simulation shows five, which is wrong only in that preview. Left for the preview-simulation task.
+- (D54) The first-visit card of the practice and the editor's training intro no longer say that nothing uses artificial
+  intelligence (an instruction, not a code finding). The card keeps "Si ves un error, repórtalo." and the `LEGAL` marker on
+  that line went with the claim. The tutor button's hint, "Asistente con inteligencia artificial", is about the tutor and
+  stays.
