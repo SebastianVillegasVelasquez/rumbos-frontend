@@ -139,6 +139,7 @@ import { useHostTutorAvailable } from './features/embed/hostCapabilities.ts'
 import { useHostOverlayOpen } from './features/embed/hostOverlay.ts'
 import { RESERVED_CORNER_PX, useHostFullscreen } from './features/embed/hostFullscreen.ts'
 import { useFullscreenEntry } from './features/embed/useFullscreenEntry.ts'
+import { useKeepStageThroughVideo } from './features/embed/useKeepStageThroughVideo.ts'
 import { useRoute, type Route } from './hooks/useRoute.ts'
 import { Wordmark } from './components/Logo.tsx'
 import { Button, IconButton } from './components/ui/Button.tsx'
@@ -205,6 +206,8 @@ export function AppShell() {
   // (a guest must not push history entries onto the host page) and the
   // person's role decides the view: students only ever see the published map.
   const embed = useEmbed()
+  // A video leaving its own fullscreen must not take the host's stage with it.
+  useKeepStageThroughVideo(embed)
   const fixedHome = useMemo<Route | undefined>(
     () =>
       embed ? { name: 'course', moodleCourseId: embed.courseId, forceEntry: false } : undefined,

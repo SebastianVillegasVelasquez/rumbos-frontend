@@ -19,9 +19,10 @@ export const setHostFullscreen = (next: boolean) => {
   listeners.forEach((listener) => listener())
 }
 
-const subscribe = (listener: () => void) => {
+export const subscribeHostFullscreen = (listener: () => void) => {
   listeners.add(listener)
   return () => void listeners.delete(listener)
 }
 
-export const useHostFullscreen = () => useSyncExternalStore(subscribe, getHostFullscreen)
+export const useHostFullscreen = () =>
+  useSyncExternalStore(subscribeHostFullscreen, getHostFullscreen)
