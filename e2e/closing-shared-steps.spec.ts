@@ -164,15 +164,10 @@ test.describe('closing flow: the editor', () => {
     const tab = app(page)
     const list = tab.locator('ol[aria-label="Flujo de cierre"] > li')
     // The menu is the welcome flow's, without the greeting.
-    for (const name of [
-      'Video',
-      'Texto con formato',
-      'Documento PDF',
-      'Evaluación de Moodle',
-      'Evaluación final',
-    ])
+    for (const name of ['Video', 'Texto con formato', 'Documento PDF', 'Evaluación final'])
       await expect(tab.getByRole('button', { name, exact: true })).toBeVisible()
     await expect(tab.getByRole('button', { name: 'Mensaje de bienvenida' })).toHaveCount(0)
+    await expect(tab.getByRole('button', { name: 'Evaluación de Moodle' })).toHaveCount(0)
 
     await tab.getByRole('button', { name: 'Video', exact: true }).click()
     await tab.getByRole('button', { name: 'Texto con formato', exact: true }).click()

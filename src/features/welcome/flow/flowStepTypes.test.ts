@@ -73,8 +73,20 @@ describe('the step types of both flows', () => {
     }
     assert.deepEqual(
       STEP_TYPES_BY_FLOW.closing,
-      STEP_TYPES_BY_FLOW.welcome.filter((type) => type !== 'welcome')
+      STEP_TYPES_BY_FLOW.welcome.filter((type) => type !== 'welcome' && type !== 'quiz')
     )
+  })
+
+  it('leaves out of the closing flow what the backend refuses there', () => {
+    // `step_type_not_allowed`: the greeting and the Moodle quiz.
+    assert.ok(!STEP_TYPES_BY_FLOW.closing.includes('welcome'))
+    assert.ok(!STEP_TYPES_BY_FLOW.closing.includes('quiz'))
+  })
+
+  it('allows one native exam per flow', () => {
+    const steps: WelcomeStep[] = [valid('assessment', 'closing')]
+    assert.equal(canAdd(steps, 'assessment'), 'assessment_exists')
+    assert.equal(canAdd(steps, 'html'), null)
   })
 
   for (const flowKey of FLOWS)
@@ -98,6 +110,8 @@ describe('the step types of both flows', () => {
             [type, 'html']
           )
           const copy = duplicateStep(steps, 1, '(copia)', sequence())
+          // One native exam per flow: it cannot be duplicated.
+          if (type === 'assessment') return assert.equal(copy.length, 2)
           assert.equal(copy.length, 3)
           assert.equal(copy[2].type, type)
           assert.notEqual(copy[2].key, copy[1].key)
@@ -132,7 +146,7 @@ describe('the step types of both flows', () => {
 
   it('keeps the limits: twelve steps and three quizzes', () => {
     const quizzes: WelcomeStep[] = []
-    for (let i = 0; i < 3; i++) quizzes.push(valid('quiz', 'closing', quizzes))
+    for (let i = 0; i < 3; i++) quizzes.push(valid('quiz', 'welcome', quizzes))
     assert.equal(canAdd(quizzes, 'quiz'), 'quiz_too_many')
     const full: WelcomeStep[] = []
     for (let i = 0; i < 12; i++) full.push(valid('html', 'closing', full))

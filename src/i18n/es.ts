@@ -1031,6 +1031,7 @@ export const es = {
         too_many: 'Un flujo puede tener hasta 12 pasos.',
         quiz_too_many: 'Un flujo puede tener hasta 3 evaluaciones.',
         welcome_exists: 'Ya hay un mensaje de bienvenida; es el primer paso.',
+        assessment_exists: 'Un flujo puede tener una sola evaluación.',
       },
       stepLabel: (n: number, type: string, title: string) => `Paso ${n}: ${type}, ${title}`,
       moveUp: 'Subir paso',

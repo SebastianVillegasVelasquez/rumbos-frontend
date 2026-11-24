@@ -113,18 +113,18 @@ export interface FlowProblem {
 
 // The content steps both flows offer, in one table: a type added here is available in
 // the editor, the validation and the player of the welcome flow and the closing flow
-// alike. Only two things differ by flow: the greeting (`welcome`, a hero screen with
-// the course's welcome copy, so the welcome flow only) and the assessment's purpose.
+// alike. What differs by flow is what the backend refuses in the closing flow
+// (`step_type_not_allowed`): the greeting (`welcome`, a hero screen with the course's
+// welcome copy) and the Moodle `quiz` fallback; and the assessment's purpose.
 export const SHARED_STEP_TYPES = [
   'video',
   'html',
   'pdf',
-  'quiz',
 ] as const satisfies readonly WelcomeStepType[]
 
 // What each flow may contain, in the order the add-step menu lists it.
 export const STEP_TYPES_BY_FLOW: Record<FlowKey, readonly WelcomeStepType[]> = {
-  welcome: ['welcome', ...SHARED_STEP_TYPES, 'assessment'],
+  welcome: ['welcome', ...SHARED_STEP_TYPES, 'quiz', 'assessment'],
   closing: [...SHARED_STEP_TYPES, 'assessment'],
 }
 export const PURPOSE_BY_FLOW: Record<FlowKey, 'check_in' | 'final'> = {
