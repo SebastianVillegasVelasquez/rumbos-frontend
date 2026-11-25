@@ -74,6 +74,7 @@ const editedSettings = (): MapSettings => {
     pdf: 'D',
     quiz: 'Q',
     assessment: 'A',
+    moodle_activity: 'M',
   })
   return { ...settings, welcome: { enabled: true, steps: [step] } as MapSettings['welcome'] }
 }
@@ -95,6 +96,82 @@ describe('request bodies against openapi.json', () => {
   it('PUT /course-maps/{id}/appearance: a map with the trainer and both exams set up', async () => {
     const schema = requestSchema('PUT', '/course-maps/{course_map_id}/appearance')
     assert.deepEqual(check(await putAppearance(editedSettings()), schema, 'body'), [])
+  })
+
+  it('PUT /course-maps/{id}/appearance: a Moodle activity in the welcome and the closing flow', async () => {
+    const schema = requestSchema('PUT', '/course-maps/{course_map_id}/appearance')
+    const labels = {
+      welcome: 'B',
+      video: 'V',
+      html: 'T',
+      pdf: 'D',
+      quiz: 'Q',
+      assessment: 'A',
+      moodle_activity: 'M',
+    }
+    const welcomeStep = { ...createStep('moodle_activity', [], labels), cmid: 41 }
+    const closingSteps = [
+      { ...createStep('moodle_activity', [], labels, undefined, 'closing'), cmid: 42 },
+      createStep('assessment', [], labels, undefined, 'closing'),
+    ]
+    const settings = {
+      ...editedSettings(),
+      welcome: { enabled: true, steps: [welcomeStep] } as MapSettings['welcome'],
+      closing: { enabled: true, steps: closingSteps } as MapSettings['closing'],
+    }
+    assert.deepEqual(check(await putAppearance(settings), schema, 'body'), [])
+    // The step is sent as the contract names it: a cmid, a title, nothing else of its own.
+    const sent = (lastBody() as { settings: { closing: { steps: Record<string, unknown>[] } } })
+      .settings.closing.steps[0]
+    assert.deepEqual(Object.keys(sent).sort(), [
+      'cmid',
+      'key',
+      'mandatory',
+      'revision',
+      'title',
+      'type',
+    ])
+  })
+
+  it('PUT /course-maps/{id}/appearance: a cmid of 0 (no activity chosen) is refused by the spec', async () => {
+    const schema = requestSchema('PUT', '/course-maps/{course_map_id}/appearance')
+    const labels = {
+      welcome: 'B',
+      video: 'V',
+      html: 'T',
+      pdf: 'D',
+      quiz: 'Q',
+      assessment: 'A',
+      moodle_activity: 'M',
+    }
+    const unchosen = createStep('moodle_activity', [], labels)
+    const settings = {
+      ...editedSettings(),
+      welcome: { enabled: true, steps: [unchosen] } as MapSettings['welcome'],
+    }
+    const problems = check(await putAppearance(settings), schema, 'body')
+    assert.ok(
+      problems.some((problem) => problem.includes('cmid')),
+      problems.join('; ')
+    )
+  })
+
+  it('PUT /course-maps/{id}/appearance: the congratulations texts, set and null', async () => {
+    const schema = requestSchema('PUT', '/course-maps/{course_map_id}/appearance')
+    const custom = {
+      ...editedSettings(),
+      congratulations: {
+        checkin: { title: '¡Bravo!', body: 'Sacaste {score} de {threshold}.', ctaLabel: null },
+        final: null,
+      },
+    }
+    assert.deepEqual(check(await putAppearance(custom), schema, 'body'), [])
+    assert.deepEqual(
+      (lastBody() as { settings: { congratulations: unknown } }).settings.congratulations,
+      custom.congratulations
+    )
+    const none = { ...editedSettings(), congratulations: null }
+    assert.deepEqual(check(await putAppearance(none), schema, 'body'), [])
   })
 
   it('PUT /course-maps/{id}/appearance: a map whose assessments were never set', async () => {

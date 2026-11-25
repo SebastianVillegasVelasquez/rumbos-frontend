@@ -1,4 +1,4 @@
-import { useId, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { Loader2, Upload } from 'lucide-react'
 import { Button } from '../../../components/ui/Button.tsx'
 import { Input } from '../../../components/ui/Input.tsx'
@@ -12,6 +12,7 @@ import {
   type Activity,
   type AssetListParams,
   type WelcomeHtmlStep,
+  type WelcomeMoodleActivityStep,
   type WelcomePdfStep,
   type WelcomeQuizStep,
   type WelcomeStep,
@@ -19,8 +20,11 @@ import {
   type WelcomeVideoStep,
 } from '../../course-map/data/types.ts'
 import { API_BASE_URL } from '../../course-map/data/client.ts'
+import { useEmbed } from '../../embed/EmbedContext.ts'
+import { useActivityList } from '../../embed/hostActivities.ts'
+import { useHostActivitiesListable } from '../../embed/hostCapabilities.ts'
 import { assetsOrigin, htmlStepFrameAttributes } from '../flow/htmlStepDocument.ts'
-import { documentErrorKey, type DocumentErrorKey } from './documentErrors.ts'
+import { documentErrorKey, documentTitle, type DocumentErrorKey } from './documentErrors.ts'
 import { applyTemplate, type TemplateId } from './flowEdit.ts'
 
 const text = es.studio.flow
@@ -318,7 +322,7 @@ export const PdfEditor = ({ step, onChange, problems }: EditorProps<WelcomePdfSt
       return
     }
     create.mutate(
-      { file, kind: 'document', rightsDeclared: true },
+      { file, kind: 'document', title: documentTitle(file.name), rightsDeclared: true },
       {
         onSuccess: ({ asset }) => onChange({ assetId: asset.id }),
         onError: (failure) => setError(documentErrorKey(failure)),
@@ -521,5 +525,143 @@ export const QuizEditor = ({
         />
       </Field>
     </>
+  )
+}
+
+// ---- Moodle activity ----------------------------------------------------------------
+
+// A step that opens an activity of the course. The list comes from the host when it announced
+// `activities` (the plugin lists resources, pages and links); without it the editor types the
+// cmid, with a warning that nothing checks it. The backend cannot check either: only Moodle can,
+// and the student's card says "Actividad no disponible" for an id that does not open.
+export const ActivityEditor = ({
+  step,
+  onChange,
+  problems,
+}: EditorProps<WelcomeMoodleActivityStep>) => {
+  const embed = useEmbed()
+  const listable = useHostActivitiesListable() && embed !== null
+  const list = useActivityList()
+  const ids = { pick: useId(), manual: useId() }
+  const requestActivities = embed?.requestActivities
+
+  // Ask once the editor opens the step; "Actualizar la lista" asks again.
+  useEffect(() => {
+    if (listable && list.status === 'idle') requestActivities?.()
+  }, [listable, list.status, requestActivities])
+
+  const items = list.status === 'ready' ? list.items : []
+  const chosen = items.find((item) => item.cmid === step.cmid)
+  const noCmid = step.cmid <= 0
+
+  // Picking an activity names the step after it, unless the author already wrote a title of
+  // their own (the default title, an empty one or the previous activity's name).
+  const pick = (cmid: number) => {
+    const next = items.find((item) => item.cmid === cmid)
+    const replaceable =
+      step.title.trim() === '' ||
+      step.title === text.newTitles.moodle_activity ||
+      step.title === chosen?.name.slice(0, FLOW_LIMITS.stepTitleMax)
+    onChange({
+      cmid,
+      ...(next && replaceable ? { title: next.name.slice(0, FLOW_LIMITS.stepTitleMax) } : {}),
+    })
+  }
+
+  if (!listable || list.status === 'error') {
+    return (
+      <>
+        {list.status === 'error' && (
+          <p role="alert" className="text-xs font-bold text-danger">
+            {text.activity.listError}
+          </p>
+        )}
+        <Field label={text.activity.manual} htmlFor={ids.manual}>
+          <Input
+            id={ids.manual}
+            density="compact"
+            type="number"
+            inputMode="numeric"
+            min={1}
+            step={1}
+            value={noCmid ? '' : String(step.cmid)}
+            aria-invalid={problems.has('cmid')}
+            onChange={(event) => {
+              const value = Number(event.target.value)
+              onChange({ cmid: Number.isSafeInteger(value) && value > 0 ? value : 0 })
+            }}
+          />
+        </Field>
+        {listable && (
+          <Button size="sm" variant="secondary" onClick={() => requestActivities?.()}>
+            {text.activity.refresh}
+          </Button>
+        )}
+        {!listable && (
+          <p
+            role="note"
+            className="border-soft rounded-md bg-surface p-2 text-xs font-bold text-ink"
+          >
+            {text.activity.manualWarning}
+          </p>
+        )}
+        {problems.has('cmid') && (
+          <p role="alert" className="text-xs font-bold text-danger">
+            {text.activity.noCmid}
+          </p>
+        )}
+      </>
+    )
+  }
+
+  const loading = list.status === 'loading' || list.status === 'idle'
+  return (
+    <div aria-busy={loading} className="space-y-2">
+      <Field
+        label={text.activity.pick}
+        htmlFor={ids.pick}
+        hint={noCmid && !loading ? text.activity.chooseHint : undefined}
+      >
+        <Select
+          id={ids.pick}
+          value={noCmid ? '' : String(step.cmid)}
+          disabled={loading}
+          aria-invalid={problems.has('cmid')}
+          onChange={(event) => pick(Number(event.target.value))}
+        >
+          <option value="" disabled>
+            {loading ? text.activity.loading : text.activity.pickPlaceholder}
+          </option>
+          {!noCmid && !chosen && !loading && (
+            <option value={step.cmid}>{text.activity.missingOption(step.cmid)}</option>
+          )}
+          {items.map((item) => (
+            <option key={item.cmid} value={item.cmid}>
+              {item.visible ? item.name : text.activity.hiddenOption(item.name)}
+            </option>
+          ))}
+        </Select>
+      </Field>
+      {!loading && items.length === 0 && <p className={hintClass}>{text.activity.empty}</p>}
+      {chosen && <p className={hintClass}>{text.activity.chosen(chosen.name)}</p>}
+      {chosen && !chosen.visible && (
+        <p role="note" className="border-soft rounded-md bg-surface p-2 text-xs font-bold text-ink">
+          {text.activity.hidden}
+        </p>
+      )}
+      {!noCmid && !chosen && !loading && (
+        <p role="note" className="border-soft rounded-md bg-surface p-2 text-xs font-bold text-ink">
+          {text.activity.missing}
+        </p>
+      )}
+      {problems.has('cmid') && (
+        <p role="alert" className="text-xs font-bold text-danger">
+          {text.activity.noCmid}
+        </p>
+      )}
+      <Button size="sm" variant="secondary" onClick={() => requestActivities?.()}>
+        {text.activity.refresh}
+      </Button>
+    </div>
   )
 }

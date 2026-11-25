@@ -1,3 +1,5 @@
+import { useQueryClient } from '@tanstack/react-query'
+import { subscribeHostStateReceived } from './features/embed/hostState.ts'
 import { closingEntryView } from './features/hud/closingEntry.ts'
 import {
   Suspense,
@@ -101,6 +103,22 @@ import { readResume } from './features/hud/resume.ts'
 import { useHostCourseName } from './features/embed/hostCourse.ts'
 import { LazyWelcomeCurtain } from './features/welcome/LazyWelcomeCurtain.tsx'
 import { LazyWelcomeFlow } from './features/welcome/flow/LazyWelcomeFlow.tsx'
+import {
+  closingStepsFor,
+  offersClosingCard,
+  stageOf,
+} from './features/assessment/closingJourney.ts'
+import { JourneySimulator } from './features/assessment/JourneySimulator.tsx'
+import { simStatus, type SimState } from './features/assessment/journeySimulation.ts'
+import { ClosingCard, JourneyOverlay } from './features/assessment/JourneyOverlay.tsx'
+import {
+  availabilityFromStatus,
+  markScreenSeen,
+  screenFor,
+  wasScreenSeen,
+  type JourneyScreen,
+} from './features/assessment/journeyAvailability.ts'
+import { CLOSING_STATUS_KEY, useClosingStatus } from './features/assessment/useClosingStatus.ts'
 import { useWelcome } from './features/welcome/useWelcome.ts'
 import { welcomeTitle } from './features/welcome/welcome.ts'
 import { cameraBridge } from './features/view3d/cameraBridge.ts'
@@ -813,9 +831,55 @@ export function AppShell() {
   const closingSteps = renderable?.settings.closing?.enabled
     ? (renderable.settings.closing.steps ?? [])
     : []
+  // The journey: the backend's closing status (GET /trainer/closing) says where the student
+  // stands. Students only: an editor's preview never asks, and the simulation has its own.
+  const realStatus =
+    useClosingStatus(embed !== null && immersive && exitPreview === null && closingSteps.length > 0)
+      .data ?? null
+  // The editor's "Simular recorrido": a made-up status in memory, only in the student view.
+  const [sim, setSim] = useState<SimState | null>(null)
+  const simulating = exitPreview !== null && embed?.role === 'editor' && sim !== null
+  const closingStatus = simulating && sim ? simStatus(sim) : realStatus
+  const queryClient = useQueryClient()
+  // Finishing an activity changes the backend's answer, and the host announces it with a fresh
+  // state: ask again then (the status is cheap and the server owns what it means).
+  useEffect(
+    () =>
+      subscribeHostStateReceived(
+        () => void queryClient.invalidateQueries({ queryKey: CLOSING_STATUS_KEY })
+      ),
+    [queryClient]
+  )
+  const journeySteps = closingStepsFor(closingSteps, closingStatus)
+  const journeyWanted = screenFor(stageOf(closingStatus))
+  const [journeyDismissed, setJourneyDismissed] = useState<JourneyScreen[]>([])
+  const welcomeBusy =
+    flowGate !== null && flowGate.state.status !== 'closed' && flowGate.state.status !== 'off'
+  const journeyScreen: JourneyScreen | null =
+    journeyWanted &&
+    renderable &&
+    !welcomeBusy &&
+    !closingOpen &&
+    !trainerOpen &&
+    !journeyDismissed.includes(journeyWanted) &&
+    (simulating ||
+      journeyWanted === 'exhausted' ||
+      !wasScreenSeen(viewerStorage(), renderable.id, journeyWanted))
+      ? journeyWanted
+      : null
+  const finishJourneyScreen = () => {
+    if (!journeyScreen || !renderable) return
+    // The congratulations come once; the "review again" screen stays until the backend restarts.
+    if (!simulating && journeyScreen !== 'exhausted')
+      markScreenSeen(viewerStorage(), renderable.id, journeyScreen)
+    setJourneyDismissed((list) => [...list, journeyScreen])
+    // The CTA of a passed check-in opens the closing flow, without the final exam.
+    if (journeyScreen === 'congrats_checkin') setClosingOpen(true)
+  }
   // The backend's word (with its reason and SCORM counts); an older draft sends only the boolean.
   const closingView = closingEntryView(
-    renderable?.closingAvailability ??
+    availabilityFromStatus(closingStatus) ??
+      renderable?.closingAvailability ??
       (renderable?.closingAvailable === undefined
         ? null
         : { available: renderable.closingAvailable, reason: null }),
@@ -1330,130 +1394,160 @@ export function AppShell() {
               </div>
             )}
             {immersive && renderable ? (
-              <StudentStage
-                levelTitle={renderable.title}
-                levelPosition={
-                  siblingLevels.length > 1 && currentLevelIndex !== -1
-                    ? { index: currentLevelIndex + 1, count: siblingLevels.length }
-                    : null
-                }
-                progress={progress}
-                onOpenLevels={
-                  siblingLevels.length > 1 ? () => navigate({ name: 'home' }) : undefined
-                }
-                coachMarks={!exitPreview && !shownContentBubble}
-                questsOpen={questsOpen}
-                onToggleQuests={toggleQuests}
-                trainer={
-                  trainerOn && trainerState.kind !== 'hidden'
-                    ? {
-                        onOpen: () => setTrainerOpen(true),
-                        mode: entryMode(trainerState),
-                        note: trainerReason ? es.hud.trainerNote[trainerReason] : null,
-                        persistentNote: noteIsPersistent(trainerState, trainerViewerIsEditor),
-                      }
-                    : null
-                }
-                tutor={
-                  embed && tutorAvailable
-                    ? { kind: 'ready', onOpen: embed.openTutor }
-                    : embed && exitPreview
-                      ? { kind: 'not-enabled' }
+              <>
+                <StudentStage
+                  levelTitle={renderable.title}
+                  levelPosition={
+                    siblingLevels.length > 1 && currentLevelIndex !== -1
+                      ? { index: currentLevelIndex + 1, count: siblingLevels.length }
                       : null
-                }
-                closing={
-                  closingSteps.length > 0
-                    ? {
-                        onOpen: () => setClosingOpen(true),
-                        enabled: closingView.enabled,
-                        note: closingView.note,
-                        // Never opens the flow: it only walks them to the next pending bubble.
-                        onContinue:
-                          closingView.offersContinue && nextTarget
-                            ? () => {
-                                setActiveQuestBubbleId(nextTarget.id)
-                                setFocusBubbleId(nextTarget.id)
-                                setArmedBubbleId(nextTarget.id)
-                              }
-                            : null,
+                  }
+                  progress={progress}
+                  onOpenLevels={
+                    siblingLevels.length > 1 ? () => navigate({ name: 'home' }) : undefined
+                  }
+                  coachMarks={!exitPreview && !shownContentBubble}
+                  questsOpen={questsOpen}
+                  onToggleQuests={toggleQuests}
+                  trainer={
+                    trainerOn && trainerState.kind !== 'hidden'
+                      ? {
+                          onOpen: () => setTrainerOpen(true),
+                          mode: entryMode(trainerState),
+                          note: trainerReason ? es.hud.trainerNote[trainerReason] : null,
+                          persistentNote: noteIsPersistent(trainerState, trainerViewerIsEditor),
+                        }
+                      : null
+                  }
+                  tutor={
+                    embed && tutorAvailable
+                      ? { kind: 'ready', onOpen: embed.openTutor }
+                      : embed && exitPreview
+                        ? { kind: 'not-enabled' }
+                        : null
+                  }
+                  closing={
+                    journeySteps.length > 0
+                      ? {
+                          onOpen: () => setClosingOpen(true),
+                          enabled: closingView.enabled,
+                          note: closingView.note,
+                          // Never opens the flow: it only walks them to the next pending bubble.
+                          onContinue:
+                            closingView.offersContinue && nextTarget
+                              ? () => {
+                                  setActiveQuestBubbleId(nextTarget.id)
+                                  setFocusBubbleId(nextTarget.id)
+                                  setArmedBubbleId(nextTarget.id)
+                                }
+                              : null,
+                        }
+                      : null
+                  }
+                  overlay={
+                    trainerOpen && renderable ? (
+                      <LazyTrainerStage imageUrl={renderable.imageUrl} onClose={closeTrainer} />
+                    ) : closingOpen && renderable && journeySteps.length > 0 ? (
+                      <LazyWelcomeFlow
+                        key={`${renderable.id}:closing`}
+                        flowKey="closing"
+                        steps={journeySteps}
+                        mode={exitPreview !== null ? 'preview' : 'normal'}
+                        entries={[]}
+                        persistence={null}
+                        documents={renderable.welcomeDocuments ?? []}
+                        courseName={hostCourseName?.trim() || renderable.title}
+                        imageUrl={renderable.imageUrl}
+                        hasMusic={false}
+                        onFinish={() => {
+                          setClosingOpen(false)
+                          void queryClient.invalidateQueries({ queryKey: CLOSING_STATUS_KEY })
+                        }}
+                      />
+                    ) : journeyScreen && renderable ? (
+                      <JourneyOverlay
+                        screen={journeyScreen}
+                        congratulations={renderable.settings.congratulations}
+                        status={closingStatus}
+                        onContinue={finishJourneyScreen}
+                        simulated={simulating}
+                      />
+                    ) : null
+                  }
+                  questsPanel={({ compact, bottomOffset }) => (
+                    <QuestLog
+                      open={questsOpen}
+                      compact={compact}
+                      bottomOffset={bottomOffset}
+                      groups={questGroups}
+                      progress={progress}
+                      activeBubbleId={activeQuestBubbleId}
+                      onFocusBubble={(bubbleId) => {
+                        setActiveQuestBubbleId(bubbleId)
+                        setFocusBubbleId(bubbleId)
+                      }}
+                      onOpenBubble={(bubbleId) => {
+                        const bubble = bubbles.find((item) => item.id === bubbleId)
+                        if (bubble) handleBubbleClick(bubble)
+                      }}
+                      onClose={closeQuests}
+                      onResetView={
+                        show3d ? undefined : () => mapControlsRef.current?.resetToInitial()
                       }
-                    : null
-                }
-                overlay={
-                  trainerOpen && renderable ? (
-                    <LazyTrainerStage imageUrl={renderable.imageUrl} onClose={closeTrainer} />
-                  ) : closingOpen && renderable && closingSteps.length > 0 ? (
-                    <LazyWelcomeFlow
-                      key={`${renderable.id}:closing`}
-                      flowKey="closing"
-                      steps={closingSteps}
-                      mode={exitPreview !== null ? 'preview' : 'normal'}
-                      entries={[]}
-                      persistence={null}
-                      documents={renderable.welcomeDocuments ?? []}
-                      courseName={hostCourseName?.trim() || renderable.title}
-                      imageUrl={renderable.imageUrl}
-                      hasMusic={false}
-                      onFinish={() => setClosingOpen(false)}
                     />
-                  ) : null
-                }
-                questsPanel={({ compact, bottomOffset }) => (
-                  <QuestLog
-                    open={questsOpen}
-                    compact={compact}
-                    bottomOffset={bottomOffset}
-                    groups={questGroups}
-                    progress={progress}
-                    activeBubbleId={activeQuestBubbleId}
-                    onFocusBubble={(bubbleId) => {
-                      setActiveQuestBubbleId(bubbleId)
-                      setFocusBubbleId(bubbleId)
+                  )}
+                  view={view3d ? { value: show3d ? '3d' : '2d', onChange: changeMapView } : null}
+                  zoom={
+                    show3d
+                      ? {
+                          zoomIn: () => cameraBridge.command('zoom-in'),
+                          zoomOut: () => cameraBridge.command('zoom-out'),
+                          recenter: () => cameraBridge.command('reset'),
+                          canZoomIn: camera3d.canZoomIn,
+                          canZoomOut: camera3d.canZoomOut,
+                          recenterLabel: es.hud.resetView,
+                        }
+                      : {
+                          zoomIn: () => mapControlsRef.current?.zoomIn(),
+                          zoomOut: () => mapControlsRef.current?.zoomOut(),
+                          recenter: () => mapControlsRef.current?.recenter(),
+                        }
+                  }
+                  reportInsets={show3d}
+                  curtain={welcomeCurtain}
+                  onShowWelcome={welcomeState.reopen}
+                  audio={
+                    audioTrack ? (
+                      <LazyAudioControl track={audioTrack} diagnostics={audioDiagnostics} />
+                    ) : null
+                  }
+                  onEnterFullscreen={
+                    embed && !isFullscreen ? () => embed.requestFullscreen(true) : null
+                  }
+                  continueAction={continueAction}
+                  exitPreview={exitPreview}
+                  embedded={Boolean(embed)}
+                >
+                  {(layout) => (show3d && view3d ? render3d(view3d) : renderMapArea(layout))}
+                </StudentStage>
+                {exitPreview !== null && embed?.role === 'editor' && closingSteps.length > 0 && (
+                  <JourneySimulator
+                    state={sim}
+                    onChange={(next) => {
+                      setSim(next)
+                      setJourneyDismissed([])
                     }}
-                    onOpenBubble={(bubbleId) => {
-                      const bubble = bubbles.find((item) => item.id === bubbleId)
-                      if (bubble) handleBubbleClick(bubble)
-                    }}
-                    onClose={closeQuests}
-                    onResetView={
-                      show3d ? undefined : () => mapControlsRef.current?.resetToInitial()
-                    }
                   />
                 )}
-                view={view3d ? { value: show3d ? '3d' : '2d', onChange: changeMapView } : null}
-                zoom={
-                  show3d
-                    ? {
-                        zoomIn: () => cameraBridge.command('zoom-in'),
-                        zoomOut: () => cameraBridge.command('zoom-out'),
-                        recenter: () => cameraBridge.command('reset'),
-                        canZoomIn: camera3d.canZoomIn,
-                        canZoomOut: camera3d.canZoomOut,
-                        recenterLabel: es.hud.resetView,
-                      }
-                    : {
-                        zoomIn: () => mapControlsRef.current?.zoomIn(),
-                        zoomOut: () => mapControlsRef.current?.zoomOut(),
-                        recenter: () => mapControlsRef.current?.recenter(),
-                      }
-                }
-                reportInsets={show3d}
-                curtain={welcomeCurtain}
-                onShowWelcome={welcomeState.reopen}
-                audio={
-                  audioTrack ? (
-                    <LazyAudioControl track={audioTrack} diagnostics={audioDiagnostics} />
-                  ) : null
-                }
-                onEnterFullscreen={
-                  embed && !isFullscreen ? () => embed.requestFullscreen(true) : null
-                }
-                continueAction={continueAction}
-                exitPreview={exitPreview}
-                embedded={Boolean(embed)}
-              >
-                {(layout) => (show3d && view3d ? render3d(view3d) : renderMapArea(layout))}
-              </StudentStage>
+                {closingStatus &&
+                  offersClosingCard(closingStatus) &&
+                  !closingOpen &&
+                  !journeyScreen &&
+                  !welcomeBusy &&
+                  !trainerOpen && (
+                    <ClosingCard status={closingStatus} onOpen={() => setClosingOpen(true)} />
+                  )}
+              </>
             ) : show3d && renderable && view3d ? (
               render3d(view3d)
             ) : (

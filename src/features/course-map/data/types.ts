@@ -112,6 +112,19 @@ export interface MapSettings {
   // student's.
   trainer?: MapTrainer | null
   assessments?: MapAssessments | null
+  // What the congratulations screens say, per purpose; each field null is the default copy.
+  congratulations?: MapCongratulations | null
+}
+
+export interface MapCongratulationsText {
+  title?: string | null
+  body?: string | null
+  ctaLabel?: string | null
+}
+
+export interface MapCongratulations {
+  checkin?: MapCongratulationsText | null
+  final?: MapCongratulationsText | null
 }
 
 export type TrainerLevel = 'A1' | 'A2' | 'B1' | 'B2'
@@ -162,7 +175,8 @@ export const WELCOME_LIMITS = { titleMax: 120, messageMax: 300 } as const
 
 // ---- Welcome flow steps -----------------------------------------------------
 
-export type WelcomeStepType = 'welcome' | 'video' | 'html' | 'pdf' | 'quiz' | 'assessment'
+export type WelcomeStepType =
+  'welcome' | 'video' | 'html' | 'pdf' | 'quiz' | 'assessment' | 'moodle_activity'
 
 // "I have read it": a checkbox with its label. Null: no acknowledgement.
 export interface StepAck {
@@ -215,6 +229,15 @@ export interface WelcomeQuizStep extends StepCommon {
   outcomeBelow: string | null
 }
 
+// An activity of the Moodle course (a PDF resource, a page, a link) the student opens from the
+// flow. `cmid` is the course-module id of THIS course: a duplicated or restored course gives its
+// activities new ids, so an id the host cannot open reads as "activity not available". The
+// backend does not check it exists and no address is ever stored: the plugin builds it.
+export interface WelcomeMoodleActivityStep extends StepCommon {
+  type: 'moodle_activity'
+  cmid: number
+}
+
 // The native check-in (contract v2, /trainer/assessments). It replaces the Moodle quiz
 // step when the editor chooses it; the quiz step stays as the fallback.
 export interface WelcomeAssessmentStep extends StepCommon {
@@ -249,6 +272,7 @@ export type WelcomeStep =
   | WelcomePdfStep
   | WelcomeQuizStep
   | WelcomeAssessmentStep
+  | WelcomeMoodleActivityStep
 
 export const FLOW_LIMITS = {
   stepsMax: 12,

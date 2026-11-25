@@ -450,3 +450,37 @@ and one stale input; everything else already reads the API.
   ending, having been on before it began (`videoFullscreenGuard.ts`). The viewer's own exit is never undone. The
   native request may be refused without a click; the host's CSS stage still returns. The cleaner fix is in the
   plugin: ignore a `fullscreenchange` whose cause is a nested frame's fullscreen.
+
+## Activity steps, outcome journeys and congratulations (branch `feat/activity-steps-journey-sim`)
+
+- **Contract source.** `contracts/openapi.json` is the backend's newer export (GET `/trainer/closing`,
+  `MoodleActivityStep`, `MapSettings.congratulations`, `preview` on attempts and results). The host
+  contract v5.11 is read from the plugin's branch `feat/activity-overlay-autocomplete` (`docs/HOST-CONTRACT.md`),
+  not from its `main`: it is not merged there yet.
+- **Message names.** The task wrote `activities.list` and `activity.open`; the plugin and this app use the
+  `rumbos:` family (`request-activities`, `activity-open`, `host-activities`, `host-activity-opened`,
+  `host-activity-open-failed`, `host-activity-closed`). The shape is the proposal's. The plugin's choice wins.
+- **PDF upload bug.** Root cause on the frontend: a document upload carried no `title`, which the backend
+  refuses (`invalid_asset_metadata`). The mock filled it from the file name and hid it. The upload now sends
+  the file name as title and the mock is as strict as the backend. Same code path in both flows.
+- **Seen means shown, then closed.** An activity step completes only when this session asked to open it, the host
+  said it was on screen and then closed. A stray `closed` completes nothing (C4: nothing here writes Moodle).
+- **No capability / activity gone.** A host without `activity`, `not_found` and `unsupported` do not block and
+  record `unavailable` (the existing "content cannot be served" record, not a new way out). `forbidden` and a
+  silent host (10 s) offer a retry and the recorded `fallback` escape, like the quiz step.
+- **Journey from the backend only.** `GET /trainer/closing` is the source (the old `closingAvailable` on the map
+  read is not in the contract). The stage is read from `outcome.final.status`; the client never compares a score.
+- **Contract test helper.** The checker now merges `allOf` and enforces bounds, lengths and patterns.
+
+### Journeys, congratulations and simulation
+
+- The journey is read only from `GET /trainer/closing` (`outcome.final.status`); no score is compared on the client.
+- A passed check-in drops the final step from the closing flow and its congratulations CTA opens that flow.
+- The "Continuar al cierre" card shows only when the final is required and the backend says `available`; it never
+  opens the closing by itself.
+- Congratulations show once per map and screen (remembered in local storage); the exhausted screen stays until the
+  backend restarts the course, and performs nothing: the restart belongs to the backend and the plugin (C4).
+- The status is asked again when an exam ends and when the host pushes a new state.
+- Congratulations text is plain text, rendered as text; only `{score}` and `{threshold}` are substituted.
+- "Simular recorrido" builds a made-up `ClosingStatus` in memory and feeds the same journey code; it makes no
+  request, saves nothing and is only offered to editors in the student view.

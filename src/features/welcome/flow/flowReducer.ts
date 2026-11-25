@@ -84,6 +84,11 @@ export interface FlowState {
   // The native check-in: `done` when the attempt was submitted or expired, `fallback`
   // when the viewer went on without it ("Continuar de todos modos").
   assessment: Record<string, 'done' | 'fallback'>
+  // Moodle-activity steps whose activity the viewer opened and closed again (the host said so).
+  activitySeen: Record<string, boolean>
+  // Activity steps the viewer left without having seen the activity ("Continuar de todos
+  // modos"): they record `fallback`.
+  activityEscaped: Record<string, boolean>
   // The viewer holds the editing role: a quiz step never blocks them (they are
   // usually not students, so Moodle has no attempt of theirs to find).
   editor: boolean
@@ -145,6 +150,8 @@ export const createFlowState = (
     quiz: {},
     quizEscaped: {},
     assessment: {},
+    activitySeen: {},
+    activityEscaped: {},
     editor,
     unavailable: {},
     finished: false,
@@ -153,7 +160,8 @@ export const createFlowState = (
 
 // ---- Gating -------------------------------------------------------------------
 
-export type WaitingFor = 'time' | 'ack' | 'video' | 'quiz' | 'assessment' | 'time-and-ack'
+export type WaitingFor =
+  'time' | 'ack' | 'video' | 'quiz' | 'assessment' | 'activity' | 'time-and-ack'
 
 export interface Gate {
   // The step's own condition is met (or it needs none).
@@ -212,6 +220,17 @@ export const gateOf = (state: FlowState, index: number = state.index): Gate => {
         method = 'fallback'
       }
       if (!satisfied) waitingFor = 'assessment'
+      break
+    }
+    case 'moodle_activity': {
+      satisfied = state.activitySeen[step.key] === true
+      // Never a trap: an editor (who may not see the activity as a student does) or a viewer
+      // who took the exit goes on with a fallback.
+      if (!satisfied && (state.editor || state.activityEscaped[step.key])) {
+        satisfied = true
+        method = 'fallback'
+      }
+      if (!satisfied) waitingFor = 'activity'
       break
     }
     case 'quiz': {
@@ -275,6 +294,10 @@ export type FlowEvent =
   // viewer left it with the recorded fallback.
   | { type: 'assessment-done' }
   | { type: 'assessment-escape' }
+  // The host showed the activity of the current step and the viewer closed it again.
+  | { type: 'activity-seen' }
+  // "Continuar de todos modos": leave the activity step with a recorded fallback.
+  | { type: 'activity-escape' }
   // The content of the current step cannot be served.
   | { type: 'unavailable' }
   | { type: 'next' }
@@ -331,6 +354,18 @@ export const flowReducer = (state: FlowState, event: FlowEvent): FlowState => {
     case 'quiz-escape': {
       if (step.type !== 'quiz' || state.mode === 'review') return state
       const escaped = { ...state, quizEscaped: replaceRecord(state.quizEscaped, step.key, true) }
+      return flowReducer(escaped, { type: 'next' })
+    }
+    case 'activity-seen':
+      return step.type === 'moodle_activity'
+        ? { ...state, activitySeen: replaceRecord(state.activitySeen, step.key, true) }
+        : state
+    case 'activity-escape': {
+      if (step.type !== 'moodle_activity' || state.mode === 'review') return state
+      const escaped = {
+        ...state,
+        activityEscaped: replaceRecord(state.activityEscaped, step.key, true),
+      }
       return flowReducer(escaped, { type: 'next' })
     }
     case 'assessment-done': {

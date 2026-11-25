@@ -68,6 +68,10 @@ const config = {
   courseName: 'present' as 'present' | 'absent',
   // Contract v5.10: host-init.capabilities.tutor; "off" plays a plugin that does not announce it.
   tutor: 'off' as 'on' | 'off',
+  // Contract v5.11: what host-init announces about course activities. "full" is the real
+  // plugin (activity for everyone, activities for an editor in editing mode); "off" plays a
+  // plugin that predates it.
+  activities: 'full' as 'full' | 'open only' | 'off',
   // What the mock backend reports for this tenant (GET /auth/me) and supports.
   widgets: false,
   contentSupport: true,
@@ -361,6 +365,75 @@ const answerQuizResult = (cmid: unknown) => {
   else reply()
 }
 
+// ---- Course activities (contract v5.11) ------------------------------------------------
+
+const ACTIVITY_ROWS = [
+  { cmid: 41, name: 'Guía de inicio', modname: 'resource', visible: true },
+  { cmid: 42, name: 'Lectura: la célula', modname: 'page', visible: true },
+  { cmid: 43, name: 'Enlace del museo', modname: 'url', visible: false },
+]
+
+const ACTIVITY_SCENARIOS = [
+  'opens, closes after 1 s',
+  'opens, never closes',
+  'not_found',
+  'forbidden',
+  'unsupported',
+  'no answer',
+  'list unavailable',
+] as const
+let activityScenario: (typeof ACTIVITY_SCENARIOS)[number] = 'opens, closes after 1 s'
+
+// What the real plugin announces: `activity` to everyone, `activities` only to a user who may
+// edit the map (an editor while Moodle's editing mode is on). An absent key means off.
+const announcedCapabilities = () => {
+  const capabilities: Record<string, boolean> = {}
+  if (config.tutor === 'on') capabilities.tutor = true
+  if (config.activities !== 'off') capabilities.activity = true
+  if (config.activities === 'full' && config.role === 'editor' && config.editing)
+    capabilities.activities = true
+  return Object.keys(capabilities).length > 0 ? capabilities : null
+}
+
+const answerActivities = () => {
+  if (activityScenario === 'list unavailable')
+    return send({ type: 'rumbos:host-activities', v: 1, error: 'unavailable' })
+  if (config.role === 'editor' && config.editing && config.activities === 'full')
+    return send({ type: 'rumbos:host-activities', v: 1, items: ACTIVITY_ROWS })
+  send({ type: 'rumbos:host-activities', v: 1, error: 'capability' })
+}
+
+const answerActivityOpen = (cmid: unknown, extra: Record<string, unknown>) => {
+  // The message carries the cmid and nothing else: an address in it would be a bug of the app.
+  if (typeof cmid !== 'number' || !Number.isSafeInteger(cmid) || cmid <= 0) return
+  if (Object.keys(extra).some((key) => key !== 'type' && key !== 'v' && key !== 'cmid')) {
+    log('host', { type: 'note', text: 'Refused activity-open: it carries more than a cmid' })
+    return
+  }
+  if (activityScenario === 'no answer') return
+  const failure = ['not_found', 'forbidden', 'unsupported'].find(
+    (item) => item === activityScenario
+  )
+  const unknown = !ACTIVITY_ROWS.some((row) => row.cmid === cmid)
+  if (failure || unknown) {
+    send({
+      type: 'rumbos:host-activity-open-failed',
+      v: 1,
+      cmid,
+      reason: failure ?? 'not_found',
+    })
+    return
+  }
+  send({ type: 'rumbos:host-overlay', v: 1, open: true })
+  send({ type: 'rumbos:host-activity-opened', v: 1, cmid })
+  log('host', { type: 'note', text: `Overlay open for cmid ${cmid} (the plugin builds the URL)` })
+  if (activityScenario === 'opens, closes after 1 s')
+    setTimeout(() => {
+      send({ type: 'rumbos:host-overlay', v: 1, open: false })
+      send({ type: 'rumbos:host-activity-closed', v: 1, cmid })
+    }, 1000)
+}
+
 window.addEventListener('message', (event) => {
   if (!iframe || event.source !== iframe.contentWindow || event.origin !== appOrigin()) return
   const data = event.data as Record<string, unknown> | null
@@ -378,7 +451,7 @@ window.addEventListener('message', (event) => {
         locale: 'es',
         courseId: config.courseId,
         ...(config.courseName === 'present' ? { courseName: 'Introducción a la Ecología' } : {}),
-        ...(config.tutor === 'on' ? { capabilities: { tutor: true } } : {}),
+        ...(announcedCapabilities() ? { capabilities: announcedCapabilities() } : {}),
         assertion: assertion(),
         state: buildState(),
       })
@@ -454,6 +527,12 @@ window.addEventListener('message', (event) => {
       })
       return
     }
+    case 'rumbos:request-activities':
+      answerActivities()
+      return
+    case 'rumbos:activity-open':
+      answerActivityOpen(data.cmid, data)
+      return
     case 'rumbos:tutor-open':
       // The plugin owns the URL and the frame; here the tutor "opens" and closes at once.
       setTimeout(() => send({ type: 'rumbos:host-tutor-closed', v: 1 }), 150)
@@ -697,6 +776,17 @@ const buildControls = () => {
         config.tutor = value
         mountFrame()
       })
+    ),
+    labelled(
+      'activities capability (v5.11)',
+      select(['full', 'open only', 'off'] as const, config.activities, (value) => {
+        config.activities = value
+        mountFrame()
+      })
+    ),
+    labelled(
+      'activity scenario (v5.11)',
+      select(ACTIVITY_SCENARIOS, activityScenario, (value) => (activityScenario = value))
     ),
     // Which outcome the mock backend plays for export and import of levels.
     labelled(

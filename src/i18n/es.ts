@@ -377,6 +377,7 @@ export const es = {
       pdf: 'Documento',
       quiz: 'Evaluación',
       assessment: 'Evaluación',
+      moodle_activity: 'Actividad',
     },
     stepLine: (current: number, total: number, kind: string) =>
       `Paso ${current} de ${total} · ${kind}`,
@@ -417,6 +418,30 @@ export const es = {
       video: 'Termina el video para continuar.',
       quiz: 'Termina la evaluación para continuar.',
       assessment: 'Termina la evaluación para continuar.',
+      activity: 'Abre la actividad y ciérrala para continuar.',
+    },
+    // The step that opens an activity of the Moodle course (contract v5.11).
+    activity: {
+      open: 'Abrir',
+      opening: 'Abriendo…',
+      reopen: 'Abrir de nuevo',
+      retry: 'Reintentar',
+      messages: {
+        hint: 'Se abre sobre esta pantalla. Ciérrala cuando termines y podrás continuar.',
+        open: 'La actividad está abierta. Ciérrala para continuar.',
+        seen: 'Ya viste esta actividad.',
+        not_found: 'Actividad no disponible. Ya no está en el curso; puedes continuar.',
+        forbidden: 'No tienes acceso a esta actividad en este momento. Inténtalo de nuevo.',
+        unsupported: 'Este tipo de actividad no se puede abrir desde aquí. Puedes continuar.',
+        no_host: 'Esta pantalla no puede abrir las actividades del curso. Puedes continuar.',
+        silent: 'Moodle no respondió. Inténtalo de nuevo.',
+      },
+      escapeHint: 'Si el problema sigue, puedes continuar y avisar a tu docente.',
+      escape: 'Continuar de todos modos',
+      cardLabel: (title: string) => `Actividad del curso: ${title}`,
+      // The editor's preview names the activity the step points at.
+      activityName: (name: string) => `Actividad de Moodle: ${name}`,
+      openLabel: (title: string) => `Abrir ${title}`,
     },
     video: {
       play: 'Reproducir video',
@@ -1017,6 +1042,7 @@ export const es = {
         pdf: 'Documento PDF',
         quiz: 'Evaluación de Moodle',
         assessment: 'Evaluación de Rumbos (check-in)',
+        moodle_activity: 'Actividad de Moodle',
       },
       newTitles: {
         welcome: 'Bienvenida',
@@ -1025,6 +1051,7 @@ export const es = {
         pdf: 'Documento',
         quiz: 'Evaluación',
         assessment: 'Evaluación de entrada',
+        moodle_activity: 'Actividad',
       },
       copySuffix: '(copia)',
       refusals: {
@@ -1114,7 +1141,11 @@ export const es = {
           corrupt: 'El PDF está dañado.',
           asset_too_large: 'El archivo supera el tamaño máximo (10 MB).',
           rights: 'Debes declarar que tienes derecho a usar el documento.',
-          generic: 'No se pudo subir el documento. Inténtalo de nuevo.',
+          title: 'El documento necesita un nombre. Renombra el archivo y vuelve a subirlo.',
+          quarantined: 'Este documento fue retirado y no se puede usar. Sube otro.',
+          quota:
+            'Se alcanzó el límite de archivos. Borra alguno que no uses y vuelve a intentarlo.',
+          generic: 'No se pudo subir el documento. Revisa tu conexión e inténtalo de nuevo.',
         },
       },
       kindsHint:
@@ -1133,6 +1164,30 @@ export const es = {
           'Los intentos, el tiempo y la nota mínima se definen en «Entrenamiento y evaluación» del mapa.',
         fallback:
           'Si no se puede conectar, el estudiante puede continuar sin hacerla; queda registrado.',
+      },
+      // The step that opens an activity of the Moodle course.
+      activity: {
+        pick: 'Actividad del curso',
+        pickPlaceholder: 'Elige una actividad',
+        refresh: 'Actualizar la lista',
+        loading: 'Cargando las actividades del curso…',
+        empty:
+          'Este curso no tiene actividades que se puedan mostrar aquí (recursos, páginas o enlaces).',
+        chooseHint: 'Elige una actividad para este paso.',
+        hiddenOption: (name: string) => `${name} (oculta para los estudiantes)`,
+        missingOption: (cmid: number) => `Actividad ${cmid} (no está en la lista)`,
+        hidden:
+          'Esta actividad está oculta para los estudiantes: ellos verán «Actividad no disponible». Hazla visible en Moodle.',
+        missing:
+          'Esta actividad no está en la lista del curso. Si duplicaste o restauraste el curso, elígela de nuevo: los números cambian.',
+        listError: 'No pudimos leer las actividades del curso. Puedes escribir su número.',
+        manual: 'Número de la actividad (cmid)',
+        manualWarning:
+          'Esta pantalla no puede listar las actividades del curso. Escribe el número de la actividad (cmid) tal como aparece en su dirección en Moodle. Si el número no es de este curso, el estudiante verá «Actividad no disponible».',
+        chosen: (name: string) => `Actividad elegida: ${name}`,
+        wrongModule:
+          'Solo se pueden mostrar recursos (archivos y PDF), páginas y enlaces. Otras actividades no se abrirán desde aquí.',
+        noCmid: 'Elige una actividad.',
       },
       quiz: {
         activity: 'Evaluación de Moodle',

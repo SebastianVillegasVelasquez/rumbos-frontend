@@ -15,7 +15,12 @@ const subscribe = (listener: () => void) => {
 export const getHostCapabilities = () => current
 
 export const setHostCapabilities = (next: HostCapabilities) => {
-  if (next.tutor === current.tutor) return
+  if (
+    next.tutor === current.tutor &&
+    next.activities === current.activities &&
+    next.activity === current.activity
+  )
+    return
   current = next
   listeners.forEach((listener) => listener())
 }
@@ -24,6 +29,22 @@ export const useHostTutorAvailable = () =>
   useSyncExternalStore(
     subscribe,
     () => current.tutor,
+    () => false
+  )
+
+// Contract v5.11. `activity`: the host opens a course activity from a flow step; `activities`:
+// it also lists them, for a map editor's step picker.
+export const useHostActivityAvailable = () =>
+  useSyncExternalStore(
+    subscribe,
+    () => current.activity,
+    () => false
+  )
+
+export const useHostActivitiesListable = () =>
+  useSyncExternalStore(
+    subscribe,
+    () => current.activities,
     () => false
   )
 

@@ -25,6 +25,7 @@ const labels: NewStepLabels = {
   pdf: 'Documento',
   quiz: 'Evaluación',
   assessment: 'Evaluación de entrada',
+  moodle_activity: 'Actividad',
 }
 let seed = 1
 const random = () => {

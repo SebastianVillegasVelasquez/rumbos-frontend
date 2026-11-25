@@ -11,6 +11,7 @@ import { FlowTab } from '../../welcome/editor/FlowTab.tsx'
 import { describeSaveFailure } from './appearanceErrors.ts'
 import { MusicTab } from '../../audio/editor/MusicTab.tsx'
 import { View3dTab } from '../../view3d/editor/View3dTab.tsx'
+import { CongratulationsEditor } from '../../assessment/editor/CongratulationsEditor.tsx'
 import { TrainingTab } from '../../assessment/editor/TrainingTab.tsx'
 import { SettingsIssuesList, SettingsWarnings } from '../../assessment/editor/SettingsIssues.tsx'
 import { checkTrainingSettings, issuesFromError } from '../../assessment/editor/settingsIssues.ts'
@@ -268,6 +269,9 @@ export const AppearanceStudio = ({
             issues={settingsIssues}
             forms={forms}
           />
+        )}
+        {tab === 'training' && trainingAvailable && 'congratulations' in courseMap.settings && (
+          <CongratulationsEditor settings={settings} onChange={changeSettings} />
         )}
         {tab === 'closing' && closingSupported && (
           <FlowTab
