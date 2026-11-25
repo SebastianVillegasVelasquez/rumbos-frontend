@@ -27,8 +27,26 @@ const kind = (value: unknown) =>
   value === null ? 'null' : Array.isArray(value) ? 'array' : typeof value
 
 // What is wrong with `value` against `schema`, by path. Empty when it conforms.
+// `allOf` read as one schema: the properties and required keys of every part, and the keys the
+// outer schema adds (a `const` that narrows a part, for example) over the parts'.
+const mergeAllOf = (schema: Node): Node => {
+  const parts = ((schema.allOf ?? []) as Node[]).map((part) => mergeAllOf(deref(part)))
+  const { allOf: _allOf, ...own } = schema
+  void _allOf
+  const properties: Record<string, Node> = {}
+  const required = new Set<string>()
+  for (const part of [...parts, own]) {
+    Object.assign(properties, (part.properties ?? {}) as Record<string, Node>)
+    for (const key of (part.required ?? []) as string[]) required.add(key)
+  }
+  const merged: Node = { ...Object.assign({}, ...parts), ...own, properties }
+  if (required.size > 0) merged.required = [...required]
+  return merged
+}
+
 export const check = (value: unknown, raw: Node, at: string): string[] => {
-  const schema = deref(raw)
+  let schema = deref(raw)
+  if (schema.allOf) schema = mergeAllOf(schema)
   const branches = (schema.anyOf ?? schema.oneOf) as Node[] | undefined
   if (branches) {
     const results = branches.map((branch) => check(value, branch, at))
@@ -39,12 +57,37 @@ export const check = (value: unknown, raw: Node, at: string): string[] => {
   const type = schema.type as string | undefined
   const actual = kind(value)
   if (type === 'null') return actual === 'null' ? [] : [`${at}: expected null, got ${actual}`]
-  if (type === 'integer' || type === 'number')
-    return typeof value === 'number' && (type === 'number' || Number.isInteger(value))
-      ? []
-      : [`${at}: expected ${type}, got ${actual}`]
+  if (type === 'integer' || type === 'number') {
+    if (!(typeof value === 'number' && (type === 'number' || Number.isInteger(value))))
+      return [`${at}: expected ${type}, got ${actual}`]
+    const { minimum, maximum, exclusiveMinimum, exclusiveMaximum } = schema as Record<
+      string,
+      number | undefined
+    >
+    if (minimum !== undefined && value < minimum) return [`${at}: ${value} is below ${minimum}`]
+    if (maximum !== undefined && value > maximum) return [`${at}: ${value} is above ${maximum}`]
+    if (exclusiveMinimum !== undefined && value <= exclusiveMinimum)
+      return [`${at}: ${value} is not above ${exclusiveMinimum}`]
+    if (exclusiveMaximum !== undefined && value >= exclusiveMaximum)
+      return [`${at}: ${value} is not below ${exclusiveMaximum}`]
+    return []
+  }
   if (type === 'string' || type === 'boolean') {
     if (actual !== type) return [`${at}: expected ${type}, got ${actual}`]
+    if (type === 'string') {
+      const { minLength, maxLength, pattern } = schema as {
+        minLength?: number
+        maxLength?: number
+        pattern?: string
+      }
+      const text = value as string
+      if (minLength !== undefined && text.length < minLength)
+        return [`${at}: shorter than ${minLength} characters`]
+      if (maxLength !== undefined && text.length > maxLength)
+        return [`${at}: longer than ${maxLength} characters`]
+      if (pattern !== undefined && !new RegExp(pattern).test(text))
+        return [`${at}: does not match ${pattern}`]
+    }
     const allowed = schema.enum as unknown[] | undefined
     if (allowed && !allowed.includes(value)) return [`${at}: ${String(value)} is not in ${allowed}`]
     if ('const' in schema && schema.const !== value)

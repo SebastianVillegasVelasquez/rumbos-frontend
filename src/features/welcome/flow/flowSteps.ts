@@ -120,6 +120,7 @@ export const SHARED_STEP_TYPES = [
   'video',
   'html',
   'pdf',
+  'moodle_activity',
 ] as const satisfies readonly WelcomeStepType[]
 
 // What each flow may contain, in the order the add-step menu lists it.
@@ -191,6 +192,10 @@ const validateStep = (
     case 'assessment':
       // The welcome flow carries the check-in, the closing flow the final exam.
       if (step.purpose !== PURPOSE_BY_FLOW[flowKey]) add('purpose', 'step_field_invalid')
+      break
+    case 'moodle_activity':
+      // The backend takes any integer above zero and cannot know whether it exists.
+      if (!Number.isSafeInteger(step.cmid) || step.cmid <= 0) add('cmid', 'step_field_invalid')
       break
     case 'quiz':
       if (step.cmid !== null && (!Number.isSafeInteger(step.cmid) || step.cmid <= 0))

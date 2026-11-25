@@ -28,6 +28,7 @@ import {
   type ProgressEntry,
 } from './flowReducer.ts'
 import type { FlowPersistence } from './flowPersistence.ts'
+import { StepActivity } from './StepActivity.tsx'
 import { StepHtml, StepPdf, StepQuiz, StepVideo, StepWelcome } from './FlowSteps.tsx'
 import { LazyExamRunner } from '../../assessment/LazyExamRunner.tsx'
 import { StepAssessment, type Launch } from './StepAssessment.tsx'
@@ -264,6 +265,8 @@ const WelcomeFlow = ({
         )
       case 'quiz':
         return <StepQuiz key={step.key} step={step} state={state} dispatch={dispatch} />
+      case 'moodle_activity':
+        return <StepActivity key={step.key} step={step} state={state} dispatch={dispatch} />
     }
   })()
 
@@ -281,6 +284,7 @@ const WelcomeFlow = ({
     step.type === 'video' ||
     step.type === 'quiz' ||
     step.type === 'pdf' ||
+    step.type === 'moodle_activity' ||
     step.type === 'assessment'
   // The first welcome step is a hero: centered, with one centered primary action.
   const hero = step.type === 'welcome' && state.index === 0

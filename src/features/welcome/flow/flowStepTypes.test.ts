@@ -28,9 +28,18 @@ const names: NewStepLabels = {
   pdf: 'D',
   quiz: 'Q',
   assessment: 'A',
+  moodle_activity: 'M',
 }
 const FLOWS: FlowKey[] = ['welcome', 'closing']
-const ALL_TYPES = ['welcome', 'video', 'html', 'pdf', 'quiz', 'assessment'] as const
+const ALL_TYPES = [
+  'welcome',
+  'video',
+  'html',
+  'pdf',
+  'quiz',
+  'assessment',
+  'moodle_activity',
+] as const
 const DOCUMENT = 'doc00000-0000-4000-8000-000000000001'
 
 // A deterministic source that never repeats a key: a constant would loop once its key is taken.
@@ -60,6 +69,7 @@ const valid = (
   if (step.type === 'video')
     return { ...step, video: { provider: 'youtube' as const, videoId: 'dQw4w9WgXcQ' } }
   if (step.type === 'pdf') return { ...step, assetId: DOCUMENT }
+  if (step.type === 'moodle_activity') return { ...step, cmid: 41 }
   return step
 }
 const validate = (steps: WelcomeStep[], flowKey: FlowKey) =>
@@ -151,5 +161,41 @@ describe('the step types of both flows', () => {
     const full: WelcomeStep[] = []
     for (let i = 0; i < 12; i++) full.push(valid('html', 'closing', full))
     assert.equal(canAdd(full, 'video'), 'too_many')
+  })
+
+  it('offers the Moodle activity in both flows, and a new one is not valid until one is chosen', () => {
+    for (const flowKey of FLOWS) {
+      assert.ok(STEP_TYPES_BY_FLOW[flowKey].includes('moodle_activity'), flowKey)
+      const fresh = createStep('moodle_activity', [], names, sequence(), flowKey)
+      assert.deepEqual(
+        validate([fresh], flowKey).map((p) => `${p.path}:${p.code}`),
+        ['steps[0].cmid:step_field_invalid']
+      )
+    }
+  })
+
+  it('refuses a cmid that is not a positive integer, as the contract does', () => {
+    const step = valid('moodle_activity', 'closing')
+    if (step.type !== 'moodle_activity') throw new Error('unreachable')
+    for (const cmid of [0, -1, 1.5, Number.NaN, Number.MAX_SAFE_INTEGER + 2])
+      assert.deepEqual(
+        validate([{ ...step, cmid }], 'closing').map((p) => p.code),
+        ['step_field_invalid'],
+        String(cmid)
+      )
+    assert.deepEqual(validate([{ ...step, cmid: 7 }], 'closing'), [])
+  })
+
+  it('keeps its title within 1 to 120 characters', () => {
+    const step = valid('moodle_activity', 'welcome')
+    assert.deepEqual(
+      validate([{ ...step, title: '' }], 'welcome').map((p) => p.code),
+      ['step_title_invalid']
+    )
+    assert.deepEqual(validate([{ ...step, title: 'x'.repeat(120) }], 'welcome'), [])
+    assert.deepEqual(
+      validate([{ ...step, title: 'x'.repeat(121) }], 'welcome').map((p) => p.code),
+      ['step_title_invalid']
+    )
   })
 })

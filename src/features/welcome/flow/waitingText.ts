@@ -21,6 +21,8 @@ export const waitingText = (state: FlowState): string | null => {
       return text.waiting.quiz
     case 'assessment':
       return text.waiting.assessment
+    case 'activity':
+      return text.waiting.activity
     default:
       return null
   }

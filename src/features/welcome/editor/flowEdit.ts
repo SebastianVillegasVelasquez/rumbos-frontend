@@ -19,6 +19,7 @@ export interface NewStepLabels {
   pdf: string
   quiz: string
   assessment: string
+  moodle_activity: string
 }
 
 export type AddRefusal = 'too_many' | 'quiz_too_many' | 'welcome_exists' | 'assessment_exists'
@@ -67,6 +68,9 @@ export const createStep = (
       return { ...common, type, assetId: '', ack: null, minSeconds: 0 }
     case 'assessment':
       return { ...common, type, purpose: flowKey === 'closing' ? 'final' : 'check_in' }
+    case 'moodle_activity':
+      // No activity chosen yet: 0 is refused by the validation until the editor picks one.
+      return { ...common, type, cmid: 0 }
     case 'quiz':
       return { ...common, type, cmid: null, intro: null, outcomeAbove: null, outcomeBelow: null }
   }

@@ -5,7 +5,15 @@ import { addStep, createStep, moveStep } from '../editor/flowEdit.ts'
 import { serializeAppearance } from '../welcomeWire.ts'
 import { validateFlow } from './flowSteps.ts'
 
-const names = { welcome: 'B', video: 'V', html: 'T', pdf: 'D', quiz: 'Q', assessment: 'A' }
+const names = {
+  welcome: 'B',
+  video: 'V',
+  html: 'T',
+  pdf: 'D',
+  quiz: 'Q',
+  assessment: 'A',
+  moodle_activity: 'M',
+}
 const closing = (steps: MapWelcome['steps']): MapWelcome => ({
   enabled: true,
   title: null,

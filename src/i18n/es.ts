@@ -377,6 +377,7 @@ export const es = {
       pdf: 'Documento',
       quiz: 'Evaluación',
       assessment: 'Evaluación',
+      moodle_activity: 'Actividad',
     },
     stepLine: (current: number, total: number, kind: string) =>
       `Paso ${current} de ${total} · ${kind}`,
@@ -417,6 +418,28 @@ export const es = {
       video: 'Termina el video para continuar.',
       quiz: 'Termina la evaluación para continuar.',
       assessment: 'Termina la evaluación para continuar.',
+      activity: 'Abre la actividad y ciérrala para continuar.',
+    },
+    // The step that opens an activity of the Moodle course (contract v5.11).
+    activity: {
+      open: 'Abrir',
+      opening: 'Abriendo…',
+      reopen: 'Abrir de nuevo',
+      retry: 'Reintentar',
+      messages: {
+        hint: 'Se abre sobre esta pantalla. Ciérrala cuando termines y podrás continuar.',
+        open: 'La actividad está abierta. Ciérrala para continuar.',
+        seen: 'Ya viste esta actividad.',
+        not_found: 'Actividad no disponible. Ya no está en el curso; puedes continuar.',
+        forbidden: 'No tienes acceso a esta actividad en este momento. Inténtalo de nuevo.',
+        unsupported: 'Este tipo de actividad no se puede abrir desde aquí. Puedes continuar.',
+        no_host: 'Esta pantalla no puede abrir las actividades del curso. Puedes continuar.',
+        silent: 'Moodle no respondió. Inténtalo de nuevo.',
+      },
+      escapeHint: 'Si el problema sigue, puedes continuar y avisar a tu docente.',
+      escape: 'Continuar de todos modos',
+      cardLabel: (title: string) => `Actividad del curso: ${title}`,
+      openLabel: (title: string) => `Abrir ${title}`,
     },
     video: {
       play: 'Reproducir video',
@@ -1017,6 +1040,7 @@ export const es = {
         pdf: 'Documento PDF',
         quiz: 'Evaluación de Moodle',
         assessment: 'Evaluación de Rumbos (check-in)',
+        moodle_activity: 'Actividad de Moodle',
       },
       newTitles: {
         welcome: 'Bienvenida',
@@ -1025,6 +1049,7 @@ export const es = {
         pdf: 'Documento',
         quiz: 'Evaluación',
         assessment: 'Evaluación de entrada',
+        moodle_activity: 'Actividad',
       },
       copySuffix: '(copia)',
       refusals: {
