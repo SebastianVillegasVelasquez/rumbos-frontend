@@ -20,7 +20,7 @@ import {
 } from '../../course-map/data/types.ts'
 import { API_BASE_URL } from '../../course-map/data/client.ts'
 import { assetsOrigin, htmlStepFrameAttributes } from '../flow/htmlStepDocument.ts'
-import { documentErrorKey, type DocumentErrorKey } from './documentErrors.ts'
+import { documentErrorKey, documentTitle, type DocumentErrorKey } from './documentErrors.ts'
 import { applyTemplate, type TemplateId } from './flowEdit.ts'
 
 const text = es.studio.flow
@@ -318,7 +318,7 @@ export const PdfEditor = ({ step, onChange, problems }: EditorProps<WelcomePdfSt
       return
     }
     create.mutate(
-      { file, kind: 'document', rightsDeclared: true },
+      { file, kind: 'document', title: documentTitle(file.name), rightsDeclared: true },
       {
         onSuccess: ({ asset }) => onChange({ assetId: asset.id }),
         onError: (failure) => setError(documentErrorKey(failure)),

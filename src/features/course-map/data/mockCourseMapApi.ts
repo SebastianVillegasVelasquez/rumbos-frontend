@@ -1440,6 +1440,10 @@ const createDocumentAsset = async ({
       'document_rights_declaration_required',
       'Debes declarar que tienes derecho a usar este documento'
     )
+  // The backend refuses a document without a title (a blank one included), as it does one
+  // over 200 characters; the mock must not invent one from the file name or the bug hides.
+  if (!title || !title.trim())
+    throw businessError(422, 'invalid_asset_metadata', 'Un documento necesita un título')
   if (file.size > DOCUMENT_MAX_BYTES)
     throw businessError(413, 'asset_too_large', 'El archivo supera el tamaño máximo permitido')
   validateAssetMetadata(title, null)
@@ -1456,7 +1460,7 @@ const createDocumentAsset = async ({
     kind: 'document',
     width: 0,
     height: 0,
-    title: title?.trim() || file.name.replace(/\.[^.]+$/, '').slice(0, TITLE_MAX) || 'Documento',
+    title: title.trim(),
     credit: null,
     originalFilename: file.name || null,
   })
@@ -2036,8 +2040,18 @@ const impl: Omit<CourseMapApi, TransferMethods> = {
   }: AssetCreate): Promise<AssetCreateResult> {
     if (kind === 'audio')
       return createAudioAsset({ file, title, credit, license, rightsDeclared, cover, onProgress })
-    if (kind === 'document') return createDocumentAsset({ file, title, rightsDeclared, onProgress })
     const override = mockAssetsOverride()
+    if (kind === 'document') {
+      if (override === 'down')
+        throw businessError(
+          503,
+          'uploads_disabled',
+          'Las subidas están deshabilitadas temporalmente'
+        )
+      if (override === 'quota' || assets.length >= ASSET_QUOTA)
+        throw businessError(507, 'asset_quota_exceeded', 'Se alcanzó el límite de archivos')
+      return createDocumentAsset({ file, title, rightsDeclared, onProgress })
+    }
     if (override === 'down')
       throw businessError(503, 'uploads_disabled', 'Las subidas están deshabilitadas temporalmente')
     if (override === 'quota' || assets.length >= ASSET_QUOTA) {

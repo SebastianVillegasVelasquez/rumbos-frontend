@@ -1114,7 +1114,11 @@ export const es = {
           corrupt: 'El PDF está dañado.',
           asset_too_large: 'El archivo supera el tamaño máximo (10 MB).',
           rights: 'Debes declarar que tienes derecho a usar el documento.',
-          generic: 'No se pudo subir el documento. Inténtalo de nuevo.',
+          title: 'El documento necesita un nombre. Renombra el archivo y vuelve a subirlo.',
+          quarantined: 'Este documento fue retirado y no se puede usar. Sube otro.',
+          quota:
+            'Se alcanzó el límite de archivos. Borra alguno que no uses y vuelve a intentarlo.',
+          generic: 'No se pudo subir el documento. Revisa tu conexión e inténtalo de nuevo.',
         },
       },
       kindsHint:
