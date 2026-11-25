@@ -108,6 +108,8 @@ import {
   offersClosingCard,
   stageOf,
 } from './features/assessment/closingJourney.ts'
+import { JourneySimulator } from './features/assessment/JourneySimulator.tsx'
+import { simStatus, type SimState } from './features/assessment/journeySimulation.ts'
 import { ClosingCard, JourneyOverlay } from './features/assessment/JourneyOverlay.tsx'
 import {
   availabilityFromStatus,
@@ -831,9 +833,13 @@ export function AppShell() {
     : []
   // The journey: the backend's closing status (GET /trainer/closing) says where the student
   // stands. Students only: an editor's preview never asks, and the simulation has its own.
-  const closingStatus =
+  const realStatus =
     useClosingStatus(embed !== null && immersive && exitPreview === null && closingSteps.length > 0)
       .data ?? null
+  // The editor's "Simular recorrido": a made-up status in memory, only in the student view.
+  const [sim, setSim] = useState<SimState | null>(null)
+  const simulating = exitPreview !== null && embed?.role === 'editor' && sim !== null
+  const closingStatus = simulating && sim ? simStatus(sim) : realStatus
   const queryClient = useQueryClient()
   // Finishing an activity changes the backend's answer, and the host announces it with a fresh
   // state: ask again then (the status is cheap and the server owns what it means).
@@ -856,13 +862,16 @@ export function AppShell() {
     !closingOpen &&
     !trainerOpen &&
     !journeyDismissed.includes(journeyWanted) &&
-    (journeyWanted === 'exhausted' || !wasScreenSeen(viewerStorage(), renderable.id, journeyWanted))
+    (simulating ||
+      journeyWanted === 'exhausted' ||
+      !wasScreenSeen(viewerStorage(), renderable.id, journeyWanted))
       ? journeyWanted
       : null
   const finishJourneyScreen = () => {
     if (!journeyScreen || !renderable) return
     // The congratulations come once; the "review again" screen stays until the backend restarts.
-    if (journeyScreen !== 'exhausted') markScreenSeen(viewerStorage(), renderable.id, journeyScreen)
+    if (!simulating && journeyScreen !== 'exhausted')
+      markScreenSeen(viewerStorage(), renderable.id, journeyScreen)
     setJourneyDismissed((list) => [...list, journeyScreen])
     // The CTA of a passed check-in opens the closing flow, without the final exam.
     if (journeyScreen === 'congrats_checkin') setClosingOpen(true)
@@ -1461,6 +1470,7 @@ export function AppShell() {
                         congratulations={renderable.settings.congratulations}
                         status={closingStatus}
                         onContinue={finishJourneyScreen}
+                        simulated={simulating}
                       />
                     ) : null
                   }
@@ -1520,6 +1530,15 @@ export function AppShell() {
                 >
                   {(layout) => (show3d && view3d ? render3d(view3d) : renderMapArea(layout))}
                 </StudentStage>
+                {exitPreview !== null && embed?.role === 'editor' && closingSteps.length > 0 && (
+                  <JourneySimulator
+                    state={sim}
+                    onChange={(next) => {
+                      setSim(next)
+                      setJourneyDismissed([])
+                    }}
+                  />
+                )}
                 {closingStatus &&
                   offersClosingCard(closingStatus) &&
                   !closingOpen &&

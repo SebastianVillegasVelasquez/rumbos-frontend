@@ -20,6 +20,19 @@ export const esCongratulations = {
   },
   screenLabel: 'Felicitaciones',
   // The journey screens around it.
+  simulator: {
+    heading: 'Simular recorrido',
+    banner: 'Simulación: no se guarda ni cuenta',
+    start: 'Empezar simulación',
+    scenarioA: 'Aprobó el diagnóstico',
+    scenarioB: 'No aprobó el diagnóstico',
+    allDone: 'Simular todas las actividades completadas',
+    passAttempt: 'Intento de la final: aprobar',
+    failAttempt: 'Intento de la final: no aprobar',
+    attempts: (used: number, max: number) => `Intentos: ${used} de ${max}`,
+    reset: 'Reiniciar simulación',
+    exit: 'Salir de la simulación',
+  },
   journey: {
     exhaustedTitle: 'Toca repasar el contenido',
     exhaustedBody:
