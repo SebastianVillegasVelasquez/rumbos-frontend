@@ -4,8 +4,11 @@ import { Button } from '../../../components/ui/Button.tsx'
 import { es } from '../../../i18n/es.ts'
 import type { WelcomeMoodleActivityStep } from '../../course-map/data/types.ts'
 import { useEmbed } from '../../embed/EmbedContext.ts'
-import { useActivityView } from '../../embed/hostActivities.ts'
-import { useHostActivityAvailable } from '../../embed/hostCapabilities.ts'
+import { useActivityList, useActivityView } from '../../embed/hostActivities.ts'
+import {
+  useHostActivitiesListable,
+  useHostActivityAvailable,
+} from '../../embed/hostCapabilities.ts'
 import { ACTIVITY_OPEN_WAIT_MS, activityStepModel } from './activityStepView.ts'
 import type { FlowEvent, FlowState } from './flowReducer.ts'
 import { FlowStatus } from './FlowStatus.tsx'
@@ -28,6 +31,17 @@ export const StepActivity = ({
   const embed = useEmbed()
   const hostCanOpen = useHostActivityAvailable()
   const view = useActivityView(step.cmid)
+  const list = useActivityList()
+  // The editor's preview shows which activity the step points at (never the student's card).
+  const listable = useHostActivitiesListable()
+  const requestActivities = embed?.requestActivities
+  useEffect(() => {
+    if (embed?.mode === 'editor' && listable && list.status === 'idle') requestActivities?.()
+  }, [embed?.mode, listable, list.status, requestActivities])
+  const activityName =
+    embed?.mode === 'editor' && list.status === 'ready'
+      ? (list.items.find((item) => item.cmid === step.cmid)?.name ?? null)
+      : null
   const [silentFor, setSilentFor] = useState<number | null>(null)
 
   // The host got the request and never answered: say so and give the button back.
@@ -67,6 +81,9 @@ export const StepActivity = ({
         className="border-soft flex flex-col items-start gap-3 rounded-lg bg-surface p-4 text-ink"
       >
         <p className="text-lg font-bold">{step.title}</p>
+        {activityName !== null && (
+          <p className="text-sm font-semibold text-ink-soft">{text.activityName(activityName)}</p>
+        )}
         {label !== null && (
           <Button
             variant={model.seen ? 'surface' : 'secondary'}

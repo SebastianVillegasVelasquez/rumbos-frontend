@@ -60,6 +60,7 @@ import {
   HtmlEditor,
   PdfEditor,
   QuizEditor,
+  ActivityEditor,
   VideoEditor,
   WelcomeEditor,
 } from './StepEditors.tsx'
@@ -603,6 +604,9 @@ const StepCard = ({
           {step.type === 'html' && <HtmlEditor step={step} onChange={patch} problems={problems} />}
           {step.type === 'pdf' && <PdfEditor step={step} onChange={patch} problems={problems} />}
           {step.type === 'assessment' && <AssessmentEditor {...assessment} />}
+          {step.type === 'moodle_activity' && (
+            <ActivityEditor step={step} onChange={patch} problems={problems} />
+          )}
           {step.type === 'quiz' && (
             <QuizEditor step={step} onChange={patch} problems={problems} activities={activities} />
           )}
