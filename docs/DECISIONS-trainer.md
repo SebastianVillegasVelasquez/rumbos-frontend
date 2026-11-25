@@ -472,8 +472,15 @@ and one stale input; everything else already reads the API.
   read is not in the contract). The stage is read from `outcome.final.status`; the client never compares a score.
 - **Contract test helper.** The checker now merges `allOf` and enforces bounds, lengths and patterns.
 
-### Not done yet (see the report)
+### Journeys, congratulations and simulation
 
-Congratulations screen and editor, journey wiring in the app (card "Continuar al cierre", exhausted screen) and the
-editor's full-journey simulation are not built. The exhausted screen will do nothing on the client: the restart is
-the backend's and the plugin's (C4).
+- The journey is read only from `GET /trainer/closing` (`outcome.final.status`); no score is compared on the client.
+- A passed check-in drops the final step from the closing flow and its congratulations CTA opens that flow.
+- The "Continuar al cierre" card shows only when the final is required and the backend says `available`; it never
+  opens the closing by itself.
+- Congratulations show once per map and screen (remembered in local storage); the exhausted screen stays until the
+  backend restarts the course, and performs nothing: the restart belongs to the backend and the plugin (C4).
+- The status is asked again when an exam ends and when the host pushes a new state.
+- Congratulations text is plain text, rendered as text; only `{score}` and `{threshold}` are substituted.
+- "Simular recorrido" builds a made-up `ClosingStatus` in memory and feeds the same journey code; it makes no
+  request, saves nothing and is only offered to editors in the student view.
