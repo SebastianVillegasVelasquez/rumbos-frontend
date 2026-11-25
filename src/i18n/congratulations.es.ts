@@ -19,6 +19,23 @@ export const esCongratulations = {
     },
   },
   screenLabel: 'Felicitaciones',
+  // The journey screens around it.
+  journey: {
+    exhaustedTitle: 'Toca repasar el contenido',
+    exhaustedBody:
+      'Usaste los tres intentos de la evaluación final. Vas a volver a ver todo el contenido desde el principio, y luego podrás cerrar el curso.',
+    exhaustedNote:
+      'El reinicio lo hace Moodle, no esta pantalla. Mientras tanto, avisa a tu docente si no ves el contenido de nuevo.',
+    exhaustedCta: 'Volver al mapa',
+    closingCardTitle: 'Terminaste todo el contenido',
+    closingCardBody: 'Ya puedes pasar al cierre del curso.',
+    closingCardCta: 'Continuar al cierre',
+    closingRemaining: (left: number) =>
+      left === 1
+        ? 'Te falta 1 actividad para el cierre.'
+        : `Te faltan ${left} actividades para el cierre.`,
+    attempts: (used: number, max: number) => `Intento ${used} de ${max}`,
+  },
   // Said to a screen reader when the screen appears.
   announce: (title: string) => `${title}`,
   editor: {
@@ -39,6 +56,7 @@ export const esCongratulations = {
     previewScore: '85',
     previewThreshold: '70',
     reset: 'Usar el texto de Rumbos',
+    previewLabel: 'Vista previa de la pantalla',
     tooLong: 'El texto es demasiado largo.',
   },
 } as const

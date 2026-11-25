@@ -422,6 +422,7 @@ const defaultSettings = (mode: MapSettings['mode']): MapSettings => ({
   // ?mockTrainer=1 turns the practice trainer on (the e2e suite does).
   trainer: queryParam('mockTrainer') ? { enabled: true, language: 'en', level: 'A1' } : null,
   assessments: null,
+  congratulations: null,
 })
 
 // The scenes this "backend" accepts. A scene is hand-authored with a fixed

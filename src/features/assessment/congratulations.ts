@@ -1,4 +1,5 @@
 import { esCongratulations } from '../../i18n/congratulations.es.ts'
+import type { MapCongratulationsText, MapSettings } from '../course-map/data/types.ts'
 
 // The congratulations screen's text. What the editor wrote (plain text, `MapSettings.congratulations`)
 // or, field by field, the default copy; then `{score}` and `{threshold}` replaced by the app.
@@ -91,4 +92,27 @@ export const resolveCongratulations = (
     body: pick(custom?.body, CONGRATULATIONS_LIMITS.body, true, fallback.body),
     ctaLabel: pick(custom?.ctaLabel, CONGRATULATIONS_LIMITS.ctaLabel, false, fallback.ctaLabel),
   }
+}
+
+// What a field holds after an edit: empty text is "use the default", which is null on the wire,
+// and a purpose with nothing left is null; with both empty the whole key is null.
+export const setCongratulationsField = (
+  settings: MapSettings,
+  purpose: CongratulationsPurpose,
+  field: keyof MapCongratulationsText,
+  value: string
+): MapSettings => {
+  const current = settings.congratulations?.[purpose] ?? {}
+  const next: MapCongratulationsText = { ...current, [field]: value === '' ? null : value }
+  const empty = Object.values(next).every((item) => item === null || item === undefined)
+  const all = { ...(settings.congratulations ?? {}), [purpose]: empty ? null : next }
+  return { ...settings, congratulations: !all.checkin && !all.final ? null : all }
+}
+
+export const clearCongratulations = (
+  settings: MapSettings,
+  purpose: CongratulationsPurpose
+): MapSettings => {
+  const all = { ...(settings.congratulations ?? {}), [purpose]: null }
+  return { ...settings, congratulations: !all.checkin && !all.final ? null : all }
 }

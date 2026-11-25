@@ -112,6 +112,19 @@ export interface MapSettings {
   // student's.
   trainer?: MapTrainer | null
   assessments?: MapAssessments | null
+  // What the congratulations screens say, per purpose; each field null is the default copy.
+  congratulations?: MapCongratulations | null
+}
+
+export interface MapCongratulationsText {
+  title?: string | null
+  body?: string | null
+  ctaLabel?: string | null
+}
+
+export interface MapCongratulations {
+  checkin?: MapCongratulationsText | null
+  final?: MapCongratulationsText | null
 }
 
 export type TrainerLevel = 'A1' | 'A2' | 'B1' | 'B2'

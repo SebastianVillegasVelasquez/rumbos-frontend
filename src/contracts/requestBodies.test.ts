@@ -156,6 +156,24 @@ describe('request bodies against openapi.json', () => {
     )
   })
 
+  it('PUT /course-maps/{id}/appearance: the congratulations texts, set and null', async () => {
+    const schema = requestSchema('PUT', '/course-maps/{course_map_id}/appearance')
+    const custom = {
+      ...editedSettings(),
+      congratulations: {
+        checkin: { title: '¡Bravo!', body: 'Sacaste {score} de {threshold}.', ctaLabel: null },
+        final: null,
+      },
+    }
+    assert.deepEqual(check(await putAppearance(custom), schema, 'body'), [])
+    assert.deepEqual(
+      (lastBody() as { settings: { congratulations: unknown } }).settings.congratulations,
+      custom.congratulations
+    )
+    const none = { ...editedSettings(), congratulations: null }
+    assert.deepEqual(check(await putAppearance(none), schema, 'body'), [])
+  })
+
   it('PUT /course-maps/{id}/appearance: a map whose assessments were never set', async () => {
     const schema = requestSchema('PUT', '/course-maps/{course_map_id}/appearance')
     const plain = { ...editedSettings(), assessments: null, welcome: undefined }

@@ -1,10 +1,13 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
+import type { MapSettings } from '../course-map/data/types.ts'
 import { esCongratulations } from '../../i18n/congratulations.es.ts'
 import {
   CONGRATULATIONS_LIMITS,
   formatScore,
+  clearCongratulations,
   resolveCongratulations,
+  setCongratulationsField,
   substitute,
 } from './congratulations.ts'
 
@@ -115,5 +118,34 @@ describe('a hostile text stays text', () => {
   })
   it('does not let a placeholder in the value break out either', () => {
     assert.equal(substitute('{score}', { score: '<b>1</b>', threshold: 1 }), '')
+  })
+})
+
+describe('editing the congratulations settings', () => {
+  const base = { schemaVersion: 1 } as unknown as MapSettings
+  it('stores a field, and an emptied field goes back to null (the default)', () => {
+    const one = setCongratulationsField(base, 'checkin', 'title', 'Hola')
+    assert.deepEqual(one.congratulations, { checkin: { title: 'Hola' } })
+    const two = setCongratulationsField(one, 'checkin', 'body', 'Cuerpo')
+    assert.deepEqual(two.congratulations?.checkin, { title: 'Hola', body: 'Cuerpo' })
+    const back = setCongratulationsField(two, 'checkin', 'title', '')
+    assert.deepEqual(back.congratulations?.checkin, { title: null, body: 'Cuerpo' })
+  })
+  it('a purpose with every field empty is null, and both empty make the whole key null', () => {
+    const set = setCongratulationsField(base, 'final', 'ctaLabel', 'Listo')
+    assert.equal(setCongratulationsField(set, 'final', 'ctaLabel', '').congratulations, null)
+    assert.equal(clearCongratulations(set, 'final').congratulations, null)
+  })
+  it('keeps the other purpose untouched', () => {
+    const both = setCongratulationsField(
+      setCongratulationsField(base, 'checkin', 'title', 'A'),
+      'final',
+      'title',
+      'B'
+    )
+    assert.deepEqual(clearCongratulations(both, 'final').congratulations, {
+      checkin: { title: 'A' },
+      final: null,
+    })
   })
 })
