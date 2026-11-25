@@ -28,6 +28,8 @@ import {
   type ProgressEntry,
 } from './flowReducer.ts'
 import type { FlowPersistence } from './flowPersistence.ts'
+import { useQueryClient } from '@tanstack/react-query'
+import { CLOSING_STATUS_KEY } from '../../assessment/useClosingStatus.ts'
 import { StepActivity } from './StepActivity.tsx'
 import { StepHtml, StepPdf, StepQuiz, StepVideo, StepWelcome } from './FlowSteps.tsx'
 import { LazyExamRunner } from '../../assessment/LazyExamRunner.tsx'
@@ -89,6 +91,7 @@ const WelcomeFlow = ({
   closingPreviewSteps,
 }: WelcomeFlowProps) => {
   const dataSaver = useDataSaver().active
+  const queryClient = useQueryClient()
   // The editing role (a teacher or manager) is usually not a student, so Moodle has
   // no attempt of theirs to find: a quiz step never blocks them.
   const embed = useEmbed()
@@ -327,7 +330,11 @@ const WelcomeFlow = ({
                 : () => setClosingOpen(true)
           }
           // Submitted or expired, whatever the result: the check-in is a baseline.
-          onFinished={() => dispatch({ type: 'assessment-done' })}
+          onFinished={() => {
+            dispatch({ type: 'assessment-done' })
+            // The backend decides what the result means for the journey: ask again.
+            void queryClient.invalidateQueries({ queryKey: CLOSING_STATUS_KEY })
+          }}
           onExit={() => {
             // Leaving after a result goes on; leaving before one returns to the step.
             if (state.assessment[step.key]) dispatch({ type: 'next' })
