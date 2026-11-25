@@ -3,6 +3,13 @@ import { ApiError, setAuthHooks } from '../course-map/data/client.ts'
 import type { AuthRole, LaunchResult } from '../course-map/data/types.ts'
 import type { HostBridge } from './hostBridge.ts'
 import { setHostCourseName } from './hostCourse.ts'
+import {
+  clearHostActivities,
+  setHostActivities,
+  setHostActivityClosed,
+  setHostActivityOpenFailed,
+  setHostActivityOpened,
+} from './hostActivities.ts'
 import { notifyHostTutorClosed, setHostCapabilities } from './hostCapabilities.ts'
 import { setHostFullscreen } from './hostFullscreen.ts'
 import { setHostState } from './hostState.ts'
@@ -207,6 +214,19 @@ export const createEmbedSession = (bridge: HostBridge): EmbedSession => {
       case 'rumbos:host-quiz-result':
         if (identity) setHostQuizResult(message)
         return
+      case 'rumbos:host-activities':
+        // The list is for the map editor's picker; a student session drops it.
+        if (identity?.role === 'editor' && hostMode === 'editor') setHostActivities(message)
+        return
+      case 'rumbos:host-activity-opened':
+        if (identity) setHostActivityOpened(message.cmid)
+        return
+      case 'rumbos:host-activity-open-failed':
+        if (identity) setHostActivityOpenFailed(message.cmid, message.reason)
+        return
+      case 'rumbos:host-activity-closed':
+        if (identity) setHostActivityClosed(message.cmid)
+        return
       case 'rumbos:host-launch':
         // Only an answer to our own request-launch counts.
         if (relaunchWaiter) {
@@ -243,6 +263,7 @@ export const createEmbedSession = (bridge: HostBridge): EmbedSession => {
         setHostOverlayOpen(false)
         clearHostStats()
         clearHostFlow()
+        clearHostActivities()
         initHandled = false
         identity = null
         phase = { name: 'connecting' }

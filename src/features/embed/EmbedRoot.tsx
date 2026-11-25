@@ -18,6 +18,7 @@ import {
 import { useHostMoodleState } from './hostMoodleState.ts'
 import { isHostOverlayOpen, subscribeHostOverlay } from './hostOverlay.ts'
 import { getHostStateReceivedCount } from './hostState.ts'
+import { markActivityListLoading, markActivityOpening } from './hostActivities.ts'
 import { createHostReports } from './hostReports.ts'
 import { createStateRequester } from './stateRequester.ts'
 import type { EmbedErrorCode } from './protocol.ts'
@@ -142,6 +143,16 @@ const EmbedSessionView = ({ hostOrigin, bridge }: { hostOrigin: string; bridge: 
             requestState,
             requestFullscreen: (on) => bridge.send({ type: 'rumbos:request-fullscreen', v: 1, on }),
             openTutor: () => bridge.send({ type: 'rumbos:tutor-open', v: 1 }),
+            openFlowActivity: (cmid) => {
+              markActivityOpening(cmid)
+              bridge.send({ type: 'rumbos:activity-open', v: 1, cmid })
+            },
+            requestActivities: () => {
+              // Editor mode only; the host answers a student with `capability`.
+              if (mode !== 'editor') return
+              markActivityListLoading()
+              bridge.send({ type: 'rumbos:request-activities', v: 1 })
+            },
             requestStats: (groupId) => {
               // Editor mode only; the host would refuse a student anyway.
               if (mode === 'editor')

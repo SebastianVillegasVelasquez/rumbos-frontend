@@ -23,6 +23,11 @@ export interface EmbedContextValue {
   // Contract v5.10: ask the host to open the virtual tutor. No URL and no payload; only
   // offered when the host announced capabilities.tutor.
   openTutor: () => void
+  // Contract v5.11: ask the host to open a course activity in its overlay (the cmid only; the
+  // host validates it and builds the address). Only offered when capabilities.activity is on.
+  openFlowActivity: (cmid: number) => void
+  // Contract v5.11, editor mode: ask the host for the course's activities (capabilities.activities).
+  requestActivities: () => void
   // Contract v5.5. Idempotent: safe to call from an effect on every render.
   reportNoContent: (reason: NoContentReason) => void
   reportPreferredSize: (aspectRatio: number) => void

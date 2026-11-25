@@ -62,18 +62,33 @@ export interface CourseState {
 
 export type HostMode = 'student' | 'editor'
 
-// Contract v5.10, additive: what the host can do for the app. Absent from a host that
-// predates it, and each flag reads false unless it is exactly `true`, so a newer value
-// this app does not understand never turns anything on.
+// Contract v5.10, additive (v5.11 adds two): what the host can do for the app. Absent from a
+// host that predates it, and each flag reads false unless it is exactly `true`, so a newer
+// value this app does not understand never turns anything on.
 export interface HostCapabilities {
   // The host can open the virtual tutor (a page only the host's origin may frame).
   tutor: boolean
+  // Contract v5.11, announced only to users who may edit the map: the host can list the
+  // course's activities for the step picker.
+  activities: boolean
+  // Contract v5.11, announced to everyone: the host can open a course activity in its overlay.
+  activity: boolean
 }
 
-export const NO_CAPABILITIES: HostCapabilities = { tutor: false }
+export const NO_CAPABILITIES: HostCapabilities = {
+  tutor: false,
+  activities: false,
+  activity: false,
+}
 
 export const parseCapabilities = (value: unknown): HostCapabilities =>
-  isRecord(value) ? { tutor: value.tutor === true } : NO_CAPABILITIES
+  isRecord(value)
+    ? {
+        tutor: value.tutor === true,
+        activities: value.activities === true,
+        activity: value.activity === true,
+      }
+    : NO_CAPABILITIES
 
 export interface HostInitMessage {
   type: 'rumbos:host-init'
@@ -226,6 +241,47 @@ export type HostQuizResultMessage = {
   cmid: number
 } & ({ result: QuizResult; error?: undefined } | { error: QuizResultError; result?: undefined })
 
+// Contract v5.11: the course activities a flow step may show, for a map editor. Exactly one of
+// `items` and `error` is set. `name` is the activity's own name: untrusted plain text, never
+// markup. `visible: false` means hidden from students, so the editor sees a step would fail.
+export interface HostActivityItem {
+  cmid: number
+  name: string
+  modname: string
+  visible: boolean
+}
+
+export type HostActivitiesError = 'capability' | 'unavailable'
+
+export type HostActivitiesMessage = { type: 'rumbos:host-activities'; v: 1 } & (
+  | { items: HostActivityItem[]; error?: undefined }
+  | { items?: undefined; error: HostActivitiesError }
+)
+
+// Why the host could not open an activity (contract v5.11). `not_found` also answers an id
+// that does not exist, so ids cannot be probed.
+export type ActivityOpenReason = 'not_found' | 'forbidden' | 'unsupported'
+
+export interface HostActivityOpenedMessage {
+  type: 'rumbos:host-activity-opened'
+  v: 1
+  cmid: number
+}
+
+export interface HostActivityOpenFailedMessage {
+  type: 'rumbos:host-activity-open-failed'
+  v: 1
+  cmid: number
+  reason: ActivityOpenReason
+}
+
+// Whoever closed the overlay (button, Escape, the page): the student has seen the activity.
+export interface HostActivityClosedMessage {
+  type: 'rumbos:host-activity-closed'
+  v: 1
+  cmid: number
+}
+
 export type HostMessage =
   | HostFlowProgressMessage
   | HostQuizResultMessage
@@ -236,6 +292,10 @@ export type HostMessage =
   | HostFullscreenMessage
   | HostOverlayMessage
   | HostTutorClosedMessage
+  | HostActivitiesMessage
+  | HostActivityOpenedMessage
+  | HostActivityOpenFailedMessage
+  | HostActivityClosedMessage
 
 // Why the app gave up. The plugin uses it to fall back to the standard course
 // content, so a student is never left on a dead page.
@@ -291,6 +351,11 @@ export type AppMessage =
   // Contract v5.10: ask the host to open the virtual tutor. No URL, no payload: the
   // host owns what it opens, and the app never chooses it.
   | { type: 'rumbos:tutor-open'; v: 1 }
+  // Contract v5.11: ask for the course's activities (a map editor, with capabilities.activities).
+  | { type: 'rumbos:request-activities'; v: 1 }
+  // Contract v5.11: open one course activity in the host's overlay (capabilities.activity). Only
+  // the cmid travels: the host validates it and builds the address itself, never the app.
+  | { type: 'rumbos:activity-open'; v: 1; cmid: number }
   | { type: 'rumbos:error'; v: 1; code: ReportedErrorCode; detail?: string }
   // Contract v5.5: the student has nothing to see, so the host falls back to
   // the standard course content.
@@ -348,6 +413,10 @@ export const toWireMessage = (message: AppMessage): unknown => {
   }
   // Never anything but the type: the host owns what it opens.
   if (message.type === 'rumbos:tutor-open') return { type: message.type, v: 1 }
+  if (message.type === 'rumbos:request-activities') return { type: message.type, v: 1 }
+  // The cmid and nothing else, whatever the object carried: no address crosses.
+  if (message.type === 'rumbos:activity-open')
+    return isPositiveId(message.cmid) ? { type: message.type, v: 1, cmid: message.cmid } : null
   if (message.type === 'rumbos:preferred-size') {
     const aspectRatio = clampAspectRatio(message.aspectRatio)
     return aspectRatio === null ? null : { ...message, aspectRatio }
@@ -570,6 +639,19 @@ const parseFlowItem = (value: unknown): FlowProgressItem | null =>
       }
     : null
 
+const MAX_ACTIVITY_ITEMS = 500
+const MAX_ACTIVITY_NAME_LENGTH = 255
+
+const parseActivityItem = (value: unknown): HostActivityItem | null => {
+  if (!isRecord(value) || !isPositiveId(value.cmid) || typeof value.visible !== 'boolean')
+    return null
+  const name = cleanText(value.name, MAX_ACTIVITY_NAME_LENGTH)
+  const modname = cleanText(value.modname, MAX_SHORT_LENGTH)
+  return name === null || modname === null
+    ? null
+    : { cmid: value.cmid, name, modname, visible: value.visible }
+}
+
 const parseQuizResult = (value: unknown): QuizResult | null => {
   if (!isRecord(value)) return null
   const { attempts, finishedAttempts, inProgress, percent, pendingGrading, passedThreshold } = value
@@ -666,6 +748,28 @@ export const parseHostMessage = (data: unknown): HostMessage | null => {
       const result = parseQuizResult(data.result)
       return result ? { type: 'rumbos:host-quiz-result', v: 1, cmid: data.cmid, result } : null
     }
+    case 'rumbos:host-activities': {
+      if (data.error === 'capability' || data.error === 'unavailable')
+        return { type: 'rumbos:host-activities', v: 1, error: data.error }
+      if (data.error !== undefined && data.error !== null) return null
+      const items = parseList(data.items, MAX_ACTIVITY_ITEMS, parseActivityItem)
+      return items ? { type: 'rumbos:host-activities', v: 1, items } : null
+    }
+    case 'rumbos:host-activity-opened':
+      return isPositiveId(data.cmid)
+        ? { type: 'rumbos:host-activity-opened', v: 1, cmid: data.cmid }
+        : null
+    case 'rumbos:host-activity-open-failed': {
+      if (!isPositiveId(data.cmid)) return null
+      // A reason a newer host adds reads as the plain "not found", like the plugin does.
+      const reason: ActivityOpenReason =
+        data.reason === 'forbidden' || data.reason === 'unsupported' ? data.reason : 'not_found'
+      return { type: 'rumbos:host-activity-open-failed', v: 1, cmid: data.cmid, reason }
+    }
+    case 'rumbos:host-activity-closed':
+      return isPositiveId(data.cmid)
+        ? { type: 'rumbos:host-activity-closed', v: 1, cmid: data.cmid }
+        : null
     case 'rumbos:host-stats': {
       if (data.error === 'capability' || data.error === 'unavailable')
         return { type: 'rumbos:host-stats', v: 1, stats: null, error: data.error }
