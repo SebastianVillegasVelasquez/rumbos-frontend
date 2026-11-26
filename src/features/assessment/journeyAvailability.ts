@@ -1,5 +1,5 @@
 import type { ClosingAvailability } from '../course-map/data/types.ts'
-import { stageOf, type JourneyStage } from './closingJourney.ts'
+import { stageOf } from './closingJourney.ts'
 import type { ClosingStatus } from './closingStatus.ts'
 
 // What the HUD's "Cierre" button says, from the backend's closing status. The backend's reasons
@@ -34,15 +34,6 @@ export const availabilityFromStatus = (
 // The screens that appear once per student and journey step (the congratulations after a pass,
 // the "review again" after three failures), remembered so they do not come back on every visit.
 export type JourneyScreen = 'congrats_checkin' | 'congrats_final' | 'exhausted'
-
-export const screenFor = (stage: JourneyStage): JourneyScreen | null =>
-  stage === 'passed_checkin'
-    ? 'congrats_checkin'
-    : stage === 'final_passed'
-      ? 'congrats_final'
-      : stage === 'exhausted'
-        ? 'exhausted'
-        : null
 
 const key = (mapId: string, screen: JourneyScreen) => `rumbos:journey:${mapId}:${screen}`
 

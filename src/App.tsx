@@ -113,18 +113,20 @@ import { readResume } from './features/hud/resume.ts'
 import { useHostCourseName } from './features/embed/hostCourse.ts'
 import { LazyWelcomeCurtain } from './features/welcome/LazyWelcomeCurtain.tsx'
 import { LazyWelcomeFlow } from './features/welcome/flow/LazyWelcomeFlow.tsx'
+import { closingStepsFor } from './features/assessment/closingJourney.ts'
 import {
-  closingStepsFor,
-  offersClosingCard,
-  stageOf,
-} from './features/assessment/closingJourney.ts'
+  closingFlowStateOf,
+  closingPlaceOf,
+  entriesToOpenWith,
+  type ClosingFlowState,
+} from './features/assessment/closingResume.ts'
+import { useClosingProgress } from './features/assessment/useClosingProgress.ts'
 import { JourneySimulator } from './features/assessment/JourneySimulator.tsx'
 import { simStatus, type SimState } from './features/assessment/journeySimulation.ts'
 import { ClosingCard, JourneyOverlay } from './features/assessment/JourneyOverlay.tsx'
 import {
   availabilityFromStatus,
   markScreenSeen,
-  screenFor,
   wasScreenSeen,
   type JourneyScreen,
 } from './features/assessment/journeyAvailability.ts'
@@ -151,6 +153,7 @@ import type {
   RenderableBubble,
   RenderableBubble as Bubble,
   ResolvedBubble,
+  WelcomeStep,
 } from './features/course-map/data/types.ts'
 import { useBackendMoodleState } from './features/course-map/moodle/backendMoodleState.ts'
 import { MoodleStateContext } from './features/course-map/moodle/moodleState.ts'
@@ -220,6 +223,7 @@ const isWideViewport = () => window.matchMedia('(min-width: 640px)').matches
 // A stable empty list, so a map that is still loading does not look new on
 // every render.
 const NO_BUBBLES: RenderableBubble[] = []
+const NO_STEPS: WelcomeStep[] = []
 
 function App() {
   return (
@@ -860,18 +864,23 @@ export function AppShell() {
     trainerWasOpen.current = false
     document.getElementById(TRAINER_BUTTON_ID)?.focus()
   }, [trainerOpen])
-  // The closing flow: opened only by the student's press on "Cierre", never over the map
-  // by itself. Its steps come from the map; the backend says when it is open (an editor in
-  // preview can always open it). Nothing about it is saved: it has no progress record yet.
+  // The closing flow. A student has no button into it: the journey brings them (see
+  // closingResume.ts), worked out again on every load. It is never opened over the map for a
+  // student who has not started it. Its steps come from the map.
   const [closingOpen, setClosingOpen] = useState(false)
   const closingSteps = renderable?.settings.closing?.enabled
-    ? (renderable.settings.closing.steps ?? [])
-    : []
-  // The journey: the backend's closing status (GET /trainer/closing) says where the student
-  // stands. Students only: an editor's preview never asks, and the simulation has its own.
-  const realStatus =
-    useClosingStatus(embed !== null && immersive && exitPreview === null && closingSteps.length > 0)
-      .data ?? null
+    ? (renderable.settings.closing.steps ?? NO_STEPS)
+    : NO_STEPS
+  // Students only: an editor's preview never asks, and the simulation has its own.
+  const studentJourney =
+    embed !== null && immersive && exitPreview === null && closingSteps.length > 0
+  const realStatus = useClosingStatus(studentJourney).data ?? null
+  const closingProgress = useClosingProgress({
+    mapId: renderable?.id ?? null,
+    steps: closingSteps,
+    enabled: studentJourney,
+    embed,
+  })
   // The editor's "Simular recorrido": a made-up status in memory, only in the student view.
   const [sim, setSim] = useState<SimState | null>(null)
   const simulating = exitPreview !== null && embed?.role === 'editor' && sim !== null
@@ -887,22 +896,33 @@ export function AppShell() {
     [queryClient]
   )
   const journeySteps = closingStepsFor(closingSteps, closingStatus)
-  const journeyWanted = screenFor(stageOf(closingStatus))
   const [journeyDismissed, setJourneyDismissed] = useState<JourneyScreen[]>([])
   const welcomeBusy =
     flowGate !== null && flowGate.state.status !== 'closed' && flowGate.state.status !== 'off'
-  const journeyScreen: JourneyScreen | null =
-    journeyWanted &&
-    renderable &&
-    !welcomeBusy &&
-    !closingOpen &&
-    !trainerOpen &&
-    !journeyDismissed.includes(journeyWanted) &&
-    (simulating ||
-      journeyWanted === 'exhausted' ||
-      !wasScreenSeen(viewerStorage(), renderable.id, journeyWanted))
-      ? journeyWanted
+  // The simulation keeps no progress: its closing counts as done once it was entered from the
+  // congratulations.
+  const closingFlowState: ClosingFlowState = simulating
+    ? journeyDismissed.includes('congrats_checkin')
+      ? 'finished'
+      : 'not_started'
+    : closingFlowStateOf(journeySteps, closingProgress.entries)
+  const closingPlace =
+    renderable && journeySteps.length > 0
+      ? closingPlaceOf({
+          status: closingStatus,
+          flow: closingFlowState,
+          seen: (screen) =>
+            journeyDismissed.includes(screen) ||
+            (!simulating && wasScreenSeen(viewerStorage(), renderable.id, screen)),
+        })
       : null
+  const journeyBlocked = welcomeBusy || trainerOpen
+  // A flow left in the middle opens again. Kept as state, so a status that changes while the
+  // student is inside (the final just passed) does not take the flow away from them.
+  if (closingPlace?.kind === 'resume' && !closingOpen && !journeyBlocked) setClosingOpen(true)
+  const journeyScreen: JourneyScreen | null =
+    closingPlace?.kind === 'screen' && !closingOpen && !journeyBlocked ? closingPlace.screen : null
+  const showClosingCard = closingPlace?.kind === 'card' && !closingOpen && !journeyBlocked
   const finishJourneyScreen = () => {
     if (!journeyScreen || !renderable) return
     // The congratulations come once; the "review again" screen stays until the backend restarts.
@@ -1432,14 +1452,23 @@ export function AppShell() {
                       flowKey="closing"
                       steps={journeySteps}
                       mode={exitPreview !== null ? 'preview' : 'normal'}
-                      entries={[]}
-                      persistence={null}
+                      entries={
+                        exitPreview !== null
+                          ? []
+                          : entriesToOpenWith(
+                              closingStatus,
+                              journeySteps,
+                              closingProgress.entries ?? []
+                            )
+                      }
+                      persistence={exitPreview !== null ? null : closingProgress.persistence}
                       documents={renderable.welcomeDocuments ?? []}
                       courseName={hostCourseName?.trim() || renderable.title}
                       imageUrl={renderable.imageUrl}
                       hasMusic={false}
-                      onFinish={() => {
+                      onFinish={(done) => {
                         setClosingOpen(false)
+                        if (exitPreview === null) closingProgress.finish(done)
                         void queryClient.invalidateQueries({ queryKey: CLOSING_STATUS_KEY })
                       }}
                     />
@@ -1518,14 +1547,9 @@ export function AppShell() {
                   }}
                 />
               )}
-              {closingStatus &&
-                offersClosingCard(closingStatus) &&
-                !closingOpen &&
-                !journeyScreen &&
-                !welcomeBusy &&
-                !trainerOpen && (
-                  <ClosingCard status={closingStatus} onOpen={() => setClosingOpen(true)} />
-                )}
+              {closingStatus && showClosingCard && (
+                <ClosingCard status={closingStatus} onOpen={() => setClosingOpen(true)} />
+              )}
             </>
           ) : show3d && renderable && view3d ? (
             render3d(view3d)

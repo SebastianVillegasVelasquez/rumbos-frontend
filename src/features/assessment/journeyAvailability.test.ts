@@ -3,12 +3,7 @@ import { describe, it } from 'node:test'
 import { specReply } from '../../contracts/openapiExample.ts'
 import { closingEntryView } from '../hud/closingEntry.ts'
 import { parseClosingStatus } from './closingStatus.ts'
-import {
-  availabilityFromStatus,
-  markScreenSeen,
-  screenFor,
-  wasScreenSeen,
-} from './journeyAvailability.ts'
+import { availabilityFromStatus, markScreenSeen, wasScreenSeen } from './journeyAvailability.ts'
 
 const status = (overrides: Record<string, unknown>) =>
   parseClosingStatus(specReply('GET', '/trainer/closing', 200, overrides))
@@ -68,28 +63,6 @@ describe('the HUD closing entry from the backend status', () => {
   })
   it('knows nothing without a status', () => {
     assert.equal(availabilityFromStatus(null), null)
-  })
-})
-
-describe('which screen a stage calls for', () => {
-  it('maps the stages that have one', () => {
-    const stage = (final: string) =>
-      screenFor(
-        (() => {
-          const s = status({ outcome: outcome(final) })
-          return s.outcome?.final.status === 'passed'
-            ? 'final_passed'
-            : s.outcome?.final.status === 'exhausted'
-              ? 'exhausted'
-              : s.outcome?.final.status === 'not_required_passed_checkin'
-                ? 'passed_checkin'
-                : 'unknown'
-        })()
-      )
-    assert.equal(stage('not_required_passed_checkin'), 'congrats_checkin')
-    assert.equal(stage('passed'), 'congrats_final')
-    assert.equal(stage('exhausted'), 'exhausted')
-    assert.equal(stage('required'), null)
   })
 })
 

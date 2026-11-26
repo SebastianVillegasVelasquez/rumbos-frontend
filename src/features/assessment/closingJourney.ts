@@ -55,11 +55,6 @@ export const closingStepsFor = (
   return rest.length > 0 ? rest : [...steps]
 }
 
-// The card on the map with "Continuar al cierre": offered once the backend says the closing may
-// open, for a student who has not passed the check-in. Never opens by itself over the map.
-export const offersClosingCard = (status: ClosingStatus | null | undefined): boolean =>
-  stageOf(status) === 'final_ready' && status?.available === true
-
 // What the student has left to finish before the closing opens, for the map's line of progress.
 export const remainingContent = (status: ClosingStatus | null | undefined): number | null => {
   const progress = status?.progress

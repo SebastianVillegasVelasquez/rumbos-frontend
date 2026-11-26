@@ -5,11 +5,10 @@ import type { WelcomeStep } from '../course-map/data/types.ts'
 import {
   closingStepsFor,
   congratulationsValues,
-  offersClosingCard,
   remainingContent,
   stageOf,
 } from './closingJourney.ts'
-import { parseClosingStatus, type ClosingStatus } from './closingStatus.ts'
+import { parseClosingStatus } from './closingStatus.ts'
 
 // GET /trainer/closing as the backend declares it (contracts/openapi.json). Every body here is
 // built from the spec and checked against it, so a drift of the contract fails in this file.
@@ -124,19 +123,6 @@ describe('the closing flow a student sees', () => {
 })
 
 describe('the card "Continuar al cierre"', () => {
-  const status = (final: string, available: boolean): ClosingStatus => ({
-    ...parsed(outcome(final)),
-    available,
-  })
-  it('is offered only when the final is required and the closing may open', () => {
-    assert.equal(offersClosingCard(status('required', true)), true)
-    assert.equal(offersClosingCard(status('required', false)), false)
-    assert.equal(offersClosingCard(status('locked', false)), false)
-    assert.equal(offersClosingCard(status('not_required_passed_checkin', true)), false)
-    assert.equal(offersClosingCard(status('passed', true)), false)
-    assert.equal(offersClosingCard(status('exhausted', false)), false)
-    assert.equal(offersClosingCard(null), false)
-  })
   it('says how much content is left from the counts alone', () => {
     assert.equal(remainingContent(parsed(outcome('locked'))), 3)
     assert.equal(remainingContent(null), null)
