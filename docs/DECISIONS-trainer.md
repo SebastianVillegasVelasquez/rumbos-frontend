@@ -484,3 +484,27 @@ and one stale input; everything else already reads the API.
 - Congratulations text is plain text, rendered as text; only `{score}` and `{threshold}` are substituted.
 - "Simular recorrido" builds a made-up `ClosingStatus` in memory and feeds the same journey code; it makes no
   request, saves nothing and is only offered to editors in the student view.
+
+## No "Cierre" button for students (branch `fix/closing-entry-journeys-only`)
+
+- **Product correction.** Students enter the closing flow only through the two journeys. The HUD button, its reasons
+  (`hud/closingEntry.ts`), its "Continuar" walk and the draft `closingAvailable` / `closingAvailability` fields are
+  removed. This supersedes D41, and D51's wording about the button. The editor keeps the button in the student view.
+- **No `outcome`, no prompt.** With `CLOSING_GATE_MODE=off` (the backend's default) `available: true` only says the
+  exam is configured; it does not say the content is done. The app offers nothing rather than guess, so **production
+  needs `enforce`** or no student reaches the closing flow.
+- **Closing progress goes to Moodle** through the existing v5.8 flow messages (no new contract), with the welcome
+  flow's fallback to a viewer-local flag when the host is silent or cannot record.
+- **A passed check-in also gets the card** once its congratulations were read and Moodle has no closing step yet.
+  Without it, a reload at that point would leave no way in.
+- **"All steps done" with the final still required shows the card.** "Terminar" opens after any submitted attempt, so
+  Moodle can hold the whole flow while the backend still asks for the final. Hiding the prompt there would lose the
+  remaining attempts. The flow then opens on the exam. It is not auto-opened, so a student can go back to the content.
+- **A passed final shows no closing prompt**, as asked, even if steps after the exam are still pending. Within the
+  same visit the student finishes them; after a reload they cannot get back to them.
+- **"Congratulations read" is only partly server state.** Neither the backend nor Moodle records it. Any closing step
+  in Moodle implies it; before that it is a flag in the browser, so on another device the screen shows once more.
+- **Optional steps leave no record** (v5.8 reports mandatory ones), so a student who only passed optional steps reads
+  as not started: they get the card, not an automatic resume.
+- **What opens by itself waits.** The level's auto-opening content and the first-run guide are held while the closing
+  flow or a journey screen is up, so a resume on a new device is not stacked under them.
