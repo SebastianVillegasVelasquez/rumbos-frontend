@@ -32,6 +32,9 @@ interface CourseLevelsProps {
   // first shows, so "Niveles" can still bring them back to it.
   resumeLevelId?: string | null
   onResumeHandled?: () => void
+  // Shown as a section of the editor (not as the course's entry screen): never
+  // opens a level by itself, a single level included.
+  embedded?: boolean
 }
 
 export const CourseLevels = ({
@@ -40,6 +43,7 @@ export const CourseLevels = ({
   onOpenLevel,
   resumeLevelId = null,
   onResumeHandled,
+  embedded = false,
 }: CourseLevelsProps) => {
   const embed = useEmbed()
   const editable = viewMode === 'edit'
@@ -69,16 +73,16 @@ export const CourseLevels = ({
   // Exactly one level opens it directly (the carousel would be pointless);
   // several (or none yet) show the carousel/empty state.
   useEffect(() => {
-    if (levels.length === 1) onOpenLevel(levels[0].id)
-  }, [levels, onOpenLevel])
+    if (!embedded && levels.length === 1) onOpenLevel(levels[0].id)
+  }, [embedded, levels, onOpenLevel])
 
   // Several levels: go straight back to the one the student left.
   useEffect(() => {
-    if (!resumeLevelId || levelsQuery.isPending) return
+    if (embedded || !resumeLevelId || levelsQuery.isPending) return
     onResumeHandled?.()
     if (levels.length > 1 && levels.some((level) => level.id === resumeLevelId))
       onOpenLevel(resumeLevelId)
-  }, [resumeLevelId, levels, levelsQuery.isPending, onOpenLevel, onResumeHandled])
+  }, [embedded, resumeLevelId, levels, levelsQuery.isPending, onOpenLevel, onResumeHandled])
 
   if (levelsQuery.isPending) {
     return (
@@ -88,7 +92,7 @@ export const CourseLevels = ({
     )
   }
 
-  if (levels.length === 1) return null // navigating away, see effect above
+  if (!embedded && levels.length === 1) return null // navigating away, see effect above
 
   return (
     <>
@@ -100,6 +104,7 @@ export const CourseLevels = ({
         />
       ) : (
         <LevelCarousel
+          layout={embedded ? 'grid' : 'carousel'}
           levels={levels}
           editable={editable}
           onOpen={onOpenLevel}

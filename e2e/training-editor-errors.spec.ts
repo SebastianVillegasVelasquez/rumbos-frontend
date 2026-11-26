@@ -41,7 +41,7 @@ const openStudio = async (page: Page, extra = '', forms: { status?: number } = {
     .click()
 }
 
-const studio = (page: Page) => app(page).locator('.fixed.inset-y-0.right-0')
+const studio = (page: Page) => app(page).getByRole('region', { name: 'Apariencia' })
 const save = (page: Page) => studio(page).getByRole('button', { name: 'Guardar', exact: true })
 const goTo = (page: Page, tab: string) =>
   studio(page).getByRole('button', { name: tab, exact: true }).click()

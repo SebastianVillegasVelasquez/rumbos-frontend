@@ -14,10 +14,8 @@ import {
   type ReactNode,
 } from 'react'
 import {
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
-  List,
   Loader2,
   Maximize2,
   TriangleAlert,
@@ -26,7 +24,21 @@ import {
 } from 'lucide-react'
 import { ActivitySidebar } from './features/course-map/components/ActivitySidebar.tsx'
 import { ActivityModal } from './features/course-map/components/ActivityModal.tsx'
-import { ActivitiesOverviewModal } from './features/course-map/components/ActivitiesOverviewModal.tsx'
+import { ActivitiesOverviewBody } from './features/course-map/components/ActivitiesOverview.tsx'
+import { EditorShell, type RailItem } from './features/editor-shell/EditorShell.tsx'
+import { ScrollRegion } from './features/editor-shell/ScrollRegion.tsx'
+import {
+  readFullscreenOnOpen,
+  readSection,
+  rememberFullscreenOnOpen,
+  rememberSection,
+  resolveSection,
+  SECTION_IDS,
+  sectionsFor,
+  spreadPlacement,
+  type SectionId,
+} from './features/editor-shell/sections.ts'
+import { useKeepStageThroughTab } from './features/embed/useKeepStageThroughTab.ts'
 import { MapsHome } from './features/course-map/components/MapsHome.tsx'
 import { CourseLevels } from './features/course-map/components/CourseLevels.tsx'
 import {
@@ -83,7 +95,6 @@ import {
   useCourseMapsByCourse,
   useCreateBubble,
   usePendingActivityIds,
-  usePublicationState,
   usePublishedCourseMap,
   usePublishedMapsByCourse,
   useSkins,
@@ -96,7 +107,6 @@ import {
   isUnreachable,
 } from './features/course-map/data/client.ts'
 import { resolveCoverUrl, resolveImageUrl } from './features/course-map/data/assets.ts'
-import { courseTitleFrom } from './features/course-map/courseTitle.ts'
 import { progressCounts } from './features/course-map/progress.ts'
 import { useResume } from './features/hud/useResume.ts'
 import { readResume } from './features/hud/resume.ts'
@@ -155,13 +165,16 @@ import {
 } from './features/embed/hostState.ts'
 import { useHostTutorAvailable } from './features/embed/hostCapabilities.ts'
 import { useHostOverlayOpen } from './features/embed/hostOverlay.ts'
-import { RESERVED_CORNER_PX, useHostFullscreen } from './features/embed/hostFullscreen.ts'
+import {
+  RESERVED_CORNER_PX,
+  getHostFullscreen,
+  useHostFullscreen,
+} from './features/embed/hostFullscreen.ts'
 import { useFullscreenEntry } from './features/embed/useFullscreenEntry.ts'
 import { useKeepStageThroughVideo } from './features/embed/useKeepStageThroughVideo.ts'
 import { useRoute, type Route } from './hooks/useRoute.ts'
 import { Wordmark } from './components/Logo.tsx'
 import { Button, IconButton } from './components/ui/Button.tsx'
-import { Popover } from './components/ui/Popover.tsx'
 import { SegmentedControl } from './components/ui/SegmentedControl.tsx'
 import { ToastProvider } from './components/ui/Toast.tsx'
 import { useToast } from './components/ui/toastContext.ts'
@@ -226,6 +239,7 @@ export function AppShell() {
   const embed = useEmbed()
   // A video leaving its own fullscreen must not take the host's stage with it.
   useKeepStageThroughVideo(embed)
+  useKeepStageThroughTab(embed)
   const fixedHome = useMemo<Route | undefined>(
     () =>
       embed ? { name: 'course', moodleCourseId: embed.courseId, forceEntry: false } : undefined,
@@ -265,8 +279,6 @@ export function AppShell() {
         }
       : null
   const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null)
-  const [isActivitiesMenuOpen, setIsActivitiesMenuOpen] = useState(false)
-  const [isActivitiesOverviewOpen, setIsActivitiesOverviewOpen] = useState(false)
   // Misiones. The side panel's state is remembered; a bottom sheet always
   // starts closed (see questsPreference).
   const [questsOpen, setQuestsOpen] = useState(
@@ -288,7 +300,15 @@ export function AppShell() {
       : initialMapView()
   )
   const [cachedNoticeDismissed, setCachedNoticeDismissed] = useState(false)
-  const [isAppearanceOpen, setIsAppearanceOpen] = useState(false)
+  // The editor's rail picks what the content area shows; the last choice is remembered.
+  const [chosenSection, setChosenSection] = useState<SectionId>(() =>
+    readSection(viewerStorage(), SECTION_IDS)
+  )
+  const [appearanceDirty, setAppearanceDirty] = useState(false)
+  // Asking the host for the stage when the editor opens is the default; the ⋯ menu turns it off.
+  const [fullscreenOnOpen, setFullscreenOnOpen] = useState(() =>
+    readFullscreenOnOpen(viewerStorage())
+  )
   const [isBackgroundPickerOpen, setIsBackgroundPickerOpen] = useState(false)
   // Written on every MapCanvas viewport tick (see onViewportChange below),
   // read once when the appearance studio's "usar vista actual" is clicked -
@@ -296,6 +316,16 @@ export function AppShell() {
   const latestViewportRef = useRef<MapInitialView | null>(null)
 
   const isEditor = viewMode === 'edit'
+  // A long editing task is better on the whole stage: ask the host once when the editor
+  // opens. Leaving it is the editor's call (the host's own control) and is never undone,
+  // except for a PDF opened in another tab (see useKeepStageThroughTab).
+  const requestStage = embed?.mode === 'editor' ? embed.requestFullscreen : null
+  const askedStageRef = useRef(false)
+  useEffect(() => {
+    if (askedStageRef.current || !requestStage || !isEditor || !fullscreenOnOpen) return
+    askedStageRef.current = true
+    if (!getHostFullscreen()) requestStage(true)
+  }, [requestStage, isEditor, fullscreenOnOpen])
   // Students and the editor's previews get the immersive stage, no header.
   const immersive = !isEditor
   const mapControlsRef = useRef<MapCanvasControls>(null)
@@ -312,6 +342,13 @@ export function AppShell() {
   const [armedBubbleId, setArmedBubbleId] = useState<string | null>(null)
   const showPublished = viewMode === 'published'
 
+  const setSection = (next: SectionId) => {
+    setChosenSection(next)
+    rememberSection(next, viewerStorage())
+    // The heat map's own section is where it gets switched on.
+    if (next === 'heat') setHeatWanted(true)
+  }
+
   const changeMapView = (next: MapViewKind) => {
     setMapView(next)
     rememberMapView(next)
@@ -326,7 +363,6 @@ export function AppShell() {
   const draftQuery = useCourseMap(draftId)
   const publishedQuery = usePublishedCourseMap(publishedId)
   const mapQuery = showPublished ? publishedQuery : draftQuery
-  const publicationState = usePublicationState(draftId)
   const createBubble = useCreateBubble(courseMapId ?? '')
   const updateBubble = useUpdateBubble(courseMapId ?? '')
   const deleteBubble = useDeleteBubble(courseMapId ?? '')
@@ -917,7 +953,7 @@ export function AppShell() {
       : activities.find((a) => a.activityId === bubble.activityId)?.modname
 
   const handleSelectBubbleFromOverview = (bubble: Bubble) => {
-    setIsActivitiesOverviewOpen(false)
+    setSection('map')
     setFocusBubbleId(bubble.id)
   }
 
@@ -931,7 +967,7 @@ export function AppShell() {
   // never for students. The numbers live in memory while it is on.
   const heatAvailable =
     embed?.role === 'editor' && embed.mode === 'editor' && courseMapId !== null && !show3d
-  const [heatWanted, setHeatWanted] = useState(false)
+  const [heatWanted, setHeatWanted] = useState(() => chosenSection === 'heat')
   const heatOn = heatAvailable && heatWanted
   const [heatOverlay, setHeatOverlay] = useState<ReadonlyMap<string, BubbleHeat> | null>(null)
   const heatSteps = useMemo<StepInput[]>(
@@ -953,6 +989,35 @@ export function AppShell() {
         : [],
     [heatOn, bubbles, resolvedByBubbleId]
   )
+
+  const placeActivity = (activityId: number, x: number, y: number) => {
+    if (pendingActivityIds.includes(activityId)) return
+    createBubble.mutate(
+      { activityId, x, y },
+      {
+        onError: (error) => {
+          if (error instanceof ApiError && error.status === 409) {
+            const title = error.detail.courseMapTitle
+            toast.show(
+              typeof title === 'string'
+                ? es.sidebar.placedInAnotherLevel(title)
+                : es.sidebar.alreadyPlaced,
+              'error'
+            )
+          }
+        },
+      }
+    )
+  }
+
+  // The map is not on screen while the list is, so a row places itself: spread over the
+  // level, so several placed in a row do not pile up on one spot.
+  const placeFromList = (activity: Activity) => {
+    const n = bubbles.length
+    const { x, y } = spreadPlacement(n)
+    placeActivity(activity.activityId, x, y)
+    toast.show(es.shell.placed(activity.name), 'success')
+  }
 
   const renderMapArea = (layout?: { guardCompact: boolean }) => {
     if (mapQuery.isPending) {
@@ -1072,25 +1137,7 @@ export function AppShell() {
             contentSupported ? (x, y) => setContentEditor({ mode: 'create', x, y }) : undefined
           }
           onEditContent={(bubble) => setContentEditor({ mode: 'edit', bubbleId: bubble.id })}
-          onActivityDrop={(activityId, x, y) => {
-            if (pendingActivityIds.includes(activityId)) return
-            createBubble.mutate(
-              { activityId, x, y },
-              {
-                onError: (error) => {
-                  if (error instanceof ApiError && error.status === 409) {
-                    const title = error.detail.courseMapTitle
-                    toast.show(
-                      typeof title === 'string'
-                        ? es.sidebar.placedInAnotherLevel(title)
-                        : es.sidebar.alreadyPlaced,
-                      'error'
-                    )
-                  }
-                },
-              }
-            )
-          }}
+          onActivityDrop={placeActivity}
           onBubbleClick={handleBubbleClick}
           getUnavailableReason={getUnavailableReason}
           getAvailability={getAvailabilityForBubble}
@@ -1153,8 +1200,22 @@ export function AppShell() {
   // nowhere to go back to.
   const goHome = embed && siblingLevels.length <= 1 ? undefined : () => navigate({ name: 'home' })
 
-  // "Guardado" needs a saved version; the level's own state says so.
-  const neverPublished = publicationState.data?.status === 'never_published'
+  // Sections this editor can open (the heat map needs the host; levels need a course).
+  const availableSections = sectionsFor({ heat: heatAvailable, levels: moodleCourseId !== null })
+  const section = resolveSection(chosenSection, availableSections)
+  const railItems: RailItem[] = availableSections.map((id) => ({
+    id,
+    badge: id === 'activities' ? unplacedCount : undefined,
+    attention: id === 'appearance' ? appearanceDirty : undefined,
+  }))
+  const openLevel = (id: string) => {
+    setSection('map')
+    navigate({ name: 'map', mapId: id })
+  }
+  const toggleFullscreenOnOpen = () => {
+    rememberFullscreenOnOpen(!fullscreenOnOpen, viewerStorage())
+    setFullscreenOnOpen(!fullscreenOnOpen)
+  }
 
   if (route.name === 'home') {
     return (
@@ -1206,356 +1267,420 @@ export function AppShell() {
     )
   }
 
-  const breadcrumb =
-    siblingLevels.length > 1 && currentLevelIndex !== -1 && renderable
-      ? es.levels.breadcrumb(
-          courseTitleFrom(siblingLevels),
-          currentLevelIndex + 1,
-          renderable.title
-        )
-      : renderable?.title
+  const mapPane = (
+    <div className="flex flex-1 overflow-hidden">
+      <main
+        className={`flex min-h-0 flex-1 flex-col overflow-hidden ${immersive ? '' : 'p-1 sm:p-1.5'}`}
+      >
+        {notices.courseDisabled && (
+          <div
+            role="status"
+            className="border-soft mb-2 flex items-start gap-2 rounded-md bg-sun-tint px-3 py-2 text-sm font-semibold text-sun-dark"
+          >
+            <TriangleAlert size={18} strokeWidth={2.5} aria-hidden className="mt-0.5 shrink-0" />
+            <span>{es.completion.disabledBanner}</span>
+          </div>
+        )}
+        {notices.guidedWithUntracked && (
+          <div
+            role="alert"
+            className="border-strong mb-2 flex items-start gap-2 rounded-md bg-danger-tint px-3 py-2 text-sm font-bold text-danger"
+          >
+            <TriangleAlert size={20} strokeWidth={2.5} aria-hidden className="mt-0.5 shrink-0" />
+            <span>
+              {es.completion.guidedWarning}{' '}
+              <span className="font-semibold">
+                {es.completion.guidedWarningCount(untrackedCount)}
+              </span>
+            </span>
+          </div>
+        )}
+        {isEditor && (
+          <p className="px-1 pb-1 text-xs font-semibold text-ink-soft">
+            {es.publication.autosaveHint}
+          </p>
+        )}
+        {moodleStatus === 'unavailable' && (
+          <div
+            role="alert"
+            className="border-soft mb-3 flex items-center justify-between gap-3 rounded-md bg-sun-tint px-4 py-2 text-sm font-semibold text-sun-dark"
+          >
+            <span>{es.moodleBanner.unavailable}</span>
+            <button
+              type="button"
+              onClick={moodle.refetchResolved}
+              className="flex min-h-[44px] shrink-0 items-center gap-1 font-bold underline-offset-2 hover:underline"
+            >
+              <RefreshCw size={16} strokeWidth={2.5} />
+              {es.moodleBanner.retry}
+            </button>
+          </div>
+        )}
+        {moodleStatus === 'cached' && !cachedNoticeDismissed && (
+          <div className="border-soft mb-3 flex items-center justify-between gap-3 rounded-md bg-surface-muted px-4 py-2 text-xs font-semibold text-ink-soft">
+            <span>{es.moodleBanner.cached}</span>
+            <button
+              type="button"
+              onClick={() => setCachedNoticeDismissed(true)}
+              className="min-h-[44px] font-bold underline-offset-2 hover:underline"
+            >
+              {es.app.dismiss}
+            </button>
+          </div>
+        )}
+        {saveErrorMessage && (
+          <div
+            role="alert"
+            className="border-soft mb-3 flex items-center justify-between rounded-md bg-danger-tint px-4 py-2 text-sm font-semibold text-danger"
+          >
+            <span>{saveErrorMessage}</span>
+            <button
+              type="button"
+              onClick={dismissSaveError}
+              className="ml-4 min-h-[44px] font-bold underline-offset-2 hover:underline"
+            >
+              {es.app.dismiss}
+            </button>
+          </div>
+        )}
+        <div className="relative min-h-0 flex-1">
+          {heatAvailable && !isEditor && (
+            <div className="pointer-events-none absolute bottom-3 left-3 z-20 flex w-[min(22rem,calc(100%-1.5rem))] flex-col items-start gap-2">
+              {heatOn ? (
+                <div className="pointer-events-auto w-full">
+                  <LazyHeatmapPanel
+                    steps={heatSteps}
+                    onOverlay={setHeatOverlay}
+                    onHide={() => setHeatWanted(false)}
+                    onConfigure={configureCompletion}
+                  />
+                </div>
+              ) : (
+                // The editor's own header has the switch; the preview has no header.
+                !isEditor && (
+                  <Button
+                    variant="surface"
+                    size="sm"
+                    className="pointer-events-auto"
+                    aria-pressed={false}
+                    onClick={() => setHeatWanted(true)}
+                  >
+                    <Flame size={16} strokeWidth={2.5} aria-hidden />
+                    {es.heatmap.toggle}
+                  </Button>
+                )
+              )}
+            </div>
+          )}
+          {immersive && renderable ? (
+            <>
+              <StudentStage
+                levelTitle={renderable.title}
+                levelPosition={
+                  siblingLevels.length > 1 && currentLevelIndex !== -1
+                    ? { index: currentLevelIndex + 1, count: siblingLevels.length }
+                    : null
+                }
+                progress={progress}
+                onOpenLevels={
+                  siblingLevels.length > 1 ? () => navigate({ name: 'home' }) : undefined
+                }
+                coachMarks={!exitPreview && !shownContentBubble}
+                questsOpen={questsOpen}
+                onToggleQuests={toggleQuests}
+                trainer={
+                  trainerOn && trainerState.kind !== 'hidden'
+                    ? {
+                        onOpen: () => setTrainerOpen(true),
+                        mode: entryMode(trainerState),
+                        note: trainerReason ? es.hud.trainerNote[trainerReason] : null,
+                        persistentNote: noteIsPersistent(trainerState, trainerViewerIsEditor),
+                      }
+                    : null
+                }
+                tutor={
+                  embed && tutorAvailable
+                    ? { kind: 'ready', onOpen: embed.openTutor }
+                    : embed && exitPreview
+                      ? { kind: 'not-enabled' }
+                      : null
+                }
+                closing={
+                  journeySteps.length > 0
+                    ? {
+                        onOpen: () => setClosingOpen(true),
+                        enabled: closingView.enabled,
+                        note: closingView.note,
+                        // Never opens the flow: it only walks them to the next pending bubble.
+                        onContinue:
+                          closingView.offersContinue && nextTarget
+                            ? () => {
+                                setActiveQuestBubbleId(nextTarget.id)
+                                setFocusBubbleId(nextTarget.id)
+                                setArmedBubbleId(nextTarget.id)
+                              }
+                            : null,
+                      }
+                    : null
+                }
+                overlay={
+                  trainerOpen && renderable ? (
+                    <LazyTrainerStage imageUrl={renderable.imageUrl} onClose={closeTrainer} />
+                  ) : closingOpen && renderable && journeySteps.length > 0 ? (
+                    <LazyWelcomeFlow
+                      key={`${renderable.id}:closing`}
+                      flowKey="closing"
+                      steps={journeySteps}
+                      mode={exitPreview !== null ? 'preview' : 'normal'}
+                      entries={[]}
+                      persistence={null}
+                      documents={renderable.welcomeDocuments ?? []}
+                      courseName={hostCourseName?.trim() || renderable.title}
+                      imageUrl={renderable.imageUrl}
+                      hasMusic={false}
+                      onFinish={() => {
+                        setClosingOpen(false)
+                        void queryClient.invalidateQueries({ queryKey: CLOSING_STATUS_KEY })
+                      }}
+                    />
+                  ) : journeyScreen && renderable ? (
+                    <JourneyOverlay
+                      screen={journeyScreen}
+                      congratulations={renderable.settings.congratulations}
+                      status={closingStatus}
+                      onContinue={finishJourneyScreen}
+                      simulated={simulating}
+                    />
+                  ) : null
+                }
+                questsPanel={({ compact, bottomOffset }) => (
+                  <QuestLog
+                    open={questsOpen}
+                    compact={compact}
+                    bottomOffset={bottomOffset}
+                    groups={questGroups}
+                    progress={progress}
+                    activeBubbleId={activeQuestBubbleId}
+                    onFocusBubble={(bubbleId) => {
+                      setActiveQuestBubbleId(bubbleId)
+                      setFocusBubbleId(bubbleId)
+                    }}
+                    onOpenBubble={(bubbleId) => {
+                      const bubble = bubbles.find((item) => item.id === bubbleId)
+                      if (bubble) handleBubbleClick(bubble)
+                    }}
+                    onClose={closeQuests}
+                    onResetView={
+                      show3d ? undefined : () => mapControlsRef.current?.resetToInitial()
+                    }
+                  />
+                )}
+                view={view3d ? { value: show3d ? '3d' : '2d', onChange: changeMapView } : null}
+                zoom={
+                  show3d
+                    ? {
+                        zoomIn: () => cameraBridge.command('zoom-in'),
+                        zoomOut: () => cameraBridge.command('zoom-out'),
+                        recenter: () => cameraBridge.command('reset'),
+                        canZoomIn: camera3d.canZoomIn,
+                        canZoomOut: camera3d.canZoomOut,
+                        recenterLabel: es.hud.resetView,
+                      }
+                    : {
+                        zoomIn: () => mapControlsRef.current?.zoomIn(),
+                        zoomOut: () => mapControlsRef.current?.zoomOut(),
+                        recenter: () => mapControlsRef.current?.recenter(),
+                      }
+                }
+                reportInsets={show3d}
+                curtain={welcomeCurtain}
+                onShowWelcome={welcomeState.reopen}
+                audio={
+                  audioTrack ? (
+                    <LazyAudioControl track={audioTrack} diagnostics={audioDiagnostics} />
+                  ) : null
+                }
+                onEnterFullscreen={
+                  embed && !isFullscreen ? () => embed.requestFullscreen(true) : null
+                }
+                continueAction={continueAction}
+                exitPreview={exitPreview}
+                embedded={Boolean(embed)}
+              >
+                {(layout) => (show3d && view3d ? render3d(view3d) : renderMapArea(layout))}
+              </StudentStage>
+              {exitPreview !== null && embed?.role === 'editor' && closingSteps.length > 0 && (
+                <JourneySimulator
+                  state={sim}
+                  onChange={(next) => {
+                    setSim(next)
+                    setJourneyDismissed([])
+                  }}
+                />
+              )}
+              {closingStatus &&
+                offersClosingCard(closingStatus) &&
+                !closingOpen &&
+                !journeyScreen &&
+                !welcomeBusy &&
+                !trainerOpen && (
+                  <ClosingCard status={closingStatus} onOpen={() => setClosingOpen(true)} />
+                )}
+            </>
+          ) : show3d && renderable && view3d ? (
+            render3d(view3d)
+          ) : (
+            renderMapArea()
+          )}
+        </div>
+      </main>
+    </div>
+  )
+
+  const sectionPanels = {
+    activities: (
+      <ScrollRegion memoryKey="activities" active={section === 'activities'} className="p-3 sm:p-4">
+        <ActivitySidebar
+          {...sidebarProps}
+          onPlace={placeFromList}
+          className="flex min-w-0 flex-col"
+        />
+      </ScrollRegion>
+    ),
+    levels:
+      moodleCourseId !== null ? (
+        <ScrollRegion memoryKey="levels" active={section === 'levels'} className="p-3 sm:p-4">
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <TransferMenu moodleCourseId={moodleCourseId} onOpenLevel={openLevel} />
+          </div>
+          <CourseLevels
+            embedded
+            moodleCourseId={moodleCourseId}
+            viewMode={viewMode}
+            onOpenLevel={openLevel}
+          />
+        </ScrollRegion>
+      ) : null,
+    heat: heatAvailable ? (
+      <ScrollRegion memoryKey="heat" active={section === 'heat'} className="p-3 sm:p-4">
+        {heatOn ? (
+          <LazyHeatmapPanel
+            steps={heatSteps}
+            onOverlay={setHeatOverlay}
+            onHide={() => {
+              setHeatWanted(false)
+              setSection('map')
+            }}
+            onConfigure={configureCompletion}
+          />
+        ) : (
+          <Button variant="surface" size="sm" onClick={() => setHeatWanted(true)}>
+            <Flame size={16} strokeWidth={2.5} aria-hidden />
+            {es.heatmap.toggle}
+          </Button>
+        )}
+      </ScrollRegion>
+    ) : null,
+    appearance: draftQuery.data ? (
+      <Suspense fallback={null}>
+        <AppearanceStudio
+          courseMap={draftQuery.data}
+          skins={skinsQuery.data?.items ?? []}
+          activities={activities}
+          active={section === 'appearance'}
+          getCurrentView={() => latestViewportRef.current}
+          onClose={() => setSection('map')}
+          onDirtyChange={setAppearanceDirty}
+          onChangeBackground={() => setIsBackgroundPickerOpen(true)}
+          onPreview3d={() => {
+            // The draft as a student would see it, in 3D.
+            setSection('map')
+            setViewMode('preview')
+            changeMapView('3d')
+          }}
+        />
+      </Suspense>
+    ) : null,
+    summary: (
+      <ScrollRegion memoryKey="summary" active={section === 'summary'} className="p-3 sm:p-4">
+        <ActivitiesOverviewBody
+          bubbles={bubbles}
+          activities={activities}
+          mode={renderable?.settings.mode ?? 'explorative'}
+          view="editor"
+          getAvailability={getAvailabilityForBubble}
+          onSelectBubble={handleSelectBubbleFromOverview}
+          onConfigureCompletion={configureCompletion}
+        />
+      </ScrollRegion>
+    ),
+  }
 
   return (
     <div className={`flex ${shellHeight} flex-col`}>
-      {!immersive && (
-        <AppHeader
-          onHome={goHome}
-          mapTitle={breadcrumb}
-          prevLevelTitle={prevLevel?.title}
-          nextLevelTitle={nextLevel?.title}
-          onPrevLevel={prevLevel ? () => navigate({ name: 'map', mapId: prevLevel.id }) : undefined}
-          onNextLevel={nextLevel ? () => navigate({ name: 'map', mapId: nextLevel.id }) : undefined}
-          viewMode={headerViewMode}
+      {isEditor ? (
+        <EditorShell
+          home={goHome}
+          mapTitle={renderable?.title}
+          levelNav={
+            prevLevel || nextLevel ? (
+              <div className="flex shrink-0 items-center max-[760px]:hidden">
+                <IconButton
+                  aria-label={
+                    prevLevel ? `${es.levels.prevLevel}: ${prevLevel.title}` : es.levels.prevLevel
+                  }
+                  variant="ghost"
+                  disabled={!prevLevel}
+                  onClick={prevLevel ? () => openLevel(prevLevel.id) : undefined}
+                >
+                  <ChevronLeft size={16} />
+                </IconButton>
+                <IconButton
+                  aria-label={
+                    nextLevel ? `${es.levels.nextLevel}: ${nextLevel.title}` : es.levels.nextLevel
+                  }
+                  variant="ghost"
+                  disabled={!nextLevel}
+                  onClick={nextLevel ? () => openLevel(nextLevel.id) : undefined}
+                >
+                  <ChevronRight size={16} />
+                </IconButton>
+              </div>
+            ) : undefined
+          }
+          viewMode={viewMode}
           onViewModeChange={setViewMode}
-          fullscreenControl={fullscreenControl}
-          publishedDisabled={neverPublished}
-          isSaving={isEditor ? isSaving : undefined}
-          onActivitiesOverview={() => setIsActivitiesOverviewOpen(true)}
-          onAppearance={isEditor ? () => setIsAppearanceOpen(true) : undefined}
-          publicationBar={
-            isEditor && courseMapId ? <PublicationBar courseMapId={courseMapId} /> : null
-          }
-          heatToggle={
-            heatAvailable ? (
-              <Button
-                variant="surface"
-                size="sm"
-                aria-pressed={heatOn}
-                onClick={() => setHeatWanted((wanted) => !wanted)}
-              >
-                <Flame size={16} strokeWidth={2.5} aria-hidden />
-                {es.heatmap.toggle}
-              </Button>
-            ) : undefined
-          }
-          transferMenu={
-            isEditor && moodleCourseId !== null ? (
-              <TransferMenu
-                moodleCourseId={moodleCourseId}
-                onOpenLevel={(id) => navigate({ name: 'map', mapId: id })}
-              />
-            ) : undefined
-          }
-          activitiesMenu={
-            isEditor ? (
-              <Popover
-                open={isActivitiesMenuOpen}
-                onOpenChange={setIsActivitiesMenuOpen}
-                align="end"
-                trigger={
-                  <Button variant="surface" size="sm">
-                    <List size={16} strokeWidth={2.5} aria-hidden />
-                    {es.app.activities}
-                    {unplacedCount > 0 && (
-                      <span className="flex h-5 min-w-5 items-center justify-center rounded-md bg-primary px-1 text-xs font-bold text-white">
-                        {unplacedCount}
-                      </span>
-                    )}
-                    <ChevronDown
-                      size={16}
-                      strokeWidth={3}
-                      aria-hidden
-                      className={`motion-safe:transition-transform ${isActivitiesMenuOpen ? 'rotate-180' : ''}`}
-                    />
-                  </Button>
+          publication={
+            courseMapId ? (
+              <PublicationBar
+                courseMapId={courseMapId}
+                isSaving={isSaving}
+                menuExtra={
+                  embed?.mode === 'editor'
+                    ? [
+                        {
+                          label: es.shell.fullscreenOnOpen,
+                          icon: <Maximize2 size={16} strokeWidth={2.5} aria-hidden />,
+                          checked: fullscreenOnOpen,
+                          onSelect: toggleFullscreenOnOpen,
+                        },
+                      ]
+                    : []
                 }
-              >
-                <ActivitySidebar
-                  {...sidebarProps}
-                  className="flex max-h-[70dvh] w-[min(20rem,calc(100vw-4rem))] flex-col"
-                />
-              </Popover>
+              />
             ) : null
           }
+          onFullscreen={curtainFullscreen}
+          reservedCorner={isFullscreen ? RESERVED_CORNER_PX : null}
+          items={railItems}
+          section={section}
+          onSectionChange={setSection}
+          sections={sectionPanels}
+          map={mapPane}
         />
+      ) : (
+        mapPane
       )}
-      <div className="flex flex-1 overflow-hidden">
-        <main
-          className={`flex min-h-0 flex-1 flex-col overflow-hidden ${immersive ? '' : 'p-1 sm:p-1.5'}`}
-        >
-          {notices.courseDisabled && (
-            <div
-              role="status"
-              className="border-soft mb-2 flex items-start gap-2 rounded-md bg-sun-tint px-3 py-2 text-sm font-semibold text-sun-dark"
-            >
-              <TriangleAlert size={18} strokeWidth={2.5} aria-hidden className="mt-0.5 shrink-0" />
-              <span>{es.completion.disabledBanner}</span>
-            </div>
-          )}
-          {notices.guidedWithUntracked && (
-            <div
-              role="alert"
-              className="border-strong mb-2 flex items-start gap-2 rounded-md bg-danger-tint px-3 py-2 text-sm font-bold text-danger"
-            >
-              <TriangleAlert size={20} strokeWidth={2.5} aria-hidden className="mt-0.5 shrink-0" />
-              <span>
-                {es.completion.guidedWarning}{' '}
-                <span className="font-semibold">
-                  {es.completion.guidedWarningCount(untrackedCount)}
-                </span>
-              </span>
-            </div>
-          )}
-          {isEditor && (
-            <p className="px-1 pb-1 text-xs font-semibold text-ink-soft">
-              {es.publication.autosaveHint}
-            </p>
-          )}
-          {moodleStatus === 'unavailable' && (
-            <div
-              role="alert"
-              className="border-soft mb-3 flex items-center justify-between gap-3 rounded-md bg-sun-tint px-4 py-2 text-sm font-semibold text-sun-dark"
-            >
-              <span>{es.moodleBanner.unavailable}</span>
-              <button
-                type="button"
-                onClick={moodle.refetchResolved}
-                className="flex min-h-[44px] shrink-0 items-center gap-1 font-bold underline-offset-2 hover:underline"
-              >
-                <RefreshCw size={16} strokeWidth={2.5} />
-                {es.moodleBanner.retry}
-              </button>
-            </div>
-          )}
-          {moodleStatus === 'cached' && !cachedNoticeDismissed && (
-            <div className="border-soft mb-3 flex items-center justify-between gap-3 rounded-md bg-surface-muted px-4 py-2 text-xs font-semibold text-ink-soft">
-              <span>{es.moodleBanner.cached}</span>
-              <button
-                type="button"
-                onClick={() => setCachedNoticeDismissed(true)}
-                className="min-h-[44px] font-bold underline-offset-2 hover:underline"
-              >
-                {es.app.dismiss}
-              </button>
-            </div>
-          )}
-          {saveErrorMessage && (
-            <div
-              role="alert"
-              className="border-soft mb-3 flex items-center justify-between rounded-md bg-danger-tint px-4 py-2 text-sm font-semibold text-danger"
-            >
-              <span>{saveErrorMessage}</span>
-              <button
-                type="button"
-                onClick={dismissSaveError}
-                className="ml-4 min-h-[44px] font-bold underline-offset-2 hover:underline"
-              >
-                {es.app.dismiss}
-              </button>
-            </div>
-          )}
-          <div className="relative min-h-0 flex-1">
-            {heatAvailable && (
-              <div className="pointer-events-none absolute bottom-3 left-3 z-20 flex w-[min(22rem,calc(100%-1.5rem))] flex-col items-start gap-2">
-                {heatOn ? (
-                  <div className="pointer-events-auto w-full">
-                    <LazyHeatmapPanel
-                      steps={heatSteps}
-                      onOverlay={setHeatOverlay}
-                      onHide={() => setHeatWanted(false)}
-                      onConfigure={configureCompletion}
-                    />
-                  </div>
-                ) : (
-                  // The editor's own header has the switch; the preview has no header.
-                  !isEditor && (
-                    <Button
-                      variant="surface"
-                      size="sm"
-                      className="pointer-events-auto"
-                      aria-pressed={false}
-                      onClick={() => setHeatWanted(true)}
-                    >
-                      <Flame size={16} strokeWidth={2.5} aria-hidden />
-                      {es.heatmap.toggle}
-                    </Button>
-                  )
-                )}
-              </div>
-            )}
-            {immersive && renderable ? (
-              <>
-                <StudentStage
-                  levelTitle={renderable.title}
-                  levelPosition={
-                    siblingLevels.length > 1 && currentLevelIndex !== -1
-                      ? { index: currentLevelIndex + 1, count: siblingLevels.length }
-                      : null
-                  }
-                  progress={progress}
-                  onOpenLevels={
-                    siblingLevels.length > 1 ? () => navigate({ name: 'home' }) : undefined
-                  }
-                  coachMarks={!exitPreview && !shownContentBubble}
-                  questsOpen={questsOpen}
-                  onToggleQuests={toggleQuests}
-                  trainer={
-                    trainerOn && trainerState.kind !== 'hidden'
-                      ? {
-                          onOpen: () => setTrainerOpen(true),
-                          mode: entryMode(trainerState),
-                          note: trainerReason ? es.hud.trainerNote[trainerReason] : null,
-                          persistentNote: noteIsPersistent(trainerState, trainerViewerIsEditor),
-                        }
-                      : null
-                  }
-                  tutor={
-                    embed && tutorAvailable
-                      ? { kind: 'ready', onOpen: embed.openTutor }
-                      : embed && exitPreview
-                        ? { kind: 'not-enabled' }
-                        : null
-                  }
-                  closing={
-                    journeySteps.length > 0
-                      ? {
-                          onOpen: () => setClosingOpen(true),
-                          enabled: closingView.enabled,
-                          note: closingView.note,
-                          // Never opens the flow: it only walks them to the next pending bubble.
-                          onContinue:
-                            closingView.offersContinue && nextTarget
-                              ? () => {
-                                  setActiveQuestBubbleId(nextTarget.id)
-                                  setFocusBubbleId(nextTarget.id)
-                                  setArmedBubbleId(nextTarget.id)
-                                }
-                              : null,
-                        }
-                      : null
-                  }
-                  overlay={
-                    trainerOpen && renderable ? (
-                      <LazyTrainerStage imageUrl={renderable.imageUrl} onClose={closeTrainer} />
-                    ) : closingOpen && renderable && journeySteps.length > 0 ? (
-                      <LazyWelcomeFlow
-                        key={`${renderable.id}:closing`}
-                        flowKey="closing"
-                        steps={journeySteps}
-                        mode={exitPreview !== null ? 'preview' : 'normal'}
-                        entries={[]}
-                        persistence={null}
-                        documents={renderable.welcomeDocuments ?? []}
-                        courseName={hostCourseName?.trim() || renderable.title}
-                        imageUrl={renderable.imageUrl}
-                        hasMusic={false}
-                        onFinish={() => {
-                          setClosingOpen(false)
-                          void queryClient.invalidateQueries({ queryKey: CLOSING_STATUS_KEY })
-                        }}
-                      />
-                    ) : journeyScreen && renderable ? (
-                      <JourneyOverlay
-                        screen={journeyScreen}
-                        congratulations={renderable.settings.congratulations}
-                        status={closingStatus}
-                        onContinue={finishJourneyScreen}
-                        simulated={simulating}
-                      />
-                    ) : null
-                  }
-                  questsPanel={({ compact, bottomOffset }) => (
-                    <QuestLog
-                      open={questsOpen}
-                      compact={compact}
-                      bottomOffset={bottomOffset}
-                      groups={questGroups}
-                      progress={progress}
-                      activeBubbleId={activeQuestBubbleId}
-                      onFocusBubble={(bubbleId) => {
-                        setActiveQuestBubbleId(bubbleId)
-                        setFocusBubbleId(bubbleId)
-                      }}
-                      onOpenBubble={(bubbleId) => {
-                        const bubble = bubbles.find((item) => item.id === bubbleId)
-                        if (bubble) handleBubbleClick(bubble)
-                      }}
-                      onClose={closeQuests}
-                      onResetView={
-                        show3d ? undefined : () => mapControlsRef.current?.resetToInitial()
-                      }
-                    />
-                  )}
-                  view={view3d ? { value: show3d ? '3d' : '2d', onChange: changeMapView } : null}
-                  zoom={
-                    show3d
-                      ? {
-                          zoomIn: () => cameraBridge.command('zoom-in'),
-                          zoomOut: () => cameraBridge.command('zoom-out'),
-                          recenter: () => cameraBridge.command('reset'),
-                          canZoomIn: camera3d.canZoomIn,
-                          canZoomOut: camera3d.canZoomOut,
-                          recenterLabel: es.hud.resetView,
-                        }
-                      : {
-                          zoomIn: () => mapControlsRef.current?.zoomIn(),
-                          zoomOut: () => mapControlsRef.current?.zoomOut(),
-                          recenter: () => mapControlsRef.current?.recenter(),
-                        }
-                  }
-                  reportInsets={show3d}
-                  curtain={welcomeCurtain}
-                  onShowWelcome={welcomeState.reopen}
-                  audio={
-                    audioTrack ? (
-                      <LazyAudioControl track={audioTrack} diagnostics={audioDiagnostics} />
-                    ) : null
-                  }
-                  onEnterFullscreen={
-                    embed && !isFullscreen ? () => embed.requestFullscreen(true) : null
-                  }
-                  continueAction={continueAction}
-                  exitPreview={exitPreview}
-                  embedded={Boolean(embed)}
-                >
-                  {(layout) => (show3d && view3d ? render3d(view3d) : renderMapArea(layout))}
-                </StudentStage>
-                {exitPreview !== null && embed?.role === 'editor' && closingSteps.length > 0 && (
-                  <JourneySimulator
-                    state={sim}
-                    onChange={(next) => {
-                      setSim(next)
-                      setJourneyDismissed([])
-                    }}
-                  />
-                )}
-                {closingStatus &&
-                  offersClosingCard(closingStatus) &&
-                  !closingOpen &&
-                  !journeyScreen &&
-                  !welcomeBusy &&
-                  !trainerOpen && (
-                    <ClosingCard status={closingStatus} onOpen={() => setClosingOpen(true)} />
-                  )}
-              </>
-            ) : show3d && renderable && view3d ? (
-              render3d(view3d)
-            ) : (
-              renderMapArea()
-            )}
-          </div>
-        </main>
-      </div>
 
       {isEditor && contentEditor && (contentEditor.mode === 'create' || editedBubble) && (
         <LazyContentEditor
@@ -1577,37 +1702,6 @@ export function AppShell() {
       />
 
       <ActivityModal activity={selectedActivity} onClose={() => setSelectedActivity(null)} />
-
-      <ActivitiesOverviewModal
-        open={isEditor && isActivitiesOverviewOpen}
-        bubbles={bubbles}
-        activities={activities}
-        mode={renderable?.settings.mode ?? 'explorative'}
-        view="editor"
-        getAvailability={getAvailabilityForBubble}
-        onClose={() => setIsActivitiesOverviewOpen(false)}
-        onSelectBubble={handleSelectBubbleFromOverview}
-        onConfigureCompletion={configureCompletion}
-      />
-
-      {isEditor && isAppearanceOpen && draftQuery.data && (
-        <Suspense fallback={null}>
-          <AppearanceStudio
-            courseMap={draftQuery.data}
-            skins={skinsQuery.data?.items ?? []}
-            activities={activities}
-            getCurrentView={() => latestViewportRef.current}
-            onClose={() => setIsAppearanceOpen(false)}
-            onChangeBackground={() => setIsBackgroundPickerOpen(true)}
-            onPreview3d={() => {
-              // The draft as a student would see it, in 3D.
-              setIsAppearanceOpen(false)
-              setViewMode('preview')
-              changeMapView('3d')
-            }}
-          />
-        </Suspense>
-      )}
 
       {isEditor && renderable && (
         <LazyBackgroundPicker

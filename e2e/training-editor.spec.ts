@@ -69,7 +69,7 @@ test.describe('training and assessments panel', () => {
       .selectOption('a1-form-a')
     await expect(panel.getByText(/completará el curso y recibirá el certificado/)).toHaveCount(0)
     // The studio's own panel (the publication bar has its own "Cambios sin guardar").
-    const studio = panel.locator('.fixed.inset-y-0.right-0')
+    const studio = panel.getByRole('region', { name: 'Apariencia' })
     await expect(studio.getByText('Cambios sin guardar', { exact: true })).toBeVisible()
     await studio.getByRole('button', { name: 'Guardar', exact: true }).click()
     await expect(studio.getByText('Cambios sin guardar', { exact: true })).toHaveCount(0)

@@ -41,6 +41,9 @@ interface LevelCarouselProps {
   onRenameLevel?: (map: LevelItem) => void
   onDeleteLevel?: (map: LevelItem) => void
   onReorder?: (mapIds: string[]) => void
+  // 'grid': the cards wrap in rows that fit the width (the editor's Niveles
+  // section, which never scrolls sideways); 'carousel': the course's entry screen.
+  layout?: 'carousel' | 'grid'
 }
 
 export const LevelCarousel = ({
@@ -51,7 +54,9 @@ export const LevelCarousel = ({
   onRenameLevel,
   onDeleteLevel,
   onReorder,
+  layout = 'carousel',
 }: LevelCarouselProps) => {
+  const grid = layout === 'grid'
   const trackRef = useRef<HTMLDivElement>(null)
   const dragIdRef = useRef<string | null>(null)
 
@@ -102,14 +107,22 @@ export const LevelCarousel = ({
   }
 
   return (
-    <div className="relative flex-1 overflow-y-auto overflow-x-hidden">
-      <div className="relative flex min-h-full flex-col justify-center gap-6 px-0 py-6 sm:py-10">
+    <div className="relative min-w-0 flex-1 overflow-y-auto overflow-x-hidden">
+      <div
+        className={`relative flex min-h-full min-w-0 flex-col gap-6 px-0 ${
+          grid ? 'py-1' : 'justify-center py-6 sm:py-10'
+        }`}
+      >
         <div
           ref={trackRef}
           role="list"
           aria-label={es.levels.backToLevels}
           onKeyDown={handleTrackKeyDown}
-          className="flex snap-x snap-mandatory gap-5 overflow-x-auto scroll-px-[10vw] px-[10vw] pb-6 pr-[calc(10vw+12px)] pt-2 sm:scroll-px-[15vw] sm:px-[15vw]"
+          className={
+            grid
+              ? 'grid min-w-0 gap-3 [grid-template-columns:repeat(auto-fill,minmax(180px,1fr))]'
+              : 'flex snap-x snap-mandatory gap-5 overflow-x-auto scroll-px-[10vw] px-[10vw] pb-6 pr-[calc(10vw+12px)] pt-2 sm:scroll-px-[15vw] sm:px-[15vw]'
+          }
         >
           {levels.map((map, index) => (
             <LevelCard
@@ -117,6 +130,7 @@ export const LevelCarousel = ({
               map={map}
               levelNumber={index + 1}
               editable={editable}
+              fluid={grid}
               canMoveUp={index > 0}
               canMoveDown={index < levels.length - 1}
               onOpen={() => onOpen(map.id)}
@@ -132,7 +146,7 @@ export const LevelCarousel = ({
             <button
               type="button"
               onClick={onCreateLevel}
-              className="flex w-[min(80vw,19rem)] shrink-0 snap-center flex-col items-center justify-center gap-2 min-h-[16rem] rounded-lg border-soft border-dashed bg-surface text-ink-soft transition-colors hover:bg-primary-tint hover:text-ink"
+              className={`flex shrink-0 snap-center flex-col items-center justify-center gap-2 min-h-[16rem] rounded-lg border-soft border-dashed bg-surface text-ink-soft transition-colors hover:bg-primary-tint hover:text-ink ${grid ? 'min-w-0' : 'w-[min(80vw,19rem)]'}`}
             >
               <Plus size={28} strokeWidth={3} />
               <span className="text-sm font-bold">{es.levels.createLevel}</span>
@@ -148,6 +162,7 @@ const LevelCard = ({
   map,
   levelNumber,
   editable,
+  fluid,
   canMoveUp,
   canMoveDown,
   onOpen,
@@ -161,6 +176,8 @@ const LevelCard = ({
   map: LevelItem
   levelNumber: number
   editable: boolean
+  // Fills its grid cell instead of keeping the carousel's card width.
+  fluid: boolean
   canMoveUp: boolean
   canMoveDown: boolean
   onOpen: () => void
@@ -203,7 +220,7 @@ const LevelCard = ({
           : undefined,
         transition: 'transform 150ms ease-out',
       }}
-      className="group relative w-[min(80vw,19rem)] shrink-0 snap-center"
+      className={`group relative shrink-0 snap-center ${fluid ? 'min-w-0' : 'w-[min(80vw,19rem)]'}`}
     >
       <Card className="overflow-hidden">
         <button type="button" data-level-open onClick={onOpen} className="block w-full text-left">

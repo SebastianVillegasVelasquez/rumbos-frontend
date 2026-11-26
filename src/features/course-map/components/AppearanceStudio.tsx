@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { Select } from '../../../components/ui/Select.tsx'
-import { X } from 'lucide-react'
 import { ChevronUp, ChevronDown, Play, RotateCcw, Zap } from 'lucide-react'
 import { Button, IconButton } from '../../../components/ui/Button.tsx'
 import { SegmentedControl } from '../../../components/ui/SegmentedControl.tsx'
+import { SubNavLayout } from '../../editor-shell/SubNavLayout.tsx'
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog.tsx'
 import { SkinStudio } from './SkinStudio.tsx'
 import { AUDIO_LIBRARY_PARAMS } from '../../audio/editor/audioErrors.ts'
@@ -39,6 +39,19 @@ import type {
   SkinRule,
 } from '../data/types.ts'
 
+const TABS: Tab[] = [
+  'bubbles',
+  'map',
+  'ambient',
+  'sequence',
+  'view3d',
+  'animation',
+  'music',
+  'welcome',
+  'closing',
+  'training',
+]
+
 type Tab =
   | 'bubbles'
   | 'map'
@@ -57,7 +70,12 @@ interface AppearanceStudioProps {
   // From the app's Moodle source; used to name the bubbles in the 3D tab.
   activities: Activity[]
   getCurrentView: () => MapInitialView | null
+  // After the edits were discarded: leave for the map.
   onClose: () => void
+  // Tells the rail whether there are edits waiting for Guardar.
+  onDirtyChange?: (dirty: boolean) => void
+  // Whether this section is the one on screen (it stays mounted while hidden).
+  active?: boolean
   onChangeBackground: () => void
   // Opens the 3D view of the saved draft.
   onPreview3d: () => void
@@ -74,6 +92,8 @@ export const AppearanceStudio = ({
   activities,
   getCurrentView,
   onClose,
+  onDirtyChange,
+  active = true,
   onChangeBackground,
   onPreview3d,
 }: AppearanceStudioProps) => {
@@ -126,6 +146,10 @@ export const AppearanceStudio = ({
     defaultSkinId !== courseMap.defaultSkinId ||
     !rulesEqual(skinRules, courseMap.skinRules)
 
+  useEffect(() => {
+    onDirtyChange?.(isDirty)
+  }, [isDirty, onDirtyChange])
+
   // Edits to the settings also drop the errors of the fields they touch.
   const changeSettings = (next: MapSettings) => {
     settingsEdited(settings, next)
@@ -156,11 +180,6 @@ export const AppearanceStudio = ({
     )
   }
 
-  const handleClose = () => {
-    if (isDirty) setConfirmDiscard(true)
-    else onClose()
-  }
-
   const setTypeRule = (modname: string, skinId: string | null) => {
     setSkinRules((current) => {
       const withoutModname = current.filter((rule) => rule.modname !== modname)
@@ -168,142 +187,25 @@ export const AppearanceStudio = ({
     })
   }
 
-  return (
-    <div
-      ref={rootRef}
-      className="fixed inset-y-0 right-0 z-40 flex w-full max-w-sm flex-col border-l-strong bg-surface"
-    >
-      <div className="flex items-center justify-between gap-2 border-b-soft px-4 py-3">
-        <h2 className="min-w-0 truncate font-heading text-base font-extrabold text-ink">
-          {es.studio.title}
-        </h2>
-        <div className="flex min-w-0 shrink-0 items-center gap-2">
-          {isDirty && (
-            <span className="text-xs font-bold text-sun-dark">{es.studio.unsavedChanges}</span>
-          )}
-          <IconButton aria-label={es.app.close} variant="ghost" onClick={handleClose}>
-            <X size={18} strokeWidth={3} aria-hidden />
-          </IconButton>
-        </div>
-      </div>
+  const visibleTabs = TABS.filter((t) => t !== 'music' || audioSupported)
+    .filter((t) => t !== 'welcome' || welcomeSupported)
+    .filter((t) => t !== 'closing' || closingSupported)
+    .filter((t) => t !== 'training' || trainingAvailable)
+  const tabItems = visibleTabs.map((t) => ({
+    id: t,
+    label:
+      t === 'welcome' && courseMap.welcomeDocuments !== undefined
+        ? es.studio.flow.tab
+        : es.studio.tabs[t],
+  }))
 
-      <div className="border-b-soft px-4 py-2">
-        <div className="flex flex-wrap gap-1.5">
-          {(
-            [
-              'bubbles',
-              'map',
-              'ambient',
-              'sequence',
-              'view3d',
-              'animation',
-              'music',
-              'welcome',
-              'closing',
-              'training',
-            ] as Tab[]
-          )
-            .filter((t) => t !== 'music' || audioSupported)
-            .filter((t) => t !== 'welcome' || welcomeSupported)
-            .filter((t) => t !== 'closing' || closingSupported)
-            .filter((t) => t !== 'training' || trainingAvailable)
-            .map((t) => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setTab(t)}
-                aria-pressed={tab === t}
-                className={`min-h-[44px] flex-1 rounded-md px-3 text-xs transition-colors min-[400px]:flex-none ${
-                  tab === t
-                    ? 'border-soft bg-primary font-extrabold text-white'
-                    : 'border-hair bg-surface font-bold text-ink-soft hover:bg-primary-tint hover:text-ink'
-                }`}
-              >
-                {t === 'welcome' && courseMap.welcomeDocuments !== undefined
-                  ? es.studio.flow.tab
-                  : es.studio.tabs[t]}
-              </button>
-            ))}
-        </div>
-      </div>
-
-      <div className="min-h-0 flex-1 overflow-y-auto p-4">
-        {tab === 'bubbles' && (
-          <SkinStudio
-            skins={skins}
-            defaultSkinId={defaultSkinId}
-            skinRules={skinRules}
-            onSetDefaultSkin={setDefaultSkinId}
-            onSetTypeRule={setTypeRule}
-          />
-        )}
-        {tab === 'map' && (
-          <MapTab
-            settings={settings}
-            onChange={setSettings}
-            getCurrentView={getCurrentView}
-            onChangeBackground={onChangeBackground}
-            currentImageUrl={courseMap.imageUrl}
-          />
-        )}
-        {tab === 'ambient' && <AmbientTab settings={settings} onChange={setSettings} />}
-        {tab === 'sequence' && (
-          <SequenceTab
-            courseMapId={courseMap.id}
-            bubbles={courseMap.bubbles}
-            mode={settings.mode}
-          />
-        )}
-        {/* Kept mounted so unsaved 3D edits survive switching tabs. */}
-        <div hidden={tab !== 'view3d'}>
-          <View3dTab courseMap={courseMap} activities={activities} onPreview={onPreview3d} />
-        </div>
-        {tab === 'animation' && <AnimationTab />}
-        {tab === 'music' && audioSupported && (
-          <MusicTab settings={settings} onChange={setSettings} />
-        )}
-        {tab === 'training' && trainingAvailable && (
-          <TrainingTab
-            settings={settings}
-            onChange={changeSettings}
-            issues={settingsIssues}
-            forms={forms}
-          />
-        )}
-        {tab === 'training' && trainingAvailable && 'congratulations' in courseMap.settings && (
-          <CongratulationsEditor settings={settings} onChange={changeSettings} />
-        )}
-        {tab === 'closing' && closingSupported && (
-          <FlowTab
-            flowKey="closing"
-            settings={settings}
-            onChange={changeSettings}
-            issues={settingsIssues}
-            mapId={courseMap.id}
-            mapTitle={courseMap.title}
-            imageUrl={courseMap.imageUrl}
-            hasMusic={Boolean(settings.audio)}
-            activities={activities}
-            documents={courseMap.welcomeDocuments}
-          />
-        )}
-        {tab === 'welcome' && welcomeSupported && (
-          <FlowTab
-            settings={settings}
-            onChange={changeSettings}
-            issues={settingsIssues}
-            mapId={courseMap.id}
-            mapTitle={courseMap.title}
-            imageUrl={courseMap.imageUrl}
-            hasMusic={Boolean(settings.audio)}
-            activities={activities}
-            documents={courseMap.welcomeDocuments}
-          />
-        )}
-      </div>
-
+  const footer = (
+    <div className="max-h-[40dvh] min-w-0 flex-none overflow-y-auto overflow-x-hidden border-t-soft bg-surface">
       {isDirty && (
-        <div className="border-t-soft flex flex-wrap justify-end gap-2 px-4 py-3">
+        <div className="flex flex-wrap items-center justify-end gap-2 px-4 py-3">
+          <span className="mr-auto text-xs font-bold text-sun-dark">
+            {es.studio.unsavedChanges}
+          </span>
           <Button size="sm" variant="secondary" onClick={() => setConfirmDiscard(true)}>
             {es.app.dismiss}
           </Button>
@@ -340,6 +242,94 @@ export const AppearanceStudio = ({
           mode={settings.mode}
         />
       )}
+    </div>
+  )
+
+  return (
+    <div ref={rootRef} className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+      <SubNavLayout
+        items={tabItems}
+        value={tab}
+        onChange={setTab}
+        memoryScope="appearance"
+        active={active}
+        footer={footer}
+      >
+        <>
+          {tab === 'bubbles' && (
+            <SkinStudio
+              skins={skins}
+              defaultSkinId={defaultSkinId}
+              skinRules={skinRules}
+              onSetDefaultSkin={setDefaultSkinId}
+              onSetTypeRule={setTypeRule}
+            />
+          )}
+          {tab === 'map' && (
+            <MapTab
+              settings={settings}
+              onChange={setSettings}
+              getCurrentView={getCurrentView}
+              onChangeBackground={onChangeBackground}
+              currentImageUrl={courseMap.imageUrl}
+            />
+          )}
+          {tab === 'ambient' && <AmbientTab settings={settings} onChange={setSettings} />}
+          {tab === 'sequence' && (
+            <SequenceTab
+              courseMapId={courseMap.id}
+              bubbles={courseMap.bubbles}
+              mode={settings.mode}
+            />
+          )}
+          {/* Kept mounted so unsaved 3D edits survive switching tabs. */}
+          <div hidden={tab !== 'view3d'}>
+            <View3dTab courseMap={courseMap} activities={activities} onPreview={onPreview3d} />
+          </div>
+          {tab === 'animation' && <AnimationTab />}
+          {tab === 'music' && audioSupported && (
+            <MusicTab settings={settings} onChange={setSettings} />
+          )}
+          {tab === 'training' && trainingAvailable && (
+            <TrainingTab
+              settings={settings}
+              onChange={changeSettings}
+              issues={settingsIssues}
+              forms={forms}
+            />
+          )}
+          {tab === 'training' && trainingAvailable && 'congratulations' in courseMap.settings && (
+            <CongratulationsEditor settings={settings} onChange={changeSettings} />
+          )}
+          {tab === 'closing' && closingSupported && (
+            <FlowTab
+              flowKey="closing"
+              settings={settings}
+              onChange={changeSettings}
+              issues={settingsIssues}
+              mapId={courseMap.id}
+              mapTitle={courseMap.title}
+              imageUrl={courseMap.imageUrl}
+              hasMusic={Boolean(settings.audio)}
+              activities={activities}
+              documents={courseMap.welcomeDocuments}
+            />
+          )}
+          {tab === 'welcome' && welcomeSupported && (
+            <FlowTab
+              settings={settings}
+              onChange={changeSettings}
+              issues={settingsIssues}
+              mapId={courseMap.id}
+              mapTitle={courseMap.title}
+              imageUrl={courseMap.imageUrl}
+              hasMusic={Boolean(settings.audio)}
+              activities={activities}
+              documents={courseMap.welcomeDocuments}
+            />
+          )}
+        </>
+      </SubNavLayout>
 
       <ConfirmDialog
         open={confirmDiscard}

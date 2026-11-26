@@ -25,6 +25,9 @@ interface ActivitySidebarProps {
   // Offered when the backend supports content bubbles: adds one at the center
   // of the level (it can also be dragged onto the map).
   onAddContent?: () => void
+  // The map is not on screen while this list is (the editor's Actividades
+  // section), so dragging has nowhere to land: each row can also place itself.
+  onPlace?: (activity: Activity) => void
 }
 
 type ActivityType = keyof typeof es.activityTypes
@@ -66,6 +69,7 @@ export const ActivitySidebar = ({
   levelTitleById,
   sectionFilter = null,
   onAddContent,
+  onPlace,
 }: ActivitySidebarProps) => {
   const [search, setSearch] = useState('')
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set())
@@ -160,7 +164,7 @@ export const ActivitySidebar = ({
                 />
               </button>
               {!isCollapsed && (
-                <ul className="mt-1.5 space-y-2">
+                <ul className="mt-1.5 grid min-w-0 gap-2 [grid-template-columns:repeat(auto-fill,minmax(180px,1fr))]">
                   {items.map((activity) => {
                     const isPending = pendingActivityIds.includes(activity.activityId)
                     const placedElsewhere =
@@ -194,6 +198,18 @@ export const ActivitySidebar = ({
                             </Badge>
                           )}
                         </div>
+                        {onPlace && !disabled && (
+                          <Button
+                            variant="secondary"
+                            dense
+                            size="sm"
+                            className="mt-1 self-start"
+                            aria-label={`${es.sidebar.place}: ${activity.name}`}
+                            onClick={() => onPlace(activity)}
+                          >
+                            {es.sidebar.place}
+                          </Button>
+                        )}
                       </li>
                     )
                   })}

@@ -34,7 +34,9 @@ test.describe('welcome flow editor', () => {
     await expect(flowTab(page).getByRole('button', { name: 'Convertir en pasos' })).toBeVisible()
     await flowTab(page).getByRole('button', { name: 'Convertir en pasos' }).click()
     await expect(flowTab(page).getByRole('list', { name: 'Flujo de bienvenida' })).toBeVisible()
-    await expect(flowTab(page).getByRole('listitem')).toHaveCount(2)
+    await expect(
+      flowTab(page).getByRole('list', { name: 'Flujo de bienvenida' }).getByRole('listitem')
+    ).toHaveCount(2)
   })
 
   test('builds a flow with the keyboard-reachable controls', async ({ page }) => {
