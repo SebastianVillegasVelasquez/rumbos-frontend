@@ -26,7 +26,8 @@ buttons, 2px outlines) is unchanged; only structure moved.
 - The map stays mounted at full size (invisible and `inert`) while a section is open, so zoom,
   pan and selection are exactly where they were. A section, once opened, also stays mounted, so
   unsaved Apariencia edits survive switching.
-- Actividades cannot rely on dragging onto the map (it is not on screen), so each row has
+- Actividades is the one partial section: a 240px strip beside the map (45% of the height under
+  it below 520px), so activities can still be dragged onto the map. Each row also has
   **Colocar en el mapa**.
 - Mapa de calor: the numbers panel is a section; the colouring still draws on the map once on.
 - Niveles: the carousel becomes a wrapping grid here (`LevelCarousel layout="grid"`), and it never
