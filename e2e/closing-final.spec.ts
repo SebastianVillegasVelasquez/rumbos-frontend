@@ -296,7 +296,7 @@ test.describe('closing: an editor in preview', () => {
       query: '&mockClosing=scorm_incomplete',
       mock: { preview: true },
     })
-    await app(page).getByText('Vista previa (sin guardar)', { exact: true }).click()
+    await app(page).getByRole('radio', { name: 'Vista previa', exact: true }).click()
     await expect(button(page)).toHaveAttribute('aria-disabled', 'false')
     await toFinalStep(page)
     await expect(

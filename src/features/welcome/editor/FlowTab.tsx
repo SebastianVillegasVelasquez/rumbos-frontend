@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { Button, IconButton } from '../../../components/ui/Button.tsx'
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog.tsx'
+import { OverflowMenu } from '../../../components/ui/OverflowMenu.tsx'
 import { Input } from '../../../components/ui/Input.tsx'
 import { SegmentedControl } from '../../../components/ui/SegmentedControl.tsx'
 import { es } from '../../../i18n/es.ts'
@@ -494,7 +495,7 @@ const StepCard = ({
   const patch = onChange as (value: Partial<typeof step>) => void
   return (
     <li
-      className={`border-soft rounded-md bg-surface p-2 ${hasProblem ? 'ring-2 ring-danger' : ''}`}
+      className={`@container border-soft min-w-0 rounded-md bg-surface p-2 ${hasProblem ? 'ring-2 ring-danger' : ''}`}
     >
       <div className="flex items-center gap-1">
         <button
@@ -511,50 +512,87 @@ const StepCard = ({
             {index + 1}
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block text-xs font-bold uppercase tracking-wide text-ink-soft">
+            <span className="block truncate text-xs font-bold uppercase tracking-wide text-ink-soft">
               {kindLabel(step)}
               {!step.mandatory && ` · ${es.flow.optionalTag}`}
             </span>
             <span className="block truncate text-sm font-extrabold text-ink">{step.title}</span>
+            {hasProblem && (
+              <span className="block truncate text-xs font-bold text-danger">
+                {es.studio.flow.problemSummary(problems.size)}
+              </span>
+            )}
           </span>
-          {hasProblem && (
-            <span className="text-xs font-bold text-danger">
-              {es.studio.flow.problemSummary(problems.size)}
-            </span>
-          )}
         </button>
-        <IconButton
-          aria-label={`${text.moveUp}: ${step.title}`}
-          title={text.moveUp}
-          disabled={!canMove(steps, index, -1)}
-          onClick={() => onMove(-1)}
-        >
-          <ChevronUp size={16} strokeWidth={3} aria-hidden />
-        </IconButton>
-        <IconButton
-          aria-label={`${text.moveDown}: ${step.title}`}
-          title={text.moveDown}
-          disabled={!canMove(steps, index, 1)}
-          onClick={() => onMove(1)}
-        >
-          <ChevronDown size={16} strokeWidth={3} aria-hidden />
-        </IconButton>
-        {step.type !== 'welcome' && (
+        {/* Wide enough for the four buttons, they stay in the card at a fixed
+            width; narrower, the same actions go into one "⋯" menu. */}
+        <div className="hidden shrink-0 items-center gap-1 @[30rem]:flex">
           <IconButton
-            aria-label={`${text.duplicate}: ${step.title}`}
-            title={text.duplicate}
-            onClick={onDuplicate}
+            aria-label={`${text.moveUp}: ${step.title}`}
+            title={text.moveUp}
+            disabled={!canMove(steps, index, -1)}
+            onClick={() => onMove(-1)}
           >
-            <Copy size={16} strokeWidth={2.5} aria-hidden />
+            <ChevronUp size={16} strokeWidth={3} aria-hidden />
           </IconButton>
-        )}
-        <IconButton
-          aria-label={`${text.remove}: ${step.title}`}
-          title={text.remove}
-          onClick={onRemove}
-        >
-          <Trash2 size={16} strokeWidth={2.5} aria-hidden />
-        </IconButton>
+          <IconButton
+            aria-label={`${text.moveDown}: ${step.title}`}
+            title={text.moveDown}
+            disabled={!canMove(steps, index, 1)}
+            onClick={() => onMove(1)}
+          >
+            <ChevronDown size={16} strokeWidth={3} aria-hidden />
+          </IconButton>
+          {step.type !== 'welcome' && (
+            <IconButton
+              aria-label={`${text.duplicate}: ${step.title}`}
+              title={text.duplicate}
+              onClick={onDuplicate}
+            >
+              <Copy size={16} strokeWidth={2.5} aria-hidden />
+            </IconButton>
+          )}
+          <IconButton
+            aria-label={`${text.remove}: ${step.title}`}
+            title={text.remove}
+            onClick={onRemove}
+          >
+            <Trash2 size={16} strokeWidth={2.5} aria-hidden />
+          </IconButton>
+        </div>
+        <OverflowMenu
+          label={`${es.shell.more}: ${step.title}`}
+          className="@[30rem]:hidden"
+          items={[
+            {
+              label: text.moveUp,
+              icon: <ChevronUp size={16} strokeWidth={3} aria-hidden />,
+              disabled: !canMove(steps, index, -1),
+              onSelect: () => onMove(-1),
+            },
+            {
+              label: text.moveDown,
+              icon: <ChevronDown size={16} strokeWidth={3} aria-hidden />,
+              disabled: !canMove(steps, index, 1),
+              onSelect: () => onMove(1),
+            },
+            ...(step.type !== 'welcome'
+              ? [
+                  {
+                    label: text.duplicate,
+                    icon: <Copy size={16} strokeWidth={2.5} aria-hidden />,
+                    onSelect: onDuplicate,
+                  },
+                ]
+              : []),
+            {
+              label: text.remove,
+              icon: <Trash2 size={16} strokeWidth={2.5} aria-hidden />,
+              destructive: true,
+              onSelect: onRemove,
+            },
+          ]}
+        />
       </div>
 
       {serverMessages.length > 0 && (

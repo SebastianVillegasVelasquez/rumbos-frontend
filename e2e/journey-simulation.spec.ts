@@ -55,7 +55,7 @@ const open = async (page: Page, context: BrowserContext) => {
   const level = app(page).getByRole('button', { name: /^1/ }).first()
   await level.waitFor({ timeout: 8000 })
   await level.click()
-  await app(page).getByText('Vista previa (sin guardar)', { exact: true }).click()
+  await app(page).getByRole('radio', { name: 'Vista previa', exact: true }).click()
   return requests
 }
 
