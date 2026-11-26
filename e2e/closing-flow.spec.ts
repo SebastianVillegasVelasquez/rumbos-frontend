@@ -1,9 +1,9 @@
 import { expect, test, type Page } from '@playwright/test'
 import { app } from './support.ts'
+import { closingCard, closingStatus, enterFromCard, serveClosingStatus } from './closingStatus.ts'
 
-// The closing flow against the mock host and the draft closing shape of the mock API
-// (branch-local until contracts/openapi.json declares it): the "Cierre" button, its
-// states, the shared player and the gate on the final exam.
+// The closing flow against the mock host: a student has no "Cierre" button and enters from the
+// card on the map; the shared player and the gate on the final exam.
 
 const closing = {
   enabled: true,
@@ -35,7 +35,8 @@ const closing = {
   ],
 }
 
-const open = async (page: Page, query: string) => {
+const open = async (page: Page, query: string, status = closingStatus('required')) => {
+  await serveClosingStatus(page.context(), { value: status })
   await page.goto('/mock-host/index.html')
   const input = page.locator('label:has-text("app URL") input')
   const current = await input.inputValue()
@@ -56,15 +57,16 @@ const button = (page: Page) => app(page).getByRole('button', { name: 'Cierre', e
 const dialog = (page: Page) => app(page).getByRole('dialog', { name: 'Cierre', exact: true })
 
 test.describe('closing flow', () => {
-  test('is opened by the student, never by itself, and the final exam gates Terminar', async ({
+  test('is entered from the card, never by itself, and the final exam gates Terminar', async ({
     page,
   }) => {
-    await open(page, `${withClosing}&mockClosing=available`)
-    await expect(button(page)).toHaveAttribute('aria-disabled', 'false')
-    // Never over the map by itself.
+    await open(page, withClosing)
+    await expect(closingCard(page)).toBeVisible()
+    // Never over the map by itself, and no button for a student.
     await expect(dialog(page)).toHaveCount(0)
+    await expect(button(page)).toHaveCount(0)
 
-    await button(page).click()
+    await enterFromCard(page)
     await expect(dialog(page)).toBeVisible()
     await expect(dialog(page).getByRole('heading', { name: 'Lo que lograste' })).toBeVisible()
     await dialog(page).getByRole('button', { name: 'Continuar' }).click()
@@ -81,17 +83,10 @@ test.describe('closing flow', () => {
     )
   })
 
-  test('is closed, and says why, until the backend opens it', async ({ page }) => {
-    await open(page, withClosing)
-    await expect(button(page)).toHaveAttribute('aria-disabled', 'true')
-    await button(page).click({ force: true })
-    await expect(app(page).getByText('Todavía no puedes abrir el cierre.').first()).toBeVisible()
-    await expect(dialog(page)).toHaveCount(0)
-  })
-
-  test('has no button when the map has no closing flow', async ({ page }) => {
-    await open(page, '&mockClosing=available')
+  test('offers nothing when the map has no closing flow', async ({ page }) => {
+    await open(page, '')
     await expect(app(page).getByRole('button', { name: 'Misiones' })).toBeVisible()
     await expect(button(page)).toHaveCount(0)
+    await expect(closingCard(page)).toHaveCount(0)
   })
 })

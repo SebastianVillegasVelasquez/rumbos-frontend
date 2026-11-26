@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test'
 import { app } from './support.ts'
+import { closingStatus, enterFromCard, serveClosingStatus } from './closingStatus.ts'
 
 // The Moodle-activity step (contract v5.11, plugin docs/HOST-CONTRACT.md) against the mock
 // host, which plays the plugin. Branch-local: the plugin's contract is not merged yet, so the
@@ -60,17 +61,15 @@ const openButton = (page: Page) =>
 
 // A student reaching the closing flow whose first step is the activity.
 const studentAtActivity = async (page: Page, steps: object[] = [activityStep, textStep]) => {
-  const level = await load(
-    page,
-    `&mockWelcome=disabled&mockClosing=available${asJson(closing(steps))}`
-  )
+  await serveClosingStatus(page.context(), { value: closingStatus('required') })
+  const level = await load(page, `&mockWelcome=disabled${asJson(closing(steps))}`)
   await level.click()
   const bubble = app(page).getByRole('dialog', { name: 'Bienvenida al curso' })
   await bubble.waitFor({ timeout: 8000 })
   await bubble.getByRole('button', { name: 'Cerrar' }).first().click()
   await app(page).getByRole('button', { name: 'Omitir' }).click()
   await expect(app(page).getByRole('dialog')).toHaveCount(0)
-  await app(page).getByRole('button', { name: 'Cierre', exact: true }).click()
+  await enterFromCard(page)
   await expect(dialog(page)).toBeVisible()
 }
 

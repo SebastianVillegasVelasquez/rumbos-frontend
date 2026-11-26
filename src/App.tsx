@@ -1,6 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { subscribeHostStateReceived } from './features/embed/hostState.ts'
-import { closingEntryView } from './features/hud/closingEntry.ts'
 import {
   Suspense,
   lazy,
@@ -125,18 +124,17 @@ import { JourneySimulator } from './features/assessment/JourneySimulator.tsx'
 import { simStatus, type SimState } from './features/assessment/journeySimulation.ts'
 import { ClosingCard, JourneyOverlay } from './features/assessment/JourneyOverlay.tsx'
 import {
-  availabilityFromStatus,
   markScreenSeen,
   wasScreenSeen,
   type JourneyScreen,
-} from './features/assessment/journeyAvailability.ts'
+} from './features/assessment/journeyScreens.ts'
 import { CLOSING_STATUS_KEY, useClosingStatus } from './features/assessment/useClosingStatus.ts'
 import { useWelcome } from './features/welcome/useWelcome.ts'
 import { welcomeTitle } from './features/welcome/welcome.ts'
 import { cameraBridge } from './features/view3d/cameraBridge.ts'
 import { LazyAudioControl } from './features/audio/LazyAudioControl.tsx'
 import type { AudioTrack } from './features/audio/audioSession.ts'
-import { QuestLog } from './features/quests/QuestLog.tsx'
+import { QUESTS_BUTTON_ID, QuestLog } from './features/quests/QuestLog.tsx'
 import { buildQuestEntries } from './features/quests/questEntries.ts'
 import { readQuestsOpen, rememberQuestsOpen } from './features/quests/questsPreference.ts'
 import { viewerStorage } from './features/quests/viewerStorage.ts'
@@ -923,6 +921,8 @@ export function AppShell() {
   const journeyScreen: JourneyScreen | null =
     closingPlace?.kind === 'screen' && !closingOpen && !journeyBlocked ? closingPlace.screen : null
   const showClosingCard = closingPlace?.kind === 'card' && !closingOpen && !journeyBlocked
+  // The closing or a journey screen has the stage: what opens by itself on a level waits.
+  const stageTaken = closingOpen || journeyScreen !== null
   const finishJourneyScreen = () => {
     if (!journeyScreen || !renderable) return
     // The congratulations come once; the "review again" screen stays until the backend restarts.
@@ -932,15 +932,8 @@ export function AppShell() {
     // The CTA of a passed check-in opens the closing flow, without the final exam.
     if (journeyScreen === 'congrats_checkin') setClosingOpen(true)
   }
-  // The backend's word (with its reason and SCORM counts); an older draft sends only the boolean.
-  const closingView = closingEntryView(
-    availabilityFromStatus(closingStatus) ??
-      renderable?.closingAvailability ??
-      (renderable?.closingAvailable === undefined
-        ? null
-        : { available: renderable.closingAvailable, reason: null }),
-    exitPreview !== null
-  )
+  // The HUD's "Cierre" button is the editor's alone, to look at the flow from the student view.
+  const editorSeesClosing = exitPreview !== null && (embed === null || embed.role === 'editor')
   const closingWasOpen = useRef(false)
   useEffect(() => {
     if (closingOpen) {
@@ -949,7 +942,10 @@ export function AppShell() {
     }
     if (!closingWasOpen.current) return
     closingWasOpen.current = false
-    document.getElementById(CLOSING_BUTTON_ID)?.focus()
+    // A student has no closing button: the focus goes back to the HUD.
+    const back =
+      document.getElementById(CLOSING_BUTTON_ID) ?? document.getElementById(QUESTS_BUTTON_ID)
+    back?.focus()
   }, [closingOpen])
   const resumeCourseId = renderable?.moodleCourseId ?? null
   const resumeMapId = renderable?.id ?? null
@@ -1405,7 +1401,7 @@ export function AppShell() {
                 onOpenLevels={
                   siblingLevels.length > 1 ? () => navigate({ name: 'home' }) : undefined
                 }
-                coachMarks={!exitPreview && !shownContentBubble}
+                coachMarks={!exitPreview && !shownContentBubble && !stageTaken}
                 questsOpen={questsOpen}
                 onToggleQuests={toggleQuests}
                 trainer={
@@ -1426,21 +1422,8 @@ export function AppShell() {
                       : null
                 }
                 closing={
-                  journeySteps.length > 0
-                    ? {
-                        onOpen: () => setClosingOpen(true),
-                        enabled: closingView.enabled,
-                        note: closingView.note,
-                        // Never opens the flow: it only walks them to the next pending bubble.
-                        onContinue:
-                          closingView.offersContinue && nextTarget
-                            ? () => {
-                                setActiveQuestBubbleId(nextTarget.id)
-                                setFocusBubbleId(nextTarget.id)
-                                setArmedBubbleId(nextTarget.id)
-                              }
-                            : null,
-                      }
+                  editorSeesClosing && journeySteps.length > 0
+                    ? { onOpen: () => setClosingOpen(true) }
                     : null
                 }
                 overlay={
@@ -1720,7 +1703,7 @@ export function AppShell() {
       )}
 
       <LazyContentViewer
-        content={shownContentBubble?.content ?? null}
+        content={stageTaken ? null : (shownContentBubble?.content ?? null)}
         widgetsEnabled={widgetsEnabled}
         onClose={closeContent}
       />

@@ -12,7 +12,7 @@ import {
   type ClosingPlace,
 } from './closingResume.ts'
 import { parseClosingStatus, type ClosingStatus } from './closingStatus.ts'
-import type { JourneyScreen } from './journeyAvailability.ts'
+import type { JourneyScreen } from './journeyScreens.ts'
 
 // Where a student is on every load: one test per row of the states table (docs/WELCOME-FLOW.md).
 // Every status is checked against contracts/openapi.json.

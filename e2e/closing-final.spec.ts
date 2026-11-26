@@ -7,13 +7,13 @@ import {
   type Page,
 } from '@playwright/test'
 import { app } from './support.ts'
+import { closingStatus, enterFromCard, serveClosingStatus } from './closingStatus.ts'
 import { TrainerMock, type MockOptions } from './trainerMock.ts'
 
 // The closing flow with the final exam as a step, against the spec-derived exam mock
-// (TrainerMock) and the branch-local closing shapes of the mock API (the closing
-// availability, its reasons and the guard error are NOT in contracts/openapi.json yet):
-// the locked "Cierre" with the SCORM counts, the full run, already passed, exhausted
-// attempts, the guard error, an editor preview, keyboard reordering and a stale link.
+// (TrainerMock) and closing status: the full run, already passed, exhausted attempts, the
+// guard error, an editor preview, keyboard reordering and a stale link. A student enters from
+// the card on the map; where they are on each load is closing-resume.spec.ts.
 
 const closing = {
   enabled: true,
@@ -60,6 +60,7 @@ const open = async (
 ) => {
   const server = new TrainerMock(mock)
   await server.install(context)
+  await serveClosingStatus(context, { value: closingStatus('required') })
   await page.goto('/mock-host/index.html')
   if (role === 'editor') {
     await page
@@ -97,8 +98,8 @@ const open = async (
 const button = (page: Page) => app(page).getByRole('button', { name: 'Cierre', exact: true })
 const dialog = (page: Page) => app(page).getByRole('dialog', { name: 'Cierre', exact: true })
 
-const toFinalStep = async (page: Page) => {
-  await button(page).click()
+const toFinalStep = async (page: Page, enter = enterFromCard) => {
+  await enter(page)
   await expect(dialog(page)).toBeVisible()
   await dialog(page).getByRole('button', { name: 'Continuar' }).click()
 }
@@ -124,35 +125,6 @@ const answerVisible = async (frame: FrameLocator | Locator) => {
 }
 
 test.describe('closing: entry', () => {
-  test('locked by pending SCORM: says the counts, offers Continuar, never opens the flow', async ({
-    page,
-    context,
-  }) => {
-    await open(page, context, {
-      query: '&mockClosing=scorm_incomplete&mockClosingDone=5&mockClosingTotal=7',
-    })
-    await expect(button(page)).toHaveAttribute('aria-disabled', 'true')
-    await button(page).click({ force: true })
-    await expect(
-      app(page).getByText('Completa los 7 contenidos para abrir el cierre. Llevas 5.').first()
-    ).toBeVisible()
-    await expect(app(page).getByText(/scorm_incomplete/)).toHaveCount(0)
-    await app(page).getByRole('button', { name: 'Continuar', exact: true }).click()
-    // It walks to the next pending bubble; it does not open the closing flow.
-    await expect(dialog(page)).toHaveCount(0)
-  })
-
-  test('an unknown reason reads as a neutral sentence, never as the code', async ({
-    page,
-    context,
-  }) => {
-    await open(page, context, { query: '&mockClosing=a_brand_new_code' })
-    await button(page).click({ force: true })
-    await expect(app(page).getByText('Todavía no puedes abrir el cierre.').first()).toBeVisible()
-    await expect(app(page).getByText(/a_brand_new_code/)).toHaveCount(0)
-    await expect(dialog(page)).toHaveCount(0)
-  })
-
   test('a stale link to the old final exam lands on the map, not a blank screen', async ({
     page,
     context,
@@ -167,7 +139,7 @@ test.describe('closing: the final step', () => {
   test('a full run: Terminar opens when the attempt is submitted', async ({ page, context }) => {
     // Twelve items across five sections: slow in WebKit.
     test.slow()
-    await open(page, context, { query: '&mockClosing=available' })
+    await open(page, context, {})
     await toFinalStep(page)
     const terminar = dialog(page).getByRole('button', { name: 'Terminar' })
     await expect(terminar).toHaveAttribute('aria-disabled', 'true')
@@ -200,7 +172,7 @@ test.describe('closing: the final step', () => {
   })
 
   test('already passed: "Ya aprobaste", and Terminar is open', async ({ page, context }) => {
-    await open(page, context, { query: '&mockClosing=available', mock: { state: 'passed' } })
+    await open(page, context, { mock: { state: 'passed' } })
     await toFinalStep(page)
     await expect(dialog(page).getByText('Ya aprobaste.')).toBeVisible()
     await expect(dialog(page).getByText('No necesitas hacer esta evaluación.')).toBeVisible()
@@ -211,7 +183,7 @@ test.describe('closing: the final step', () => {
   })
 
   test('attempts exhausted: says so and does not trap the student', async ({ page, context }) => {
-    await open(page, context, { query: '&mockClosing=available', mock: { state: 'exhausted' } })
+    await open(page, context, { mock: { state: 'exhausted' } })
     await toFinalStep(page)
     await expect(
       dialog(page).getByText('Ya usaste todos los intentos de la evaluación final.')
@@ -227,7 +199,6 @@ test.describe('closing: the final step', () => {
     context,
   }) => {
     await open(page, context, {
-      query: '&mockClosing=available',
       mock: { state: 'locked', lockedReason: 'scorm_incomplete' },
     })
     await toFinalStep(page)
@@ -241,7 +212,7 @@ test.describe('closing: the final step', () => {
   })
 
   test('loading is announced with aria-busy', async ({ page, context }) => {
-    await open(page, context, { query: '&mockClosing=available', mock: { listDelayMs: 2500 } })
+    await open(page, context, { mock: { listDelayMs: 2500 } })
     await toFinalStep(page)
     await expect(dialog(page).locator('[aria-busy="true"]')).toBeVisible()
     await expect(dialog(page).getByText('Comprobando…')).toBeVisible()
@@ -251,7 +222,7 @@ test.describe('closing: the final step', () => {
   })
 
   test('a server error offers Reintentar and keeps Terminar closed', async ({ page, context }) => {
-    await open(page, context, { query: '&mockClosing=available', mock: { listStatus: 503 } })
+    await open(page, context, { mock: { listStatus: 503 } })
     await toFinalStep(page)
     await expect(dialog(page).getByText('No pudimos cargar la evaluación.')).toBeVisible({
       timeout: 45_000,
@@ -268,7 +239,6 @@ test.describe('closing: the final step', () => {
     context,
   }) => {
     await open(page, context, {
-      query: '&mockClosing=available',
       mock: { startError: { status: 409, code: 'closing_not_available' } },
     })
     await toFinalStep(page)
@@ -293,12 +263,10 @@ test.describe('closing: an editor in preview', () => {
     await open(page, context, {
       role: 'editor',
       editing: true,
-      query: '&mockClosing=scorm_incomplete',
       mock: { preview: true },
     })
     await app(page).getByRole('radio', { name: 'Vista previa', exact: true }).click()
-    await expect(button(page)).toHaveAttribute('aria-disabled', 'false')
-    await toFinalStep(page)
+    await toFinalStep(page, (target) => button(target).click())
     await expect(
       dialog(page)
         .getByText(/Vista previa: este intento no se guarda ni cuenta/)

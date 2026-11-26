@@ -2,7 +2,7 @@ import type { WelcomeStep } from '../course-map/data/types.ts'
 import { isComplete, toStepInfo, type ProgressEntry } from '../welcome/flow/flowReducer.ts'
 import { isFinalStep, stageOf } from './closingJourney.ts'
 import type { ClosingStatus } from './closingStatus.ts'
-import type { JourneyScreen } from './journeyAvailability.ts'
+import type { JourneyScreen } from './journeyScreens.ts'
 
 // Where a student is on the way to the closing, worked out again on every load. Students have no
 // button into the closing flow, so this is their only way in. Two sources, both the server's: the

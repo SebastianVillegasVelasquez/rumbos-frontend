@@ -172,7 +172,7 @@ test.describe('the editor’s test tools', () => {
     ).toBeVisible()
     await expect(dialog(page).getByText('Intentos usados: 1 de 3')).toBeVisible()
     await expect(
-      dialog(page).getByText(/el botón Cierre sigue como lo defina el curso/)
+      dialog(page).getByText(/llega al cierre cuando completa el contenido/)
     ).toBeVisible()
     await expect(dialog(page).getByRole('button', { name: 'Ver cierre' })).toHaveCount(0)
     expect(writes(server)).toEqual([])

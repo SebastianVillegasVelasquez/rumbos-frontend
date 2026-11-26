@@ -6,7 +6,7 @@ import { congratulationsValues, remainingContent } from './closingJourney.ts'
 import type { ClosingStatus } from './closingStatus.ts'
 import { resolveCongratulations } from './congratulations.ts'
 import { CongratulationsScreen, ExhaustedScreen } from './CongratulationsScreen.tsx'
-import type { JourneyScreen } from './journeyAvailability.ts'
+import type { JourneyScreen } from './journeyScreens.ts'
 
 // The full-stage screen a student reaches by the journey: congratulations after a passed
 // check-in or final, or the "review the content again" screen. What it says comes from the

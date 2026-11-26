@@ -807,17 +807,6 @@ export const es = {
     tutor: 'Tutor virtual',
     tutorHint: 'Asistente con inteligencia artificial',
     closing: 'Cierre',
-    closingContinue: 'Continuar',
-    // Why "Cierre" is closed. Wording pending approval; keys are ours, never the backend's codes.
-    closingReasons: {
-      scorm_incomplete: (done: number, total: number) =>
-        `Completa los ${total} contenidos para abrir el cierre. Llevas ${done}.`,
-      scorm_incomplete_unknown: 'Completa todos los contenidos para abrir el cierre.',
-      not_configured: 'El cierre todavía no está listo en este curso.',
-      already_passed: 'Ya aprobaste: no necesitas hacer el cierre.',
-      attempts_exhausted: 'Ya usaste todos los intentos de la evaluación final.',
-      other: 'Todavía no puedes abrir el cierre.',
-    },
     tutorNotEnabled: 'El tutor no está habilitado en este sitio',
     // The trainer's code could not be downloaded (offline, or the site was updated).
     trainerChunk: {
@@ -911,7 +900,7 @@ export const es = {
       tab: 'Flujo de cierre',
       title: 'Flujo de cierre',
       intro:
-        'Una secuencia de pasos que tus estudiantes recorren al terminar el nivel: video, texto, documento, evaluación de Moodle y la evaluación final. Se abre desde el botón Cierre; nunca por sí sola.',
+        'Una secuencia de pasos que tus estudiantes recorren al terminar el nivel: video, texto, documento, evaluación de Moodle y la evaluación final. Cada estudiante llega según su resultado: tras las felicitaciones si aprueba el diagnóstico (sin la evaluación final), o con «Continuar al cierre» al completar el contenido.',
       enable: 'Ofrecer el flujo de cierre',
       empty: 'Todavía no hay pasos de cierre. Agrega el primero.',
       // Only the final exam is worded differently: the other steps use the welcome flow's words.
@@ -921,7 +910,7 @@ export const es = {
       // record any yet (the backend does not declare it).
       help: [
         'Los estudiantes ven los pasos en orden, a pantalla completa.',
-        'Los pasos obligatorios hacen que el botón Continuar espere; quien cierre la ventana puede volver a abrir el cierre.',
+        'Los pasos obligatorios hacen que el botón Continuar espere; quien salga a mitad del cierre lo retoma donde iba.',
       ],
       previewEmpty: 'Agrega al menos un paso para ver cómo lo recorrerá tu estudiante.',
       // On the final-assessment step: why students cannot reach it yet. Pending approval.
