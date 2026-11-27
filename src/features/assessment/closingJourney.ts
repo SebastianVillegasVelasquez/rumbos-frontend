@@ -63,13 +63,19 @@ export const remainingContent = (status: ClosingStatus | null | undefined): numb
 }
 
 // The values the congratulations screen substitutes: the score of the attempt that decided it
-// and the threshold it was graded with, as the backend reports them.
+// and the threshold it was graded with, as the backend reports them. It reports neither for the
+// final exam: `finalThreshold` is the deciding final's own rule where the caller knows it, and
+// the check-in's stands in otherwise.
 export const congratulationsValues = (
   status: ClosingStatus | null | undefined,
-  purpose: 'checkin' | 'final'
+  purpose: 'checkin' | 'final',
+  finalThreshold: number | null = null
 ): { score: string | null; threshold: number | null } => {
   const checkin = status?.outcome?.checkin
   if (purpose === 'checkin' && checkin)
     return { score: checkin.percent, threshold: checkin.passPercent }
-  return { score: null, threshold: checkin?.passPercent ?? null }
+  return {
+    score: null,
+    threshold: (purpose === 'final' ? finalThreshold : null) ?? checkin?.passPercent ?? null,
+  }
 }

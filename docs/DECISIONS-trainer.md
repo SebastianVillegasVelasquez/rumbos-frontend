@@ -533,3 +533,7 @@ and one stale input; everything else already reads the API.
 - **The failure message after a panel attempt** is shown on the closing card, since the panel shows no result screen. A
   real student reads it on the result screen; the card does not repeat it from the backend's attempt count, which does not
   say whether the last attempt was graded.
+- **`{score}` on the final.** No score is reported for the final, so the editor warns about the placeholder there and a
+  final field that uses it shows Rumbos' text instead of a sentence with a hole. Saving is not blocked: the backend
+  accepts the text, and it starts working once a score arrives. `{threshold}` takes the final's own pass mark where known
+  (the simulation); a real student still gets the check-in's, the only one the status reports.

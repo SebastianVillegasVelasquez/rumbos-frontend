@@ -19,12 +19,15 @@ export const JourneyOverlay = ({
   status,
   onContinue,
   simulated = false,
+  finalThreshold = null,
 }: {
   screen: JourneyScreen
   congratulations: MapCongratulations | null | undefined
   status: ClosingStatus | null
   onContinue: () => void
   simulated?: boolean
+  // The pass mark of the final that was decided, where it is known (a simulation).
+  finalThreshold?: number | null
 }) => (
   <div
     role="dialog"
@@ -41,7 +44,11 @@ export const JourneyOverlay = ({
         text={resolveCongratulations(
           screen === 'congrats_checkin' ? 'checkin' : 'final',
           congratulations,
-          congratulationsValues(status, screen === 'congrats_checkin' ? 'checkin' : 'final'),
+          congratulationsValues(
+            status,
+            screen === 'congrats_checkin' ? 'checkin' : 'final',
+            finalThreshold
+          ),
           status?.outcome?.checkin?.passOperator ?? null
         )}
       />

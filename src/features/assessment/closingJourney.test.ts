@@ -134,6 +134,10 @@ describe('what the congratulations screen substitutes', () => {
     const status = parsed(outcome('not_required_passed_checkin', {}, 'passed'))
     assert.deepEqual(congratulationsValues(status, 'checkin'), { score: '85.5', threshold: 70 })
   })
+  it('takes the final’s own pass mark where it is known', () => {
+    assert.equal(congratulationsValues(null, 'final', 85).threshold, 85)
+    assert.equal(congratulationsValues(null, 'checkin', 85).threshold, null)
+  })
   it('has no score for a final it cannot read, and still the threshold of the check-in', () => {
     const status = parsed(outcome('passed'))
     assert.equal(congratulationsValues(status, 'final').score, null)

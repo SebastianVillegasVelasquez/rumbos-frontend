@@ -80,12 +80,18 @@ export const esCongratulations = {
     title: 'Título',
     body: 'Mensaje',
     ctaLabel: 'Texto del botón',
-    placeholders:
-      'Puedes usar {score} para la nota y {threshold} para el mínimo para aprobar. Solo texto: no se permite formato ni enlaces.',
+    placeholders: {
+      checkin:
+        'Puedes usar {score} para la nota y {threshold} para el mínimo para aprobar. Solo texto: no se permite formato ni enlaces.',
+      final:
+        'Puedes usar {threshold} para el mínimo para aprobar. Solo texto: no se permite formato ni enlaces.',
+    },
+    scoreUnavailable:
+      'Quita {score}: la nota de la evaluación final todavía no está disponible. Mientras esté, ese campo mostrará el texto de Rumbos.',
     counter: (used: number, max: number) => `${used} de ${max}`,
     preview: 'Así se verá',
     previewScore: '85',
-    previewThreshold: '70',
+
     reset: 'Usar el texto de Rumbos',
     previewLabel: 'Vista previa de la pantalla',
     tooLong: 'El texto es demasiado largo.',

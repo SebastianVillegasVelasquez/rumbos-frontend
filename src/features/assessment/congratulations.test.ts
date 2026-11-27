@@ -7,6 +7,7 @@ import {
   formatScore,
   clearCongratulations,
   resolveCongratulations,
+  usesUnavailableScore,
   setCongratulationsField,
   substitute,
 } from './congratulations.ts'
@@ -67,6 +68,26 @@ describe('the placeholders', () => {
     assert.equal(text.body, '85.5/70, 85.5')
     assert.equal(text.ctaLabel, '70')
   })
+  it('a final field asking for a score nobody has gets Rumbos’ text, field by field', () => {
+    const settings = { final: { title: '¡Bien!', body: 'Sacaste {score} de nota.' } }
+    const shown = resolveCongratulations('final', settings, { score: null, threshold: 80 })
+    assert.equal(shown.title, '¡Bien!')
+    assert.equal(shown.body, resolveCongratulations('final', null, values).body)
+    assert.equal(
+      resolveCongratulations('final', settings, values).body,
+      'Sacaste 85.5 de nota.',
+      'with a score, the author’s text stands'
+    )
+  })
+
+  it('no default copy for the final asks for the score', () => {
+    const shown = resolveCongratulations('final', null, { score: null, threshold: null })
+    for (const field of Object.values(shown))
+      assert.equal(usesUnavailableScore('final', field), false)
+    assert.equal(usesUnavailableScore('checkin', '{score}'), false)
+    assert.equal(usesUnavailableScore('final', '{score}'), true)
+  })
+
   it('write the score the way a person would', () => {
     assert.equal(formatScore('85.50'), '85.5')
     assert.equal(formatScore('85.00'), '85')

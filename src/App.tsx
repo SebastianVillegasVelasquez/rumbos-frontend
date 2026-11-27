@@ -1573,6 +1573,7 @@ export function AppShell() {
                       status={closingStatus}
                       onContinue={finishJourneyScreen}
                       simulated={simulating}
+                      finalThreshold={sim ? simRules.policy.pass_percent : null}
                     />
                   ) : null
                 }
