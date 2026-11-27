@@ -599,3 +599,24 @@ Linux container with the fixes: 8 tests, 5 runs each, 40 passed.
   that width allows 5% (others 3%): one baseline serves Windows and Linux, which differ by
   about 4% there. The Linux container is not the CI image (11% there), so CI decides; it
   stopped at the first screenshot, so the other four at 412 px are unverified on CI.
+
+## Journey texts, the final's outcome and observe mode
+
+- **Existing bug, fixed:** with the gate on (`observe` or `enforce`) the backend leaves the final out of
+  `GET /trainer/assessments`. The final step looked only there, so a student was told the exam had no questions
+  and offered "Continuar de todos modos". The browser mocks always listed the final, which hid it.
+- `failure` is shown after a failed **final** only. The backend's text also covers a failed check-in, where this
+  app shows the route instructions instead.
+- `{attempts_max}` is the attempt result's `attempts.max`. The backend recommends the outcome's, the limit now
+  in force; they differ only if the editor changes the limit while an attempt is open.
+- `failure.ctaLabel` names the button that leaves the result. The map's "Continuar al cierre" keeps its label.
+- A passed result states the rule it was graded with (`result.pass_percent`), not the list's policy.
+- Observe, passed check-in: no card, as asked. So that a student who read the congratulations and left before
+  saving a closing step still has a way in, they come back on the next visit until the closing has started.
+- Observe, route card: the server never says `locked` there, so the app shows the card after a failed check-in
+  while content is incomplete.
+- Observe also holds back a closing left in the middle while content is incomplete (an activity added later).
+- New copy, pending approval: the texts editor (`journeyEditor`), its section names and the `journey_text_*` and
+  `congratulations_*` messages.
+- Not changed: the exam's intro takes its time limit from the list's policy, which with the final hidden can be
+  the check-in's. The countdown itself follows the server's deadline.

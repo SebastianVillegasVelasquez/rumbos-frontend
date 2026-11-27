@@ -315,13 +315,17 @@ copy.
   `closing` key.
 - **Progress record:** each mandatory closing step is reported to the host (`flow-step-done`, the same table as the
   welcome flow; step keys are unique across both), so the flow resumes where Moodle says.
-- **Deploy order:** backend first, with `CLOSING_GATE_MODE=enforce`. With the gate off the status has no `outcome`,
-  so no student is offered the closing flow.
+- **Deploy order:** backend first, with `CLOSING_GATE_MODE=observe` or `enforce`. With the gate `off` the status
+  has no `outcome`, so no student is offered the closing flow.
+- **Where the final exam comes from:** with the gate on, the backend leaves the final out of
+  `GET /trainer/assessments`; the final step then takes its item from `GET /trainer/closing` and decides from
+  `outcome.final.status`, never from the item's `state` (`assessment/finalOffer.ts`).
 
 ### Where a student is on every load
 
 Worked out again on each load (`assessment/closingResume.ts`) from `GET /trainer/closing` and the closing steps'
-records in Moodle. The client never compares a score or counts activities. Rows are read from the top.
+records in Moodle. The client never compares a score. It counts activities only in `observe` mode (below). This
+table is for `enforce`, where the server decides. Rows are read from the top.
 
 | `outcome.final.status`           | Closing steps in Moodle        | The student sees                                                   |
 | -------------------------------- | ------------------------------ | ------------------------------------------------------------------ |
@@ -349,3 +353,34 @@ route: it reads as any other load. While the flow or a journey screen is up, the
 first-run guide wait.
 
 Tests: `closingResume.test.ts` and `e2e/closing-resume.spec.ts` (Chromium and WebKit).
+
+### In `observe` mode (`scorm_gate.reason: not_checked`)
+
+The server does not check the content: it can report the final as `required` and available before the student has
+done anything. The app then waits, in this order, before it offers or reopens the closing with the final: the
+check-in is taken (where the map has one), and every required visible bubble is complete in the plugin's progress.
+"Required visible" is the count of the map's progress bar for a student: content bubbles and hidden, missing or
+untracked activities do not count. **This is what the screen shows, not a control:** a direct call to the backend
+can still start the final.
+
+| the student                         | content    | closing steps in Moodle | sees                                       |
+| ----------------------------------- | ---------- | ----------------------- | ------------------------------------------ |
+| check-in not taken                  | any        | any                     | the map                                    |
+| plugin's progress not known yet     | unknown    | any                     | the map                                    |
+| check-in not passed                 | incomplete | any                     | the route-instructions card                |
+| a map without a check-in            | incomplete | any                     | the map                                    |
+| check-in not passed, or no check-in | complete   | none, or all            | the "Continuar al cierre" card             |
+| check-in not passed, or no check-in | complete   | some                    | the flow, resumed                          |
+| check-in passed                     | any        | none                    | the congratulations, again on a new visit  |
+| check-in passed                     | any        | some / all              | the flow resumed / the map. **Never card** |
+| final passed, or attempts spent     | any        | any                     | as in `enforce`                            |
+
+With the gate `off` there is no `outcome`, and nothing of this applies: the app behaves as before.
+
+### The journey's texts
+
+The editor (Entrenamiento tab) writes the congratulations and three more texts: `failure` (after a failed final;
+its button label names the button that leaves the result), `exhausted` and `routeInstructions`. Each field left
+empty is Rumbos' copy. Plain text. `failure` takes `{attempt}`, `{attempts_max}`, `{attempts_left}` and
+`{threshold}`; the other two take none. The congratulations take `{score}` and `{threshold}`, each exam its own
+(`outcome.checkin` or `outcome.final`). A field is offered only if the backend's map has the key.
