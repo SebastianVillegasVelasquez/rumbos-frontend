@@ -37,7 +37,14 @@ const status = (
           pass_operator: 'gt',
           attempts: { used: 1, max: 2 },
         },
-        final: { status: final, reason, attempts: { used: 0, max: 3 } },
+        final: {
+          status: final,
+          reason,
+          attempts: { used: 0, max: 3 },
+          percent: null,
+          pass_percent: 70,
+          pass_operator: 'gt',
+        },
         scorm_gate: { satisfied: true, reason: null },
       },
     })

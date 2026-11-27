@@ -308,6 +308,8 @@ export class TrainerMock {
       status,
       percent,
       passed,
+      pass_percent: passPercent,
+      pass_operator: operator,
       band: p >= 80 ? 'achieved' : p >= 60 ? 'consolidating' : p >= 40 ? 'developing' : 'emerging',
       by_section: SECTIONS.map((s) => ({
         key: s.key,

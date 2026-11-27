@@ -985,6 +985,10 @@ export const es = {
           pass: 'Nota para aprobar',
           exemption: 'Cierre del curso',
           welcome: 'Bienvenida',
+          congratulations: 'Pantalla de felicitaciones',
+          failure: 'Texto de intento no aprobado',
+          exhausted: 'Texto de intentos agotados',
+          routeInstructions: 'Texto de la ruta hacia la evaluación final',
           step: (position: number, title: string) =>
             title
               ? `Paso ${position} de la bienvenida (${title})`
@@ -1015,6 +1019,14 @@ export const es = {
           time_out_of_range: 'el tiempo debe estar entre 5 y 240 minutos',
           pass_percent_out_of_range: 'la nota debe estar entre 0 y 100',
           step_field_invalid: 'este paso no es válido',
+          congratulations_too_long: 'el texto es demasiado largo',
+          congratulations_markup_not_allowed: 'solo se admite texto: quita los signos < y >',
+          congratulations_placeholder_unknown:
+            'tiene una variable o una llave que no se admite aquí: revisa lo que está entre { }',
+          journey_text_too_long: 'el texto es demasiado largo',
+          journey_text_markup_not_allowed: 'solo se admite texto: quita los signos < y >',
+          journey_text_placeholder_unknown:
+            'tiene una variable o una llave que no se admite aquí: revisa lo que está entre { }',
         } as Record<string, string>,
         warningMessages: {
           content_unpublished: 'El contenido aún no está publicado: los estudiantes no lo verán.',

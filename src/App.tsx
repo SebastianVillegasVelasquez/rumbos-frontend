@@ -137,7 +137,7 @@ import {
 import { esCongratulations } from './i18n/congratulations.es.ts'
 import type { FlowSimulation } from './features/welcome/flow/flowSimulation.ts'
 import { ClosingCard, JourneyOverlay, RouteCard } from './features/assessment/JourneyOverlay.tsx'
-import { finalFailure } from './features/assessment/journeyTexts.ts'
+import { failureText, routeInstructionsText } from './features/assessment/journeyTexts.ts'
 import {
   markScreenSeen,
   wasScreenSeen,
@@ -1562,6 +1562,7 @@ export function AppShell() {
                             )
                       }
                       persistence={exitPreview !== null ? null : closingProgress.persistence}
+                      journeyTexts={renderable.settings}
                       documents={renderable.welcomeDocuments ?? []}
                       courseName={hostCourseName?.trim() || renderable.title}
                       imageUrl={renderable.imageUrl}
@@ -1579,7 +1580,7 @@ export function AppShell() {
                       status={closingStatus}
                       onContinue={finishJourneyScreen}
                       simulated={simulating}
-                      finalThreshold={sim ? simRules.policy.pass_percent : null}
+                      journeyTexts={renderable.settings}
                     />
                   ) : null
                 }
@@ -1659,7 +1660,13 @@ export function AppShell() {
                 <ClosingCard
                   status={closingStatus}
                   failure={
-                    simFailed === null ? null : finalFailure(simFailed, simRules.finalMaxAttempts)
+                    simFailed === null
+                      ? null
+                      : failureText(renderable?.settings, {
+                          attempt: simFailed,
+                          max: simRules.finalMaxAttempts,
+                          threshold: simRules.policy.pass_percent,
+                        })
                   }
                   onOpen={() => setClosingOpen(true)}
                 />
@@ -1678,7 +1685,10 @@ export function AppShell() {
                 }}
               />
               {showRouteCard && (
-                <RouteCard onDismiss={() => setJourneyDismissed((list) => [...list, 'route'])} />
+                <RouteCard
+                  text={routeInstructionsText(renderable?.settings)}
+                  onDismiss={() => setJourneyDismissed((list) => [...list, 'route'])}
+                />
               )}
             </>
           ) : show3d && renderable && view3d ? (

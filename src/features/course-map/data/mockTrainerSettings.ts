@@ -1,3 +1,4 @@
+import { JOURNEY_PLACEHOLDERS, type JourneyBlock } from '../../assessment/journeyTexts.ts'
 import type { MapSettings } from './types.ts'
 
 // The mock backend's answer to the trainer half of PUT /appearance, shaped like the
@@ -45,8 +46,29 @@ export const trainerSettingsErrors = (settings: MapSettings, formsGone = false):
         })
     }
   }
-  return errors
+  return [...errors, ...journeyTextErrors(settings)]
 }
+
+// The backend's rules for the journey's texts: plain text, and only each block's placeholders.
+const journeyTextErrors = (settings: MapSettings): WireIssue[] =>
+  (Object.keys(JOURNEY_PLACEHOLDERS) as JourneyBlock[]).flatMap((block) =>
+    Object.entries(settings[block] ?? {}).flatMap(([field, value]) => {
+      if (typeof value !== 'string') return []
+      const left = JOURNEY_PLACEHOLDERS[block].reduce(
+        (rest, name) => rest.split(`{${name}}`).join('|'),
+        value
+      )
+      const rules = [
+        ...(/[<>]/.test(value) ? ['journey_text_markup_not_allowed'] : []),
+        ...(/[{}]/.test(left) ? ['journey_text_placeholder_unknown'] : []),
+      ]
+      return rules.map((rule) => ({
+        path: `${block}.${field}`,
+        rule,
+        message_key: `trainer_settings.${rule}`,
+      }))
+    })
+  )
 
 // ?mockTrainerUnpublished=1 stands for "the form is not published yet".
 export const trainerSettingsWarnings = (

@@ -78,14 +78,8 @@ export const esCongratulations = {
     title: 'Título',
     body: 'Mensaje',
     ctaLabel: 'Texto del botón',
-    placeholders: {
-      checkin:
-        'Puedes usar {score} para la nota y {threshold} para el mínimo para aprobar. Solo texto: no se permite formato ni enlaces.',
-      final:
-        'Puedes usar {threshold} para el mínimo para aprobar. Solo texto: no se permite formato ni enlaces.',
-    },
-    scoreUnavailable:
-      'Quita {score}: la nota de la evaluación final todavía no está disponible. Mientras esté, ese campo mostrará el texto de Rumbos.',
+    placeholders:
+      'Puedes usar {score} para la nota y {threshold} para el mínimo para aprobar. Solo texto: no se permite formato ni enlaces.',
     counter: (used: number, max: number) => `${used} de ${max}`,
     preview: 'Así se verá',
     previewScore: '85',
@@ -93,5 +87,24 @@ export const esCongratulations = {
     reset: 'Usar el texto de Rumbos',
     previewLabel: 'Vista previa de la pantalla',
     tooLong: 'El texto es demasiado largo.',
+  },
+  // Pending approval: the editor of the texts for a student who has not passed.
+  journeyEditor: {
+    heading: 'Textos del recorrido',
+    intro:
+      'Son los mensajes para quien todavía no aprueba. Si dejas un campo vacío, se usa el texto de Rumbos.',
+    blocks: {
+      failure: 'Después de no aprobar un intento de la evaluación final',
+      exhausted: 'Al agotar los intentos de la evaluación final',
+      routeInstructions: 'En el mapa, al no aprobar la evaluación diagnóstica',
+    },
+    help: {
+      failure:
+        'Puedes usar {attempt} (número del intento), {attempts_max} (intentos en total), {attempts_left} (intentos que quedan) y {threshold} (mínimo para aprobar). El texto del botón es el que cierra el resultado. Solo texto: no se permite formato ni enlaces.',
+      exhausted: 'Este texto no admite variables. Solo texto: no se permite formato ni enlaces.',
+      routeInstructions:
+        'Este texto no admite variables. Solo texto: no se permite formato ni enlaces.',
+    },
+    defaultCta: 'Continuar',
   },
 } as const

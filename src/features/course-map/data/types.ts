@@ -114,7 +114,15 @@ export interface MapSettings {
   assessments?: MapAssessments | null
   // What the congratulations screens say, per purpose; each field null is the default copy.
   congratulations?: MapCongratulations | null
+  // The journey's other texts: after a failed attempt, once the final's attempts are spent, and
+  // on the map after a failed check-in; each field null is the default copy. A backend that
+  // predates them never sends the keys (the editor then hides them).
+  failure?: MapJourneyText | null
+  exhausted?: MapJourneyText | null
+  routeInstructions?: MapJourneyText | null
 }
+
+export type MapJourneyText = MapCongratulationsText
 
 export interface MapCongratulationsText {
   title?: string | null

@@ -34,7 +34,15 @@ const outcome = (finalStatus: string, extra: Record<string, unknown> = {}, ci = 
     final: null,
     outcome: {
       checkin: checkin(ci),
-      final: { status: finalStatus, reason: null, attempts: attempts(0), ...extra },
+      final: {
+        status: finalStatus,
+        reason: null,
+        attempts: attempts(0),
+        percent: null,
+        pass_percent: 70,
+        pass_operator: 'gt',
+        ...extra,
+      },
       scorm_gate: { satisfied: false, reason: null },
     },
   })
@@ -134,13 +142,14 @@ describe('what the congratulations screen substitutes', () => {
     const status = parsed(outcome('not_required_passed_checkin', {}, 'passed'))
     assert.deepEqual(congratulationsValues(status, 'checkin'), { score: '85.5', threshold: 70 })
   })
-  it('takes the final’s own pass mark where it is known', () => {
-    assert.equal(congratulationsValues(null, 'final', 85).threshold, 85)
-    assert.equal(congratulationsValues(null, 'checkin', 85).threshold, null)
+  it('fills the final from its own outcome, never from the check-in', () => {
+    // The two rules differ: the check-in passed at 70, the final was graded at 85.
+    const status = parsed(outcome('passed', { percent: '92.50', pass_percent: 85 }))
+    assert.deepEqual(congratulationsValues(status, 'final'), { score: '92.50', threshold: 85 })
   })
-  it('has no score for a final it cannot read, and still the threshold of the check-in', () => {
-    const status = parsed(outcome('passed'))
-    assert.equal(congratulationsValues(status, 'final').score, null)
-    assert.equal(congratulationsValues(null, 'checkin').threshold, null)
+  it('has nothing to fill a final with when the outcome carries no score or rule', () => {
+    const status = parsed(outcome('passed', { percent: null, pass_percent: null }))
+    assert.deepEqual(congratulationsValues(status, 'final'), { score: null, threshold: null })
+    assert.deepEqual(congratulationsValues(null, 'checkin'), { score: null, threshold: null })
   })
 })

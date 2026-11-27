@@ -33,6 +33,8 @@ import { CLOSING_STATUS_KEY } from '../../assessment/useClosingStatus.ts'
 import { StepActivity } from './StepActivity.tsx'
 import { StepHtml, StepPdf, StepQuiz, StepVideo, StepWelcome } from './FlowSteps.tsx'
 import { LazyExamRunner } from '../../assessment/LazyExamRunner.tsx'
+import { simLastFailure } from '../../assessment/journeySimulation.ts'
+import { failureText, type JourneySettings } from '../../assessment/journeyTexts.ts'
 import { StepAssessment, type Launch } from './StepAssessment.tsx'
 import { StepPreviewExam } from './StepPreviewExam.tsx'
 import { StepSimulatedExam } from './StepSimulatedExam.tsx'
@@ -67,6 +69,8 @@ export interface WelcomeFlowProps {
   // Set when "Simular recorrido" plays this flow (always in preview): the exam step takes a
   // simulated result and feeds the simulation's state.
   simulation?: FlowSimulation | null
+  // The map's own words for a failed final (the closing flow's exam step).
+  journeyTexts?: JourneySettings | null
 }
 
 const FOCUSABLE =
@@ -91,6 +95,7 @@ const WelcomeFlow = ({
   onEnterFullscreen = null,
   onFinish,
   simulation = null,
+  journeyTexts = null,
 }: WelcomeFlowProps) => {
   const dataSaver = useDataSaver().active
   const queryClient = useQueryClient()
@@ -274,6 +279,7 @@ const WelcomeFlow = ({
               state={state}
               dispatch={dispatch}
               simulation={simulation}
+              journeyTexts={journeyTexts}
             />
           )
         // A preview never reaches the exam itself: no list, no "Empezar", no attempt.
@@ -297,6 +303,20 @@ const WelcomeFlow = ({
   const nextLabel = (() => {
     if (step.type === 'welcome' && step.buttonLabel?.trim()) return step.buttonLabel.trim()
     if (step.type === 'welcome' && state.index === 0) return es.welcome.start
+    // A simulated failed final is on screen: its button may carry the author's own words.
+    if (simulation && step.type === 'assessment' && step.purpose === 'final') {
+      const attempt =
+        state.assessment[step.key] === 'done' ? simLastFailure(simulation, simulation.rules) : null
+      const own =
+        attempt === null
+          ? ''
+          : failureText(journeyTexts, {
+              attempt,
+              max: simulation.rules.finalMaxAttempts,
+              threshold: simulation.rules.policy.pass_percent,
+            }).ctaLabel
+      if (own) return own
+    }
     return isLast ? text.finish : text.next
   })()
 
@@ -342,6 +362,7 @@ const WelcomeFlow = ({
           info={launch.info}
           policy={launch.policy}
           preview={launch.preview}
+          journeyTexts={journeyTexts}
           // Submitted or expired, whatever the result: the check-in is a baseline.
           onFinished={() => {
             dispatch({ type: 'assessment-done' })

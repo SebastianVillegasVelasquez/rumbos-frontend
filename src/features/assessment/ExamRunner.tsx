@@ -14,6 +14,7 @@ import {
   type ExamState,
 } from './examReducer.ts'
 import { ExamResult } from './ExamResult.tsx'
+import { failureText, type JourneySettings } from './journeyTexts.ts'
 import { ItemView, SharedBlock } from './ItemViews.tsx'
 
 import { itemStatus } from './answers.ts'
@@ -48,6 +49,8 @@ export interface ExamRunnerProps {
   onAgain?: () => void
   // What the exit button says once there is a result ("Continuar" inside the flow).
   exitLabel?: string
+  // The map's own words for a failed final.
+  journeyTexts?: JourneySettings | null
 }
 
 const Dots = ({ state, goto }: { state: ExamState; goto: (index: number) => void }) => (
@@ -98,6 +101,7 @@ export const ExamRunner = ({
   onFallback,
   onAgain,
   exitLabel,
+  journeyTexts,
 }: ExamRunnerProps) => {
   const exam = useExam(purpose, onFinished)
   const { state } = exam
@@ -125,6 +129,16 @@ export const ExamRunner = ({
 
   const resume = info.in_progress !== null
 
+  // The author may name the button that leaves a failed final.
+  const failedLabel =
+    purpose === 'final' && state.result && !state.result.passed
+      ? failureText(journeyTexts, {
+          attempt: state.result.attempts.used,
+          max: state.result.attempts.max,
+          threshold: state.result.pass_percent ?? policy.pass_percent,
+        }).ctaLabel
+      : ''
+
   // ---- what the footer's primary action is
   const primary = (() => {
     if (state.phase === 'idle')
@@ -137,7 +151,7 @@ export const ExamRunner = ({
     if (isFinished(state.phase))
       return (
         <Button variant="secondary" onClick={onExit}>
-          {exitLabel ?? text.result.toMap}
+          {failedLabel || (exitLabel ?? text.result.toMap)}
         </Button>
       )
     // The gate is closed: retrying cannot help. Back to the step, which looks again.
@@ -249,6 +263,7 @@ export const ExamRunner = ({
             preview={preview}
             policy={policy}
             onAgain={onAgain}
+            journeyTexts={journeyTexts}
           />
         </div>
       )

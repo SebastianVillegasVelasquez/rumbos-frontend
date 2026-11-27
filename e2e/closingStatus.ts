@@ -7,7 +7,16 @@ import { app } from './support.ts'
 
 export const closingStatus = (
   final: 'required' | 'not_required_passed_checkin' | 'passed' | 'exhausted' | 'locked',
-  { reason = null as string | null, completed = 5, total = 5 } = {}
+  {
+    reason = null as string | null,
+    completed = 5,
+    total = 5,
+    // As in observe mode: the backend does not check the content.
+    observe = false,
+    checkin = undefined as 'not_taken' | 'passed' | 'not_passed' | undefined,
+    // The final exam's list item, which the real backend sends here while the gate is on.
+    item = null as object | null,
+  } = {}
 ): object => {
   const passedCheckin = final === 'not_required_passed_checkin'
   // As the backend answers: only a required final can be started, and a passed check-in
@@ -22,16 +31,16 @@ export const closingStatus = (
           ? 'scorm_incomplete'
           : null)
   return validated('GET', '/trainer/closing', 200, {
-    enforced: true,
+    enforced: !observe,
     preview: false,
     available: final === 'required',
     reason: why,
-    progress: { completed, total },
-    final: null,
+    progress: observe ? null : { completed, total },
+    final: item,
     outcome: {
       checkin: {
-        status: passedCheckin ? 'passed' : 'not_passed',
-        percent: passedCheckin ? '85.50' : '40.00',
+        status: checkin ?? (passedCheckin ? 'passed' : 'not_passed'),
+        percent: checkin === 'not_taken' ? null : passedCheckin ? '85.50' : '40.00',
         pass_percent: 70,
         pass_operator: 'gt',
         attempts: { used: 1, max: 2 },
@@ -40,13 +49,21 @@ export const closingStatus = (
         status: final,
         reason: final === 'locked' ? why : null,
         attempts: passedCheckin ? null : { used: final === 'exhausted' ? 3 : 0, max: 3 },
+        percent: final === 'passed' ? '92.00' : null,
+        pass_percent: 75,
+        pass_operator: 'gte',
       },
-      scorm_gate: {
-        satisfied: final !== 'locked',
-        reason: passedCheckin ? 'passed_checkin' : null,
-      },
+      scorm_gate: observe
+        ? { satisfied: null, reason: 'not_checked' }
+        : { satisfied: final !== 'locked', reason: passedCheckin ? 'passed_checkin' : null },
     },
   }) as object
+}
+
+// Every activity of the mock course complete, set in the mock host as a student's work would.
+export const completeAll = async (page: Page) => {
+  const selects = page.locator('table select').filter({ hasText: 'incomplete' })
+  for (let i = 0; i < (await selects.count()); i++) await selects.nth(i).selectOption('complete')
 }
 
 // The backend's answer can change during a test: the route reads the current one. Install it

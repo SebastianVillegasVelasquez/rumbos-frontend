@@ -26,7 +26,12 @@ const CONTRACT_NAMES: Record<string, string> = {
   time_limit_min: 'timeLimitMin',
   pass_percent: 'passPercent',
   pass_operator: 'passOperator',
+  route_instructions: 'routeInstructions',
+  cta_label: 'ctaLabel',
 }
+
+// The settings that hold the journey's texts, edited in the training tab.
+const TEXT_BLOCKS = ['congratulations', 'failure', 'exhausted', 'routeInstructions'] as const
 
 export const normalizePath = (path: string): string =>
   path
@@ -59,6 +64,7 @@ export const pathCandidates = (path: string): string[] => {
 export const tabFor = (path: string): StudioTab | null => {
   const root = normalizePath(path).split(/[.[]/)[0]
   if (root === 'trainer' || root === 'assessments') return 'training'
+  if ((TEXT_BLOCKS as readonly string[]).includes(root)) return 'training'
   if (root === 'welcome') return 'welcome'
   return null
 }
@@ -114,6 +120,10 @@ export interface IssueCopy {
     pass: string
     exemption: string
     welcome: string
+    congratulations: string
+    failure: string
+    exhausted: string
+    routeInstructions: string
     step: (position: number, title: string) => string
     other: string
   }
@@ -137,6 +147,8 @@ export const sectionLabel = (
   if (normal.startsWith('assessments.exemption')) return copy.sections.exemption
   if (normal.startsWith('assessments')) return copy.sections.assessments
   if (normal.startsWith('trainer')) return copy.sections.trainer
+  const block = TEXT_BLOCKS.find((name) => normal === name || normal.startsWith(`${name}.`))
+  if (block) return copy.sections[block]
   if (normal.startsWith('welcome')) return copy.sections.welcome
   return copy.sections.other
 }

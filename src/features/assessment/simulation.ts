@@ -42,6 +42,8 @@ export const simulateResult = (
     status: 'submitted',
     percent: decimal(percent),
     passed: passesRule(percent, policy),
+    pass_percent: policy.pass_percent,
+    pass_operator: policy.pass_operator,
     band: bandOf(percent),
     // Every section at the same percent: the profile is a placeholder, not a score.
     by_section: SECTION_ORDER.map((key) => ({
