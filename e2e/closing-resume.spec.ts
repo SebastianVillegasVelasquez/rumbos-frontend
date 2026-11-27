@@ -218,6 +218,8 @@ test.describe('check-in passed', () => {
     await expect(dialog(page)).toHaveCount(0)
     await expect(closingCard(page)).toHaveCount(0)
 
+    // The first-visit note waited behind the flow; left open it would be back after the reload.
+    await closeIntro(page)
     await reload(page)
     await expectPlainMap(page)
   })
@@ -234,6 +236,9 @@ test.describe('the final exam', () => {
     ).toBeVisible({ timeout: 20_000 })
     await congratulations(page).getByRole('button', { name: 'Continuar' }).click()
     await expect(dialog(page)).toHaveCount(0)
+    // The first-visit note waited behind the congratulations. It counts as read only once
+    // closed, so one left open would be back after the reload, over the map.
+    await closeIntro(page)
     await reload(page)
     await expectPlainMap(page)
   })
