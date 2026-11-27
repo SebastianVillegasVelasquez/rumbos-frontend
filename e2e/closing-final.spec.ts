@@ -256,7 +256,7 @@ test.describe('closing: the final step', () => {
 })
 
 test.describe('closing: an editor in preview', () => {
-  test('can open the flow while it is locked, and the attempt says it does not count', async ({
+  test('can open the flow while it is locked, and its final cannot be started', async ({
     page,
     context,
   }) => {
@@ -267,17 +267,10 @@ test.describe('closing: an editor in preview', () => {
     })
     await app(page).getByRole('radio', { name: 'Vista previa', exact: true }).click()
     await toFinalStep(page, (target) => button(target).click())
+    await expect(dialog(page).getByText(/En la vista previa no se crea un intento/)).toBeVisible()
     await expect(
-      dialog(page)
-        .getByText(/Vista previa: este intento no se guarda ni cuenta/)
-        .first()
-    ).toBeVisible()
-    await dialog(page).getByRole('button', { name: 'Empezar la evaluación' }).click()
-    await expect(
-      dialog(page)
-        .getByText(/Vista previa: este intento no se guarda ni cuenta/)
-        .first()
-    ).toBeVisible()
+      dialog(page).getByRole('button', { name: /Empezar|Continuar la evaluación/ })
+    ).toHaveCount(0)
   })
 })
 
