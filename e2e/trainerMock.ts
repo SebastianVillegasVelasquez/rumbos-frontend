@@ -358,8 +358,8 @@ export class TrainerMock {
     const o = this.options
 
     let practice = this.practice.respond(method, path, body)
-    if (practice?.delayMs && practice.then) {
-      await new Promise((resolve) => setTimeout(resolve, practice!.delayMs))
+    if (practice?.waitFor && practice.then) {
+      await practice.waitFor
       practice = practice.then()
     }
     if (practice) {

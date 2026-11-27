@@ -25,8 +25,9 @@ export interface PracticeOptions {
   // Only the first N catalog calls fail (with catalogStatus, 503 by default); the next
   // ones succeed, which is what the retry button is for.
   catalogFailures?: number
-  // How long the catalog takes to answer, to show the loading state.
-  catalogDelayMs?: number
+  // The catalog answers only once this settles: the test holds the loading state for as
+  // long as it needs, on a machine of any speed.
+  catalogHeld?: Promise<void>
   // The catalog answers exactly this body with a 200, whatever else is set: for the
   // shapes the production backend sends that the fixture below does not model.
   catalogBody?: unknown
@@ -42,8 +43,8 @@ export interface PracticeReply {
   status: number
   body: unknown
   abort?: boolean
-  // Answer after this delay with what `then` returns.
-  delayMs?: number
+  // Answer once this settles, with what `then` returns.
+  waitFor?: Promise<void>
   then?: () => PracticeReply
 }
 
@@ -369,7 +370,6 @@ export class PracticeMock {
       const failing =
         o.catalogStatus !== undefined &&
         (o.catalogFailures === undefined || this.catalogCalls <= o.catalogFailures)
-      const delayMs = o.catalogDelayMs
       const answer = (): PracticeReply => {
         if (failing && o.catalogStatus === 0) return { status: 0, body: null, abort: true }
         if (failing)
@@ -389,7 +389,9 @@ export class PracticeMock {
           body: validated('GET', '/trainer/catalog', 200, this.catalog()),
         }
       }
-      return delayMs ? { status: 0, body: null, delayMs, then: answer } : answer()
+      return o.catalogHeld
+        ? { status: 0, body: null, waitFor: o.catalogHeld, then: answer }
+        : answer()
     }
 
     // There is no route for one activity: the catalog carries what the intro shows.

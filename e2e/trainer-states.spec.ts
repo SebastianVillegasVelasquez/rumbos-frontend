@@ -11,7 +11,11 @@ const note = (page: Parameters<typeof hud>[0], text: string | RegExp) =>
 
 test.describe('trainer entry states', () => {
   test('loading: spinner, aria-busy, not pressable, then ready', async ({ page, context }) => {
-    await open(page, context, { practice: { catalogDelayMs: 8000 } })
+    let release = () => {}
+    const catalogHeld = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    await open(page, context, { practice: { catalogHeld } })
     await expect(hud(page)).toHaveAttribute('aria-busy', 'true')
     await expect(hud(page)).toHaveAttribute('aria-disabled', 'true')
     // Playwright waits on aria-disabled; a person can still press it.
@@ -19,6 +23,7 @@ test.describe('trainer entry states', () => {
     await expect(note(page, 'Cargando el entrenamiento…')).toBeVisible()
     await expect(stage(page)).toHaveCount(0)
     // The catalog arrives: the button is a real button now.
+    release()
     await expect(hud(page)).toHaveAttribute('aria-busy', 'false', { timeout: 15_000 })
     await expect(hud(page)).toHaveAttribute('aria-disabled', 'false')
     await hud(page).click()
