@@ -522,3 +522,14 @@ and one stale input; everything else already reads the API.
 - **Preview opens nothing by itself.** Activity and quiz steps, and bubbles opened in "Vista previa", show a notice and a
   separate "Abrir de verdad" button; a preview quiz asks for no result. The course's activity list is still read, to name
   the activity. A standalone page (no host) opens bubbles as before.
+- **One simulator.** The exam screen's test tools and their "Ver cierre" (D50) are gone: simulated results exist only
+  inside "Simular recorrido", on one state, so a passed check-in cannot open a closing with the final. In any preview the
+  exam step makes no request and has no "Empezar". A welcome with no check-in gets one added to the simulation only.
+- **The route card is for real students too**, not only the simulation (`locked`, `scorm_incomplete`, check-in
+  `not_passed`), so the simulator shows what a student gets. It replaces "the map, no prompt" for that one case. Needs the
+  product owner's confirmation, as do its text and the failure and attempts-spent messages.
+- **Not wired:** the contract declares no `route_instructions` and no failure or attempts-spent text; nothing reads one.
+  `assessment/journeyTexts.ts` is where they go.
+- **The failure message after a panel attempt** is shown on the closing card, since the panel shows no result screen. A
+  real student reads it on the result screen; the card does not repeat it from the backend's attempt count, which does not
+  say whether the last attempt was graded.

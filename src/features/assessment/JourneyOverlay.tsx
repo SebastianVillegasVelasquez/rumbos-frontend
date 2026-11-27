@@ -7,6 +7,7 @@ import type { ClosingStatus } from './closingStatus.ts'
 import { resolveCongratulations } from './congratulations.ts'
 import { CongratulationsScreen, ExhaustedScreen } from './CongratulationsScreen.tsx'
 import type { JourneyScreen } from './journeyScreens.ts'
+import { routeInstructions } from './journeyTexts.ts'
 
 // The full-stage screen a student reaches by the journey: congratulations after a passed
 // check-in or final, or the "review the content again" screen. What it says comes from the
@@ -48,25 +49,72 @@ export const JourneyOverlay = ({
   </div>
 )
 
-// On the map, once the required content is done: a card that offers the closing. It never opens
-// the closing by itself; the student presses the button.
-export const ClosingCard = ({ status, onOpen }: { status: ClosingStatus; onOpen: () => void }) => {
+// A card over the foot of the map: the journey's next step, without taking the map away.
+const MapCard = ({
+  testId,
+  title,
+  body,
+  cta,
+  onPress,
+}: {
+  testId: string
+  title: string
+  body: string
+  cta: string
+  onPress: () => void
+}) => (
+  <div className="pointer-events-none absolute inset-x-0 bottom-24 z-30 flex justify-center px-3">
+    <Card
+      data-testid={testId}
+      role="region"
+      aria-label={title}
+      className="pointer-events-auto flex max-w-md flex-col items-start gap-2 p-4 text-ink"
+    >
+      <p className="font-heading text-lg font-extrabold">{title}</p>
+      <p className="text-sm font-semibold">{body}</p>
+      <Button onClick={onPress}>{cta}</Button>
+    </Card>
+  </div>
+)
+
+// Once the required content is done: a card that offers the closing. It never opens the
+// closing by itself; the student presses the button. `failure` stands in for the result screen
+// when a simulated attempt was failed from the panel, which shows none.
+export const ClosingCard = ({
+  status,
+  onOpen,
+  failure = null,
+}: {
+  status: ClosingStatus
+  onOpen: () => void
+  failure?: { title: string; body: string } | null
+}) => {
   const text = esCongratulations.journey
   const left = remainingContent(status)
   return (
-    <div className="pointer-events-none absolute inset-x-0 bottom-24 z-30 flex justify-center px-3">
-      <Card
-        data-testid="closing-card"
-        role="region"
-        aria-label={text.closingCardTitle}
-        className="pointer-events-auto flex max-w-md flex-col items-start gap-2 p-4 text-ink"
-      >
-        <p className="font-heading text-lg font-extrabold">{text.closingCardTitle}</p>
-        <p className="text-sm font-semibold">
-          {left !== null && left > 0 ? text.closingRemaining(left) : text.closingCardBody}
-        </p>
-        <Button onClick={onOpen}>{text.closingCardCta}</Button>
-      </Card>
-    </div>
+    <MapCard
+      testId="closing-card"
+      title={failure?.title ?? text.closingCardTitle}
+      body={
+        failure?.body ??
+        (left !== null && left > 0 ? text.closingRemaining(left) : text.closingCardBody)
+      }
+      cta={text.closingCardCta}
+      onPress={onOpen}
+    />
+  )
+}
+
+// After a failed check-in, on the map: how to get to the final exam.
+export const RouteCard = ({ onDismiss }: { onDismiss: () => void }) => {
+  const text = esCongratulations.journey
+  return (
+    <MapCard
+      testId="route-card"
+      title={text.routeTitle}
+      body={routeInstructions()}
+      cta={text.routeCta}
+      onPress={onDismiss}
+    />
   )
 }

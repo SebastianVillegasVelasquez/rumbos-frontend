@@ -442,6 +442,7 @@ export const es = {
     review: 'Estás repasando la bienvenida. Nada de lo que hagas aquí se guarda.',
     preview: 'Vista previa: no se guarda nada.',
     skipPreview: 'Saltar vista previa',
+    jumpToExam: 'Ir a la evaluación',
     // A preview or a simulation opens nothing in Moodle unless asked to, and says what that does.
     previewActivity: {
       placeholder: 'En la simulación no se abre la actividad',

@@ -33,6 +33,8 @@ export type ClosingPlace =
   // The map in normal mode: nothing about the closing is shown.
   | { kind: 'none' }
   | { kind: 'screen'; screen: JourneyScreen }
+  // The check-in was not passed and content is left: the map, with what to do next.
+  | { kind: 'route' }
   // "Continuar al cierre": the student presses it; the flow never opens over the map for this.
   | { kind: 'card' }
   // The student was in the middle of the flow: it opens again where Moodle says.
@@ -68,6 +70,14 @@ export const closingPlaceOf = ({
       // `finished` here: "Terminar" opens after any submitted attempt, passed or not, and the
       // backend still asks for the final. Without the card there would be no way to try again.
       return { kind: 'card' }
+    case 'final_locked': {
+      // Only when content is what stands in the way: any other lock is nothing the map solves.
+      const outcome = status?.outcome
+      return outcome?.checkin?.status === 'not_passed' &&
+        outcome.final.reason === 'scorm_incomplete'
+        ? { kind: 'route' }
+        : NOTHING
+    }
     default:
       return NOTHING
   }

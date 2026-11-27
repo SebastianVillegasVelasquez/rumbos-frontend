@@ -149,8 +149,63 @@ after six attempts, and never loops. A failure never blocks the viewer.
 
 - **Normal**: gating and recording.
 - **Review** (`show: always` after finishing): every step open, nothing written.
-- **Preview** (the editor's "Probar el flujo"): every step open, nothing written, no
-  request to the host.
+- **Preview** (the editor's "Probar el flujo" and "Vista previa"): every step open, nothing
+  written. See below for exactly what it does.
+
+### What "Probar el flujo" does and does not do
+
+It plays the flow being edited, saved or not, in the real player.
+
+It **does**:
+
+- show every step as it is: the welcome step, video, HTML and PDF are drawn and loaded for
+  real (a video that is played is played by its provider, which counts the view as any visit);
+- let you move through every step, whatever is mandatory, and leave with "Saltar vista previa";
+- ask the host for reads: for an activity step it asks for the course's activity list, to
+  show which activity the step points at.
+
+It **does not**:
+
+- keep any progress (no `flow-step-done`, nothing in `localStorage`);
+- create an exam attempt, or even read the assessments list: the exam step has no "Empezar",
+  it only says that results are tried in "Simular recorrido";
+- open a Moodle activity or quiz, or ask for a quiz result: those steps show "En la
+  simulación no se abre la actividad".
+
+The one exception is a button the editor has to press: **"Abrir de verdad (registra una vista
+en tu cuenta de editor)"** opens the activity or quiz through the host, as a student's button
+would. Moodle then records that view on the editor's own account.
+
+The same rules hold for the whole of "Vista previa", including a bubble opened from the map
+(a notice with that same button) and the flows "Simular recorrido" plays.
+
+## Simular recorrido
+
+The only simulator. It is a panel over the student view, offered to an **editor in "Vista
+previa" with Moodle editing on**, when the map has a closing flow or a welcome check-in. An
+editor with editing off is a student to the app: no panel, and their real flow records are
+saved. Everything is in memory (`assessment/journeySimulation.ts`); leaving the preview or the
+level ends it.
+
+1. "Empezar simulación" plays the welcome flow. A map without a check-in step gets one added
+   for the simulation, and the panel says so. The exam step takes a simulated result: pass,
+   not pass, or exactly on the threshold. Threshold and operator are the map's
+   (`settings.assessments`, 80 % strictly above when unset).
+2. **Passed:** the congratulations, then the closing without the final exam.
+3. **Not passed:** the map with the route-instructions card. "Simular todas las actividades
+   completadas" draws every activity bubble as done and brings the closing card; the closing
+   then has the final exam.
+4. A final attempt is taken on the exam step or from the panel; both count on the same
+   counter. A failure says which attempt it was and how many are left; the last one shows the
+   "attempts spent" screen; a pass shows the final's congratulations.
+5. "Reiniciar simulación" closes whatever is open and forgets every result and attempt.
+
+The backend has no way to force a pass, and the simulator needs none. Tests:
+`journeySimulation.test.ts` and `e2e/journey-simulation.spec.ts`, which asserts that a full
+run makes no request but GETs and sends the host nothing but reads.
+
+The route card and the two failure messages are Rumbos' copy (`assessment/journeyTexts.ts`):
+the contract declares no map setting for them yet.
 
 ## Resetting your own progress
 
@@ -212,8 +267,8 @@ The studio tab "Flujo de bienvenida" (replacing "Bienvenida" on a backend with f
   warns about confidentiality. The quiz picker lists the course quizzes, has a
   "Sin vincular" state, and always shows the secure-window warning.
 - "Pedir de nuevo a quienes ya lo completaron" raises the step revision.
-- "Probar el flujo" runs the player in preview mode: nothing is saved, nothing is asked
-  of the host.
+- "Probar el flujo" runs the player in preview mode (see "What "Probar el flujo" does and
+  does not do").
 - Problems found by the client mirror of the backend validation are shown by step and
   block nothing by themselves; the backend answer wins.
 - "Reiniciar mi progreso de bienvenida" (inside Moodle only) resets the editor's own
@@ -249,7 +304,8 @@ copy.
 
 - **Preview:** an editor's attempt is labelled "Vista previa: este intento no se guarda ni cuenta." (banner in the
   runner, note on the step) and its result carries "Esto es una vista previa: no es el resultado de un estudiante."
-  The preview is the backend's (`preview` on the assessments list); the client never simulates completion or the gate.
+  That is the backend's preview (`preview` on the assessments list). In "Vista previa" and "Probar el flujo" the exam is
+  not reached at all, and "Simular recorrido" never talks to the backend.
 - **Editor:** the final-assessment step says "Este paso se desbloquea cuando el estudiante completa todos los
   contenidos SCORM." The final exam is no longer in Entrenar.
 - **Draft shapes** (`MapClosing`, `settings.closing` and the `closing_not_available` guard): the mock API gives a map a
@@ -266,18 +322,23 @@ copy.
 Worked out again on each load (`assessment/closingResume.ts`) from `GET /trainer/closing` and the closing steps'
 records in Moodle. The client never compares a score or counts activities. Rows are read from the top.
 
-| `outcome.final.status`            | Closing steps in Moodle        | The student sees                                                   |
-| --------------------------------- | ------------------------------ | ------------------------------------------------------------------ |
-| `exhausted`                       | any                            | the review-again screen, on every load until the backend restarts  |
-| `passed`                          | any                            | the final's congratulations once, then the map with no prompt      |
-| `not_required_passed_checkin`     | none, congratulations not read | the congratulations; their button opens the flow without the final |
-| `not_required_passed_checkin`     | none, congratulations read     | the "Continuar al cierre" card                                     |
-| `not_required_passed_checkin`     | some                           | the flow, resumed on the first pending step                        |
-| `not_required_passed_checkin`     | all                            | the map, no prompt                                                 |
-| `required` and `available`        | none                           | the card (never opened over the map)                               |
-| `required` and `available`        | some                           | the flow, resumed on the first pending step                        |
-| `required` and `available`        | all (the final was not passed) | the card; the flow opens on the final exam                         |
-| `locked`, no `outcome`, no answer | any                            | the map, no prompt, no reason code                                 |
+| `outcome.final.status`           | Closing steps in Moodle        | The student sees                                                   |
+| -------------------------------- | ------------------------------ | ------------------------------------------------------------------ |
+| `exhausted`                      | any                            | the attempts-spent screen, once on every load                      |
+| `passed`                         | any                            | the final's congratulations once, then the map with no prompt      |
+| `not_required_passed_checkin`    | none, congratulations not read | the congratulations; their button opens the flow without the final |
+| `not_required_passed_checkin`    | none, congratulations read     | the "Continuar al cierre" card                                     |
+| `not_required_passed_checkin`    | some                           | the flow, resumed on the first pending step                        |
+| `not_required_passed_checkin`    | all                            | the map, no prompt                                                 |
+| `required` and `available`       | none                           | the card (never opened over the map)                               |
+| `required` and `available`       | some                           | the flow, resumed on the first pending step                        |
+| `required` and `available`       | all (the final was not passed) | the card; the flow opens on the final exam                         |
+| `locked` [1]                     | any                            | the map with the route-instructions card, closable for the visit   |
+| any other `locked`, no `outcome` | any                            | the map, no prompt, no reason code                                 |
+| no answer                        | any                            | the map, no prompt                                                 |
+
+[1] `reason: scorm_incomplete` with the check-in `not_passed`: content is all that stands between the student and the
+final exam. A student who has not sat the check-in (`not_taken`) is told nothing.
 
 While Moodle has not answered, the first two rows apply and nothing else is shown. A deep link carries no closing
 route: it reads as any other load. While the flow or a journey screen is up, the level's self-opening content and the

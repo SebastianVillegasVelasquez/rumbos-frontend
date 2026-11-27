@@ -240,7 +240,10 @@ test.describe('journey B: the check-in was not passed', () => {
     await expect(
       exhausted.getByRole('heading', { name: 'Toca repasar el contenido' })
     ).toBeFocused()
-    await expect(exhausted).toContainText('desde el principio')
+    await expect(exhausted).toContainText(
+      'Agotaste tus intentos. Repasa el contenido del mapa y consulta con tu tutor.'
+    )
+    await expect(exhausted).not.toContainText(/reinici|desde el principio/i)
     // The browser never writes anything: no request but reads.
     await exhausted.getByRole('button', { name: 'Volver al mapa' }).click()
     await expect(exhausted).toHaveCount(0)

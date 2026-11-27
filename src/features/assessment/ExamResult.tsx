@@ -2,6 +2,7 @@ import { CheckCircle2, Clock, Flag, Info } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Button } from '../../components/ui/Button.tsx'
 import { esAssessment } from '../../i18n/assessment.es.ts'
+import { finalFailure } from './journeyTexts.ts'
 import { ReportForm } from './ReportForm.tsx'
 import type { SimulatedOutcome } from './simulation.ts'
 import type { AssessmentPolicy, AssessmentPurpose, AssessmentResult } from './types.ts'
@@ -64,20 +65,23 @@ export const ExamResult = ({
   // The pass rule, to say what the congratulations rest on; without it the plain sentence.
   policy?: AssessmentPolicy
   // An editor's simulation: the result is synthetic, so nothing here may start an attempt,
-  // send a report or look like a student's result. `closing` is the "Ver cierre" action.
-  simulated?: { outcome: SimulatedOutcome; closing?: 'none' | (() => void) } | null
+  // send a report or look like a student's result.
+  simulated?: { outcome: SimulatedOutcome } | null
 }) => {
   const [reporting, setReporting] = useState(false)
   const left = Math.max(0, result.attempts.max - result.attempts.used)
   const strict = policy?.pass_operator !== 'gte'
+  // A failed final attempt says which one it was and what is left.
+  const failure =
+    purpose === 'final' && !result.passed
+      ? finalFailure(result.attempts.used, result.attempts.max)
+      : null
   const statement = result.passed
     ? policy
       ? text.congrats[purpose](result.percent, policy.pass_percent, strict)
       : text.passed
-    : purpose === 'check_in'
-      ? text.notPassedCheckIn
-      : text.notPassedFinal(left)
-  const title = purpose === 'check_in' ? text.checkInTitle : text.title
+    : (failure?.body ?? text.notPassedCheckIn)
+  const title = failure?.title ?? (purpose === 'check_in' ? text.checkInTitle : text.title)
   // The result is the screen's news: focus its heading when a (new) result is drawn.
   const shown = `${result.percent}|${result.passed}|${simulated?.outcome ?? ''}`
   useEffect(() => {
@@ -174,23 +178,8 @@ export const ExamResult = ({
       </p>
       <p className="text-sm text-ink-soft">{text.noAnswers}</p>
 
-      {simulated ? (
-        // No report and no new attempt: both would be real calls.
-        result.passed &&
-        simulated.closing && (
-          <div className="flex flex-col items-start gap-2">
-            {simulated.closing === 'none' ? (
-              <p className="text-sm font-semibold text-ink-soft">
-                {esAssessment.simulation.noClosing}
-              </p>
-            ) : (
-              <Button variant="secondary" onClick={simulated.closing}>
-                {esAssessment.simulation.openClosing}
-              </Button>
-            )}
-          </div>
-        )
-      ) : reporting ? (
+      {/* No report and no new attempt in a simulation: both would be real calls. */}
+      {simulated ? null : reporting ? (
         <div className="rounded-md border-soft p-4">
           <ReportForm onClose={() => setReporting(false)} />
         </div>

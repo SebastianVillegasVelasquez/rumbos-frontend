@@ -22,11 +22,17 @@ export const esAssessment = {
   // The final exam in preview (an editor): wording pending approval.
   previewFinal: 'Vista previa: este intento no se guarda ni cuenta.',
   previewResult: 'Esto es una vista previa: no es el resultado de un estudiante.',
-  // The editor's test tools (UI-only simulation of the result screens). All wording pending approval.
+  // The exam step in a preview, which never starts an attempt. Wording pending approval.
+  previewStep: {
+    noAttempt: 'En la vista previa no se crea un intento ni se abre la evaluación.',
+    simulate: 'Para ver los resultados y lo que sigue, usa «Simular recorrido» en la Vista previa.',
+  },
+  // The exam step inside "Simular recorrido". All wording pending approval.
   simulation: {
-    title: 'Herramientas de prueba · solo para editores',
-    intro:
-      'Mira las pantallas de resultado sin responder la evaluación. Es solo una simulación de la pantalla: no crea un intento ni guarda nada.',
+    title: 'Simula el resultado',
+    intro: 'En la simulación no se crea un intento ni se guarda nada. Elige cómo te fue:',
+    attemptNumber: (n: number, max: number) => `Intento ${n} de ${max}`,
+    noAttemptLeft: 'En esta simulación ya no queda ningún intento por hacer.',
     pass: 'Simular aprobar',
     fail: 'Simular no aprobar',
     boundary: (threshold: number) => `Simular justo ${threshold} %`,
@@ -37,9 +43,7 @@ export const esAssessment = {
         : `Con exactamente ${threshold} % se aprueba: basta con alcanzarlo.`,
     failNote:
       'Así lo vería un estudiante. Si no aprueba, llega al cierre cuando completa el contenido.',
-    openClosing: 'Ver cierre',
-    noClosing: 'Este curso no tiene un flujo de cierre configurado.',
-    again: 'Volver a las herramientas',
+
     announce: {
       pass: 'Simulación: resultado aprobado.',
       fail: 'Simulación: resultado no aprobado.',
@@ -185,10 +189,7 @@ export const esAssessment = {
         `¡Felicidades! Aprobaste la evaluación final con ${percent} %, ${strict ? 'más' : 'al menos'} del ${threshold} % que se pide.`,
     },
     notPassedCheckIn: 'Este es tu punto de partida. A partir de aquí vas a avanzar.',
-    notPassedFinal: (left: number) =>
-      left > 0
-        ? `Todavía no alcanzas el puntaje. Te ${plural(left, 'queda', 'quedan')} ${left} ${plural(left, 'intento', 'intentos')}.`
-        : 'Todavía no alcanzas el puntaje y ya no te quedan intentos.',
+
     bands: {
       emerging: 'Inicial',
       developing: 'En desarrollo',

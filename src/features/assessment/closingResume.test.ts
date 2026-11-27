@@ -133,9 +133,21 @@ describe('where the student is on every load', () => {
     assert.deepEqual(load(spent, [done('first0001')]), screen('exhausted'))
     assert.deepEqual(load(spent, [], ['exhausted']), NONE)
   })
-  it('closing unavailable: no prompt at all', () => {
+  it('check-in not passed, content left: the route instructions', () => {
+    const locked = status('locked', { reason: 'scorm_incomplete' })
+    assert.deepEqual(load(locked, []), { kind: 'route' })
+    assert.deepEqual(load(locked, null), { kind: 'route' })
+  })
+  it('no route instructions without a failed check-in', () => {
+    for (const checkin of ['not_taken', 'passed'])
+      assert.deepEqual(
+        load(status('locked', { reason: 'scorm_incomplete', checkin }), []),
+        NONE,
+        checkin
+      )
+  })
+  it('closing unavailable for another reason: no prompt at all', () => {
     for (const reason of [
-      'scorm_incomplete',
       'progress_unavailable',
       'user_unlinked',
       'not_enabled',

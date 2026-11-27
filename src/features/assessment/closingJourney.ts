@@ -9,8 +9,8 @@ import type { ClosingStatus } from './closingStatus.ts'
 //   not passed       -> the map, then (all required content done) "Continuar al cierre", then
 //                       the closing flow WITH the final exam (3 attempts)
 //   final passed     -> congratulations
-//   attempts spent   -> the content again from zero (a restart that is the backend's and the
-//                       plugin's to perform: this client shows the screen and does nothing)
+//   attempts spent   -> a screen that sends the student back to the content and to their tutor
+//                       (nothing restarts the course)
 export type JourneyStage =
   // The check-in was passed: the final exam is not required.
   | 'passed_checkin'
