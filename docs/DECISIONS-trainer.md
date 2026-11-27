@@ -516,3 +516,6 @@ and one stale input; everything else already reads the API.
   on the Linux runner. Every test through the mock host timed out waiting for the level button; the standalone specs passed.
   Reproduced locally with `--host ::1` (same message), gone with `--host 127.0.0.1`, now set in `playwright.config.ts`.
   Not yet seen on CI: other Linux-only failures may have been hidden behind this one.
+- **"Descartar" stayed after "Guardar"** (`welcome-editor.spec.ts`, red since before this branch). An app bug: the save
+  normalizes the settings, and the appearance editor marked the new revision as synced without taking the saved copy, so it
+  compared its own pre-normalized draft forever. It now adopts the saved copy, keeping anything edited during the request.

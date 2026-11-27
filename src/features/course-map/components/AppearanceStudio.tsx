@@ -170,6 +170,12 @@ export const AppearanceStudio = ({
       {
         onSuccess: (map) => {
           syncedAtRef.current = map.updatedAt
+          // The saved copy is normalized (a flow of steps sends playOnEnter: null, empty keys
+          // are left out): adopt it, or the panel stays "unsaved" against its own save. What
+          // was edited while the request was in flight is kept.
+          setSettings((current) => (current === settings ? map.settings : current))
+          setDefaultSkinId((current) => (current === defaultSkinId ? map.defaultSkinId : current))
+          setSkinRules((current) => (current === skinRules ? map.skinRules : current))
           acceptSettings(map)
         },
         onError: (error) => {
