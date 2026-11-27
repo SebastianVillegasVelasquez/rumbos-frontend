@@ -508,3 +508,11 @@ and one stale input; everything else already reads the API.
   as not started: they get the card, not an automatic resume.
 - **What opens by itself waits.** The level's auto-opening content and the first-run guide are held while the closing
   flow or a journey screen is up, so a resume on a new device is not stacked under them.
+
+## One journey simulator (branch `fix/unified-journey-simulator`)
+
+- **CI browser jobs (about 269 failures each on PRs #35 and #36).** One cause: the mock host loads the app from the other
+  loopback name (`127.0.0.1` when the page is on `localhost`), and Vite listened only on what `localhost` resolves to, `::1`
+  on the Linux runner. Every test through the mock host timed out waiting for the level button; the standalone specs passed.
+  Reproduced locally with `--host ::1` (same message), gone with `--host 127.0.0.1`, now set in `playwright.config.ts`.
+  Not yet seen on CI: other Linux-only failures may have been hidden behind this one.
