@@ -184,14 +184,15 @@ The same rules hold for the whole of "Vista previa", including a bubble opened f
 The only simulator. It is a panel over the student view, offered to an **editor in "Vista
 previa" with Moodle editing on**, when the map has a closing flow or a welcome check-in. An
 editor with editing off is a student to the app: no panel, and their real flow records are
-saved. Everything is in memory (`assessment/journeySimulation.ts`); leaving the preview or the
+saved. Tip for editors: «Para probar, usa Vista previa con la edición activada.» Everything is in memory (`assessment/journeySimulation.ts`); leaving the preview or the
 level ends it.
 
 1. "Empezar simulación" plays the welcome flow. A map without a check-in step gets one added
    for the simulation, and the panel says so. The exam step takes a simulated result: pass,
    not pass, or exactly on the threshold. Threshold and operator are the map's
    (`settings.assessments`, 80 % strictly above when unset).
-2. **Passed:** the congratulations, then the closing without the final exam.
+2. **Passed:** the congratulations, then the closing without the final exam. A closing that holds only
+   the final is skipped: the congratulations, then the map.
 3. **Not passed:** the map with the route-instructions card. "Simular todas las actividades
    completadas" draws every activity bubble as done and brings the closing card; the closing
    then has the final exam.
@@ -336,6 +337,9 @@ records in Moodle. The client never compares a score or counts activities. Rows 
 | `locked` [1]                     | any                            | the map with the route-instructions card, closable for the visit   |
 | any other `locked`, no `outcome` | any                            | the map, no prompt, no reason code                                 |
 | no answer                        | any                            | the map, no prompt                                                 |
+
+With `not_required_passed_checkin` and a closing that holds only the final, no step is left: the congratulations
+(until read in this browser, since Moodle never gets a closing record), then the map. No card, no flow, no final.
 
 [1] `reason: scorm_incomplete` with the check-in `not_passed`: content is all that stands between the student and the
 final exam. A student who has not sat the check-in (`not_taken`) is told nothing.

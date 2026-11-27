@@ -555,3 +555,29 @@ and one stale input; everything else already reads the API.
 - **Issue note, flaky:** `closing-resume.spec.ts` "offers the card and never opens over the map", Chromium. One failure,
   as the first test after a fresh dev server: the first-visit note did not appear within 8 s. It had passed in the run
   of the same file before, and then passed 20/20 alone. A cold first load would explain it; not proven.
+- **A closing that holds only the final is skipped after a passed check-in.** This replaces keeping the final so the flow
+  would not be empty: a passed check-in means no final, and the backend change in progress refuses to start one. The
+  student gets the congratulations, whose button opens nothing, then the map. Moodle never gets a closing record for such
+  a student, so only the browser remembers the congratulations were read: another device shows them again.
+- **The editing-off tip is in `docs/WELCOME-FLOW.md` only.** The panel that showed it is never offered with editing off.
+- **Copy accepted** (preview, simulator, route card title and button), listed here once:
+  - Preview: «En la simulación no se abre la actividad» · «Abrir de verdad (registra una vista en tu cuenta de editor)» ·
+    «Cerrar» · «Ir a la evaluación» · «En la vista previa no se crea un intento ni se abre la evaluación.» · «Para ver los
+    resultados y lo que sigue, usa «Simular recorrido» en la Vista previa.»
+  - Exam step in the simulation: «Simula el resultado» · «En la simulación no se crea un intento ni se guarda nada. Elige
+    cómo te fue:» · «Intento N de M» · «En esta simulación ya no queda ningún intento por hacer.» · «Simular aprobar» ·
+    «Simular no aprobar» · «Simular justo X %» · «Simulación: no se guardó nada ni se envió nada a Moodle.» ·
+    «Con exactamente X % no se aprueba: hay que superar el X %.» · «Con exactamente X % se aprueba: basta con alcanzarlo.»
+    · «Así lo vería un estudiante. Si no aprueba, llega al cierre cuando completa el contenido.» · announcements
+    «Simulación: resultado aprobado.», «Simulación: resultado no aprobado.», «Simulación: justo en el umbral.»
+  - Simulator panel: «Simular recorrido» · «Simulación: no se guarda ni cuenta» · «Empezar simulación» · «Ocultar» ·
+    «Mostrar» · «Evaluación de entrada» · «Recorre la bienvenida y elige el resultado del diagnóstico.» · «La bienvenida de
+    este mapa no tiene la evaluación de entrada: se agrega solo en la simulación.» · «Se aprueba con más del X %.» /
+    «Se aprueba con al menos el X %.» · «Diagnóstico: aprobado» / «Diagnóstico: no aprobado» · «Este mapa no tiene un flujo
+    de cierre: la simulación termina en el mapa.» · «Simular todas las actividades completadas» · «Intento de la final:
+    aprobar», «… no aprobar», «… justo X %» · «Intentos: N de M» · «Reiniciar simulación» · «Salir de la simulación»
+  - Route card: title «Tu ruta hacia la evaluación final», button «Entendido».
+- **Issue note, intermittent:** `closing-resume.spec.ts` "keeps the \"Cierre\" button in the preview", WebKit, failed once
+  (90 s); unchanged, it then passed 20/20 in WebKit and 10/10 in Chromium. In that failure the editor's first app load took the full stage over
+  the mock host's "(Re)load app", so the click never landed. Not fixed: replacing that click with the file's reload helper
+  made the test fail every time, for a reason not established, and was reverted.
