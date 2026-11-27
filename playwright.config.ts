@@ -23,7 +23,10 @@ export default defineConfig({
     { name: 'webkit', use: { ...devices['Desktop Safari'], viewport } },
   ],
   webServer: {
-    command: `pnpm exec vite --port ${PORT} --strictPort`,
+    // Bound to IPv4 on purpose: the mock host loads the app from the other loopback name
+    // (localhost <-> 127.0.0.1), and where `localhost` resolves to ::1 first (Linux CI)
+    // 127.0.0.1 would be refused and every test through the mock host would time out.
+    command: `pnpm exec vite --port ${PORT} --strictPort --host 127.0.0.1`,
     url: `http://localhost:${PORT}/mock-host/index.html`,
     env: { VITE_USE_MOCK_API: 'true' },
     reuseExistingServer: !process.env.CI,

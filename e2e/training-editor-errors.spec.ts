@@ -84,8 +84,8 @@ test.describe('the form is chosen, never defaulted', () => {
       await expect(formOf(page, group)).toHaveValue('')
       await expect(formOf(page, group).locator('option')).toHaveText([
         'Elige un formulario',
-        'A1 · Forma A',
-        'A1 · Forma B (borrador)',
+        'A1 · Evaluación de entrada — A1 · Forma A',
+        'A1 · Evaluación de entrada — A1 · Forma B (borrador)',
       ])
     }
   })

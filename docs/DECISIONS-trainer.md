@@ -508,3 +508,76 @@ and one stale input; everything else already reads the API.
   as not started: they get the card, not an automatic resume.
 - **What opens by itself waits.** The level's auto-opening content and the first-run guide are held while the closing
   flow or a journey screen is up, so a resume on a new device is not stacked under them.
+
+## One journey simulator (branch `fix/unified-journey-simulator`)
+
+- **CI browser jobs (about 269 failures each on PRs #35 and #36).** One cause: the mock host loads the app from the other
+  loopback name (`127.0.0.1` when the page is on `localhost`), and Vite listened only on what `localhost` resolves to, `::1`
+  on the Linux runner. Every test through the mock host timed out waiting for the level button; the standalone specs passed.
+  Reproduced locally with `--host ::1` (same message), gone with `--host 127.0.0.1`, now set in `playwright.config.ts`.
+  Not yet seen on CI: other Linux-only failures may have been hidden behind this one.
+- **"Descartar" stayed after "Guardar"** (`welcome-editor.spec.ts`, red since before this branch). An app bug: the save
+  normalizes the settings, and the appearance editor marked the new revision as synced without taking the saved copy, so it
+  compared its own pre-normalized draft forever. It now adopts the saved copy, keeping anything edited during the request.
+- **Preview opens nothing by itself.** Activity and quiz steps, and bubbles opened in "Vista previa", show a notice and a
+  separate "Abrir de verdad" button; a preview quiz asks for no result. The course's activity list is still read, to name
+  the activity. A standalone page (no host) opens bubbles as before.
+- **One simulator.** The exam screen's test tools and their "Ver cierre" (D50) are gone: simulated results exist only
+  inside "Simular recorrido", on one state, so a passed check-in cannot open a closing with the final. In any preview the
+  exam step makes no request and has no "Empezar". A welcome with no check-in gets one added to the simulation only.
+- **The route card is for real students too**, not only the simulation (`locked`, `scorm_incomplete`, check-in
+  `not_passed`), so the simulator shows what a student gets. It replaces "the map, no prompt" for that one case. Needs the
+  product owner's confirmation, as do its text and the failure and attempts-spent messages.
+- **Not wired:** the contract declares no `route_instructions` and no failure or attempts-spent text; nothing reads one.
+  `assessment/journeyTexts.ts` is where they go.
+- **The failure message after a panel attempt** is shown on the closing card, since the panel shows no result screen. A
+  real student reads it on the result screen; the card does not repeat it from the backend's attempt count, which does not
+  say whether the last attempt was graded.
+- **`{score}` on the final.** No score is reported for the final, so the editor warns about the placeholder there and a
+  final field that uses it shows Rumbos' text instead of a sentence with a hole. Saving is not blocked: the backend
+  accepts the text, and it starts working once a score arrives. `{threshold}` takes the final's own pass mark where known
+  (the simulation); a real student still gets the check-in's, the only one the status reports.
+- **Correction to the "Descartar" fix.** Adopting the saved copy exposed an order-sensitive comparison: the request body
+  moves some settings keys and the query cache keeps its old object when only the order differs, so the training editor
+  stayed "unsaved" after Guardar. The editor now compares settings regardless of key order.
+- **Red specs, closed.** `closing-resume.spec.ts` "passed: its congratulations once" and "resumes mid-closing" were test
+  bugs. The level's first-visit note waits behind the congratulations and the flow, and counts as read only once closed;
+  neither test closed it, so after the reload it was over the map and "Misiones" had no accessible button. The note's
+  viewer loads late, so Chromium sometimes looked before it drew. Both tests now close it. Before: the first failed 10/10
+  in WebKit and 4/10 in Chromium, the second 7/10 in WebKit. `training-editor-errors.spec.ts` "offers the forms the
+  backend lists" still expected the bare titles from before the picker added level and purpose.
+- **Issue note, not reproduced:** in a WebKit run with 2 workers (stopped before the end) `assessment-flow.spec.ts` "failed:
+  the result is saved and support is named" and both "closing flow" tests of `closing-shared-steps.spec.ts` (walk, editor
+  preview) failed. Alone, one worker, each passed 5/5, unchanged. The last two timed out while the host page was still
+  navigating, which points to load; the first shows only an element missing after 5 s, cause unknown. Nothing was changed
+  and none is proven flaky: watch them in the next complete run. That stopped run also logged WebKit worker exits
+  (`code=3221225794`); the targeted runs since had none.
+- **Issue note, flaky:** `closing-resume.spec.ts` "offers the card and never opens over the map", Chromium. One failure,
+  as the first test after a fresh dev server: the first-visit note did not appear within 8 s. It had passed in the run
+  of the same file before, and then passed 20/20 alone. A cold first load would explain it; not proven.
+- **A closing that holds only the final is skipped after a passed check-in.** This replaces keeping the final so the flow
+  would not be empty: a passed check-in means no final, and the backend change in progress refuses to start one. The
+  student gets the congratulations, whose button opens nothing, then the map. Moodle never gets a closing record for such
+  a student, so only the browser remembers the congratulations were read: another device shows them again.
+- **The editing-off tip is in `docs/WELCOME-FLOW.md` only.** The panel that showed it is never offered with editing off.
+- **Copy accepted** (preview, simulator, route card title and button), listed here once:
+  - Preview: «En la simulación no se abre la actividad» · «Abrir de verdad (registra una vista en tu cuenta de editor)» ·
+    «Cerrar» · «Ir a la evaluación» · «En la vista previa no se crea un intento ni se abre la evaluación.» · «Para ver los
+    resultados y lo que sigue, usa «Simular recorrido» en la Vista previa.»
+  - Exam step in the simulation: «Simula el resultado» · «En la simulación no se crea un intento ni se guarda nada. Elige
+    cómo te fue:» · «Intento N de M» · «En esta simulación ya no queda ningún intento por hacer.» · «Simular aprobar» ·
+    «Simular no aprobar» · «Simular justo X %» · «Simulación: no se guardó nada ni se envió nada a Moodle.» ·
+    «Con exactamente X % no se aprueba: hay que superar el X %.» · «Con exactamente X % se aprueba: basta con alcanzarlo.»
+    · «Así lo vería un estudiante. Si no aprueba, llega al cierre cuando completa el contenido.» · announcements
+    «Simulación: resultado aprobado.», «Simulación: resultado no aprobado.», «Simulación: justo en el umbral.»
+  - Simulator panel: «Simular recorrido» · «Simulación: no se guarda ni cuenta» · «Empezar simulación» · «Ocultar» ·
+    «Mostrar» · «Evaluación de entrada» · «Recorre la bienvenida y elige el resultado del diagnóstico.» · «La bienvenida de
+    este mapa no tiene la evaluación de entrada: se agrega solo en la simulación.» · «Se aprueba con más del X %.» /
+    «Se aprueba con al menos el X %.» · «Diagnóstico: aprobado» / «Diagnóstico: no aprobado» · «Este mapa no tiene un flujo
+    de cierre: la simulación termina en el mapa.» · «Simular todas las actividades completadas» · «Intento de la final:
+    aprobar», «… no aprobar», «… justo X %» · «Intentos: N de M» · «Reiniciar simulación» · «Salir de la simulación»
+  - Route card: title «Tu ruta hacia la evaluación final», button «Entendido».
+- **Issue note, intermittent:** `closing-resume.spec.ts` "keeps the \"Cierre\" button in the preview", WebKit, failed once
+  (90 s); unchanged, it then passed 20/20 in WebKit and 10/10 in Chromium. In that failure the editor's first app load took the full stage over
+  the mock host's "(Re)load app", so the click never landed. Not fixed: replacing that click with the file's reload helper
+  made the test fail every time, for a reason not established, and was reverted.

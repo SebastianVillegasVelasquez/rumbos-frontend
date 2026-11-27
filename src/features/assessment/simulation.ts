@@ -1,17 +1,11 @@
 import { SECTION_ORDER, type AssessmentPolicy, type AssessmentResult, type Band } from './types.ts'
 
-// The editor's "Herramientas de prueba": a UI-only simulation of the result screens. Nothing
-// here calls the network, writes a result or talks to the host: it only builds a value of the
-// same type the submit endpoint answers with (checked against the spec's `Result` in the
-// tests) so the real result component can draw it.
+// The simulated exam results of "Simular recorrido" (journeySimulation.ts). Nothing here calls
+// the network, writes a result or talks to the host: it only builds a value of the same type
+// the submit endpoint answers with (checked against the spec's `Result` in the tests) so the
+// real result component can draw it.
 
 export type SimulatedOutcome = 'pass' | 'fail' | 'boundary'
-
-// The only gate. A simulation is for an editor in preview: `preview` comes from the backend's
-// own derivation (the assessments list) or from the editor's own flow preview, and the role
-// from the host's handshake. A student has neither, so every entry point checks this.
-export const simulationAllowed = (input: { preview: boolean; editorRole: boolean }): boolean =>
-  input.preview === true && input.editorRole === true
 
 // The backend's rule as the policy declares it: `gt` must be strictly above the threshold,
 // `gte` may equal it. Used only to label the simulation; the real verdict is the server's.

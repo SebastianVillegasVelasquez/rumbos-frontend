@@ -116,9 +116,9 @@ describe('the closing flow a student sees', () => {
       assert.equal(closingStepsFor(steps, parsed(outcome(final))).length, 3, final)
     assert.equal(closingStepsFor(steps, null).length, 3)
   })
-  it('keeps a flow that the exemption would empty, so the author sees the mistake', () => {
+  it('leaves no step of a flow that held only the final', () => {
     const passed = parsed(outcome('not_required_passed_checkin', {}, 'passed'))
-    assert.equal(closingStepsFor([final], passed).length, 1)
+    assert.deepEqual(closingStepsFor([final], passed), [])
   })
 })
 
@@ -133,6 +133,10 @@ describe('what the congratulations screen substitutes', () => {
   it('takes the score and the threshold as the backend reports them', () => {
     const status = parsed(outcome('not_required_passed_checkin', {}, 'passed'))
     assert.deepEqual(congratulationsValues(status, 'checkin'), { score: '85.5', threshold: 70 })
+  })
+  it('takes the final’s own pass mark where it is known', () => {
+    assert.equal(congratulationsValues(null, 'final', 85).threshold, 85)
+    assert.equal(congratulationsValues(null, 'checkin', 85).threshold, null)
   })
   it('has no score for a final it cannot read, and still the threshold of the check-in', () => {
     const status = parsed(outcome('passed'))

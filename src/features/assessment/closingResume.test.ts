@@ -133,9 +133,21 @@ describe('where the student is on every load', () => {
     assert.deepEqual(load(spent, [done('first0001')]), screen('exhausted'))
     assert.deepEqual(load(spent, [], ['exhausted']), NONE)
   })
-  it('closing unavailable: no prompt at all', () => {
+  it('check-in not passed, content left: the route instructions', () => {
+    const locked = status('locked', { reason: 'scorm_incomplete' })
+    assert.deepEqual(load(locked, []), { kind: 'route' })
+    assert.deepEqual(load(locked, null), { kind: 'route' })
+  })
+  it('no route instructions without a failed check-in', () => {
+    for (const checkin of ['not_taken', 'passed'])
+      assert.deepEqual(
+        load(status('locked', { reason: 'scorm_incomplete', checkin }), []),
+        NONE,
+        checkin
+      )
+  })
+  it('closing unavailable for another reason: no prompt at all', () => {
     for (const reason of [
-      'scorm_incomplete',
       'progress_unavailable',
       'user_unlinked',
       'not_enabled',
@@ -165,6 +177,24 @@ describe('where the student is on every load', () => {
     assert.deepEqual(load(ready, null), NONE)
     assert.deepEqual(load(passedCheckin, null), NONE)
     assert.deepEqual(load(status('exhausted'), null), screen('exhausted'))
+  })
+})
+
+describe('a passed check-in on a closing that holds only the final', () => {
+  const onlyFinal = [finalStep]
+  it('has the congratulations once, then the map: no card and no flow', () => {
+    assert.deepEqual(load(passedCheckin, [], [], onlyFinal), screen('congrats_checkin'))
+    assert.deepEqual(load(passedCheckin, [], ['congrats_checkin'], onlyFinal), NONE)
+  })
+  it('does not wait for Moodle, nor read an old record of the final', () => {
+    assert.deepEqual(load(passedCheckin, null, [], onlyFinal), screen('congrats_checkin'))
+    assert.deepEqual(
+      load(passedCheckin, [done('final0001')], ['congrats_checkin'], onlyFinal),
+      NONE
+    )
+  })
+  it('still offers the final to a student who must take it', () => {
+    assert.deepEqual(load(ready, [], [], onlyFinal), CARD)
   })
 })
 

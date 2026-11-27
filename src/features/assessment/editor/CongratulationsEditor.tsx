@@ -9,8 +9,10 @@ import {
   clearCongratulations,
   resolveCongratulations,
   setCongratulationsField,
+  usesUnavailableScore,
   type CongratulationsPurpose,
 } from '../congratulations.ts'
+import { assessmentsOf } from './trainingForm.ts'
 
 const text = esCongratulations.editor
 const PURPOSES: CongratulationsPurpose[] = ['checkin', 'final']
@@ -37,11 +39,13 @@ const PurposeEditor = ({
   const own = settings.congratulations?.[purpose] ?? {}
   const set = (field: keyof MapCongratulationsText) => (value: string) =>
     onChange(setCongratulationsField(settings, purpose, field, value))
-  // The preview shows the screen as a student would see it, with example numbers.
+  // The preview shows the screen as a student would see it: the map's pass mark, and an example
+  // score only where the student's screen has one.
   const resolved = resolveCongratulations(purpose, settings.congratulations, {
-    score: text.previewScore,
-    threshold: Number(text.previewThreshold),
+    score: purpose === 'checkin' ? text.previewScore : null,
+    threshold: assessmentsOf(settings).passPercent,
   })
+  const asksForScore = Object.values(own).some((value) => usesUnavailableScore(purpose, value))
   return (
     <fieldset className="space-y-3 rounded-md border border-line p-3">
       <legend className="px-1 text-sm font-extrabold text-ink">{text.purposes[purpose]}</legend>
@@ -89,8 +93,13 @@ const PurposeEditor = ({
         <Counter used={(own.ctaLabel ?? '').length} max={CONGRATULATIONS_LIMITS.ctaLabel} />
       </div>
       <p id={ids.help} className="text-xs font-semibold text-ink-soft">
-        {text.placeholders}
+        {text.placeholders[purpose]}
       </p>
+      {asksForScore && (
+        <p role="alert" className="rounded-md bg-sun-tint p-2 text-xs font-bold text-sun-dark">
+          {text.scoreUnavailable}
+        </p>
+      )}
       <Button
         size="sm"
         variant="ghost"

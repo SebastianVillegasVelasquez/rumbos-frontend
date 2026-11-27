@@ -34,7 +34,9 @@ import { StepActivity } from './StepActivity.tsx'
 import { StepHtml, StepPdf, StepQuiz, StepVideo, StepWelcome } from './FlowSteps.tsx'
 import { LazyExamRunner } from '../../assessment/LazyExamRunner.tsx'
 import { StepAssessment, type Launch } from './StepAssessment.tsx'
-import { LazyWelcomeFlow } from './LazyWelcomeFlow.tsx'
+import { StepPreviewExam } from './StepPreviewExam.tsx'
+import { StepSimulatedExam } from './StepSimulatedExam.tsx'
+import type { FlowSimulation } from './flowSimulation.ts'
 import { FlowMusicChoice } from './FlowMusicChoice.tsx'
 import { FlowStatus } from './FlowStatus.tsx'
 import { FlowStepper } from './FlowStepper.tsx'
@@ -62,9 +64,9 @@ export interface WelcomeFlowProps {
   onEnterFullscreen?: (() => void) | null
   // The flow is over (completed, or a review or a preview closed), with what is done.
   onFinish: (done: ProgressEntry[]) => void
-  // Editor's test tools: the closing flow's steps, so "Ver cierre" after a simulated pass can
-  // open them in preview. Absent for the closing flow itself; `[]` says none is configured.
-  closingPreviewSteps?: WelcomeStep[]
+  // Set when "Simular recorrido" plays this flow (always in preview): the exam step takes a
+  // simulated result and feeds the simulation's state.
+  simulation?: FlowSimulation | null
 }
 
 const FOCUSABLE =
@@ -88,16 +90,17 @@ const WelcomeFlow = ({
   track = null,
   onEnterFullscreen = null,
   onFinish,
-  closingPreviewSteps,
+  simulation = null,
 }: WelcomeFlowProps) => {
   const dataSaver = useDataSaver().active
   const queryClient = useQueryClient()
   // The editing role (a teacher or manager) is usually not a student, so Moodle has
   // no attempt of theirs to find: a quiz step never blocks them.
   const embed = useEmbed()
-  const editorRole = embed?.role === 'editor'
+  // A preview blocks nobody either: it exists to look at every step, and it launches nothing.
+  const editorRole = embed?.role === 'editor' || mode === 'preview'
   const [state, dispatch] = useReducer(flowReducer, undefined, () =>
-    createFlowState(steps.map(toStepInfo), entries, mode, editorRole)
+    createFlowState(steps.map(toStepInfo), entries, mode, editorRole, simulation !== null)
   )
   // Read through a ref: a new context object must not leave and re-enter the stage.
   const requestFullscreenRef = useRef(embed?.requestFullscreen)
@@ -122,8 +125,7 @@ const WelcomeFlow = ({
   }, [fullStage])
   // The native check-in runs in this same stage once the student starts it.
   const [launch, setLaunch] = useState<Launch | null>(null)
-  // The closing flow opened over this one by an editor's simulated pass: preview, nothing recorded.
-  const [closingOpen, setClosingOpen] = useState(false)
+
   const rootRef = useRef<HTMLDivElement>(null)
   const headingRef = useRef<HTMLHeadingElement>(null)
   const noteId = useId()
@@ -213,7 +215,14 @@ const WelcomeFlow = ({
     beginMusic()
     dispatch({ type: 'next' })
   }
-  const skipVisible = mode === 'preview'
+  // A simulation's journey needs the check-in's result: until it has one, the way past the
+  // other steps is a jump to the exam, not a way out of the flow.
+  const pendingExam =
+    simulation === null || simulation.checkin !== null
+      ? -1
+      : steps.findIndex((item) => item.type === 'assessment' && item.purpose === 'check_in')
+  const skipVisible = mode === 'preview' && pendingExam === -1
+  const jumpVisible = pendingExam !== -1 && pendingExam !== state.index
 
   const body = (() => {
     switch (step.type) {
@@ -257,6 +266,18 @@ const WelcomeFlow = ({
           />
         )
       case 'assessment':
+        if (simulation)
+          return (
+            <StepSimulatedExam
+              key={step.key}
+              step={step}
+              state={state}
+              dispatch={dispatch}
+              simulation={simulation}
+            />
+          )
+        // A preview never reaches the exam itself: no list, no "Empezar", no attempt.
+        if (mode === 'preview') return <StepPreviewExam key={step.key} />
         return (
           <StepAssessment
             key={step.key}
@@ -320,15 +341,7 @@ const WelcomeFlow = ({
           purpose={step.purpose}
           info={launch.info}
           policy={launch.policy}
-          preview={launch.preview || mode === 'preview'}
-          initialSimulation={launch.simulate ?? null}
-          closingPreview={
-            closingPreviewSteps === undefined
-              ? undefined
-              : closingPreviewSteps.length === 0
-                ? 'none'
-                : () => setClosingOpen(true)
-          }
+          preview={launch.preview}
           // Submitted or expired, whatever the result: the check-in is a baseline.
           onFinished={() => {
             dispatch({ type: 'assessment-done' })
@@ -360,6 +373,16 @@ const WelcomeFlow = ({
                       <Maximize2 size={16} strokeWidth={2.5} aria-hidden />
                       {/* Icon only on a narrow window; the name stays for assistive tech. */}
                       <span className="max-[480px]:sr-only">{es.welcome.fullscreen}</span>
+                    </Button>
+                  )}
+                  {jumpVisible && (
+                    <Button
+                      variant="surface"
+                      size="sm"
+                      dense
+                      onClick={() => dispatch({ type: 'jump', index: pendingExam })}
+                    >
+                      {text.jumpToExam}
                     </Button>
                   )}
                   {(mode === 'review' || skipVisible) && (
@@ -484,20 +507,6 @@ const WelcomeFlow = ({
       <p aria-live="polite" role="status" className="sr-only">
         {text.announce(state.index + 1, total, title)}
       </p>
-      {closingOpen && closingPreviewSteps && closingPreviewSteps.length > 0 && (
-        <LazyWelcomeFlow
-          flowKey="closing"
-          steps={closingPreviewSteps}
-          mode="preview"
-          entries={[]}
-          persistence={null}
-          documents={documents}
-          courseName={courseName}
-          imageUrl={imageUrl}
-          hasMusic={false}
-          onFinish={() => setClosingOpen(false)}
-        />
-      )}
     </div>
   )
 }

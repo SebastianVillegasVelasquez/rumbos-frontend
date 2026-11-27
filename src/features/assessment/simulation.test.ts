@@ -6,7 +6,6 @@ import {
   passesRule,
   simulateResult,
   simulatedPercent,
-  simulationAllowed,
   type SimulatedOutcome,
 } from './simulation.ts'
 import type { AssessmentPolicy } from './types.ts'
@@ -15,22 +14,6 @@ const strict: AssessmentPolicy = { pass_percent: 80, pass_operator: 'gt', time_l
 const inclusive: AssessmentPolicy = { ...strict, pass_operator: 'gte' }
 const attempts = { used: 0, max: 3 }
 const OUTCOMES: SimulatedOutcome[] = ['pass', 'fail', 'boundary']
-
-describe('the simulation gate', () => {
-  it('opens only for an editor in preview', () => {
-    assert.equal(simulationAllowed({ preview: true, editorRole: true }), true)
-    assert.equal(simulationAllowed({ preview: false, editorRole: true }), false)
-    assert.equal(simulationAllowed({ preview: true, editorRole: false }), false)
-    assert.equal(simulationAllowed({ preview: false, editorRole: false }), false)
-  })
-
-  it('does not open for anything that is not exactly true', () => {
-    const loose = { preview: 'true', editorRole: 1 } as unknown as Parameters<
-      typeof simulationAllowed
-    >[0]
-    assert.equal(simulationAllowed(loose), false)
-  })
-})
 
 describe('the pass rule', () => {
   it('exactly on the threshold does not pass when it must be exceeded', () => {

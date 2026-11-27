@@ -52,6 +52,15 @@ export const formatScore = (score: string | null): string => {
   return Number.isFinite(value) ? String(Number(value.toFixed(2))) : ''
 }
 
+// The backend reports no score for the final exam, so its screen cannot say one: the editor
+// warns about the placeholder there, and a field that uses it anyway gets Rumbos' text.
+export const SCORE_PLACEHOLDER = '{score}'
+
+export const usesUnavailableScore = (
+  purpose: CongratulationsPurpose,
+  value: string | null | undefined
+): boolean => purpose === 'final' && (value ?? '').includes(SCORE_PLACEHOLDER)
+
 // Only these two placeholders exist: anything else in braces stays as the author wrote it, as text.
 export const substitute = (template: string, values: CongratulationsValues): string =>
   template
@@ -85,7 +94,9 @@ export const resolveCongratulations = (
   const fallback = defaultsFor(purpose, values, operator)
   const pick = (value: string | null | undefined, max: number, multiline: boolean, def: string) => {
     const own = plain(value, max, multiline)
-    return substitute(own === '' ? def : own, values).trim()
+    // A sentence with a hole where the score goes would read as broken.
+    const unusable = own === '' || (values.score === null && usesUnavailableScore(purpose, own))
+    return substitute(unusable ? def : own, values).trim()
   }
   return {
     title: pick(custom?.title, CONGRATULATIONS_LIMITS.title, false, fallback.title),

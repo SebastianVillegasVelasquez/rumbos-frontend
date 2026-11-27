@@ -269,14 +269,16 @@ test.describe('activity step: the editor', () => {
     await expect(list.nth(1)).toContainText('Lo que lograste')
   })
 
-  test('the preview shows the activity card with the activity name', async ({ page }) => {
+  test('the preview names the activity and opens nothing by itself', async ({ page }) => {
     await page.goto('/mock-host/index.html')
     await scenario(page, 'opens, closes after 1 s')
     const open = await openClosingEditor(page, [activityStep, textStep])
     const tab = await open()
     await tab.getByRole('button', { name: 'Probar el flujo' }).click()
     await expect(dialog(page).getByText('Vista previa: no se guarda nada.')).toBeVisible()
-    await expect(card(page)).toBeVisible()
+    await expect(dialog(page).getByTestId('preview-activity')).toBeVisible()
     await expect(dialog(page).getByText('Actividad de Moodle: Guía de inicio')).toBeVisible()
+    await expect(dialog(page).getByText('En la simulación no se abre la actividad')).toBeVisible()
+    await expect(openButton(page)).toHaveCount(0)
   })
 })

@@ -52,8 +52,8 @@ export const CongratulationsScreen = ({
   )
 }
 
-// What a student sees after three failed final attempts. It performs nothing: the restart
-// (showing the content again from zero) is the backend's and the plugin's, never the browser's.
+// What a student sees once the final exam's attempts are spent. It performs nothing and
+// promises nothing: no restart of the course exists.
 export const ExhaustedScreen = ({ onContinue }: { onContinue: () => void }) => {
   const heading = useRef<HTMLHeadingElement>(null)
   const titleId = useId()
@@ -71,9 +71,7 @@ export const ExhaustedScreen = ({ onContinue }: { onContinue: () => void }) => {
           {text.exhaustedTitle}
         </h2>
         <p className="flow-prose">{text.exhaustedBody}</p>
-        <p role="note" className="rounded-md bg-sun-tint p-3 text-sm font-semibold text-sun-dark">
-          {text.exhaustedNote}
-        </p>
+
         <Button onClick={onContinue}>{text.exhaustedCta}</Button>
       </Card>
     </section>

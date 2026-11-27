@@ -1,6 +1,29 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { canonicalJson, sha256Hex } from './canonicalJson.ts'
+import { replaceEqualDeep } from '@tanstack/react-query'
+import { serializeAppearance } from '../../welcome/welcomeWire.ts'
+import { canonicalJson, sameJson, sha256Hex } from './canonicalJson.ts'
+import type { MapSettings } from './types.ts'
+
+describe('sameJson', () => {
+  // The path that left the editor "unsaved" after Guardar: the body sent has its keys moved,
+  // and the query cache keeps its old object when only the order differs.
+  it('a saved copy with its keys in another order is no change from what the cache kept', () => {
+    const draft = { trainer: { enabled: true }, mode: 'explorative' } as unknown as MapSettings
+    const saved = serializeAppearance({
+      settings: draft,
+      defaultSkinId: null,
+      skinRules: [],
+    }).settings
+    const cached = replaceEqualDeep(draft, saved)
+    assert.notEqual(JSON.stringify(saved), JSON.stringify(cached))
+    assert.equal(sameJson(saved, cached), true)
+  })
+
+  it('still sees a changed value', () => {
+    assert.equal(sameJson({ a: 1, b: 2 }, { b: 3, a: 1 }), false)
+  })
+})
 
 describe('canonicalJson', () => {
   it('ignores object key order at every depth', () => {

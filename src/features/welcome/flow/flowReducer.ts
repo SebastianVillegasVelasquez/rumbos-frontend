@@ -92,6 +92,9 @@ export interface FlowState {
   // The viewer holds the editing role: a quiz step never blocks them (they are
   // usually not students, so Moodle has no attempt of theirs to find).
   editor: boolean
+  // "Simular recorrido": the exam step waits for a simulated result, editor or not, so the
+  // journey cannot be walked past its exams.
+  holdsExam: boolean
   // Steps whose content cannot be served (a document that is gone): they do not
   // block and record `unavailable`.
   unavailable: Record<string, boolean>
@@ -131,7 +134,8 @@ export const createFlowState = (
   steps: FlowStepInfo[],
   items: readonly ProgressEntry[],
   mode: FlowMode,
-  editor = false
+  editor = false,
+  holdsExam = false
 ): FlowState => {
   const done = mode === 'normal' ? doneFromProgress(items) : {}
   // Resume at the first mandatory step not done at its current revision; when
@@ -153,6 +157,7 @@ export const createFlowState = (
     activitySeen: {},
     activityEscaped: {},
     editor,
+    holdsExam,
     unavailable: {},
     finished: false,
   }
@@ -215,7 +220,7 @@ export const gateOf = (state: FlowState, index: number = state.index): Gate => {
       satisfied = outcome !== undefined
       if (outcome === 'fallback') method = 'fallback'
       // Never a trap: the editing role is not blocked (they run it as a preview).
-      if (!satisfied && state.editor) {
+      if (!satisfied && state.editor && !state.holdsExam) {
         satisfied = true
         method = 'fallback'
       }
@@ -305,6 +310,8 @@ export type FlowEvent =
   | { type: 'skip' }
   | { type: 'back' }
   | { type: 'goto'; index: number }
+  // A preview going straight to a later step ("Ir a la evaluación" in a simulation).
+  | { type: 'jump'; index: number }
   // Progress that arrives after the flow started (a late host answer): it can
   // only add completions, never undo one.
   | { type: 'progress'; items: readonly ProgressEntry[] }
@@ -412,6 +419,10 @@ export const flowReducer = (state: FlowState, event: FlowEvent): FlowState => {
     case 'goto':
       return event.index >= 0 && event.index <= state.furthest && event.index < state.steps.length
         ? { ...state, index: event.index }
+        : state
+    case 'jump':
+      return state.mode === 'preview' && event.index >= 0 && event.index < state.steps.length
+        ? { ...state, index: event.index, furthest: Math.max(state.furthest, event.index) }
         : state
     case 'progress': {
       if (state.mode !== 'normal') return state

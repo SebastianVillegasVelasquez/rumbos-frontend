@@ -24,8 +24,21 @@ export const esCongratulations = {
     heading: 'Simular recorrido',
     banner: 'Simulación: no se guarda ni cuenta',
     start: 'Empezar simulación',
-    scenarioA: 'Aprobó el diagnóstico',
-    scenarioB: 'No aprobó el diagnóstico',
+    fold: 'Ocultar',
+    unfold: 'Mostrar',
+    // The step added when the map's welcome has no check-in of its own.
+    checkinTitle: 'Evaluación de entrada',
+    checkinPending: 'Recorre la bienvenida y elige el resultado del diagnóstico.',
+    addedCheckin:
+      'La bienvenida de este mapa no tiene la evaluación de entrada: se agrega solo en la simulación.',
+    passRule: (threshold: number, strict: boolean) =>
+      strict
+        ? `Se aprueba con más del ${threshold} %.`
+        : `Se aprueba con al menos el ${threshold} %.`,
+    checkinResult: (passed: boolean) =>
+      passed ? 'Diagnóstico: aprobado' : 'Diagnóstico: no aprobado',
+    noClosing: 'Este mapa no tiene un flujo de cierre: la simulación termina en el mapa.',
+    boundaryAttempt: (threshold: number) => `Intento de la final: justo ${threshold} %`,
     allDone: 'Simular todas las actividades completadas',
     passAttempt: 'Intento de la final: aprobar',
     failAttempt: 'Intento de la final: no aprobar',
@@ -35,11 +48,15 @@ export const esCongratulations = {
   },
   journey: {
     exhaustedTitle: 'Toca repasar el contenido',
-    exhaustedBody:
-      'Usaste los tres intentos de la evaluación final. Vas a volver a ver todo el contenido desde el principio, y luego podrás cerrar el curso.',
-    exhaustedNote:
-      'El reinicio lo hace Moodle, no esta pantalla. Mientras tanto, avisa a tu docente si no ves el contenido de nuevo.',
+    exhaustedBody: 'Agotaste tus intentos. Repasa el contenido del mapa y consulta con tu tutor.',
     exhaustedCta: 'Volver al mapa',
+    routeTitle: 'Tu ruta hacia la evaluación final',
+    routeBody:
+      'No alcanzaste el puntaje mínimo. Recorre el mapa y completa todas las actividades; al terminar podrás presentar la evaluación final.',
+    routeCta: 'Entendido',
+    failureTitle: (used: number, max: number) => `Intento ${used} de ${max}: no aprobaste`,
+    failureBody: (left: number, max: number) =>
+      `No aprobaste este intento. Te quedan ${left} de ${max}.`,
     closingCardTitle: 'Terminaste todo el contenido',
     closingCardBody: 'Ya puedes pasar al cierre del curso.',
     closingCardCta: 'Continuar al cierre',
@@ -47,7 +64,6 @@ export const esCongratulations = {
       left === 1
         ? 'Te falta 1 actividad para el cierre.'
         : `Te faltan ${left} actividades para el cierre.`,
-    attempts: (used: number, max: number) => `Intento ${used} de ${max}`,
   },
   // Said to a screen reader when the screen appears.
   announce: (title: string) => `${title}`,
@@ -62,12 +78,18 @@ export const esCongratulations = {
     title: 'Título',
     body: 'Mensaje',
     ctaLabel: 'Texto del botón',
-    placeholders:
-      'Puedes usar {score} para la nota y {threshold} para el mínimo para aprobar. Solo texto: no se permite formato ni enlaces.',
+    placeholders: {
+      checkin:
+        'Puedes usar {score} para la nota y {threshold} para el mínimo para aprobar. Solo texto: no se permite formato ni enlaces.',
+      final:
+        'Puedes usar {threshold} para el mínimo para aprobar. Solo texto: no se permite formato ni enlaces.',
+    },
+    scoreUnavailable:
+      'Quita {score}: la nota de la evaluación final todavía no está disponible. Mientras esté, ese campo mostrará el texto de Rumbos.',
     counter: (used: number, max: number) => `${used} de ${max}`,
     preview: 'Así se verá',
     previewScore: '85',
-    previewThreshold: '70',
+
     reset: 'Usar el texto de Rumbos',
     previewLabel: 'Vista previa de la pantalla',
     tooLong: 'El texto es demasiado largo.',

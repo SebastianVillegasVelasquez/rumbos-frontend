@@ -120,9 +120,24 @@ import {
   type ClosingFlowState,
 } from './features/assessment/closingResume.ts'
 import { useClosingProgress } from './features/assessment/useClosingProgress.ts'
+import { ConfirmDialog } from './components/ui/ConfirmDialog.tsx'
 import { JourneySimulator } from './features/assessment/JourneySimulator.tsx'
-import { simStatus, type SimState } from './features/assessment/journeySimulation.ts'
-import { ClosingCard, JourneyOverlay } from './features/assessment/JourneyOverlay.tsx'
+import {
+  initialSim,
+  simAllDone,
+  simAttempt,
+  simCheckin,
+  simLastFailure,
+  simRulesOf,
+  simStatus,
+  simWelcomeDone,
+  simWelcomeSteps,
+  type SimState,
+} from './features/assessment/journeySimulation.ts'
+import { esCongratulations } from './i18n/congratulations.es.ts'
+import type { FlowSimulation } from './features/welcome/flow/flowSimulation.ts'
+import { ClosingCard, JourneyOverlay, RouteCard } from './features/assessment/JourneyOverlay.tsx'
+import { finalFailure } from './features/assessment/journeyTexts.ts'
 import {
   markScreenSeen,
   wasScreenSeen,
@@ -148,6 +163,7 @@ import type {
 import type {
   Activity,
   MapInitialView,
+  MapSettings,
   RenderableBubble,
   RenderableBubble as Bubble,
   ResolvedBubble,
@@ -222,6 +238,8 @@ const isWideViewport = () => window.matchMedia('(min-width: 640px)').matches
 // every render.
 const NO_BUBBLES: RenderableBubble[] = []
 const NO_STEPS: WelcomeStep[] = []
+// What the simulation's rules are read from while there is no map.
+const NO_SETTINGS = { schemaVersion: 1 } as MapSettings
 
 function App() {
   return (
@@ -357,6 +375,26 @@ export function AppShell() {
   }
 
   const courseMapId = route.name === 'map' ? route.mapId : null
+  // The closing flow, and what the visit has dismissed on the way to it. Declared here with
+  // the simulation, which clears them.
+  const [closingOpen, setClosingOpen] = useState(false)
+  const [journeyDismissed, setJourneyDismissed] = useState<(JourneyScreen | 'route')[]>([])
+  const clearJourney = () => {
+    setClosingOpen(false)
+    setJourneyDismissed([])
+  }
+  // "Simular recorrido": in memory, for an editor looking at the student view of one level.
+  // Leaving either ends it, with whatever it had open.
+  const canSimulate = exitPreview !== null && embed?.role === 'editor'
+  const [simRun, setSimRun] = useState<{ level: string; state: SimState } | null>(null)
+  if (simRun && (!canSimulate || simRun.level !== courseMapId)) {
+    setSimRun(null)
+    clearJourney()
+  }
+  const sim = canSimulate && simRun?.level === courseMapId ? simRun.state : null
+  const simulating = sim !== null
+  const updateSim = (change: (state: SimState) => SimState) =>
+    setSimRun((current) => current && { ...current, state: change(current.state) })
   // Draft and published data use separate queries; only the one for the
   // current view mode is enabled.
   const draftId = showPublished ? null : courseMapId
@@ -423,7 +461,16 @@ export function AppShell() {
 
   const resolvedBubbles = moodle.resolved?.bubbles
   const activities = moodle.activities
-  const bubbles = useMemo(() => renderable?.bubbles ?? NO_BUBBLES, [renderable])
+  // "Simular todas las actividades completadas" draws them so, over the map and in memory.
+  const simCompleted = sim?.contentDone === true
+  const bubbles = useMemo(() => {
+    const own = renderable?.bubbles ?? NO_BUBBLES
+    return simCompleted
+      ? own.map((bubble) =>
+          isContentBubble(bubble) ? bubble : { ...bubble, status: 'complete' as const }
+        )
+      : own
+  }, [renderable, simCompleted])
   const unplacedCount = activities.filter((activity) => !activity.placed).length
 
   const resolvedByBubbleId = useMemo(
@@ -608,6 +655,10 @@ export function AppShell() {
     0
   )
 
+  // In an editor's preview of the student view, a bubble opens nothing in Moodle by itself:
+  // it says so, and opening for real is a choice that says what it records.
+  const [previewedActivity, setPreviewedActivity] = useState<Activity | null>(null)
+  if (previewedActivity && exitPreview === null) setPreviewedActivity(null)
   const handleBubbleClick = (bubble: Bubble) => {
     if (isContentBubble(bubble)) {
       openContent(bubble)
@@ -616,7 +667,9 @@ export function AppShell() {
     const resolved = resolvedByBubbleId.get(bubble.id)
     const activity =
       resolved?.activity ?? activities.find((a) => a.activityId === bubble.activityId)
-    if (activity) openActivity(activity)
+    if (!activity) return
+    if (embed && exitPreview !== null) setPreviewedActivity(activity)
+    else openActivity(activity)
   }
 
   // Student presentation only (MapCanvas forces this to null in edit mode):
@@ -643,14 +696,17 @@ export function AppShell() {
 
   // Content is information: always there, whatever Moodle says.
   const getAvailabilityForBubble = (bubble: Bubble) =>
-    isContentBubble(bubble) ? 'available' : resolvedByBubbleId.get(bubble.id)?.availability
+    isContentBubble(bubble) || simCompleted
+      ? 'available'
+      : resolvedByBubbleId.get(bubble.id)?.availability
   useCompletionNotices({
     levelKey: courseMapId,
     ready: !moodle.resolvedPending && !moodle.resolvedError,
     bubbles,
     // A teaser has no activity behind it, so its name is never spoken.
     nameOf: (bubble) => resolvedByBubbleId.get(bubble.id)?.activity?.name ?? null,
-    enabled: !isEditor,
+    // A simulation's made-up completions are nothing to tell anyone about.
+    enabled: !isEditor && !simulating,
   })
   const progress = progressCounts(
     bubbles,
@@ -793,14 +849,6 @@ export function AppShell() {
           track={audioForWelcome}
           onEnterFullscreen={curtainFullscreen}
           onFinish={flowGate.finish}
-          // Editor's test tools only: "Ver cierre" after a simulated pass opens these in preview.
-          closingPreviewSteps={
-            embed?.role === 'editor'
-              ? renderable.settings.closing?.enabled
-                ? (renderable.settings.closing.steps ?? [])
-                : []
-              : undefined
-          }
         />
       ) : flowGate.state.status === 'checking' ? (
         <div className="absolute inset-0 z-50 bg-ink" />
@@ -865,7 +913,6 @@ export function AppShell() {
   // The closing flow. A student has no button into it: the journey brings them (see
   // closingResume.ts), worked out again on every load. It is never opened over the map for a
   // student who has not started it. Its steps come from the map.
-  const [closingOpen, setClosingOpen] = useState(false)
   const closingSteps = renderable?.settings.closing?.enabled
     ? (renderable.settings.closing.steps ?? NO_STEPS)
     : NO_STEPS
@@ -879,10 +926,47 @@ export function AppShell() {
     enabled: studentJourney,
     embed,
   })
-  // The editor's "Simular recorrido": a made-up status in memory, only in the student view.
-  const [sim, setSim] = useState<SimState | null>(null)
-  const simulating = exitPreview !== null && embed?.role === 'editor' && sim !== null
-  const closingStatus = simulating && sim ? simStatus(sim) : realStatus
+  const simRules = simRulesOf(renderable?.settings ?? NO_SETTINGS)
+  const simWelcome = simWelcomeSteps(
+    renderable?.settings.welcome,
+    esCongratulations.simulator.checkinTitle
+  )
+  const closingStatus = sim
+    ? simStatus(sim, simRules, bubbles.filter((bubble) => !isContentBubble(bubble)).length)
+    : realStatus
+  // What an exam step of a simulated flow reads and writes.
+  const flowSimulation: FlowSimulation | null = sim
+    ? {
+        rules: simRules,
+        checkin: sim.checkin,
+        attempts: sim.attempts,
+        onSimulate: (purpose, outcome) =>
+          updateSim((state) =>
+            purpose === 'check_in'
+              ? simCheckin(state, outcome)
+              : simAttempt(state, outcome, simRules)
+          ),
+      }
+    : null
+  // The entry is offered where there is a journey to play: a closing, or a welcome check-in.
+  const simOffered =
+    canSimulate && renderable !== null && (closingSteps.length > 0 || !simWelcome.addedCheckin)
+  const startSimulation = () => {
+    if (courseMapId === null) return
+    // The preview's own welcome gives way to the simulated one.
+    welcomeState.dismiss()
+    clearJourney()
+    setSimRun({ level: courseMapId, state: initialSim() })
+  }
+  // A new run: nothing open, no result and no attempt left from the one before.
+  const resetSimulation = () => {
+    clearJourney()
+    updateSim((state) => initialSim(state.run + 1))
+  }
+  const exitSimulation = () => {
+    clearJourney()
+    setSimRun(null)
+  }
   const queryClient = useQueryClient()
   // Finishing an activity changes the backend's answer, and the host announces it with a fresh
   // state: ask again then (the status is cheap and the server owns what it means).
@@ -894,18 +978,40 @@ export function AppShell() {
     [queryClient]
   )
   const journeySteps = closingStepsFor(closingSteps, closingStatus)
-  const [journeyDismissed, setJourneyDismissed] = useState<JourneyScreen[]>([])
-  const welcomeBusy =
-    flowGate !== null && flowGate.state.status !== 'closed' && flowGate.state.status !== 'off'
+  const welcomeBusy = sim
+    ? sim.phase === 'welcome'
+    : flowGate !== null && flowGate.state.status !== 'closed' && flowGate.state.status !== 'off'
+  // A simulation plays the welcome flow of its own, with the check-in in it.
+  const stageCurtain = !sim ? (
+    welcomeCurtain
+  ) : sim.phase === 'welcome' && renderable ? (
+    <LazyWelcomeFlow
+      key={`${renderable.id}:sim:${sim.run}`}
+      steps={simWelcome.steps}
+      mode="preview"
+      entries={[]}
+      persistence={null}
+      documents={renderable.welcomeDocuments ?? []}
+      courseName={hostCourseName?.trim() || renderable.title}
+      imageUrl={renderable.imageUrl}
+      hasMusic={false}
+      simulation={flowSimulation}
+      onFinish={() => updateSim(simWelcomeDone)}
+    />
+  ) : null
   // The simulation keeps no progress: its closing counts as done once it was entered from the
   // congratulations.
-  const closingFlowState: ClosingFlowState = simulating
-    ? journeyDismissed.includes('congrats_checkin')
-      ? 'finished'
-      : 'not_started'
-    : closingFlowStateOf(journeySteps, closingProgress.entries)
+  const closingFlowState: ClosingFlowState = !simulating
+    ? closingFlowStateOf(journeySteps, closingProgress.entries)
+    : journeySteps.length === 0
+      ? 'empty'
+      : journeyDismissed.includes('congrats_checkin')
+        ? 'finished'
+        : 'not_started'
+  // Asked of the map's closing, not of what is left of it: a student with no step left still
+  // gets the congratulations.
   const closingPlace =
-    renderable && journeySteps.length > 0
+    renderable && closingSteps.length > 0
       ? closingPlaceOf({
           status: closingStatus,
           flow: closingFlowState,
@@ -915,25 +1021,35 @@ export function AppShell() {
         })
       : null
   const journeyBlocked = welcomeBusy || trainerOpen
+  // An open flow with no step left (the check-in just passed) has nothing to show.
+  if (closingOpen && closingSteps.length > 0 && journeySteps.length === 0) setClosingOpen(false)
   // A flow left in the middle opens again. Kept as state, so a status that changes while the
   // student is inside (the final just passed) does not take the flow away from them.
   if (closingPlace?.kind === 'resume' && !closingOpen && !journeyBlocked) setClosingOpen(true)
   const journeyScreen: JourneyScreen | null =
     closingPlace?.kind === 'screen' && !closingOpen && !journeyBlocked ? closingPlace.screen : null
   const showClosingCard = closingPlace?.kind === 'card' && !closingOpen && !journeyBlocked
+  const showRouteCard =
+    closingPlace?.kind === 'route' &&
+    !journeyDismissed.includes('route') &&
+    !closingOpen &&
+    !journeyBlocked
+  const simFailed = sim ? simLastFailure(sim, simRules) : null
   // The closing or a journey screen has the stage: what opens by itself on a level waits.
   const stageTaken = closingOpen || journeyScreen !== null
   const finishJourneyScreen = () => {
     if (!journeyScreen || !renderable) return
-    // The congratulations come once; the "review again" screen stays until the backend restarts.
+    // The congratulations come once per browser; the "attempts spent" screen once per visit.
     if (!simulating && journeyScreen !== 'exhausted')
       markScreenSeen(viewerStorage(), renderable.id, journeyScreen)
     setJourneyDismissed((list) => [...list, journeyScreen])
     // The CTA of a passed check-in opens the closing flow, without the final exam.
-    if (journeyScreen === 'congrats_checkin') setClosingOpen(true)
+    if (journeyScreen === 'congrats_checkin' && journeySteps.length > 0) setClosingOpen(true)
   }
   // The HUD's "Cierre" button is the editor's alone, to look at the flow from the student view.
-  const editorSeesClosing = exitPreview !== null && (embed === null || embed.role === 'editor')
+  // Not while simulating: the journey is the way in then, as it is for a student.
+  const editorSeesClosing =
+    !simulating && exitPreview !== null && (embed === null || embed.role === 'editor')
   const closingWasOpen = useRef(false)
   useEffect(() => {
     if (closingOpen) {
@@ -1431,7 +1547,8 @@ export function AppShell() {
                     <LazyTrainerStage imageUrl={renderable.imageUrl} onClose={closeTrainer} />
                   ) : closingOpen && renderable && journeySteps.length > 0 ? (
                     <LazyWelcomeFlow
-                      key={`${renderable.id}:closing`}
+                      key={`${renderable.id}:closing:${sim?.run ?? 'real'}`}
+                      simulation={flowSimulation}
                       flowKey="closing"
                       steps={journeySteps}
                       mode={exitPreview !== null ? 'preview' : 'normal'}
@@ -1462,6 +1579,7 @@ export function AppShell() {
                       status={closingStatus}
                       onContinue={finishJourneyScreen}
                       simulated={simulating}
+                      finalThreshold={sim ? simRules.policy.pass_percent : null}
                     />
                   ) : null
                 }
@@ -1505,7 +1623,7 @@ export function AppShell() {
                       }
                 }
                 reportInsets={show3d}
-                curtain={welcomeCurtain}
+                curtain={stageCurtain}
                 onShowWelcome={welcomeState.reopen}
                 audio={
                   audioTrack ? (
@@ -1521,17 +1639,46 @@ export function AppShell() {
               >
                 {(layout) => (show3d && view3d ? render3d(view3d) : renderMapArea(layout))}
               </StudentStage>
-              {exitPreview !== null && embed?.role === 'editor' && closingSteps.length > 0 && (
+              {simOffered && (
                 <JourneySimulator
                   state={sim}
-                  onChange={(next) => {
-                    setSim(next)
-                    setJourneyDismissed([])
-                  }}
+                  rules={simRules}
+                  addedCheckin={simWelcome.addedCheckin}
+                  hasClosing={closingSteps.length > 0}
+                  closingOpen={closingOpen}
+                  onStart={startSimulation}
+                  onAllDone={() => updateSim((state) => simAllDone(state, simRules))}
+                  onAttempt={(outcome) =>
+                    updateSim((state) => simAttempt(state, outcome, simRules))
+                  }
+                  onReset={resetSimulation}
+                  onExit={exitSimulation}
                 />
               )}
               {closingStatus && showClosingCard && (
-                <ClosingCard status={closingStatus} onOpen={() => setClosingOpen(true)} />
+                <ClosingCard
+                  status={closingStatus}
+                  failure={
+                    simFailed === null ? null : finalFailure(simFailed, simRules.finalMaxAttempts)
+                  }
+                  onOpen={() => setClosingOpen(true)}
+                />
+              )}
+              <ConfirmDialog
+                open={previewedActivity !== null}
+                onOpenChange={(open) => !open && setPreviewedActivity(null)}
+                title={previewedActivity?.name ?? ''}
+                description={es.flow.previewActivity.placeholder}
+                confirmLabel={es.flow.previewActivity.openForReal}
+                cancelLabel={es.flow.previewActivity.close}
+                destructive={false}
+                onConfirm={() => {
+                  if (previewedActivity) openActivity(previewedActivity)
+                  setPreviewedActivity(null)
+                }}
+              />
+              {showRouteCard && (
+                <RouteCard onDismiss={() => setJourneyDismissed((list) => [...list, 'route'])} />
               )}
             </>
           ) : show3d && renderable && view3d ? (

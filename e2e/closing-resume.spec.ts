@@ -59,12 +59,12 @@ const openLevelCard = async (page: Page) => {
 }
 
 // A new visit to the host page. The browser keeps its storage; the mock Moodle starts empty.
-const visit = async (page: Page, extra = '') => {
+const visit = async (page: Page, extra = '', flow: object = closing) => {
   await page.goto('/mock-host/index.html')
   const input = page.locator('label:has-text("app URL") input')
   const base = (await input.inputValue()).split('?')[0]
   await input.fill(
-    `${base}?mockStableIds=1&mockWelcome=disabled&mockClosingJson=${encodeURIComponent(JSON.stringify(closing))}${extra}`
+    `${base}?mockStableIds=1&mockWelcome=disabled&mockClosingJson=${encodeURIComponent(JSON.stringify(flow))}${extra}`
   )
   await page.getByRole('button', { name: '(Re)load app' }).click()
   await openLevelCard(page)
@@ -218,6 +218,30 @@ test.describe('check-in passed', () => {
     await expect(dialog(page)).toHaveCount(0)
     await expect(closingCard(page)).toHaveCount(0)
 
+    // The first-visit note waited behind the flow; left open it would be back after the reload.
+    await closeIntro(page)
+    await reload(page)
+    await expectPlainMap(page)
+  })
+})
+
+test.describe('check-in passed, a closing that holds only the final', () => {
+  const onlyFinal = {
+    ...closing,
+    steps: closing.steps.filter((step) => step.type === 'assessment'),
+  }
+
+  test('the congratulations, then the map: the final is never shown', async ({ page, context }) => {
+    await serveClosingStatus(context, { value: closingStatus('not_required_passed_checkin') })
+    await visit(page, '', onlyFinal)
+    await expect(congratulations(page)).toBeVisible({ timeout: 20_000 })
+    await congratulations(page).getByRole('button', { name: 'Continuar' }).click()
+    await expect(congratulations(page)).toHaveCount(0)
+    // The note that waited behind the congratulations: nothing else is in front of the map.
+    await closeIntro(page)
+    await expectPlainMap(page)
+
+    // visit() starts Moodle empty again; the browser remembers the congratulations were read.
     await reload(page)
     await expectPlainMap(page)
   })
@@ -234,6 +258,9 @@ test.describe('the final exam', () => {
     ).toBeVisible({ timeout: 20_000 })
     await congratulations(page).getByRole('button', { name: 'Continuar' }).click()
     await expect(dialog(page)).toHaveCount(0)
+    // The first-visit note waited behind the congratulations. It counts as read only once
+    // closed, so one left open would be back after the reload, over the map.
+    await closeIntro(page)
     await reload(page)
     await expectPlainMap(page)
   })

@@ -11,6 +11,8 @@ import type { JourneyScreen } from './journeyScreens.ts'
 // dismissed before any closing step was done: the caller says so (`seen`).
 
 export type ClosingFlowState =
+  // No step is left for this student: there is no closing to open.
+  | 'empty'
   // Moodle has not answered yet.
   | 'loading'
   | 'not_started'
@@ -22,6 +24,8 @@ export const closingFlowStateOf = (
   steps: readonly WelcomeStep[],
   entries: readonly ProgressEntry[] | null
 ): ClosingFlowState => {
+  // Known without Moodle: there is nothing it could have recorded.
+  if (steps.length === 0) return 'empty'
   if (entries === null) return 'loading'
   // The host's list also carries the welcome flow's steps: only the closing's count.
   const mine = entries.filter((entry) => steps.some((step) => step.key === entry.stepKey))
@@ -33,6 +37,8 @@ export type ClosingPlace =
   // The map in normal mode: nothing about the closing is shown.
   | { kind: 'none' }
   | { kind: 'screen'; screen: JourneyScreen }
+  // The check-in was not passed and content is left: the map, with what to do next.
+  | { kind: 'route' }
   // "Continuar al cierre": the student presses it; the flow never opens over the map for this.
   | { kind: 'card' }
   // The student was in the middle of the flow: it opens again where Moodle says.
@@ -58,6 +64,8 @@ export const closingPlaceOf = ({
       return screen('congrats_final')
     case 'passed_checkin':
       // `available` is about starting the final exam, which this student does not take.
+      // A closing that held only the final ends with the congratulations: no card, no flow.
+      if (flow === 'empty') return screen('congrats_checkin')
       if (flow === 'loading' || flow === 'finished') return NOTHING
       if (flow === 'in_progress') return { kind: 'resume' }
       // Moodle has nothing yet: the congratulations first, the card once they were read.
@@ -68,6 +76,14 @@ export const closingPlaceOf = ({
       // `finished` here: "Terminar" opens after any submitted attempt, passed or not, and the
       // backend still asks for the final. Without the card there would be no way to try again.
       return { kind: 'card' }
+    case 'final_locked': {
+      // Only when content is what stands in the way: any other lock is nothing the map solves.
+      const outcome = status?.outcome
+      return outcome?.checkin?.status === 'not_passed' &&
+        outcome.final.reason === 'scorm_incomplete'
+        ? { kind: 'route' }
+        : NOTHING
+    }
     default:
       return NOTHING
   }
