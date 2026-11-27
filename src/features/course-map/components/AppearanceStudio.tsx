@@ -19,6 +19,7 @@ import { useAssessmentForms } from '../../assessment/editor/useAssessmentForms.t
 import { useSettingsIssues } from '../../assessment/editor/useSettingsIssues.ts'
 import { trainingSupported } from '../../assessment/editor/trainingForm.ts'
 import { useAnimationQuality, type QualitySetting } from '../../../fx/quality.ts'
+import { sameJson } from '../data/canonicalJson.ts'
 import { useAssets, useReorderBubbles } from '../data/queries.ts'
 import { useUpdateAppearance, useUpdateBubble } from '../data/draftMutations.ts'
 import { resolveThumbUrl } from '../data/assets.ts'
@@ -83,9 +84,6 @@ interface AppearanceStudioProps {
 
 const checkboxClass = 'h-5 w-5 shrink-0 accent-primary'
 
-const settingsEqual = (a: MapSettings, b: MapSettings) => JSON.stringify(a) === JSON.stringify(b)
-const rulesEqual = (a: SkinRule[], b: SkinRule[]) => JSON.stringify(a) === JSON.stringify(b)
-
 export const AppearanceStudio = ({
   courseMap,
   skins,
@@ -142,9 +140,9 @@ export const AppearanceStudio = ({
   }, [courseMap])
 
   const isDirty =
-    !settingsEqual(settings, courseMap.settings) ||
+    !sameJson(settings, courseMap.settings) ||
     defaultSkinId !== courseMap.defaultSkinId ||
-    !rulesEqual(skinRules, courseMap.skinRules)
+    !sameJson(skinRules, courseMap.skinRules)
 
   useEffect(() => {
     onDirtyChange?.(isDirty)

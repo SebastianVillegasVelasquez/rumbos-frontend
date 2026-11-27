@@ -537,3 +537,6 @@ and one stale input; everything else already reads the API.
   final field that uses it shows Rumbos' text instead of a sentence with a hole. Saving is not blocked: the backend
   accepts the text, and it starts working once a score arrives. `{threshold}` takes the final's own pass mark where known
   (the simulation); a real student still gets the check-in's, the only one the status reports.
+- **Correction to the "Descartar" fix.** Adopting the saved copy exposed an order-sensitive comparison: the request body
+  moves some settings keys and the query cache keeps its old object when only the order differs, so the training editor
+  stayed "unsaved" after Guardar. The editor now compares settings regardless of key order.

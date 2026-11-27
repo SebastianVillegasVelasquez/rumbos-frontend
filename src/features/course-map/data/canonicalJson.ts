@@ -11,6 +11,10 @@ export const canonicalJson = (value: unknown): string => {
   return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${canonicalJson(v)}`).join(',')}}`
 }
 
+// Equal as JSON, whatever the order of the keys: a saved copy comes back with its keys in the
+// server's order, which says nothing about a change.
+export const sameJson = (a: unknown, b: unknown): boolean => canonicalJson(a) === canonicalJson(b)
+
 const toHex = (buffer: ArrayBuffer) =>
   Array.from(new Uint8Array(buffer), (byte) => byte.toString(16).padStart(2, '0')).join('')
 
