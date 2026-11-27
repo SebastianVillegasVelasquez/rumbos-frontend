@@ -123,7 +123,9 @@ const shot = async (page: Page, name: string) => {
   await page.waitForTimeout(500)
   await expect(page.locator('#frame-wrap')).toHaveScreenshot(`${name}.png`, {
     animations: 'disabled',
-    maxDiffPixelRatio: 0.03,
+    // At 412 px text is most of the picture, and one baseline serves every operating system:
+    // Linux CI and Windows differ by about 4%.
+    maxDiffPixelRatio: name.endsWith('-412') ? 0.05 : 0.03,
   })
 }
 
