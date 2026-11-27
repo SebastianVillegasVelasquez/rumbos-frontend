@@ -20,7 +20,13 @@ export default defineConfig({
   },
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'], viewport } },
-    { name: 'webkit', use: { ...devices['Desktop Safari'], viewport } },
+    {
+      name: 'webkit',
+      use: { ...devices['Desktop Safari'], viewport },
+      // On a Linux CI runner WebKit runs several times slower than Chromium: elements that
+      // are on their way miss the 5 s default.
+      expect: { timeout: 15_000 },
+    },
   ],
   webServer: {
     // Bound to IPv4 on purpose: the mock host loads the app from the other loopback name
