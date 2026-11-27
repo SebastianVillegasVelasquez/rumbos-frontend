@@ -68,12 +68,9 @@ export const JourneySimulator = ({
         </p>
       )}
       {!folded && state === null && (
-        <>
-          <p className="font-semibold text-ink-soft">{text.editingNote}</p>
-          <Button size="sm" onClick={onStart}>
-            {text.start}
-          </Button>
-        </>
+        <Button size="sm" onClick={onStart}>
+          {text.start}
+        </Button>
       )}
       {!folded && state !== null && (
         <>

@@ -24,7 +24,6 @@ export const esCongratulations = {
     heading: 'Simular recorrido',
     banner: 'Simulación: no se guarda ni cuenta',
     start: 'Empezar simulación',
-    editingNote: 'Para probar, usa Vista previa con la edición activada.',
     fold: 'Ocultar',
     unfold: 'Mostrar',
     // The step added when the map's welcome has no check-in of its own.
@@ -49,7 +48,6 @@ export const esCongratulations = {
   },
   journey: {
     exhaustedTitle: 'Toca repasar el contenido',
-    // Pending the product owner's approval, as the route card and the failure message below.
     exhaustedBody: 'Agotaste tus intentos. Repasa el contenido del mapa y consulta con tu tutor.',
     exhaustedCta: 'Volver al mapa',
     routeTitle: 'Tu ruta hacia la evaluación final',

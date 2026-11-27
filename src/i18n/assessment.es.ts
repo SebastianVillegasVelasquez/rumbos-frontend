@@ -22,12 +22,12 @@ export const esAssessment = {
   // The final exam in preview (an editor): wording pending approval.
   previewFinal: 'Vista previa: este intento no se guarda ni cuenta.',
   previewResult: 'Esto es una vista previa: no es el resultado de un estudiante.',
-  // The exam step in a preview, which never starts an attempt. Wording pending approval.
+  // The exam step in a preview, which never starts an attempt.
   previewStep: {
     noAttempt: 'En la vista previa no se crea un intento ni se abre la evaluación.',
     simulate: 'Para ver los resultados y lo que sigue, usa «Simular recorrido» en la Vista previa.',
   },
-  // The exam step inside "Simular recorrido". All wording pending approval.
+  // The exam step inside "Simular recorrido".
   simulation: {
     title: 'Simula el resultado',
     intro: 'En la simulación no se crea un intento ni se guarda nada. Elige cómo te fue:',
