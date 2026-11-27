@@ -7,7 +7,7 @@ import {
   type Page,
 } from '@playwright/test'
 import { app } from './support.ts'
-import { closingStatus, enterFromCard, serveClosingStatus } from './closingStatus.ts'
+import { closingStatus, completeAll, enterFromCard, serveClosingStatus } from './closingStatus.ts'
 import { TrainerMock, type MockOptions } from './trainerMock.ts'
 
 // The closing flow with the final exam as a step, against the spec-derived exam mock
@@ -48,6 +48,8 @@ const closing = {
 interface Open {
   mock?: MockOptions
   query?: string
+  // What GET /trainer/closing answers.
+  status?: object
   role?: 'editor'
   // The host's editing mode on (the editor can then switch to the preview view).
   editing?: boolean
@@ -56,11 +58,11 @@ interface Open {
 const open = async (
   page: Page,
   context: BrowserContext,
-  { mock = {}, query = '', role, editing = false }: Open
+  { mock = {}, query = '', role, editing = false, status = closingStatus('required') }: Open
 ) => {
   const server = new TrainerMock(mock)
   await server.install(context)
-  await serveClosingStatus(context, { value: closingStatus('required') })
+  await serveClosingStatus(context, { value: status })
   await page.goto('/mock-host/index.html')
   if (role === 'editor') {
     await page
@@ -169,6 +171,46 @@ test.describe('closing: the final step', () => {
       .first()
       .click()
     await expect(dialog(page)).toHaveCount(0)
+  })
+
+  test('gate on, the final is not in the list: it is sat from the closing status', async ({
+    page,
+    context,
+  }) => {
+    // The item's own state says "locked": only outcome.final.status decides.
+    const item = {
+      purpose: 'final',
+      title: 'Evaluación final',
+      section_count: 5,
+      item_count: 12,
+      attempts: { used: 0, max: 3 },
+      state: 'locked',
+      locked_reason: 'not_available',
+      in_progress: null,
+      best: null,
+    }
+    const server = await open(page, context, {
+      mock: { finalHidden: true, maxAttempts: 3 },
+      status: closingStatus('required', { observe: true, item }),
+    })
+    // Observe mode: the card waits for the activities.
+    await completeAll(page)
+    await toFinalStep(page)
+    await dialog(page).getByRole('button', { name: 'Empezar la evaluación' }).click()
+    await dialog(page).getByRole('button', { name: 'Empezar', exact: true }).click()
+    await expect(
+      dialog(page)
+        .getByText(/Sección 1 de 5/)
+        .first()
+    ).toBeVisible()
+    await expect(
+      dialog(page).getByRole('button', { name: 'Continuar de todos modos' })
+    ).toHaveCount(0)
+    expect(
+      server.calls.filter(
+        (call) => call.method === 'POST' && call.path === '/assessments/final/attempts'
+      )
+    ).toHaveLength(1)
   })
 
   test('already passed: "Ya aprobaste", and Terminar is open', async ({ page, context }) => {

@@ -15,6 +15,9 @@ export interface MockOptions {
   timeLimitMs?: number
   passPercent?: number
   operator?: 'gt' | 'gte'
+  // As the backend with its closing gate on (observe or enforce): the list leaves the final
+  // out, and only GET /trainer/closing carries its item.
+  finalHidden?: boolean
   // The list answers this status (503, 404...) instead of the list.
   listStatus?: number
   // The list answers exactly this body with a 200 (the shapes production sends that
@@ -385,22 +388,28 @@ export class TrainerMock {
           pass_operator: this.opts.operator,
           time_limit_min: Math.round(this.opts.timeLimitMs / 60_000),
         },
-        items: (['check_in', 'final'] as const).map((purpose) => ({
-          purpose,
-          title: purpose === 'final' ? 'Evaluación final' : 'Evaluación de entrada',
-          section_count: SECTIONS.length,
-          item_count: TOTAL_ITEMS,
-          attempts: { used: this.used, max: this.opts.maxAttempts },
-          state:
-            o.state ??
-            (live ? 'in_progress' : this.used >= this.opts.maxAttempts ? 'exhausted' : 'available'),
-          locked_reason:
-            o.state === 'locked' ? (o.lockedReason ?? 'Termina primero el módulo 1.') : null,
-          in_progress: live
-            ? { attempt_id: live.id, deadline_at: new Date(live.deadline).toISOString() }
-            : null,
-          best: this.best(),
-        })),
+        items: (o.finalHidden ? (['check_in'] as const) : (['check_in', 'final'] as const)).map(
+          (purpose) => ({
+            purpose,
+            title: purpose === 'final' ? 'Evaluación final' : 'Evaluación de entrada',
+            section_count: SECTIONS.length,
+            item_count: TOTAL_ITEMS,
+            attempts: { used: this.used, max: this.opts.maxAttempts },
+            state:
+              o.state ??
+              (live
+                ? 'in_progress'
+                : this.used >= this.opts.maxAttempts
+                  ? 'exhausted'
+                  : 'available'),
+            locked_reason:
+              o.state === 'locked' ? (o.lockedReason ?? 'Termina primero el módulo 1.') : null,
+            in_progress: live
+              ? { attempt_id: live.id, deadline_at: new Date(live.deadline).toISOString() }
+              : null,
+            best: this.best(),
+          })
+        ),
       })
     }
 
