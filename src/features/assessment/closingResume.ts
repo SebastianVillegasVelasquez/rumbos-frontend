@@ -11,6 +11,8 @@ import type { JourneyScreen } from './journeyScreens.ts'
 // dismissed before any closing step was done: the caller says so (`seen`).
 
 export type ClosingFlowState =
+  // No step is left for this student: there is no closing to open.
+  | 'empty'
   // Moodle has not answered yet.
   | 'loading'
   | 'not_started'
@@ -22,6 +24,8 @@ export const closingFlowStateOf = (
   steps: readonly WelcomeStep[],
   entries: readonly ProgressEntry[] | null
 ): ClosingFlowState => {
+  // Known without Moodle: there is nothing it could have recorded.
+  if (steps.length === 0) return 'empty'
   if (entries === null) return 'loading'
   // The host's list also carries the welcome flow's steps: only the closing's count.
   const mine = entries.filter((entry) => steps.some((step) => step.key === entry.stepKey))
@@ -60,6 +64,8 @@ export const closingPlaceOf = ({
       return screen('congrats_final')
     case 'passed_checkin':
       // `available` is about starting the final exam, which this student does not take.
+      // A closing that held only the final ends with the congratulations: no card, no flow.
+      if (flow === 'empty') return screen('congrats_checkin')
       if (flow === 'loading' || flow === 'finished') return NOTHING
       if (flow === 'in_progress') return { kind: 'resume' }
       // Moodle has nothing yet: the congratulations first, the card once they were read.

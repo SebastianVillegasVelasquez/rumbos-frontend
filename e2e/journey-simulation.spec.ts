@@ -90,7 +90,12 @@ const watchHostMessages = (page: Page) =>
 const hostMessages = (page: Page) =>
   page.evaluate(() => (window as unknown as { __messages: string[] }).__messages)
 
-const open = async (page: Page, context: BrowserContext, welcomeFlow: object = welcome) => {
+const open = async (
+  page: Page,
+  context: BrowserContext,
+  welcomeFlow: object = welcome,
+  closingFlow: object = closing
+) => {
   const server = new TrainerMock({ preview: true })
   await server.install(context)
   const statusReads: string[] = []
@@ -107,7 +112,7 @@ const open = async (page: Page, context: BrowserContext, welcomeFlow: object = w
   const input = page.locator('label:has-text("app URL") input')
   const base = (await input.inputValue()).split('?')[0]
   await input.fill(
-    `${base}?mockStableIds=1&mockWelcomeJson=${encodeURIComponent(JSON.stringify(welcomeFlow))}&mockClosingJson=${encodeURIComponent(JSON.stringify(closing))}`
+    `${base}?mockStableIds=1&mockWelcomeJson=${encodeURIComponent(JSON.stringify(welcomeFlow))}&mockClosingJson=${encodeURIComponent(JSON.stringify(closingFlow))}`
   )
   await page.getByRole('button', { name: '(Re)load app' }).click()
   const level = app(page).getByRole('button', { name: /^1/ }).first()
@@ -274,6 +279,29 @@ test('check-in failed: route, all done, three failed finals, reset, then a pass'
   await press(page, 'Simular todas las actividades completadas')
   await press(page, 'Intento de la final: aprobar')
   await expect(app(page).getByTestId('congratulations')).toBeVisible()
+  await assertNoSideEffects()
+})
+
+test('check-in passed on a closing that holds only the final: no flow and no final', async ({
+  page,
+  context,
+}) => {
+  const { assertNoSideEffects } = await open(
+    page,
+    context,
+    welcome,
+    flow([exam('closefinal1', 'final', 'Evaluación final')])
+  )
+  await press(page, 'Empezar simulación')
+  await welcomeDialog(page).getByRole('button', { name: 'Ir a la evaluación' }).click()
+  await sitCheckin(page, 'Simular aprobar')
+  const screen = app(page).getByTestId('congratulations')
+  await screen.getByRole('button', { name: 'Continuar' }).click()
+  await expect(screen).toHaveCount(0)
+  await expect(closingDialog(page)).toHaveCount(0)
+  await expect(app(page).getByTestId('closing-card')).toHaveCount(0)
+  // The stage is free again: the map's controls answer.
+  await expect(app(page).getByRole('button', { name: 'Misiones', exact: true })).toBeVisible()
   await assertNoSideEffects()
 })
 

@@ -116,9 +116,9 @@ describe('the closing flow a student sees', () => {
       assert.equal(closingStepsFor(steps, parsed(outcome(final))).length, 3, final)
     assert.equal(closingStepsFor(steps, null).length, 3)
   })
-  it('keeps a flow that the exemption would empty, so the author sees the mistake', () => {
+  it('leaves no step of a flow that held only the final', () => {
     const passed = parsed(outcome('not_required_passed_checkin', {}, 'passed'))
-    assert.equal(closingStepsFor([final], passed).length, 1)
+    assert.deepEqual(closingStepsFor([final], passed), [])
   })
 })
 

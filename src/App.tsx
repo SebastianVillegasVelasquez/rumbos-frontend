@@ -1001,13 +1001,17 @@ export function AppShell() {
   ) : null
   // The simulation keeps no progress: its closing counts as done once it was entered from the
   // congratulations.
-  const closingFlowState: ClosingFlowState = simulating
-    ? journeyDismissed.includes('congrats_checkin')
-      ? 'finished'
-      : 'not_started'
-    : closingFlowStateOf(journeySteps, closingProgress.entries)
+  const closingFlowState: ClosingFlowState = !simulating
+    ? closingFlowStateOf(journeySteps, closingProgress.entries)
+    : journeySteps.length === 0
+      ? 'empty'
+      : journeyDismissed.includes('congrats_checkin')
+        ? 'finished'
+        : 'not_started'
+  // Asked of the map's closing, not of what is left of it: a student with no step left still
+  // gets the congratulations.
   const closingPlace =
-    renderable && journeySteps.length > 0
+    renderable && closingSteps.length > 0
       ? closingPlaceOf({
           status: closingStatus,
           flow: closingFlowState,
@@ -1017,6 +1021,8 @@ export function AppShell() {
         })
       : null
   const journeyBlocked = welcomeBusy || trainerOpen
+  // An open flow with no step left (the check-in just passed) has nothing to show.
+  if (closingOpen && closingSteps.length > 0 && journeySteps.length === 0) setClosingOpen(false)
   // A flow left in the middle opens again. Kept as state, so a status that changes while the
   // student is inside (the final just passed) does not take the flow away from them.
   if (closingPlace?.kind === 'resume' && !closingOpen && !journeyBlocked) setClosingOpen(true)
@@ -1038,7 +1044,7 @@ export function AppShell() {
       markScreenSeen(viewerStorage(), renderable.id, journeyScreen)
     setJourneyDismissed((list) => [...list, journeyScreen])
     // The CTA of a passed check-in opens the closing flow, without the final exam.
-    if (journeyScreen === 'congrats_checkin') setClosingOpen(true)
+    if (journeyScreen === 'congrats_checkin' && journeySteps.length > 0) setClosingOpen(true)
   }
   // The HUD's "Cierre" button is the editor's alone, to look at the flow from the student view.
   // Not while simulating: the journey is the way in then, as it is for a student.

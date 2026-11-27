@@ -180,6 +180,24 @@ describe('where the student is on every load', () => {
   })
 })
 
+describe('a passed check-in on a closing that holds only the final', () => {
+  const onlyFinal = [finalStep]
+  it('has the congratulations once, then the map: no card and no flow', () => {
+    assert.deepEqual(load(passedCheckin, [], [], onlyFinal), screen('congrats_checkin'))
+    assert.deepEqual(load(passedCheckin, [], ['congrats_checkin'], onlyFinal), NONE)
+  })
+  it('does not wait for Moodle, nor read an old record of the final', () => {
+    assert.deepEqual(load(passedCheckin, null, [], onlyFinal), screen('congrats_checkin'))
+    assert.deepEqual(
+      load(passedCheckin, [done('final0001')], ['congrats_checkin'], onlyFinal),
+      NONE
+    )
+  })
+  it('still offers the final to a student who must take it', () => {
+    assert.deepEqual(load(ready, [], [], onlyFinal), CARD)
+  })
+})
+
 describe('the closing flow as Moodle has it', () => {
   it('ignores the welcome flow’s records', () => {
     assert.equal(closingFlowStateOf(steps, [done('welcome01')]), 'not_started')

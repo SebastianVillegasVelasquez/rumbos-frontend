@@ -45,14 +45,13 @@ export const isFinalStep = (step: WelcomeStep): boolean =>
 
 // The steps of the closing flow this student sees. A passed check-in exempts them from the final
 // exam, so its step is left out (`final: not_required_passed_checkin`); everyone else sees every
-// step. A flow that would be left empty by this is the author's mistake to see, so it stays whole.
+// step. A flow holding only the final is left with no step: it is skipped, never shown.
 export const closingStepsFor = (
   steps: readonly WelcomeStep[],
   status: ClosingStatus | null | undefined
 ): WelcomeStep[] => {
   if (stageOf(status) !== 'passed_checkin') return [...steps]
-  const rest = steps.filter((step) => !isFinalStep(step))
-  return rest.length > 0 ? rest : [...steps]
+  return steps.filter((step) => !isFinalStep(step))
 }
 
 // What the student has left to finish before the closing opens, for the map's line of progress.
