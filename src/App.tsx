@@ -120,6 +120,7 @@ import {
   type ClosingFlowState,
 } from './features/assessment/closingResume.ts'
 import { useClosingProgress } from './features/assessment/useClosingProgress.ts'
+import { ConfirmDialog } from './components/ui/ConfirmDialog.tsx'
 import { JourneySimulator } from './features/assessment/JourneySimulator.tsx'
 import { simStatus, type SimState } from './features/assessment/journeySimulation.ts'
 import { ClosingCard, JourneyOverlay } from './features/assessment/JourneyOverlay.tsx'
@@ -608,6 +609,10 @@ export function AppShell() {
     0
   )
 
+  // In an editor's preview of the student view, a bubble opens nothing in Moodle by itself:
+  // it says so, and opening for real is a choice that says what it records.
+  const [previewedActivity, setPreviewedActivity] = useState<Activity | null>(null)
+  if (previewedActivity && exitPreview === null) setPreviewedActivity(null)
   const handleBubbleClick = (bubble: Bubble) => {
     if (isContentBubble(bubble)) {
       openContent(bubble)
@@ -616,7 +621,9 @@ export function AppShell() {
     const resolved = resolvedByBubbleId.get(bubble.id)
     const activity =
       resolved?.activity ?? activities.find((a) => a.activityId === bubble.activityId)
-    if (activity) openActivity(activity)
+    if (!activity) return
+    if (embed && exitPreview !== null) setPreviewedActivity(activity)
+    else openActivity(activity)
   }
 
   // Student presentation only (MapCanvas forces this to null in edit mode):
@@ -1530,6 +1537,19 @@ export function AppShell() {
                   }}
                 />
               )}
+              <ConfirmDialog
+                open={previewedActivity !== null}
+                onOpenChange={(open) => !open && setPreviewedActivity(null)}
+                title={previewedActivity?.name ?? ''}
+                description={es.flow.previewActivity.placeholder}
+                confirmLabel={es.flow.previewActivity.openForReal}
+                cancelLabel={es.flow.previewActivity.close}
+                destructive={false}
+                onConfirm={() => {
+                  if (previewedActivity) openActivity(previewedActivity)
+                  setPreviewedActivity(null)
+                }}
+              />
               {closingStatus && showClosingCard && (
                 <ClosingCard status={closingStatus} onOpen={() => setClosingOpen(true)} />
               )}

@@ -519,3 +519,6 @@ and one stale input; everything else already reads the API.
 - **"Descartar" stayed after "Guardar"** (`welcome-editor.spec.ts`, red since before this branch). An app bug: the save
   normalizes the settings, and the appearance editor marked the new revision as synced without taking the saved copy, so it
   compared its own pre-normalized draft forever. It now adopts the saved copy, keeping anything edited during the request.
+- **Preview opens nothing by itself.** Activity and quiz steps, and bubbles opened in "Vista previa", show a notice and a
+  separate "Abrir de verdad" button; a preview quiz asks for no result. The course's activity list is still read, to name
+  the activity. A standalone page (no host) opens bubbles as before.

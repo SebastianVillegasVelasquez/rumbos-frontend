@@ -442,6 +442,12 @@ export const es = {
     review: 'Estás repasando la bienvenida. Nada de lo que hagas aquí se guarda.',
     preview: 'Vista previa: no se guarda nada.',
     skipPreview: 'Saltar vista previa',
+    // A preview or a simulation opens nothing in Moodle unless asked to, and says what that does.
+    previewActivity: {
+      placeholder: 'En la simulación no se abre la actividad',
+      openForReal: 'Abrir de verdad (registra una vista en tu cuenta de editor)',
+      close: 'Cerrar',
+    },
     loading: 'Preparando la bienvenida…',
     // Why "Continuar" is not available yet, said next to the button.
     waiting: {

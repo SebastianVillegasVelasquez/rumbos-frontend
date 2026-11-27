@@ -43,6 +43,7 @@ import { assetsOrigin, htmlStepFrameAttributes } from './htmlStepDocument.ts'
 import { CHECK_TIMEOUT_MS, checkinReducer, createCheckin, escapeDueAt } from './quizCheckin.ts'
 import { classifyQuiz } from './quizOutcome.ts'
 import { quizStepView } from './quizStepView.ts'
+import { PreviewActivity } from './PreviewActivity.tsx'
 import { createQuizWatcher, gateFromView, quizAvailability } from './quizWatcher.ts'
 
 const text = es.flow
@@ -313,7 +314,29 @@ const timers = (run: () => void, delayMs: number) => {
 // How often the "hace ..." of the last check is refreshed while the step is open.
 const AGE_REFRESH_MS = 15_000
 
-export const StepQuiz = ({ step, state, dispatch }: StepContext & { step: WelcomeQuizStep }) => {
+export const StepQuiz = (props: StepContext & { step: WelcomeQuizStep }) =>
+  props.state.mode === 'preview' ? (
+    <PreviewStepQuiz step={props.step} />
+  ) : (
+    <LiveStepQuiz {...props} />
+  )
+
+// No result is asked for and nothing is watched: a preview only says what the step is.
+const PreviewStepQuiz = ({ step }: { step: WelcomeQuizStep }) => {
+  const embed = useEmbed()
+  const cmid = step.cmid
+  return (
+    <div className="flow-pad space-y-4">
+      {step.intro && <p className="flow-prose whitespace-pre-line">{step.intro}</p>}
+      <PreviewActivity
+        title={step.title}
+        onOpenForReal={embed && cmid !== null ? () => embed.openActivity(cmid) : undefined}
+      />
+    </div>
+  )
+}
+
+const LiveStepQuiz = ({ step, state, dispatch }: StepContext & { step: WelcomeQuizStep }) => {
   const embed = useEmbed()
   const hostState = useHostState()
   const cmid = step.cmid
