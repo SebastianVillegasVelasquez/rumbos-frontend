@@ -46,14 +46,34 @@ export type ClosingPlace =
 
 const NOTHING: ClosingPlace = { kind: 'none' }
 
+// In observe mode the server does not check the content: it can report the final as required
+// and available before the student has done anything. Then this app waits for it.
+export const contentUnchecked = (status: ClosingStatus | null | undefined): boolean =>
+  status?.outcome?.scormGate.reason === 'not_checked'
+
+// Whether every required visible bubble is complete, from the counts of the map's progress
+// (progressCounts, student view: content, hidden, missing and untracked bubbles do not count).
+// Null while the plugin's progress is not known: nothing is offered on a guess.
+export const requiredContentDone = (
+  counts: { total: number; completed: number },
+  known: boolean
+): boolean | null => (known ? counts.completed >= counts.total : null)
+
 export const closingPlaceOf = ({
   status,
   flow,
   seen,
+  dismissed = seen,
+  contentDone = null,
 }: {
   status: ClosingStatus | null | undefined
   flow: ClosingFlowState
+  // A screen already read, in this visit or an earlier one.
   seen: (screen: JourneyScreen) => boolean
+  // A screen read in this visit.
+  dismissed?: (screen: JourneyScreen) => boolean
+  // Used only where the server does not check the content (see requiredContentDone).
+  contentDone?: boolean | null
 }): ClosingPlace => {
   const screen = (name: JourneyScreen): ClosingPlace =>
     seen(name) ? NOTHING : { kind: 'screen', screen: name }
@@ -68,10 +88,24 @@ export const closingPlaceOf = ({
       if (flow === 'empty') return screen('congrats_checkin')
       if (flow === 'loading' || flow === 'finished') return NOTHING
       if (flow === 'in_progress') return { kind: 'resume' }
+      // In observe mode a passed check-in gets no card. Until the closing has started, its
+      // congratulations are the way in, so they come back on the next visit.
+      if (contentUnchecked(status))
+        return dismissed('congrats_checkin')
+          ? NOTHING
+          : { kind: 'screen', screen: 'congrats_checkin' }
       // Moodle has nothing yet: the congratulations first, the card once they were read.
       return seen('congrats_checkin') ? { kind: 'card' } : screen('congrats_checkin')
     case 'final_ready':
       if (!status?.available || flow === 'loading') return NOTHING
+      if (contentUnchecked(status)) {
+        const checkin = status.outcome?.checkin
+        // The check-in first, where the map has one.
+        if (checkin?.status === 'not_taken' || contentDone === null) return NOTHING
+        // Then the content. The server never says "locked" here, so the route after a failed
+        // check-in is this app's to show.
+        if (!contentDone) return checkin?.status === 'not_passed' ? { kind: 'route' } : NOTHING
+      }
       if (flow === 'in_progress') return { kind: 'resume' }
       // `finished` here: "Terminar" opens after any submitted attempt, passed or not, and the
       // backend still asks for the final. Without the card there would be no way to try again.

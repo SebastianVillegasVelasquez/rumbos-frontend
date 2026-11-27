@@ -7,6 +7,7 @@ import { closingStepsFor } from './closingJourney.ts'
 import {
   closingFlowStateOf,
   closingPlaceOf,
+  requiredContentDone,
   entriesAfterFinish,
   entriesToOpenWith,
   type ClosingPlace,
@@ -221,6 +222,184 @@ describe('the closing flow as Moodle has it', () => {
       closingFlowStateOf(closingStepsFor(steps, passedCheckin), [done('first0001')]),
       'finished'
     )
+  })
+})
+
+// The Part 3 states table: with the gate in `observe` mode the server reports the final as
+// required and available before anything is done, so the app waits for the check-in and for
+// every required visible bubble. In `enforce` the server decides; with the gate `off` there
+// is no outcome and nothing changes.
+type Gate = 'enforce' | 'observe'
+type Checkin = 'not_taken' | 'passed' | 'not_passed' | null
+
+const gated = (gate: Gate, final: string, checkin: Checkin = 'not_passed'): ClosingStatus =>
+  parseClosingStatus(
+    validated('GET', '/trainer/closing', 200, {
+      enforced: gate === 'enforce',
+      preview: false,
+      available: final === 'required',
+      reason:
+        final === 'locked' ? 'scorm_incomplete' : final === 'required' ? null : 'already_passed',
+      progress: gate === 'enforce' ? { completed: 0, total: 5 } : null,
+      final: null,
+      outcome: {
+        checkin:
+          checkin === null
+            ? null
+            : {
+                status: checkin,
+                percent: checkin === 'not_taken' ? null : '40.00',
+                pass_percent: 70,
+                pass_operator: 'gt',
+                attempts: { used: checkin === 'not_taken' ? 0 : 1, max: 1 },
+              },
+        final: {
+          status: final,
+          reason: final === 'locked' ? 'scorm_incomplete' : null,
+          attempts: { used: 0, max: 3 },
+          percent: null,
+          pass_percent: 70,
+          pass_operator: 'gt',
+        },
+        scorm_gate:
+          gate === 'observe'
+            ? { satisfied: null, reason: 'not_checked' }
+            : { satisfied: final !== 'locked', reason: null },
+      },
+    })
+  )
+
+interface Visit {
+  moodle?: ProgressEntry[] | null
+  contentDone?: boolean | null
+  // Read in an earlier visit, and in this one.
+  stored?: JourneyScreen[]
+  dismissed?: JourneyScreen[]
+}
+const visit = (
+  value: ClosingStatus | null,
+  { moodle = [], contentDone = false, stored = [], dismissed = [] }: Visit = {}
+): ClosingPlace =>
+  closingPlaceOf({
+    status: value,
+    flow: closingFlowStateOf(closingStepsFor(steps, value), moodle),
+    seen: (name) => stored.includes(name) || dismissed.includes(name),
+    dismissed: (name) => dismissed.includes(name),
+    contentDone,
+  })
+const ROUTE: ClosingPlace = { kind: 'route' }
+
+describe('observe: the app waits for the check-in and the content', () => {
+  it('reads not_checked from the gate', () => {
+    assert.equal(gated('observe', 'required').outcome?.scormGate.reason, 'not_checked')
+  })
+  it('no attempts yet: nothing, with the content done or not', () => {
+    const fresh = gated('observe', 'required', 'not_taken')
+    for (const contentDone of [false, true]) assert.deepEqual(visit(fresh, { contentDone }), NONE)
+  })
+  it('check-in taken, content incomplete: the route, never the card', () => {
+    assert.deepEqual(visit(gated('observe', 'required'), { contentDone: false }), ROUTE)
+  })
+  it('content incomplete: a flow left in the middle does not reopen either', () => {
+    const place = visit(gated('observe', 'required'), {
+      contentDone: false,
+      moodle: [done('first0001')],
+    })
+    assert.deepEqual(place, ROUTE)
+  })
+  it('progress not known yet: nothing', () => {
+    assert.deepEqual(visit(gated('observe', 'required'), { contentDone: null }), NONE)
+  })
+  it('content complete: the card', () => {
+    assert.deepEqual(visit(gated('observe', 'required'), { contentDone: true }), CARD)
+  })
+  it('content complete, closing in progress: resumed', () => {
+    const place = visit(gated('observe', 'required'), {
+      contentDone: true,
+      moodle: [done('first0001')],
+    })
+    assert.deepEqual(place, RESUME)
+  })
+  it('a map without a check-in waits only for the content', () => {
+    const noCheckin = gated('observe', 'required', null)
+    assert.deepEqual(visit(noCheckin, { contentDone: false }), NONE)
+    assert.deepEqual(visit(noCheckin, { contentDone: true }), CARD)
+  })
+  it('passed check-in: its congratulations, and never the card', () => {
+    const passed = gated('observe', 'not_required_passed_checkin', 'passed')
+    for (const contentDone of [false, true]) {
+      assert.deepEqual(visit(passed, { contentDone }), screen('congrats_checkin'))
+      assert.deepEqual(visit(passed, { contentDone, dismissed: ['congrats_checkin'] }), NONE)
+    }
+  })
+  it('passed check-in, closing not started on a later visit: the congratulations again', () => {
+    // With no card, they are the only way into the closing.
+    const passed = gated('observe', 'not_required_passed_checkin', 'passed')
+    assert.deepEqual(visit(passed, { stored: ['congrats_checkin'] }), screen('congrats_checkin'))
+  })
+  it('passed check-in, closing in progress or finished: resumed, then nothing', () => {
+    const passed = gated('observe', 'not_required_passed_checkin', 'passed')
+    const flow = [step('first0001'), step('second001'), finalStep]
+    const at = (moodle: ProgressEntry[]) =>
+      closingPlaceOf({
+        status: passed,
+        flow: closingFlowStateOf(closingStepsFor(flow, passed), moodle),
+        seen: () => true,
+        dismissed: () => false,
+        contentDone: false,
+      })
+    assert.deepEqual(at([done('first0001')]), RESUME)
+    assert.deepEqual(at([done('first0001'), done('second001')]), NONE)
+  })
+  it('passed final: its congratulations once, then nothing', () => {
+    const passed = gated('observe', 'passed')
+    for (const contentDone of [false, true]) {
+      assert.deepEqual(visit(passed, { contentDone }), screen('congrats_final'))
+      assert.deepEqual(visit(passed, { contentDone, stored: ['congrats_final'] }), NONE)
+    }
+  })
+  it('attempts spent: the review screen, whatever the content', () => {
+    assert.deepEqual(visit(gated('observe', 'exhausted')), screen('exhausted'))
+  })
+})
+
+describe('enforce: the server decides', () => {
+  it('required and available: the card, whatever this app sees of the content', () => {
+    for (const contentDone of [false, null, true])
+      assert.deepEqual(visit(gated('enforce', 'required'), { contentDone }), CARD)
+  })
+  it('locked on content: the route, even with every bubble complete on screen', () => {
+    assert.deepEqual(visit(gated('enforce', 'locked'), { contentDone: true }), ROUTE)
+  })
+  it('passed check-in, congratulations read, closing not started: the card, as before', () => {
+    const passed = gated('enforce', 'not_required_passed_checkin', 'passed')
+    assert.deepEqual(visit(passed, { stored: ['congrats_checkin'] }), CARD)
+  })
+})
+
+describe('off: no outcome, the behaviour is unchanged', () => {
+  it('shows nothing, with the content done or not', () => {
+    const off = parseClosingStatus(
+      validated('GET', '/trainer/closing', 200, {
+        enforced: false,
+        preview: false,
+        available: true,
+        reason: null,
+      })
+    )
+    for (const contentDone of [false, true]) assert.deepEqual(visit(off, { contentDone }), NONE)
+  })
+})
+
+describe('whether the required content is done', () => {
+  it('compares the counts of the map’s progress', () => {
+    assert.equal(requiredContentDone({ total: 3, completed: 2 }, true), false)
+    assert.equal(requiredContentDone({ total: 3, completed: 3 }, true), true)
+    // A map with nothing Moodle tracks has nothing to wait for.
+    assert.equal(requiredContentDone({ total: 0, completed: 0 }, true), true)
+  })
+  it('does not guess before the plugin’s progress is known', () => {
+    assert.equal(requiredContentDone({ total: 0, completed: 0 }, false), null)
   })
 })
 

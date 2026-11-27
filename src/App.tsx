@@ -116,6 +116,7 @@ import { closingStepsFor } from './features/assessment/closingJourney.ts'
 import {
   closingFlowStateOf,
   closingPlaceOf,
+  requiredContentDone,
   entriesToOpenWith,
   type ClosingFlowState,
 } from './features/assessment/closingResume.ts'
@@ -1018,6 +1019,11 @@ export function AppShell() {
           seen: (screen) =>
             journeyDismissed.includes(screen) ||
             (!simulating && wasScreenSeen(viewerStorage(), renderable.id, screen)),
+          dismissed: (screen) => journeyDismissed.includes(screen),
+          contentDone: requiredContentDone(
+            progress,
+            !moodle.resolvedPending && !moodle.resolvedError
+          ),
         })
       : null
   const journeyBlocked = welcomeBusy || trainerOpen
