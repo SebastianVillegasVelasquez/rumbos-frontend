@@ -540,3 +540,18 @@ and one stale input; everything else already reads the API.
 - **Correction to the "Descartar" fix.** Adopting the saved copy exposed an order-sensitive comparison: the request body
   moves some settings keys and the query cache keeps its old object when only the order differs, so the training editor
   stayed "unsaved" after Guardar. The editor now compares settings regardless of key order.
+- **Red specs, closed.** `closing-resume.spec.ts` "passed: its congratulations once" and "resumes mid-closing" were test
+  bugs. The level's first-visit note waits behind the congratulations and the flow, and counts as read only once closed;
+  neither test closed it, so after the reload it was over the map and "Misiones" had no accessible button. The note's
+  viewer loads late, so Chromium sometimes looked before it drew. Both tests now close it. Before: the first failed 10/10
+  in WebKit and 4/10 in Chromium, the second 7/10 in WebKit. `training-editor-errors.spec.ts` "offers the forms the
+  backend lists" still expected the bare titles from before the picker added level and purpose.
+- **Issue note, not reproduced:** in a WebKit run with 2 workers (stopped before the end) `assessment-flow.spec.ts` "failed:
+  the result is saved and support is named" and both "closing flow" tests of `closing-shared-steps.spec.ts` (walk, editor
+  preview) failed. Alone, one worker, each passed 5/5, unchanged. The last two timed out while the host page was still
+  navigating, which points to load; the first shows only an element missing after 5 s, cause unknown. Nothing was changed
+  and none is proven flaky: watch them in the next complete run. That stopped run also logged WebKit worker exits
+  (`code=3221225794`); the targeted runs since had none.
+- **Issue note, flaky:** `closing-resume.spec.ts` "offers the card and never opens over the map", Chromium. One failure,
+  as the first test after a fresh dev server: the first-visit note did not appear within 8 s. It had passed in the run
+  of the same file before, and then passed 20/20 alone. A cold first load would explain it; not proven.
