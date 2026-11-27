@@ -581,3 +581,21 @@ and one stale input; everything else already reads the API.
   (90 s); unchanged, it then passed 20/20 in WebKit and 10/10 in Chromium. In that failure the editor's first app load took the full stage over
   the mock host's "(Re)load app", so the click never landed. Not fixed: replacing that click with the file's reload helper
   made the test fail every time, for a reason not established, and was reverted.
+
+## Red browser specs on the first complete CI run
+
+CI (PR #38) failed 1 Chromium and 8 WebKit tests. Linux WebKit ran far slower than Chromium
+there (median test 12.7 s against 3.1 s). The WebKit ones were rechecked in the Playwright
+Linux container with the fixes: 8 tests, 5 runs each, 40 passed.
+
+- Slowness: the failed-journey simulator test takes about 90 s there, the old limit (4/4
+  passed with 240 s), so it is marked slow. WebKit waits 15 s for an element, not 5 s.
+- The trainer loading test counted on the catalog still loading 8 s in. The test now holds
+  the catalog and releases it itself.
+- The zoom test read the value while it was still easing. It now waits until it stops.
+- The icon-only rail label is a clipped 1 px box in both engines; WebKit counts that box as
+  in the viewport. The test now checks the box.
+- The 412 px welcome screenshot predated the solid progress segments. It was refreshed, and
+  that width allows 5% (others 3%): one baseline serves Windows and Linux, which differ by
+  about 4% there. The Linux container is not the CI image (11% there), so CI decides; it
+  stopped at the first screenshot, so the other four at 412 px are unverified on CI.
