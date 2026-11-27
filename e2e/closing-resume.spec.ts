@@ -1,5 +1,11 @@
 import { expect, test, type BrowserContext, type Page } from '@playwright/test'
-import { closingCard, closingStatus, enterFromCard, serveClosingStatus } from './closingStatus.ts'
+import {
+  closingCard,
+  closingStatus,
+  completeAll,
+  enterFromCard,
+  serveClosingStatus,
+} from './closingStatus.ts'
 import { app } from './support.ts'
 import { TrainerMock } from './trainerMock.ts'
 
@@ -113,6 +119,56 @@ const expectCardOnly = async (page: Page) => {
   await expect(congratulations(page)).toHaveCount(0)
   await expect(hudButton(page)).toHaveCount(0)
 }
+
+// With the gate in observe mode the server reports the final as required before anything is
+// done: the app waits for the activities, as the mock Moodle reports them.
+test.describe('observe: the card waits for the content', () => {
+  const observed = closingStatus('required', { observe: true })
+
+  test('content incomplete: the author’s route instructions, never the card', async ({
+    page,
+    context,
+  }) => {
+    const texts = {
+      routeInstructions: {
+        title: 'Tu camino',
+        body: 'Completa el mapa antes del examen.',
+        ctaLabel: 'Vamos',
+      },
+    }
+    await start(
+      page,
+      context,
+      observed,
+      `&mockJourneyTextsJson=${encodeURIComponent(JSON.stringify(texts))}`
+    )
+    await closeIntro(page)
+    const route = app(page).getByTestId('route-card')
+    await expect(route).toContainText('Completa el mapa antes del examen.')
+    await expect(route).toContainText('Tu camino')
+    await page.waitForTimeout(2500)
+    await expect(closingCard(page)).toHaveCount(0)
+    await expect(dialog(page)).toHaveCount(0)
+    await route.getByRole('button', { name: 'Vamos' }).click()
+    await expect(route).toHaveCount(0)
+    await expect(closingCard(page)).toHaveCount(0)
+
+    // The plugin reports the last activities done: now the card is offered.
+    await completeAll(page)
+    await expectCardOnly(page)
+  })
+
+  test('check-in not taken: nothing, even with every activity complete', async ({
+    page,
+    context,
+  }) => {
+    await start(page, context, closingStatus('required', { observe: true, checkin: 'not_taken' }))
+    await closeIntro(page)
+    await completeAll(page)
+    await expectPlainMap(page)
+    await expect(app(page).getByTestId('route-card')).toHaveCount(0)
+  })
+})
 
 test.describe('content done, closing not started', () => {
   test('offers the card and never opens over the map', async ({ page, context }) => {

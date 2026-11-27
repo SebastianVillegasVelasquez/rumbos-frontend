@@ -1,8 +1,9 @@
 import { ContractError, Issues, isRecord, kindOf } from '../course-map/data/contract.ts'
+import type { AssessmentListItem } from './types.ts'
 
 // GET /trainer/closing, checked at the edge: whether the final exam of the closing flow may be
 // started, why not, how much required content is done, and how the student's journey through
-// the two exams stands (`outcome`, only while the backend enforces the gate). The backend's
+// the two exams stands (`outcome`, absent while the backend's gate is off). The backend's
 // word is the only source of the journey: nothing here is worked out from a score.
 
 const ENDPOINT = 'GET /trainer/closing'
@@ -49,13 +50,21 @@ export interface FinalOutcome {
   status: FinalStatus
   reason: ClosingReasonCode | null
   attempts: Attempts | null
+  // The score of the final attempt that decides (the passing one, else the best) and the rule
+  // it was graded with; with no final sat, no score and the map's rule. All null without a
+  // final exam. Shown, never compared: `status` decides.
+  percent: string | null
+  passPercent: number | null
+  passOperator: 'gt' | 'gte' | null
 }
 
 export interface ClosingOutcome {
   checkin: CheckinOutcome | null
   final: FinalOutcome
-  // Whether the SCORM condition of the gate is met; `passed_checkin` when a passed check-in met it.
-  scormGate: { satisfied: boolean | null; reason: 'passed_checkin' | null }
+  // Whether the SCORM condition of the gate is met; `passed_checkin` when a passed check-in met
+  // it. `not_checked`: the backend runs in observe mode and does not check the content, so what
+  // waits for the content is decided on screen (closingResume.ts).
+  scormGate: { satisfied: boolean | null; reason: 'passed_checkin' | 'not_checked' | null }
 }
 
 export interface ClosingStatus {
@@ -64,9 +73,11 @@ export interface ClosingStatus {
   available: boolean
   reason: ClosingReasonCode | null
   progress: { completed: number; total: number } | null
-  // The final exam's own state (attempts used and allowed), when the map has one.
-  final: { attempts: Attempts | null } | null
-  // Null while the gate is not enforced, or from an older backend.
+  // The final exam's own state, when the map has one. `item` is its list item: while the gate
+  // is on, the backend leaves the final out of GET /trainer/assessments and this is where the
+  // exam step finds it. Its `state` ignores the journey: `outcome.final.status` decides.
+  final: { attempts: Attempts | null; item: AssessmentListItem | null } | null
+  // Null while the gate is off, or from an older backend.
   outcome: ClosingOutcome | null
 }
 
@@ -79,6 +90,19 @@ const reasonOf = (value: unknown): ClosingReasonCode | null =>
 const attemptsOf = (value: unknown): Attempts | null =>
   isRecord(value) && Number.isInteger(value.used) && Number.isInteger(value.max)
     ? { used: value.used as number, max: value.max as number }
+    : null
+
+const operatorOf = (value: unknown): 'gt' | 'gte' | null =>
+  value === 'gt' || value === 'gte' ? value : null
+
+const itemOf = (value: unknown): AssessmentListItem | null =>
+  isRecord(value) &&
+  value.purpose === 'final' &&
+  typeof value.title === 'string' &&
+  Number.isInteger(value.section_count) &&
+  Number.isInteger(value.item_count) &&
+  attemptsOf(value.attempts) !== null
+    ? (value as unknown as AssessmentListItem)
     : null
 
 const parseOutcome = (value: unknown, issues: Issues): ClosingOutcome | null => {
@@ -113,10 +137,14 @@ const parseOutcome = (value: unknown, issues: Issues): ClosingOutcome | null => 
       status: final.status,
       reason: reasonOf(final.reason),
       attempts: attemptsOf(final.attempts),
+      percent: typeof final.percent === 'string' ? final.percent : null,
+      passPercent: typeof final.pass_percent === 'number' ? final.pass_percent : null,
+      passOperator: operatorOf(final.pass_operator),
     },
     scormGate: {
       satisfied: typeof gate.satisfied === 'boolean' ? gate.satisfied : null,
-      reason: gate.reason === 'passed_checkin' ? 'passed_checkin' : null,
+      reason:
+        gate.reason === 'passed_checkin' || gate.reason === 'not_checked' ? gate.reason : null,
     },
   }
 }
@@ -145,7 +173,9 @@ export const parseClosingStatus = (value: unknown, endpoint = ENDPOINT): Closing
     available: value.available === true,
     reason: reasonOf(value.reason),
     progress,
-    final: isRecord(value.final) ? { attempts: attemptsOf(value.final.attempts) } : null,
+    final: isRecord(value.final)
+      ? { attempts: attemptsOf(value.final.attempts), item: itemOf(value.final) }
+      : null,
     outcome,
   }
 }

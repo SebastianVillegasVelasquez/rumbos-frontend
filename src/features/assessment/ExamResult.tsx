@@ -2,7 +2,7 @@ import { CheckCircle2, Clock, Flag, Info } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { Button } from '../../components/ui/Button.tsx'
 import { esAssessment } from '../../i18n/assessment.es.ts'
-import { finalFailure } from './journeyTexts.ts'
+import { failureText, type JourneySettings } from './journeyTexts.ts'
 import { ReportForm } from './ReportForm.tsx'
 import type { SimulatedOutcome } from './simulation.ts'
 import type { AssessmentPolicy, AssessmentPurpose, AssessmentResult } from './types.ts'
@@ -56,6 +56,7 @@ export const ExamResult = ({
   onAgain,
   policy,
   simulated,
+  journeyTexts,
 }: {
   purpose: AssessmentPurpose
   result: AssessmentResult
@@ -67,18 +68,26 @@ export const ExamResult = ({
   // An editor's simulation: the result is synthetic, so nothing here may start an attempt,
   // send a report or look like a student's result.
   simulated?: { outcome: SimulatedOutcome } | null
+  // The map's own words for a failed final; without them, Rumbos' copy.
+  journeyTexts?: JourneySettings | null
 }) => {
   const [reporting, setReporting] = useState(false)
   const left = Math.max(0, result.attempts.max - result.attempts.used)
-  const strict = policy?.pass_operator !== 'gte'
+  // The rule this attempt was graded with; the policy's where an older backend sends none.
+  const threshold: number | null = result.pass_percent ?? policy?.pass_percent ?? null
+  const strict = (result.pass_operator ?? policy?.pass_operator) !== 'gte'
   // A failed final attempt says which one it was and what is left.
   const failure =
     purpose === 'final' && !result.passed
-      ? finalFailure(result.attempts.used, result.attempts.max)
+      ? failureText(journeyTexts, {
+          attempt: result.attempts.used,
+          max: result.attempts.max,
+          threshold,
+        })
       : null
   const statement = result.passed
-    ? policy
-      ? text.congrats[purpose](result.percent, policy.pass_percent, strict)
+    ? threshold !== null
+      ? text.congrats[purpose](result.percent, threshold, strict)
       : text.passed
     : (failure?.body ?? text.notPassedCheckIn)
   const title = failure?.title ?? (purpose === 'check_in' ? text.checkInTitle : text.title)
@@ -121,7 +130,7 @@ export const ExamResult = ({
         <p className="font-heading text-5xl font-extrabold">{text.percent(result.percent)}</p>
         <p className="font-bold">{text.band(text.bands[result.band])}</p>
       </div>
-      <p role="status" aria-live="polite" className="flow-prose font-semibold">
+      <p role="status" aria-live="polite" className="flow-prose whitespace-pre-line font-semibold">
         {statement}
       </p>
       {simulated?.outcome === 'boundary' && policy && (

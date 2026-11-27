@@ -2,8 +2,8 @@ import { useEffect, useId, useRef } from 'react'
 import { PartyPopper } from 'lucide-react'
 import { Button } from '../../components/ui/Button.tsx'
 import { Card } from '../../components/ui/Card.tsx'
-import { esCongratulations } from '../../i18n/congratulations.es.ts'
 import type { ResolvedCongratulations } from './congratulations.ts'
+import type { ResolvedJourneyText } from './journeyTexts.ts'
 
 // The congratulations screen on the Rumbos card. The text arrives already resolved (the author's
 // plain text or the default, placeholders replaced) and is rendered as text only: no markup is
@@ -54,11 +54,20 @@ export const CongratulationsScreen = ({
 
 // What a student sees once the final exam's attempts are spent. It performs nothing and
 // promises nothing: no restart of the course exists.
-export const ExhaustedScreen = ({ onContinue }: { onContinue: () => void }) => {
+export const ExhaustedScreen = ({
+  text,
+  onContinue,
+  autoFocus = true,
+}: {
+  text: ResolvedJourneyText
+  onContinue: () => void
+  autoFocus?: boolean
+}) => {
   const heading = useRef<HTMLHeadingElement>(null)
   const titleId = useId()
-  useEffect(() => heading.current?.focus(), [])
-  const text = esCongratulations.journey
+  useEffect(() => {
+    if (autoFocus) heading.current?.focus()
+  }, [autoFocus])
   return (
     <section aria-labelledby={titleId} data-testid="exhausted" className="flex justify-center p-4">
       <Card className="flex w-full max-w-xl flex-col items-center gap-4 p-6 text-center text-ink">
@@ -68,11 +77,10 @@ export const ExhaustedScreen = ({ onContinue }: { onContinue: () => void }) => {
           id={titleId}
           className="font-heading text-3xl font-extrabold"
         >
-          {text.exhaustedTitle}
+          {text.title}
         </h2>
-        <p className="flow-prose">{text.exhaustedBody}</p>
-
-        <Button onClick={onContinue}>{text.exhaustedCta}</Button>
+        <p className="flow-prose whitespace-pre-line">{text.body}</p>
+        <Button onClick={onContinue}>{text.ctaLabel}</Button>
       </Card>
     </section>
   )

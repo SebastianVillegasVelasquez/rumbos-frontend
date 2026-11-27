@@ -171,6 +171,9 @@ export interface AssessmentResult {
   // A decimal string with two decimals, never a float.
   percent: string
   passed: boolean
+  // The rule this attempt was graded with (frozen when it started). Shown: `passed` decides.
+  pass_percent: number
+  pass_operator: PassOperator
   band: Band
   by_section: SectionResult[]
   by_module: { module: string; percent: string }[]

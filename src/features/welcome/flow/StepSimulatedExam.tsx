@@ -3,6 +3,7 @@ import { Button } from '../../../components/ui/Button.tsx'
 import { announce } from '../../../components/ui/announce.ts'
 import { esAssessment } from '../../../i18n/assessment.es.ts'
 import { ExamResult } from '../../assessment/ExamResult.tsx'
+import type { JourneySettings } from '../../assessment/journeyTexts.ts'
 import { simExhausted, simPassed } from '../../assessment/journeySimulation.ts'
 import { simulateResult, type SimulatedOutcome } from '../../assessment/simulation.ts'
 import type { WelcomeAssessmentStep } from '../../course-map/data/types.ts'
@@ -19,11 +20,13 @@ export const StepSimulatedExam = ({
   state,
   dispatch,
   simulation,
+  journeyTexts,
 }: {
   step: WelcomeAssessmentStep
   state: FlowState
   dispatch: Dispatch<FlowEvent>
   simulation: FlowSimulation
+  journeyTexts?: JourneySettings | null
 }) => {
   const titleId = useId()
   const { rules, checkin, attempts } = simulation
@@ -55,6 +58,7 @@ export const StepSimulatedExam = ({
           preview
           policy={rules.policy}
           simulated={{ outcome }}
+          journeyTexts={journeyTexts}
         />
       </div>
     )

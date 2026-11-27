@@ -218,6 +218,8 @@ test('check-in failed: route, all done, three failed finals, reset, then a pass'
   page,
   context,
 }) => {
+  // Both journeys in one test: about 90 s in Linux WebKit, the default limit.
+  test.slow()
   const { assertNoSideEffects } = await open(page, context)
   await press(page, 'Empezar simulación')
   await walkToCheckin(page)

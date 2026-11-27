@@ -38,7 +38,11 @@ export interface ResolvedCongratulations {
 const CONTROL = /[\u0000-\u0008\u000B-\u001F\u007F]/g
 
 // Plain text, bounded, with no control characters. Line breaks stay in the body only.
-const plain = (value: string | null | undefined, max: number, multiline: boolean): string => {
+export const plain = (
+  value: string | null | undefined,
+  max: number,
+  multiline: boolean
+): string => {
   if (typeof value !== 'string') return ''
   const cleaned = value.slice(0, max * 2).replace(CONTROL, '')
   const oneLine = multiline ? cleaned : cleaned.replace(/[\r\n]+/g, ' ')
@@ -52,21 +56,20 @@ export const formatScore = (score: string | null): string => {
   return Number.isFinite(value) ? String(Number(value.toFixed(2))) : ''
 }
 
-// The backend reports no score for the final exam, so its screen cannot say one: the editor
-// warns about the placeholder there, and a field that uses it anyway gets Rumbos' text.
-export const SCORE_PLACEHOLDER = '{score}'
-
-export const usesUnavailableScore = (
-  purpose: CongratulationsPurpose,
-  value: string | null | undefined
-): boolean => purpose === 'final' && (value ?? '').includes(SCORE_PLACEHOLDER)
-
-// Only these two placeholders exist: anything else in braces stays as the author wrote it, as text.
-export const substitute = (template: string, values: CongratulationsValues): string =>
+// One pass over the template, replacing exactly the named placeholders: a value is never read
+// again, and any other brace stays as the author wrote it, as text.
+export const fillPlaceholders = (template: string, values: Record<string, string>): string =>
   template
-    .replace(/\{score\}/g, formatScore(values.score))
-    .replace(/\{threshold\}/g, values.threshold === null ? '' : String(values.threshold))
+    .replace(/\{([a-z_]+)\}/g, (found, name: string) =>
+      Object.hasOwn(values, name) ? values[name] : found
+    )
     .replace(/[ \t]{2,}/g, ' ')
+
+export const substitute = (template: string, values: CongratulationsValues): string =>
+  fillPlaceholders(template, {
+    score: formatScore(values.score),
+    threshold: values.threshold === null ? '' : String(values.threshold),
+  })
 
 const defaultsFor = (
   purpose: CongratulationsPurpose,
@@ -95,7 +98,8 @@ export const resolveCongratulations = (
   const pick = (value: string | null | undefined, max: number, multiline: boolean, def: string) => {
     const own = plain(value, max, multiline)
     // A sentence with a hole where the score goes would read as broken.
-    const unusable = own === '' || (values.score === null && usesUnavailableScore(purpose, own))
+    // A sentence with a hole where the score goes would read as broken.
+    const unusable = own === '' || (values.score === null && own.includes('{score}'))
     return substitute(unusable ? def : own, values).trim()
   }
   return {

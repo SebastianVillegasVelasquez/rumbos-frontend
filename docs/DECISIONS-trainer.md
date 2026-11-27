@@ -581,3 +581,42 @@ and one stale input; everything else already reads the API.
   (90 s); unchanged, it then passed 20/20 in WebKit and 10/10 in Chromium. In that failure the editor's first app load took the full stage over
   the mock host's "(Re)load app", so the click never landed. Not fixed: replacing that click with the file's reload helper
   made the test fail every time, for a reason not established, and was reverted.
+
+## Red browser specs on the first complete CI run
+
+CI (PR #38) failed 1 Chromium and 8 WebKit tests. Linux WebKit ran far slower than Chromium
+there (median test 12.7 s against 3.1 s). The WebKit ones were rechecked in the Playwright
+Linux container with the fixes: 8 tests, 5 runs each, 40 passed.
+
+- Slowness: the failed-journey simulator test takes about 90 s there, the old limit (4/4
+  passed with 240 s), so it is marked slow. WebKit waits 15 s for an element, not 5 s.
+- The trainer loading test counted on the catalog still loading 8 s in. The test now holds
+  the catalog and releases it itself.
+- The zoom test read the value while it was still easing. It now waits until it stops.
+- The icon-only rail label is a clipped 1 px box in both engines; WebKit counts that box as
+  in the viewport. The test now checks the box.
+- The 412 px welcome screenshot predated the solid progress segments. It was refreshed, and
+  that width allows 5% (others 3%): one baseline serves Windows and Linux, which differ by
+  about 4% there. The Linux container is not the CI image (11% there), so CI decides; it
+  stopped at the first screenshot, so the other four at 412 px are unverified on CI.
+
+## Journey texts, the final's outcome and observe mode
+
+- **Existing bug, fixed:** with the gate on (`observe` or `enforce`) the backend leaves the final out of
+  `GET /trainer/assessments`. The final step looked only there, so a student was told the exam had no questions
+  and offered "Continuar de todos modos". The browser mocks always listed the final, which hid it.
+- `failure` is shown after a failed **final** only. The backend's text also covers a failed check-in, where this
+  app shows the route instructions instead.
+- `{attempts_max}` is the attempt result's `attempts.max`. The backend recommends the outcome's, the limit now
+  in force; they differ only if the editor changes the limit while an attempt is open.
+- `failure.ctaLabel` names the button that leaves the result. The map's "Continuar al cierre" keeps its label.
+- A passed result states the rule it was graded with (`result.pass_percent`), not the list's policy.
+- Observe, passed check-in: no card, as asked. So that a student who read the congratulations and left before
+  saving a closing step still has a way in, they come back on the next visit until the closing has started.
+- Observe, route card: the server never says `locked` there, so the app shows the card after a failed check-in
+  while content is incomplete.
+- Observe also holds back a closing left in the middle while content is incomplete (an activity added later).
+- New copy, pending approval: the texts editor (`journeyEditor`), its section names and the `journey_text_*` and
+  `congratulations_*` messages.
+- Not changed: the exam's intro takes its time limit from the list's policy, which with the final hidden can be
+  the check-in's. The countdown itself follows the server's deadline.

@@ -3,6 +3,8 @@ import { useCallback, useEffect, useState, type Dispatch } from 'react'
 import { Button } from '../../../components/ui/Button.tsx'
 import { esAssessment } from '../../../i18n/assessment.es.ts'
 import { assessmentApi } from '../../assessment/api.ts'
+import { finalOfferOf } from '../../assessment/finalOffer.ts'
+import { closingApi } from '../../assessment/useClosingStatus.ts'
 import { classifyFailure } from '../../assessment/failure.ts'
 import {
   reasonOfLockedCode,
@@ -65,12 +67,24 @@ export const StepAssessment = ({
 
   useEffect(() => {
     let cancelled = false
+    // While the backend's closing gate is on, the final is not in the list: the closing
+    // status carries it, and says what the student may do with it.
+    const read = async () => {
+      const list = await assessmentApi.list()
+      const listed = list.enabled && list.items.some((entry) => entry.purpose === step.purpose)
+      if (step.purpose !== 'final' || !list.enabled || listed) return { list, offer: null }
+      return { list, offer: finalOfferOf(await closingApi.status()) }
+    }
     const look = (n: number) => {
-      assessmentApi
-        .list()
-        .then((list) => {
+      read()
+        .then(({ list, offer }) => {
           if (cancelled) return
           if (!list.enabled) return setLoad({ kind: 'unavailable', reason: 'disabled' })
+          if (offer) {
+            if (offer.kind !== 'ready') return setLoad(offer)
+            setLoadedAt(Date.now())
+            return setLoad({ kind: 'ready', list, item: offer.item })
+          }
           // A pass in either exam is a pass: nothing is left to ask of the student.
           if (list.items.some((entry) => entry.state === 'passed'))
             return setLoad({ kind: 'passed' })

@@ -12,6 +12,7 @@ import { describeSaveFailure } from './appearanceErrors.ts'
 import { MusicTab } from '../../audio/editor/MusicTab.tsx'
 import { View3dTab } from '../../view3d/editor/View3dTab.tsx'
 import { CongratulationsEditor } from '../../assessment/editor/CongratulationsEditor.tsx'
+import { JourneyTextsEditor } from '../../assessment/editor/JourneyTextsEditor.tsx'
 import { TrainingTab } from '../../assessment/editor/TrainingTab.tsx'
 import { SettingsIssuesList, SettingsWarnings } from '../../assessment/editor/SettingsIssues.tsx'
 import { checkTrainingSettings, issuesFromError } from '../../assessment/editor/settingsIssues.ts'
@@ -303,7 +304,19 @@ export const AppearanceStudio = ({
             />
           )}
           {tab === 'training' && trainingAvailable && 'congratulations' in courseMap.settings && (
-            <CongratulationsEditor settings={settings} onChange={changeSettings} />
+            <CongratulationsEditor
+              settings={settings}
+              issues={settingsIssues}
+              onChange={changeSettings}
+            />
+          )}
+          {tab === 'training' && trainingAvailable && (
+            <JourneyTextsEditor
+              saved={courseMap.settings}
+              settings={settings}
+              issues={settingsIssues}
+              onChange={changeSettings}
+            />
           )}
           {tab === 'closing' && closingSupported && (
             <FlowTab

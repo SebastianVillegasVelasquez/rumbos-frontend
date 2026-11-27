@@ -406,6 +406,11 @@ const defaultSettings = (mode: MapSettings['mode']): MapSettings => ({
   congratulations: queryParam('mockCongratulationsJson')
     ? JSON.parse(queryParam('mockCongratulationsJson')!)
     : null,
+  // ?mockJourneyTextsJson=<url-encoded { failure?, exhausted?, routeInstructions? }>
+  failure: null,
+  exhausted: null,
+  routeInstructions: null,
+  ...(queryParam('mockJourneyTextsJson') ? JSON.parse(queryParam('mockJourneyTextsJson')!) : {}),
 })
 
 // The scenes this "backend" accepts. A scene is hand-authored with a fixed

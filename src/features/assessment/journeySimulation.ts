@@ -86,7 +86,10 @@ export const simAttempt = (
   simCanAttempt(state, rules) ? { ...state, attempts: [...state.attempts, outcome] } : state
 
 // The number of the last final attempt when it failed; null before any attempt and after a pass.
-export const simLastFailure = (state: SimState, rules: SimRules): number | null =>
+export const simLastFailure = (
+  state: Pick<SimState, 'attempts'>,
+  rules: SimRules
+): number | null =>
   state.attempts.length > 0 && !simPassed(state, rules) ? state.attempts.length : null
 
 // The status the backend would answer at this point; null while the check-in is not sat.
@@ -107,13 +110,19 @@ export const simStatus = (
     : { used: state.attempts.length, max: rules.finalMaxAttempts }
   const reason =
     final === 'exhausted' ? 'no_attempts_left' : final === 'locked' ? 'scorm_incomplete' : null
+  // The score of the attempt that decides the final: the best one, which is a passing one if
+  // any passed.
+  const finalPercent =
+    state.attempts.length > 0
+      ? Math.max(...state.attempts.map((outcome) => simulatedPercent(outcome, rules.policy)))
+      : null
   return {
     enforced: true,
     preview: true,
     available: checkinPassed || final === 'required',
     reason,
     progress: { completed: state.contentDone ? activities : 0, total: activities },
-    final: attempts ? { attempts } : null,
+    final: attempts ? { attempts, item: null } : null,
     outcome: {
       checkin: {
         status: checkinPassed ? 'passed' : 'not_passed',
@@ -122,7 +131,14 @@ export const simStatus = (
         passOperator: rules.policy.pass_operator,
         attempts: { used: 1, max: rules.checkinMaxAttempts },
       },
-      final: { status: final, reason, attempts },
+      final: {
+        status: final,
+        reason,
+        attempts,
+        percent: finalPercent === null ? null : finalPercent.toFixed(2),
+        passPercent: rules.policy.pass_percent,
+        passOperator: rules.policy.pass_operator,
+      },
       scormGate: {
         satisfied: checkinPassed || state.contentDone,
         reason: checkinPassed ? 'passed_checkin' : null,

@@ -7,7 +7,6 @@ import {
   formatScore,
   clearCongratulations,
   resolveCongratulations,
-  usesUnavailableScore,
   setCongratulationsField,
   substitute,
 } from './congratulations.ts'
@@ -80,12 +79,12 @@ describe('the placeholders', () => {
     )
   })
 
-  it('no default copy for the final asks for the score', () => {
+  it('no default copy for the final leaves a hole without a score', () => {
     const shown = resolveCongratulations('final', null, { score: null, threshold: null })
-    for (const field of Object.values(shown))
-      assert.equal(usesUnavailableScore('final', field), false)
-    assert.equal(usesUnavailableScore('checkin', '{score}'), false)
-    assert.equal(usesUnavailableScore('final', '{score}'), true)
+    assert.deepEqual(shown, resolveCongratulations('final', null, values))
+  })
+  it('a value is never read again as a placeholder', () => {
+    assert.equal(substitute('{score} {constructor}', values), '85.5 {constructor}')
   })
 
   it('write the score the way a person would', () => {

@@ -56,6 +56,8 @@ const result = (status: 'submitted' | 'expired'): AssessmentResult => ({
   status,
   percent: '83.25',
   passed: true,
+  pass_percent: 80,
+  pass_operator: 'gt',
   band: 'achieved',
   by_section: [],
   by_module: [],

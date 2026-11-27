@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { afterEach, beforeEach, describe, it } from 'node:test'
 import { assessmentApi } from '../features/assessment/api.ts'
+import { setJourneyTextField } from '../features/assessment/journeyTexts.ts'
 import { setPolicy, setRules } from '../features/assessment/editor/trainingForm.ts'
 import { realCourseMapApi } from '../features/course-map/data/courseMapApi.ts'
 import type { AppearanceUpdate, MapSettings } from '../features/course-map/data/types.ts'
@@ -172,6 +173,50 @@ describe('request bodies against openapi.json', () => {
     )
     const none = { ...editedSettings(), congratulations: null }
     assert.deepEqual(check(await putAppearance(none), schema, 'body'), [])
+  })
+
+  it('PUT /course-maps/{id}/appearance: the journey texts survive the editor’s save', async () => {
+    const schema = requestSchema('PUT', '/course-maps/{course_map_id}/appearance')
+    // As the editor leaves them: typed field by field, one cleared back to the default.
+    let settings: MapSettings = {
+      ...editedSettings(),
+      failure: null,
+      exhausted: null,
+      routeInstructions: null,
+    }
+    settings = setJourneyTextField(settings, 'failure', 'title', 'Casi')
+    settings = setJourneyTextField(
+      settings,
+      'failure',
+      'body',
+      'Intento {attempt} de {attempts_max}: quedan {attempts_left}. Mínimo {threshold}.'
+    )
+    settings = setJourneyTextField(settings, 'exhausted', 'body', 'Habla con tu tutor.')
+    settings = setJourneyTextField(settings, 'routeInstructions', 'ctaLabel', 'Vamos')
+    assert.deepEqual(check(await putAppearance(settings), schema, 'body'), [])
+    const sentSettings = () => (lastBody() as { settings: MapSettings }).settings
+    assert.deepEqual(sentSettings().failure, {
+      title: 'Casi',
+      body: 'Intento {attempt} de {attempts_max}: quedan {attempts_left}. Mínimo {threshold}.',
+    })
+    assert.deepEqual(sentSettings().exhausted, { body: 'Habla con tu tutor.' })
+    assert.deepEqual(sentSettings().routeInstructions, { ctaLabel: 'Vamos' })
+
+    // Saving something else afterwards keeps all three.
+    await putAppearance({ ...settings, mode: 'explorative' })
+    for (const block of ['failure', 'exhausted', 'routeInstructions'] as const)
+      assert.deepEqual(sentSettings()[block], settings[block], block)
+
+    const cleared = setJourneyTextField(settings, 'exhausted', 'body', '')
+    assert.deepEqual(check(await putAppearance(cleared), schema, 'body'), [])
+    assert.equal(sentSettings().exhausted, null)
+  })
+
+  it('PUT /course-maps/{id}/appearance: no journey text key for a backend without them', async () => {
+    await putAppearance(editedSettings())
+    const sentSettings = (lastBody() as { settings: object }).settings
+    for (const key of ['failure', 'exhausted', 'routeInstructions'])
+      assert.equal(key in sentSettings, false, key)
   })
 
   it('PUT /course-maps/{id}/appearance: a map whose assessments were never set', async () => {

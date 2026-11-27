@@ -148,7 +148,10 @@ test.describe('rail', () => {
     await openEditor(page, 400)
     const box = (await rail(page).boundingBox())!
     expect(box.width).toBeLessThanOrEqual(48)
-    await expect(rail(page).getByText('Apariencia', { exact: true })).not.toBeInViewport()
+    // Visually hidden, a clipped 1 px box. WebKit still counts that box as in the viewport.
+    const label = (await rail(page).getByText('Apariencia', { exact: true }).boundingBox())!
+    expect(label.width).toBeLessThanOrEqual(1)
+    expect(label.height).toBeLessThanOrEqual(1)
     // Still reachable by name.
     await expect(railButton(page, /^Apariencia/)).toBeVisible()
   })
@@ -194,8 +197,19 @@ test.describe('sections', () => {
   test('keeps the map zoom through a trip into a section and back', async ({ page }) => {
     await openEditor(page, 1000)
     await page.getByRole('button', { name: 'Acercar' }).click()
-    // The zoom eases to its value: wait for it to settle.
-    await page.waitForTimeout(800)
+    // The zoom eases to its value: wait until it stops changing. A fixed wait is not enough
+    // on a slow machine.
+    let last = ''
+    await expect
+      .poll(
+        async () => {
+          const previous = last
+          last = await zoomLabel(page).innerText()
+          return last !== '100%' && last === previous
+        },
+        { intervals: [500], timeout: 15_000 }
+      )
+      .toBe(true)
     const zoomed = await zoomLabel(page).innerText()
     expect(zoomed).not.toBe('100%')
     await railButton(page, /^Apariencia/).click()
