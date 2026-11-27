@@ -36,7 +36,7 @@ export const esAssessment = {
         ? `Con exactamente ${threshold} % no se aprueba: hay que superar el ${threshold} %.`
         : `Con exactamente ${threshold} % se aprueba: basta con alcanzarlo.`,
     failNote:
-      'Así lo vería un estudiante. Si no aprueba, el botón Cierre sigue como lo defina el curso.',
+      'Así lo vería un estudiante. Si no aprueba, llega al cierre cuando completa el contenido.',
     openClosing: 'Ver cierre',
     noClosing: 'Este curso no tiene un flujo de cierre configurado.',
     again: 'Volver a las herramientas',

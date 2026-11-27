@@ -38,7 +38,7 @@ export interface HudInput {
   hasTrainerButton?: boolean
   // "Tutor virtual" is present only when the host announced the tutor.
   hasTutorButton?: boolean
-  // "Cierre" is present only when the map has a closing flow.
+  // "Cierre" is the editor's: present only in their view of a map with a closing flow.
   hasClosingButton?: boolean
   hasPreviewPill: boolean
 }

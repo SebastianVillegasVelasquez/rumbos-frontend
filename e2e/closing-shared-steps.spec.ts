@@ -1,5 +1,6 @@
 import { expect, test, type BrowserContext, type Page } from '@playwright/test'
 import { app } from './support.ts'
+import { closingStatus, enterFromCard, serveClosingStatus } from './closingStatus.ts'
 import { stubMedia } from './audioStub.ts'
 
 // The closing flow offers the welcome flow's content steps: video, PDF, text and the final
@@ -101,8 +102,9 @@ test.describe('closing flow: the student', () => {
     context,
   }) => {
     await stubProviderAndDocument(context)
+    await serveClosingStatus(context, { value: closingStatus('required') })
     await page.goto('/mock-host/index.html')
-    const level = await load(page, `&mockWelcome=disabled&mockClosing=available${asJson(closing)}`)
+    const level = await load(page, `&mockWelcome=disabled${asJson(closing)}`)
     await level.click()
     const bubble = app(page).getByRole('dialog', { name: 'Bienvenida al curso' })
     await bubble.waitFor({ timeout: 8000 })
@@ -110,7 +112,7 @@ test.describe('closing flow: the student', () => {
     await app(page).getByRole('button', { name: 'Omitir' }).click()
     await expect(app(page).getByRole('dialog')).toHaveCount(0)
 
-    await app(page).getByRole('button', { name: 'Cierre', exact: true }).click()
+    await enterFromCard(page)
     await expect(dialog(page)).toBeVisible()
 
     // Video: the mandatory step waits for the end, as in the welcome flow.

@@ -249,20 +249,11 @@ export interface WelcomeAssessmentStep extends StepCommon {
 // The two guided flows built from the same steps and the same editor.
 export type FlowKey = 'welcome' | 'closing'
 
-// DRAFT, not in contracts/openapi.json: the backend's answer on whether the closing flow is
-// open to this student. `reason` is a machine code (looked up in hud/closingEntry.ts, never
-// shown); `scorm` carries the progress counts when the reason is `scorm_incomplete`.
-export interface ClosingAvailability {
-  available: boolean
-  reason: string | null
-  scorm?: { completed: number; required: number } | null
-}
-
 // DRAFT, not in contracts/openapi.json: the closing flow the student sees on finishing
 // the level. It has the welcome flow's shape (enabled + steps; the legacy fields stay
 // null) so the player and the editor are shared. Never sent to the backend until the
-// contract declares it (see serializeAppearance); the backend decides when it is
-// available (`closingAvailable` on the map read).
+// contract declares it (see serializeAppearance); when a student reaches it is said by
+// GET /trainer/closing.
 export type MapClosing = MapWelcome
 
 export type WelcomeStep =
@@ -377,10 +368,6 @@ export interface CourseMapRead {
   audioInfo?: AudioInfo | null
   // Absent on a backend that predates the welcome flow.
   welcomeDocuments?: WelcomeDocument[]
-  // DRAFT: the backend's word that the closing flow is open to this student.
-  closingAvailable?: boolean
-  // DRAFT: the same answer with its reason and the SCORM progress counts.
-  closingAvailability?: ClosingAvailability | null
   bubbles: Bubble[]
   revision: number
   createdAt: string
@@ -789,10 +776,6 @@ export interface PublishedBubble {
 export interface PublishedMapRead {
   id: string
   title: string
-  // DRAFT: the backend's word that the closing flow is open to this student.
-  closingAvailable?: boolean
-  // DRAFT: the same answer with its reason and the SCORM progress counts.
-  closingAvailability?: ClosingAvailability | null
   moodleCourseId: number
   moodleSectionId: number | null
   position: number

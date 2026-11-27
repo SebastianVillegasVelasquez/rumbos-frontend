@@ -230,11 +230,8 @@ copy.
 - **Steps:** authored HTML (`html`, as the welcome flow's) and `assessment` with `purpose: "final"`.
   The welcome flow keeps `check_in` only. The gate is the same as step 5: completing the attempt
   opens "Terminar", passing is not required; a pass in either exam shows "Ya aprobaste".
-- **Entry:** a "Cierre" button in the HUD, present when the map has a closing flow and enabled when the
-  backend says it is open. It is never opened over the map by itself. An editor in the preview view can always
-  open it. When closed, pressing it says why in words (`hud/closingEntry.ts`): with `scorm_incomplete` and the
-  counts, "Completa los 7 contenidos para abrir el cierre. Llevas 5." plus "Continuar", which only walks to the
-  next pending bubble; other reasons and unknown codes read as plain sentences, never as the code.
+- **Entry:** students have no button. The journey brings them (see "Where a student is on every load"). Only an
+  editor looking at the student view has the "Cierre" button in the HUD, which opens the flow in preview.
 - **Final-assessment step states** (the same component as the check-in, with the final exam's words):
 
   | State                                             | Says                                                                                                         | "Terminar"            |
@@ -248,20 +245,42 @@ copy.
   | network / server error                            | "No pudimos cargar la evaluación." and Reintentar                                                            | closed                |
   | guard (`closing_not_available`, 409 or 403)       | "El cierre todavía no está disponible para ti…", only "Volver" (no retry); the step looks the state up again | closed                |
 
-  A test fails when a state, a reason or a failure has no translation (`stepStates.test.ts`, `closingEntry.test.ts`).
+  A test fails when a state, a reason or a failure has no translation (`stepStates.test.ts`).
 
 - **Preview:** an editor's attempt is labelled "Vista previa: este intento no se guarda ni cuenta." (banner in the
   runner, note on the step) and its result carries "Esto es una vista previa: no es el resultado de un estudiante."
   The preview is the backend's (`preview` on the assessments list); the client never simulates completion or the gate.
 - **Editor:** the final-assessment step says "Este paso se desbloquea cuando el estudiante completa todos los
   contenidos SCORM." The final exam is no longer in Entrenar.
-- **Draft shapes** (`MapClosing`, `settings.closing`, `closingAvailable`, `closingAvailability`, the reason codes and the `closing_not_available` guard) are NOT in
-  `contracts/openapi.json`. `serializeAppearance` drops `closing`, so nothing is saved or read from the
-  backend until the contract declares it (it would answer 422 `extra_forbidden`). The mock API gives a
-  map a closing flow with `?mockClosingJson=` and availability with `?mockClosing=available` or
-  `?mockClosing=<reason>` (`&mockClosingDone=5&mockClosingTotal=7` for the counts). The
-  "Cierre" editor tab shows only when the backend sends the `closing` key.
-- **No progress record:** the closing flow persists nothing (no host progress). Each opening starts
-  at the first step. Whether the host should keep a record is for the backend/plugin prompt.
-- **Deploy order:** backend first (declares `closing`, `closingAvailable` and the `final` purpose in
-  the step schema), then this front end with the draft types replaced by the generated ones.
+- **Draft shapes** (`MapClosing`, `settings.closing` and the `closing_not_available` guard): the mock API gives a map a
+  closing flow with `?mockClosingJson=`. The browser tests serve `GET /trainer/closing` themselves, checked against
+  `contracts/openapi.json` (`e2e/closingStatus.ts`). The "Cierre" editor tab shows only when the backend sends the
+  `closing` key.
+- **Progress record:** each mandatory closing step is reported to the host (`flow-step-done`, the same table as the
+  welcome flow; step keys are unique across both), so the flow resumes where Moodle says.
+- **Deploy order:** backend first, with `CLOSING_GATE_MODE=enforce`. With the gate off the status has no `outcome`,
+  so no student is offered the closing flow.
+
+### Where a student is on every load
+
+Worked out again on each load (`assessment/closingResume.ts`) from `GET /trainer/closing` and the closing steps'
+records in Moodle. The client never compares a score or counts activities. Rows are read from the top.
+
+| `outcome.final.status`            | Closing steps in Moodle        | The student sees                                                   |
+| --------------------------------- | ------------------------------ | ------------------------------------------------------------------ |
+| `exhausted`                       | any                            | the review-again screen, on every load until the backend restarts  |
+| `passed`                          | any                            | the final's congratulations once, then the map with no prompt      |
+| `not_required_passed_checkin`     | none, congratulations not read | the congratulations; their button opens the flow without the final |
+| `not_required_passed_checkin`     | none, congratulations read     | the "Continuar al cierre" card                                     |
+| `not_required_passed_checkin`     | some                           | the flow, resumed on the first pending step                        |
+| `not_required_passed_checkin`     | all                            | the map, no prompt                                                 |
+| `required` and `available`        | none                           | the card (never opened over the map)                               |
+| `required` and `available`        | some                           | the flow, resumed on the first pending step                        |
+| `required` and `available`        | all (the final was not passed) | the card; the flow opens on the final exam                         |
+| `locked`, no `outcome`, no answer | any                            | the map, no prompt, no reason code                                 |
+
+While Moodle has not answered, the first two rows apply and nothing else is shown. A deep link carries no closing
+route: it reads as any other load. While the flow or a journey screen is up, the level's self-opening content and the
+first-run guide wait.
+
+Tests: `closingResume.test.ts` and `e2e/closing-resume.spec.ts` (Chromium and WebKit).

@@ -1,5 +1,4 @@
 import type {
-  ClosingAvailability,
   CourseMapRead,
   MapSettings,
   PublishedMapRead,
@@ -31,9 +30,6 @@ export interface RenderableMap {
   audio: { settings: NonNullable<MapSettings['audio']>; info: AudioInfo } | null
   // The documents the welcome flow's PDF steps use; absent on an older backend.
   welcomeDocuments?: WelcomeDocument[]
-  // DRAFT: the backend says the closing flow is open to this student.
-  closingAvailable?: boolean
-  closingAvailability?: ClosingAvailability | null
   // Skins to resolve against: the live /skins list for a draft, the frozen
   // copies stored in the snapshot for a publication.
   skins: Skin[]
@@ -59,8 +55,6 @@ export const draftToRenderable = (map: CourseMapRead, skins: Skin[]): Renderable
   view3d: map.view3d,
   audio: audioOf(map.settings, map.audioInfo),
   welcomeDocuments: map.welcomeDocuments,
-  closingAvailable: map.closingAvailable,
-  closingAvailability: map.closingAvailability,
   skins,
   bubbles: map.bubbles,
   source: 'draft',
@@ -79,8 +73,6 @@ export const publishedToRenderable = (map: PublishedMapRead): RenderableMap => (
   view3d: map.view3d,
   audio: audioOf(map.settings, map.audioInfo),
   welcomeDocuments: map.welcomeDocuments,
-  closingAvailable: map.closingAvailable,
-  closingAvailability: map.closingAvailability,
   skins: Object.entries(map.skins).map(([id, skin]) => ({
     id,
     name: skin.name,

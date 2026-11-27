@@ -205,8 +205,8 @@ test.describe('journey B: the check-in was not passed', () => {
         progress: { completed: 2, total: 5 },
       }),
     })
-    const hud = app(page).getByRole('button', { name: 'Cierre', exact: true })
-    await expect(hud).toHaveAttribute('aria-disabled', 'true', { timeout: 20_000 })
+    await expect(app(page).getByRole('button', { name: 'Misiones' })).toBeVisible()
+    await expect(app(page).getByRole('button', { name: 'Cierre', exact: true })).toHaveCount(0)
     await expect(app(page).getByTestId('closing-card')).toHaveCount(0)
     await expect(screen(page)).toHaveCount(0)
 

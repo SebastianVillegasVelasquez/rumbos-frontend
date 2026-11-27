@@ -34,16 +34,10 @@ export const TRAINER_BUTTON_ID = 'hud-trainer-button'
 export const TUTOR_BUTTON_ID = 'hud-tutor-button'
 export const CLOSING_BUTTON_ID = 'hud-closing-button'
 
-// "Cierre": the way into the closing flow. Present when the map has one; enabled when
-// the backend says it is open to this student (an editor in preview can always open it).
-// Never opened by itself over the map.
+// "Cierre": the editor's way to look at the closing flow from the student view. A student never
+// gets it: the journey brings them to the closing (assessment/closingResume.ts).
 export interface ClosingEntry {
   onOpen: () => void
-  enabled: boolean
-  // Why it is closed, when it is; shown as text after a press.
-  note: string | null
-  // "Continuar": takes the student to the next pending bubble. Null when there is none.
-  onContinue?: (() => void) | null
 }
 
 // "Tutor virtual": shown only when the host announced it can open the tutor (never a
@@ -157,14 +151,6 @@ export const StudentStage = ({
     const timer = window.setTimeout(() => setPressed(false), 4000)
     return () => window.clearTimeout(timer)
   }, [pressed])
-  // Pressing the closed "Cierre" says why, as text, for a few seconds.
-  const [closingPressed, setClosingPressed] = useState(false)
-  const closingStays = Boolean(closing?.onContinue)
-  useEffect(() => {
-    if (!closingPressed || closingStays) return
-    const timer = window.setTimeout(() => setClosingPressed(false), 4000)
-    return () => window.clearTimeout(timer)
-  }, [closingPressed, closingStays])
   const cannotOpen = trainer?.mode === 'loading' || trainer?.mode === 'disabled'
   const reasonShown = Boolean(trainer?.note) && (trainer?.persistentNote || pressed)
   const { width, height } = useStageSize(stageRef)
@@ -336,13 +322,10 @@ export const StudentStage = ({
               variant="surface"
               size="sm"
               dense
-              className="hud-dimmable pointer-events-auto min-w-[44px] data-[disabled=true]:opacity-60"
+              className="hud-dimmable pointer-events-auto min-w-[44px]"
               id={CLOSING_BUTTON_ID}
-              aria-disabled={!closing.enabled}
-              aria-describedby={closing.note ? `${CLOSING_BUTTON_ID}-why` : undefined}
-              data-disabled={!closing.enabled}
-              title={closing.note ?? es.hud.closing}
-              onClick={() => (closing.enabled ? closing.onOpen() : setClosingPressed(true))}
+              title={es.hud.closing}
+              onClick={closing.onOpen}
             >
               <Flag size={18} strokeWidth={2.5} aria-hidden />
               <span className={labelClass}>{es.hud.closing}</span>
@@ -387,43 +370,6 @@ export const StudentStage = ({
           >
             {es.hud.tutorNotEnabled}
           </p>
-        )}
-
-        {closing?.note && (
-          <div
-            className={
-              closingPressed
-                ? 'hud-chip pointer-events-auto absolute z-10 flex flex-col items-start gap-2 rounded-md px-3 py-1.5 text-sm font-bold text-white'
-                : 'sr-only'
-            }
-            style={
-              closingPressed
-                ? {
-                    background: 'var(--hud-scrim)',
-                    top: '9.5rem',
-                    left: inset('left'),
-                    maxWidth: 'min(22rem, 80%)',
-                  }
-                : undefined
-            }
-          >
-            <p id={`${CLOSING_BUTTON_ID}-why`} role="status">
-              {closing.note}
-            </p>
-            {closingPressed && closing.onContinue && (
-              <Button
-                variant="surface"
-                size="sm"
-                dense
-                onClick={() => {
-                  setClosingPressed(false)
-                  closing.onContinue?.()
-                }}
-              >
-                {es.hud.closingContinue}
-              </Button>
-            )}
-          </div>
         )}
 
         {chip}
